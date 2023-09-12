@@ -1,5 +1,105 @@
 {
   "db": "SQLite",
+  "02ca4d99b13160cb4c78a793f32bec20760e112f4045d8c31541932b4459d7fe": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "modified_at!",
+          "ordinal": 2,
+          "type_info": "Datetime"
+        },
+        {
+          "name": "context",
+          "ordinal": 3,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT\n            s.id,\n            s.name,\n            ss.modified_at as \"modified_at!\",\n            ss.context\n        FROM studios s\n        INNER JOIN studio_snapshots ss ON s.id = ss.studio_id\n        WHERE s.user_id = ? AND (ss.studio_id, ss.modified_at) IN (\n            SELECT studio_id, MAX(modified_at)\n            FROM studio_snapshots\n            GROUP BY studio_id\n        )"
+  },
+  "0c72c51f4a5b726f6f524fcb269f074550b1a3a25ed050fb2701f8bec02678d7": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 3
+      }
+    },
+    "query": "INSERT INTO studio_snapshots (studio_id, context, messages)\n         VALUES (?, ?, ?)"
+  },
+  "109cbc6bd18131c59718a575c5e09b78a4d8f28667d347ced1a13f1b4be7e2eb": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "modified_at",
+          "ordinal": 2,
+          "type_info": "Datetime"
+        },
+        {
+          "name": "content",
+          "ordinal": 3,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT id, name, modified_at, content FROM templates WHERE id = ?"
+  },
+  "11f5e7122d047f87c398cf56470c284e2037203bc4d1506efc85e7431e2e2f5f": {
+    "describe": {
+      "columns": [
+        {
+          "name": "context",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT context FROM studio_snapshots WHERE id = ?"
+  },
   "13d9aec6f721a649ab89c29c770ae5aa9f1bf34a0e30f6e608b697772774568e": {
     "describe": {
       "columns": [],
@@ -10,6 +110,34 @@
     },
     "query": "INSERT INTO conversations (user_id, thread_id, repo_ref, title, exchanges, created_at) VALUES (?, ?, ?, ?, ?, strftime('%s', 'now'))"
   },
+  "1650f7ee180dfc3169cd92ec20483663e118831b48274fbea6ca819808bcd9d1": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT id FROM templates WHERE id = ?"
+  },
+  "359b4d0fa1fcb081767303103b23f0650568cf4e79787c7ddcd21af5bad6761b": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 3
+      }
+    },
+    "query": "INSERT INTO studio_snapshots(studio_id, context, messages) VALUES (?, ?, ?)"
+  },
   "392b563bb3af6711817fe99335d053691750426762dcde7b0381dc9f69cd804e": {
     "describe": {
       "columns": [],
@@ -19,6 +147,42 @@
       }
     },
     "query": "DELETE FROM conversations WHERE user_id = ? AND thread_id = ?"
+  },
+  "3973050a775486df80905b03ef3c8a73d285fb34b03b7820853d5372a329c388": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        }
+      ],
+      "nullable": [
+        true
+      ],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "SELECT ss.id\n        FROM studio_snapshots ss\n        JOIN studios s ON s.id = ss.studio_id AND s.user_id = ?\n        WHERE ss.studio_id = ?\n        ORDER BY ss.modified_at DESC\n        LIMIT 1"
+  },
+  "476c0b82963b9a2333edec797133770f32c8269a21a17d3165e7785f69e886ab": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "SELECT id FROM studios WHERE id = ? AND user_id = ?"
   },
   "49f204678451d2c045fc1569707957e41bc170ea2ede754e2a5e660c14347bba": {
     "describe": {
@@ -62,6 +226,16 @@
     },
     "query": "SELECT cache_hash FROM file_cache WHERE repo_ref = ?"
   },
+  "4aacc9795c1a466afdc7c5cedcdf1a6b67652a7ddcdee0399e67024e087d75a9": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "UPDATE studios SET name = ? WHERE id = ?"
+  },
   "4bf8d04acb2c99669237578467e50ac6822cb46053bced5d7d7a9dc374353e0d": {
     "describe": {
       "columns": [],
@@ -92,6 +266,218 @@
     },
     "query": "DELETE FROM chunk_cache WHERE chunk_hash = ? AND file_hash = ?"
   },
+  "5776008bf71ba2a90bad43c66a6e622ad71a81e1751c00b62aafa70840997999": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "UPDATE templates SET content = ? WHERE id = ?"
+  },
+  "5840a627d06f7e3fe4681954fd6d36c4b33924f97803a988c2b3a9e31dfee402": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "modified_at",
+          "ordinal": 2,
+          "type_info": "Datetime"
+        },
+        {
+          "name": "content",
+          "ordinal": 3,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 0
+      }
+    },
+    "query": "SELECT id, name, modified_at, content FROM templates"
+  },
+  "5bdd10bd3029a70911749c200c1680224e2fb9f4ce1bf463a6ebfcdf3de10ad6": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "UPDATE templates SET modified_at = datetime('now') WHERE id = ?"
+  },
+  "63938812eb2374512bb6dd750e14f363f67471ca85c2ed27f7c4b9404f5a875f": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "INSERT INTO studio_snapshots(studio_id, context, messages)\n            SELECT studio_id, context, ?\n            FROM studio_snapshots\n            WHERE id = ?"
+  },
+  "6668fdad9bc0e6d5c97d6664c3c55062d58e0cd0d29fb91d4c1beb26c5af23a0": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        }
+      ],
+      "nullable": [
+        true
+      ],
+      "parameters": {
+        "Right": 3
+      }
+    },
+    "query": "DELETE FROM studio_snapshots\n        WHERE id IN (\n            SELECT ss.id\n            FROM studio_snapshots ss\n            JOIN studios s ON s.id = ss.studio_id AND s.user_id = ?\n            WHERE ss.id = ? AND ss.studio_id = ?\n        )\n        RETURNING id"
+  },
+  "671df14b7c9077b95e586690f8c6d3f2eeb0a3942d0b800f272b010fcd2ca97b": {
+    "describe": {
+      "columns": [
+        {
+          "name": "messages",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "context",
+          "ordinal": 1,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT messages, context FROM studio_snapshots WHERE id = ?"
+  },
+  "69d67f761ba7fb01ffc310f12cd181acb744b76de90e33c039ce7030c27642bc": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "INSERT INTO studios(name, user_id) VALUES (?, ?) RETURNING id"
+  },
+  "69e7fcbe274e645ac8dece40ddad39b5f594731e4647a683f4537ede7e20b3d4": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "INSERT INTO templates (name, content) VALUES (?, ?)"
+  },
+  "6e3bfe277ca4506bc389597db418b311c4faabf5af132f81699997e4d766e40d": {
+    "describe": {
+      "columns": [
+        {
+          "name": "title",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "repo_ref",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "exchanges",
+          "ordinal": 2,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "SELECT title, repo_ref, exchanges\n        FROM conversations\n        WHERE user_id = ? AND thread_id = ?"
+  },
+  "7ca39c2d8aebd7ebe1dbda00b4fb5fce6f4ea17894ce64c3d9786585c61739f0": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id!",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "modified_at",
+          "ordinal": 1,
+          "type_info": "Datetime"
+        },
+        {
+          "name": "context",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "messages",
+          "ordinal": 3,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        true,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "SELECT ss.id as 'id!', ss.modified_at, ss.context, ss.messages\n        FROM studio_snapshots ss\n        JOIN studios s ON s.id = ss.studio_id AND s.user_id = ?\n        WHERE ss.studio_id = ?\n        ORDER BY modified_at DESC"
+  },
+  "8f99eede8e6c1fb27acc2524c00cebbc2d4e73db8af05599521e3b00c621347f": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "UPDATE studio_snapshots SET modified_at = ? WHERE id = ?"
+  },
   "9146d9c8a7f17cc65c017cb364d1a853a9163b5ece336c0a6ef4e28e8df56a6b": {
     "describe": {
       "columns": [],
@@ -102,6 +488,24 @@
     },
     "query": "UPDATE chunk_cache SET branches = ? WHERE chunk_hash = ?"
   },
+  "9abe5ab6b9b3ccbcea0eab3750f3a7cfa00e9fe3eaf77db18c639fec8061800f": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "DELETE FROM templates WHERE id = ? RETURNING id"
+  },
   "9f862a56e79cc9ae6e9b896064a0057335b40225be0a8c8d29d9227de12ae364": {
     "describe": {
       "columns": [],
@@ -111,6 +515,76 @@
       }
     },
     "query": "DELETE FROM file_cache WHERE repo_ref = ?"
+  },
+  "a4278b11c21e533d662043810e7cc8a3fca86cf03989766fffb84302d84394e5": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "UPDATE studio_snapshots SET context = ? WHERE id = ?"
+  },
+  "a749617e52fb0bf29cf18eb031b8fad807e1db9bde02736d979e6c870ff13e4a": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        }
+      ],
+      "nullable": [
+        true
+      ],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "DELETE FROM studios WHERE id = ? AND user_id = ? RETURNING id"
+  },
+  "a921e0e531e66f7d679434a6eac1f00f30b85105adc16e0ec04bb95fe54190a9": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "context",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "messages",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "modified_at",
+          "ordinal": 4,
+          "type_info": "Datetime"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 3
+      }
+    },
+    "query": "SELECT s.id, s.name, ss.context, ss.messages, ss.modified_at\n        FROM studios s\n        INNER JOIN studio_snapshots ss ON ss.id = ?\n        WHERE s.id = ? AND s.user_id = ?"
   },
   "ac1299cb16ae8ff77ded6a11241b84414352c12e55ce40b89e5b85109c7dc523": {
     "describe": {
@@ -129,6 +603,16 @@
       }
     },
     "query": "SELECT raw_query FROM query_log WHERE created_at > ?"
+  },
+  "adcf8cfb776a4a3954bf2fe4bbb9e562ae4a0a388cd26de91e8b51753357030e": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "UPDATE templates SET name = ? WHERE id = ?"
   },
   "b3ebaeec21c90aa9ebc59a808e03c661839d0a0eaa86ad2bf4251e895f8e0a03": {
     "describe": {
@@ -170,6 +654,42 @@
     },
     "query": "SELECT thread_id, created_at, title FROM conversations WHERE user_id = ? AND repo_ref = ? ORDER BY created_at DESC"
   },
+  "d2b52987aaa4bdc39c04254834c941cad2165eefd02eef46fda413822be91fd0": {
+    "describe": {
+      "columns": [
+        {
+          "name": "messages",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT messages FROM studio_snapshots WHERE id = ?"
+  },
+  "d477bfff9f1880a91e700aad60fdd92141c3c5a6494e37ba965289aff8e9a956": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "INSERT INTO studios (user_id, name) VALUES (?, ?) RETURNING id"
+  },
   "d5ee5becde7005920d7094fca5b7974bbf19713b3625fbf6d1a3e198e7cf4de4": {
     "describe": {
       "columns": [
@@ -210,6 +730,16 @@
     },
     "query": "INSERT INTO file_cache (repo_ref, cache_hash) VALUES (?, ?)"
   },
+  "db4077fd7603079ffc8c237ec49a640a6061a06d12499bdb7b39ed3c23c1b38e": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "UPDATE studio_snapshots SET messages = ? WHERE id = ?"
+  },
   "e444f39d4fc9219873c7a8565a13e65e4646658631b785431cb64ca0cc5d6ab9": {
     "describe": {
       "columns": [
@@ -233,6 +763,16 @@
       }
     },
     "query": "SELECT repo_ref, exchanges FROM conversations WHERE user_id = ? AND thread_id = ?"
+  },
+  "ec193a038eb7fc3aaca3c3adebcc4dbde01b47ae34ac2df2227c5e5459617182": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "UPDATE studio_snapshots SET modified_at = datetime('now') WHERE id = ?"
   },
   "ed6379e37c16064198f48dbfb91899d74eb346533e3c9ab3814ba67b68d71f51": {
     "describe": {

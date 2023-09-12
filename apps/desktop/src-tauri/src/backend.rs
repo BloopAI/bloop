@@ -12,7 +12,10 @@ use super::{Manager, Payload, Runtime};
 use super::TELEMETRY;
 
 #[cfg(test)]
-static TELEMETRY: std::sync::RwLock<bool> = std::sync::RwLock::new(false);
+use {once_cell::sync::Lazy, std::sync::RwLock};
+
+#[cfg(test)]
+static TELEMETRY: Lazy<Arc<RwLock<bool>>> = Lazy::new(|| Arc::new(RwLock::new(false)));
 
 #[cfg(test)]
 fn get_device_id() -> String {
@@ -92,10 +95,7 @@ async fn start_backend<R: Runtime>(configuration: Configuration, app: tauri::App
         configuration,
         get_device_id(),
         analytics::HubOptions {
-            event_filter: Some(Arc::new(|event| match *TELEMETRY.read().unwrap() {
-                true => Some(event),
-                false => None,
-            })),
+            enable_telemetry: Arc::clone(&TELEMETRY),
             package_metadata: Some(analytics::PackageMetadata {
                 name: env!("CARGO_CRATE_NAME"),
                 version: env!("CARGO_PKG_VERSION"),

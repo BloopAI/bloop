@@ -198,13 +198,13 @@ impl BranchFilter {
     pub(crate) fn patch(&self, old: Option<&BranchFilter>) -> Option<BranchFilter> {
         let Some(BranchFilter::Select(ref old_list)) = old
         else {
-	    return Some(self.clone());
-	};
+            return Some(self.clone());
+        };
 
         let BranchFilter::Select(new_list) = self
         else {
-	    return Some(self.clone());
-	};
+            return Some(self.clone());
+        };
 
         let mut updated = old_list.iter().collect::<BTreeSet<_>>();
         updated.extend(new_list);

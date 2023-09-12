@@ -1,4 +1,7 @@
-use std::sync::Arc;
+use std::{
+    fmt::Debug,
+    sync::{Arc, RwLock},
+};
 
 use crate::{
     repo::RepoRef,
@@ -12,19 +15,51 @@ use rudderanalytics::{
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tracing::{info, warn};
+use uuid::Uuid;
 
 #[derive(Debug, Clone)]
 pub struct QueryEvent {
-    pub query_id: uuid::Uuid,
-    pub thread_id: uuid::Uuid,
+    pub query_id: Uuid,
+    pub thread_id: Uuid,
     pub repo_ref: Option<RepoRef>,
     pub data: EventData,
+}
+
+#[derive(Debug, Clone)]
+pub struct StudioEvent {
+    pub studio_id: i64,
+
+    // This is not a `Map<K, V>`, to prevent RudderStack from collapsing these fields into columns
+    // in the analytics DB.
+    pub payload: Vec<(String, Value)>,
+    pub type_: String,
+}
+
+impl StudioEvent {
+    pub fn new(studio_id: i64, type_: &str) -> Self {
+        Self {
+            studio_id,
+            type_: type_.to_owned(),
+            payload: Vec::new(),
+        }
+    }
+
+    pub fn with_payload<T: Serialize + Clone>(mut self, name: &str, payload: &T) -> Self {
+        self.payload.push((
+            name.to_owned(),
+            serde_json::to_value(payload.clone()).unwrap(),
+        ));
+        self
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
 pub struct EventData {
     kind: EventKind,
     name: String,
+
+    // This is not a `Map<K, V>`, to prevent RudderStack from collapsing these fields into columns
+    // in the analytics DB.
     payload: Vec<(String, Value)>,
 }
 
@@ -81,8 +116,14 @@ pub struct RudderHub {
 
 #[derive(Default)]
 pub struct HubOptions {
-    pub event_filter: Option<Arc<dyn Fn(QueryEvent) -> Option<QueryEvent> + Send + Sync + 'static>>,
+    pub enable_telemetry: Arc<RwLock<bool>>,
     pub package_metadata: Option<PackageMetadata>,
+}
+
+impl HubOptions {
+    pub fn enable_telemetry(&self) -> bool {
+        *self.enable_telemetry.read().unwrap()
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -147,23 +188,44 @@ impl RudderHub {
 
     pub fn track_query(&self, user: &crate::webserver::middleware::User, event: QueryEvent) {
         if let Some(options) = &self.options {
-            if let Some(filter) = &options.event_filter {
-                if let Some(ev) = (filter)(event) {
-                    self.send(Message::Track(Track {
-                        user_id: Some(self.tracking_id(user.login())),
-                        event: "openai query".to_owned(),
-                        properties: Some(json!({
-                            "device_id": self.device_id(),
-                            "query_id": ev.query_id,
-                            "thread_id": ev.thread_id,
-                            "repo_ref": ev.repo_ref.as_ref().map(ToString::to_string),
-                            "data": ev.data,
-                            "package_metadata": options.package_metadata,
-                        })),
-                        ..Default::default()
-                    }));
-                }
+            if !options.enable_telemetry() {
+                return;
             }
+
+            self.send(Message::Track(Track {
+                user_id: Some(self.tracking_id(user.login())),
+                event: "openai query".to_owned(),
+                properties: Some(json!({
+                    "device_id": self.device_id(),
+                    "query_id": event.query_id,
+                    "thread_id": event.thread_id,
+                    "repo_ref": event.repo_ref.as_ref().map(ToString::to_string),
+                    "data": event.data,
+                    "package_metadata": options.package_metadata,
+                })),
+                ..Default::default()
+            }));
+        }
+    }
+
+    pub fn track_studio(&self, user: &crate::webserver::middleware::User, event: StudioEvent) {
+        if let Some(options) = &self.options {
+            if !options.enable_telemetry() {
+                return;
+            }
+
+            self.send(Message::Track(Track {
+                user_id: Some(self.tracking_id(user.login())),
+                event: "code studio".to_owned(),
+                properties: Some(json!({
+                    "device_id": self.device_id(),
+                    "event_type": event.type_,
+                    "studio_id": event.studio_id,
+                    "payload": event.payload,
+                    "package_metadata": options.package_metadata,
+                })),
+                ..Default::default()
+            }));
         }
     }
 
