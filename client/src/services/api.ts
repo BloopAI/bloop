@@ -12,7 +12,12 @@ import {
   SuggestionsResponse,
   TokenInfoResponse,
 } from '../types/api';
-import { EnvConfig, RepoType, StudioContextFile } from '../types/general';
+import {
+  CodeStudioShortType,
+  EnvConfig,
+  RepoType,
+  StudioContextFile,
+} from '../types/general';
 
 const DB_API = 'https://api.bloop.ai';
 let http: AxiosInstance;
@@ -267,7 +272,8 @@ export const upvoteAnswer = (
 
 export const getIndexQueue = () => http('/repos/queue').then((r) => r.data);
 
-export const getCodeStudios = () => http('/studio').then((r) => r.data);
+export const getCodeStudios = (): Promise<CodeStudioShortType[]> =>
+  http('/studio').then((r) => r.data);
 export const patchCodeStudio = (
   id: string,
   data: {
