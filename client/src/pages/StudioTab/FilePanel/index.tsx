@@ -4,7 +4,6 @@ import React, {
   SetStateAction,
   useCallback,
   useEffect,
-  useRef,
   useState,
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
@@ -40,6 +39,7 @@ type Props = {
     repo_ref: string,
     branch: string | null,
   ) => void;
+  isActiveTab: boolean;
 };
 
 const HEADER_HEIGHT = 32;
@@ -56,6 +56,7 @@ const FilePanel = ({
   repo,
   initialRanges,
   onFileRangesChanged,
+  isActiveTab,
 }: Props) => {
   useTranslation();
   const [file, setFile] = useState<File | null>(null);
@@ -144,7 +145,7 @@ const FilePanel = ({
     },
     [onSubmit],
   );
-  useKeyboardNavigation(handleKeyEvent);
+  useKeyboardNavigation(handleKeyEvent, !isActiveTab);
 
   return (
     <div className="flex flex-col w-full flex-1 overflow-auto relative">

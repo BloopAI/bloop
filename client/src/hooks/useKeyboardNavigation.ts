@@ -1,13 +1,18 @@
 import { useEffect } from 'react';
 
-const useKeyboardNavigation = (handleKeyEvent: (e: KeyboardEvent) => void) => {
+const useKeyboardNavigation = (
+  handleKeyEvent: (e: KeyboardEvent) => void,
+  disabled?: boolean,
+) => {
   useEffect(() => {
-    window.addEventListener('keydown', handleKeyEvent);
+    if (!disabled) {
+      window.addEventListener('keydown', handleKeyEvent);
+    }
 
     return () => {
       window.removeEventListener('keydown', handleKeyEvent);
     };
-  }, [handleKeyEvent]);
+  }, [handleKeyEvent, disabled]);
 };
 
 export default useKeyboardNavigation;

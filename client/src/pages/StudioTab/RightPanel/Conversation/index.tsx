@@ -37,6 +37,7 @@ type Props = {
   refetchCodeStudio: () => Promise<void>;
   isTokenLimitExceeded: boolean;
   isPreviewing: boolean;
+  isActiveTab: boolean;
   handleRestore: () => void;
 };
 
@@ -67,6 +68,7 @@ const Conversation = ({
   setIsHistoryOpen,
   isPreviewing,
   handleRestore,
+  isActiveTab,
 }: Props) => {
   const { t } = useTranslation();
   const { inputValue } = useContext(StudioContext.Input);
@@ -347,7 +349,7 @@ const Conversation = ({
     },
     [onSubmit, isLoading, setLeftPanel, isPreviewing],
   );
-  useKeyboardNavigation(handleKeyEvent);
+  useKeyboardNavigation(handleKeyEvent, !isActiveTab);
 
   return (
     <div className="px-7 flex flex-col overflow-auto h-full">
