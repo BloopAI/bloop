@@ -27,7 +27,7 @@ type Props = {
   scrollToIndex?: number[];
   currentSelection: [number, number][];
   setCurrentSelection: Dispatch<SetStateAction<[number, number][]>>;
-  scrollContainerRef: MutableRefObject<HTMLDivElement | null>;
+  scrollContainerRef: MutableRefObject<HTMLPreElement | null>;
 };
 
 const CodeContainerSelectable = ({

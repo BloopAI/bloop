@@ -62,7 +62,6 @@ const FilePanel = ({
   const [selectedLines, setSelectedLines] = useState<[number, number][]>(
     initialRanges || [],
   );
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [tokenCount, setTokenCount] = useState(0);
 
   useEffect(() => {
@@ -204,10 +203,7 @@ const FilePanel = ({
           <TokensUsageBadge tokens={tokenCount} />
         </div>
       </div>
-      <div
-        className={`py-4 px-4 overflow-auto flex flex-col`}
-        ref={scrollContainerRef}
-      >
+      <div className={`py-4 px-4 overflow-auto flex flex-col`}>
         {!!file && (
           <CodeFullSelectable
             code={file.contents}
@@ -224,7 +220,6 @@ const FilePanel = ({
             }
             currentSelection={selectedLines}
             setCurrentSelection={setSelectedLines}
-            scrollContainerRef={scrollContainerRef}
           />
         )}
       </div>

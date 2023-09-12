@@ -1,7 +1,6 @@
 import React, {
   Dispatch,
   memo,
-  MutableRefObject,
   SetStateAction,
   useDeferredValue,
   useEffect,
@@ -22,7 +21,6 @@ type Props = {
   containerHeight: number;
   currentSelection: [number, number][];
   setCurrentSelection: Dispatch<SetStateAction<[number, number][]>>;
-  scrollContainerRef: MutableRefObject<HTMLDivElement | null>;
 };
 
 const CodeFullSelectable = ({
@@ -33,7 +31,6 @@ const CodeFullSelectable = ({
   containerHeight,
   currentSelection,
   setCurrentSelection,
-  scrollContainerRef,
 }: Props) => {
   const [searchParams] = useSearchParams();
   const scrollLineNumber = useMemo(
@@ -49,7 +46,7 @@ const CodeFullSelectable = ({
   const [scrollToIndex, setScrollToIndex] = useState(
     scrollLineNumber || undefined,
   );
-  const ref = useRef<HTMLPreElement>(null);
+  const scrollContainerRef = useRef<HTMLPreElement>(null);
 
   const [isSearchActive, setSearchActive] = useState(false);
   const [searchResults, setSearchResults] = useState<number[]>([]);
@@ -152,7 +149,7 @@ const CodeFullSelectable = ({
       <div className={`w-full overflow-auto`} ref={codeRef}>
         <pre
           className={`prism-code language-${lang} bg-bg-sub my-0 w-full h-full overflow-auto`}
-          ref={ref}
+          ref={scrollContainerRef}
         >
           <CodeContainer
             key={relativePath}
