@@ -345,7 +345,6 @@
 	"<0>#</0> of #_one": "<0>{{count}}</0> de {{total}}",
 	"<0>#</0> of #_other": "<0>{{count}}</0> de {{total}}",
 	"Templates": "Plantillas",
-	"Loading...": "Cargando...",
 	"No related files found": "No se encontraron archivos relacionados",
 	"Unavailable": "Indisponible",
 	"Token limit exceeded. Reduce the number of context files or messages to enable the ability to generate.": "Límite de token excedido. Reduzca la cantidad de archivos o mensajes de contexto para habilitar la capacidad de generar.",
@@ -355,5 +354,6 @@
 	"Upgrade": "Actualizar",
 	"Your quota resets every 24 hours, upgrade for unlimited uses": "Tu cuota se restablece cada 24 horas, actualiza para solicitudes ilimitadas",
 	"Manage subscription": "Administrar suscripción",
-	"Usage resets in": "Restablecimiento de uso en"
+	"Usage resets in": "Restablecimiento de uso en",
+	"This file is currently unavailable. Ability to generate will be resumed as soon as this issue is resolved.": "Este archivo no está disponible actualmente. La capacidad de generar se reanudará tan pronto como se resuelva este problema."
 }

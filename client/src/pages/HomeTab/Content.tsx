@@ -105,10 +105,6 @@ const HomePage = ({ randomKey }: { randomKey?: any }) => {
     setAddReposOpen('studio');
   }, []);
 
-  const showCodeStudioIndexingPopup = useCallback(() => {
-    setPopupOpen('studio');
-  }, []);
-
   return (
     <PageTemplate renderPage="home">
       <div className="w-full flex flex-col mx-auto max-w-6.5xl">
@@ -145,7 +141,6 @@ const HomePage = ({ randomKey }: { randomKey?: any }) => {
               refetchStudios={refreshCodeStudios}
               handleRename={handleRename}
               repositories={repositories}
-              showCodeStudioIndexingPopup={showCodeStudioIndexingPopup}
             />
           )}
           {!!search &&

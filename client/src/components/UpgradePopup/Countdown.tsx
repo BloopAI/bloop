@@ -8,18 +8,17 @@ const Countdown = ({}: Props) => {
   const { resetAt } = useContext(PersonalQuotaContext.Values);
   const [timer, setTimer] = useState(
     intervalToDuration({
-      end: new Date('2023-09-12T14:58:28.035Z'),
+      end: new Date(resetAt),
       start: new Date(),
     }),
   );
-  console.log('timer', timer);
 
   useEffect(() => {
     const intervalId = setInterval(
       () =>
         setTimer(
           intervalToDuration({
-            end: new Date('2023-09-12T14:58:28.035Z'),
+            end: new Date(resetAt),
             start: new Date(),
           }),
         ),

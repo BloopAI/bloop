@@ -10,7 +10,6 @@ type Props = {
   isFiltered?: boolean;
   showAll: () => void;
   refetchStudios: () => void;
-  showCodeStudioIndexingPopup: () => void;
   handleRename: (studio: CodeStudioShortType) => void;
   repositories?: RepoType[];
 };
@@ -25,7 +24,6 @@ const CodeStudiosSection = ({
   refetchStudios,
   handleRename,
   repositories,
-  showCodeStudioIndexingPopup,
 }: Props) => {
   return (
     <div className="p-8 overflow-x-auto relative">
@@ -42,7 +40,6 @@ const CodeStudiosSection = ({
               {...cs}
               refetchStudios={refetchStudios}
               handleRename={() => handleRename(cs)}
-              showCodeStudioIndexingPopup={showCodeStudioIndexingPopup}
               isIndexing={
                 !!repositories?.find(
                   (r) =>

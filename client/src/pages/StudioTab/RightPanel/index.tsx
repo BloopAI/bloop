@@ -15,6 +15,7 @@ type Props = {
   refetchCodeStudio: () => Promise<void>;
   handleRestore: () => void;
   isPreviewing: boolean;
+  hasContextError: boolean;
 };
 
 const RightPanel = ({
@@ -26,6 +27,7 @@ const RightPanel = ({
   setIsHistoryOpen,
   isPreviewing,
   handleRestore,
+  hasContextError,
 }: Props) => {
   useTranslation();
   return (
@@ -55,7 +57,7 @@ const RightPanel = ({
         studioId={studioId}
         messages={messages}
         refetchCodeStudio={refetchCodeStudio}
-        isTokenLimitExceeded={tokensTotal > TOKEN_LIMIT}
+        isTokenLimitExceeded={tokensTotal > TOKEN_LIMIT || hasContextError}
         setIsHistoryOpen={setIsHistoryOpen}
         isPreviewing={isPreviewing}
         handleRestore={handleRestore}

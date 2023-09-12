@@ -262,7 +262,11 @@ export type CodeStudioType = {
   modified_at: string;
   messages: CodeStudioMessageType[];
   context: StudioContextFile[];
-  token_counts: { total: number; per_file: []; messages: number };
+  token_counts: {
+    total: number;
+    per_file: (number | null)[];
+    messages: number;
+  };
 };
 
 export interface SuggestionsResponse {

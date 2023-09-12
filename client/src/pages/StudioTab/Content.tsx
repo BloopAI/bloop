@@ -306,6 +306,9 @@ const ContentContainer = ({
                   setIsHistoryOpen={setIsHistoryOpen}
                   isPreviewing={!!previewingState}
                   handleRestore={handleRestore}
+                  hasContextError={stateToShow.token_counts?.per_file?.includes(
+                    null,
+                  )}
                 />
               ) : rightPanel.type === StudioRightPanelType.FILE ? (
                 <FilePanel
