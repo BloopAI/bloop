@@ -23,7 +23,7 @@ export const PersonalQuotaContextProvider = memo(
     const { isSelfServe } = useContext(DeviceContext);
 
     const refetchQuota = useCallback(() => {
-      if (isSelfServe) {
+      if (!isSelfServe) {
         getQuota().then((resp) => {
           setIsSubscribed(resp.upgraded);
           setQuota((prev) => {
