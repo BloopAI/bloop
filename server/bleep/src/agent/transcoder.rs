@@ -516,7 +516,7 @@ fn try_trim_code_xml(xml: &str) -> Result<String> {
     })
 }
 
-fn limit_tokens(text: &str, bpe: CoreBPE, max_tokens: usize) -> &str {
+pub fn limit_tokens(text: &str, bpe: CoreBPE, max_tokens: usize) -> &str {
     let mut tokens = bpe.encode_ordinary(text);
     tokens.truncate(max_tokens);
 
