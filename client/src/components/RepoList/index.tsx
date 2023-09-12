@@ -8,13 +8,12 @@ import {
 } from '../../icons';
 import Button from '../Button';
 import SkeletonItem from '../SkeletonItem';
-import { RepoUi } from '../../types/general';
+import { CodeStudioShortType, RepoUi } from '../../types/general';
 import { syncRepo } from '../../services/api';
-import { CodeStudioType } from '../../types/api';
 
 type StudioProps = {
   type: 'studio';
-  items: CodeStudioType[];
+  items: CodeStudioShortType[];
 };
 
 type RepoProps = {
@@ -40,7 +39,7 @@ const sortRepos = (repos: RepoUi[], sortBy?: 'name' | 'last_updated') =>
     : repos.sort((a, b) => (a.last_update > b.last_update ? -1 : 1));
 
 const sortStudios = (
-  items: CodeStudioType[],
+  items: CodeStudioShortType[],
   sortBy?: 'name' | 'last_updated',
 ) =>
   !sortBy
@@ -166,7 +165,7 @@ const RepoList = ({
                         className={`h-8 px-2 gap-1 caption-strong opacity-0 group-row-hover:opacity-100 focus:opacity-100
                         bg-studio text-label-control py-0 rounded-4 focus:outline-none outline-none outline-0`}
                         onClick={() => {
-                          handleSync((item as CodeStudioType).id);
+                          handleSync((item as CodeStudioShortType).id);
                         }}
                       >
                         <Trans>Add context</Trans>

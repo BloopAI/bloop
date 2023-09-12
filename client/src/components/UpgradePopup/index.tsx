@@ -20,10 +20,12 @@ const UpgradePopup = () => {
   const [link, setLink] = useState('');
 
   useEffect(() => {
-    getSubscriptionLink().then((resp) => {
-      setLink(resp.url);
-    });
-  }, []);
+    if (isUpgradePopupOpen) {
+      getSubscriptionLink().then((resp) => {
+        setLink(resp.url);
+      });
+    }
+  }, [isUpgradePopupOpen]);
 
   const onClick = useCallback(() => {
     openLink(link);

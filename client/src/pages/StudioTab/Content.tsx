@@ -275,6 +275,7 @@ const ContentContainer = ({
                   onFileHide={onFileHide}
                   onFileAdded={onFileAdded}
                   isPreviewing={!!previewingState}
+                  isActiveTab={isActive}
                 />
               ) : leftPanel.type === StudioLeftPanelType.TEMPLATES ? (
                 <TemplatesPanel setLeftPanel={setLeftPanel} />
@@ -309,12 +310,14 @@ const ContentContainer = ({
                   hasContextError={stateToShow.token_counts?.per_file?.includes(
                     null,
                   )}
+                  isActiveTab={isActive}
                 />
               ) : rightPanel.type === StudioRightPanelType.FILE ? (
                 <FilePanel
                   {...rightPanel.data}
                   setRightPanel={setRightPanel}
                   onFileRangesChanged={onFileRangesChanged}
+                  isActiveTab={isActive}
                 />
               ) : null}
             </div>

@@ -43,6 +43,7 @@ type Props = {
     ranges?: { start: number; end: number }[],
   ) => void;
   isPreviewing: boolean;
+  isActiveTab: boolean;
 };
 
 type FileList = {
@@ -60,6 +61,7 @@ const ContextPanel = ({
   onFileHide,
   onFileAdded,
   isPreviewing,
+  isActiveTab,
 }: Props) => {
   useTranslation();
   const { repositories } = useContext(RepositoriesContext);
@@ -73,7 +75,7 @@ const ContextPanel = ({
     },
     [isPreviewing],
   );
-  useKeyboardNavigation(handleKeyEvent);
+  useKeyboardNavigation(handleKeyEvent, !isActiveTab);
 
   const handlePopupOpen = useCallback(() => setAddContextOpen(true), []);
 

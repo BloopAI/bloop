@@ -16,6 +16,7 @@ type Props = {
   handleRestore: () => void;
   isPreviewing: boolean;
   hasContextError: boolean;
+  isActiveTab: boolean;
 };
 
 const RightPanel = ({
@@ -28,6 +29,7 @@ const RightPanel = ({
   isPreviewing,
   handleRestore,
   hasContextError,
+  isActiveTab,
 }: Props) => {
   useTranslation();
   return (
@@ -61,6 +63,7 @@ const RightPanel = ({
         setIsHistoryOpen={setIsHistoryOpen}
         isPreviewing={isPreviewing}
         handleRestore={handleRestore}
+        isActiveTab={isActiveTab}
       />
     </>
   );

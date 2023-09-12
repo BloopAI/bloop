@@ -355,5 +355,6 @@
 	"Manage subscription": "Manage subscription",
 	"Usage resets in": "Usage resets in",
 	"You've run out of free usage for today, please wait for your quota to reset or upgrade for unlimited usage": "You've run out of free usage for today, please wait for your quota to reset or upgrade for unlimited usage",
-	"This file is currently unavailable. Ability to generate will be resumed as soon as this issue is resolved.": "This file is currently unavailable. Ability to generate will be resumed as soon as this issue is resolved."
+	"This file is currently unavailable. Ability to generate will be resumed as soon as this issue is resolved.": "This file is currently unavailable. Ability to generate will be resumed as soon as this issue is resolved.",
+	"Search code studio...": "Search code studio..."
 }
