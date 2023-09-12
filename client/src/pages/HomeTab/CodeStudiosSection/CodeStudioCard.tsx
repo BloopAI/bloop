@@ -26,7 +26,6 @@ type Props = {
   refetchStudios: () => void;
   most_common_ext: string;
   handleRename: () => void;
-  showCodeStudioIndexingPopup: () => void;
   isIndexing: boolean;
 };
 
@@ -38,7 +37,6 @@ const CodeStudioCard = ({
   most_common_ext,
   handleRename,
   isIndexing,
-  showCodeStudioIndexingPopup,
 }: Props) => {
   const { t } = useTranslation();
   const { locale } = useContext(LocaleContext);
@@ -46,12 +44,8 @@ const CodeStudioCard = ({
   const { refetchQuota } = useContext(PersonalQuotaContext.Handlers);
 
   const handleClick = useCallback(() => {
-    if (!isIndexing) {
-      handleAddStudioTab(name, id);
-      refetchQuota();
-    } else {
-      showCodeStudioIndexingPopup();
-    }
+    handleAddStudioTab(name, id);
+    refetchQuota();
   }, [name, handleAddStudioTab, isIndexing, refetchQuota]);
 
   const dropdownItems = useMemo(() => {

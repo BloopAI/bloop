@@ -24,7 +24,7 @@ type Props = {
   setAddContextOpen: Dispatch<SetStateAction<boolean>>;
   studioId: string;
   contextFiles: StudioContextFile[];
-  tokensPerFile: number[];
+  tokensPerFile: (number | null)[];
   onFileRemove: (
     f:
       | { path: string; repo: string; branch: string | null }
