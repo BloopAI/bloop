@@ -2,6 +2,7 @@ use crate::query::parser::SemanticQuery;
 use std::{fmt, mem};
 
 use chrono::prelude::{DateTime, Utc};
+use rand::seq::SliceRandom;
 
 /// A continually updated conversation exchange.
 ///
@@ -64,6 +65,20 @@ impl Exchange {
             }
             Update::Focus(chunk) => {
                 self.focused_chunk = Some(chunk);
+            }
+            Update::Cancel => {
+                let conclusion = [
+                    "The article wasn't completed. See what's available",
+                    "Your article stopped before completion. Check out the available content",
+                    "The content stopped generating early. Review the initial response",
+                ]
+                .choose(&mut rand::thread_rng())
+                .copied()
+                .unwrap()
+                .to_owned();
+
+                self.conclusion = Some(conclusion);
+                self.response_timestamp = Some(Utc::now());
             }
         }
     }
@@ -191,4 +206,5 @@ pub enum Update {
     Article(String),
     Conclude(String),
     Focus(FocusedChunk),
+    Cancel,
 }
