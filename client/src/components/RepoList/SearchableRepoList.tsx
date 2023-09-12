@@ -51,7 +51,11 @@ const SearchableRepoList = ({ containerClassName, ...restProps }: Props) => {
           value={filter}
           name="filter"
           onChange={handleChange}
-          placeholder={t('Search repository...')}
+          placeholder={
+            restProps.type === 'studio'
+              ? t('Search code studio...')
+              : t('Search repository...')
+          }
           variant="filled"
         />
         {restProps.type !== 'local' && (

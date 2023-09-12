@@ -170,14 +170,16 @@ const AddStudioContext = ({ filePath, threadId, name }: Props) => {
               'Add context in a new Studio project or add it to an existing one.',
             )}
           />
-          <div className="flex flex-col overflow-auto">
-            <SearchableRepoList
-              items={studios}
-              type="studio"
-              isLoading={isLoading}
-              onSync={onSubmit}
-            />
-          </div>
+          {!!studios.length && (
+            <div className="flex flex-col overflow-auto">
+              <SearchableRepoList
+                items={studios}
+                type="studio"
+                isLoading={isLoading}
+                onSync={onSubmit}
+              />
+            </div>
+          )}
           <button
             className="body-s text-bg-main hover:text-bg-main-hover"
             onClick={() => onSubmit()}
