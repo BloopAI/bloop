@@ -40,12 +40,12 @@ const ReportBugModal = ({
   const [isSubmitted, setSubmitted] = useState(false);
   const [serverLog, setServerLog] = useState('');
   const [serverCrashedMessage, setServerCrashedMessage] = useState('');
-  const { isBugReportModalOpen, setBugReportModalOpen } = useContext(
+  const { isBugReportModalOpen, setBugReportModalOpen, activeTab } = useContext(
     UIContext.BugReport,
   );
   const { envConfig, listen, os, release, invokeTauriCommand } =
     useContext(DeviceContext);
-  const { handleRemoveTab, setActiveTab, activeTab } = useContext(TabsContext);
+  const { handleRemoveTab, setActiveTab } = useContext(TabsContext);
 
   const userForm = useMemo(
     (): { email: string; firstName: string; lastName: string } | null =>

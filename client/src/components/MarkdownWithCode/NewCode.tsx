@@ -1,44 +1,42 @@
-import { useState } from 'react';
 import Code from '../CodeBlock/Code';
-import Button from '../Button';
-import { CheckIcon, Clipboard } from '../../icons';
-import { copyToClipboard } from '../../utils';
+import { getFileExtensionForLang, getPrettyLangName } from '../../utils';
+import FileIcon from '../FileIcon';
+import CopyButton from './CopyButton';
 
 type Props = {
   code: string;
   language: string;
   isSummary?: boolean;
+  isCodeStudio?: boolean;
 };
 
-const NewCode = ({ code, language, isSummary }: Props) => {
-  const [codeCopied, setCodeCopied] = useState(false);
+const NewCode = ({ code, language, isSummary, isCodeStudio }: Props) => {
   return (
     <div
       className={`${
-        !isSummary ? 'my-4 p-4 bg-bg-shade' : 'bg-chat-bg-sub'
-      } text-sm border border-bg-border rounded-md relative group-code`}
+        !isSummary
+          ? isCodeStudio
+            ? 'my-4 bg-bg-sub text-xs'
+            : 'my-4 p-4 bg-bg-shade text-sm'
+          : 'bg-chat-bg-sub text-sm'
+      } border border-bg-border rounded-md relative group-code`}
     >
-      <div className="overflow-auto">
+      {isCodeStudio && (
+        <div className="bg-bg-shade border-b border-bg-border p-2 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <FileIcon
+              filename={getFileExtensionForLang(language, true)}
+              noMargin
+            />
+            {getPrettyLangName(language)}
+          </div>
+          <CopyButton isCodeStudio={isCodeStudio} code={code} />
+        </div>
+      )}
+      <div className={`overflow-auto ${isCodeStudio ? 'p-2' : ''}`}>
         <Code showLines={false} code={code} language={language} canWrap />
       </div>
-      <div
-        className={`absolute ${
-          code.split('\n').length > 1 ? 'top-4 right-4' : 'top-2.5 right-2.5'
-        } opacity-0 group-code-hover:opacity-100 transition-opacity`}
-      >
-        <Button
-          variant="secondary"
-          size="small"
-          onClick={() => {
-            copyToClipboard(code);
-            setCodeCopied(true);
-            setTimeout(() => setCodeCopied(false), 2000);
-          }}
-        >
-          {codeCopied ? <CheckIcon /> : <Clipboard />}
-          {codeCopied ? 'Copied' : 'Copy'}
-        </Button>
-      </div>
+      {!isCodeStudio && <CopyButton isCodeStudio={isCodeStudio} code={code} />}
     </div>
   );
 };

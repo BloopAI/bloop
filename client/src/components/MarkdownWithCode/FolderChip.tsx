@@ -9,8 +9,8 @@ type Props = {
   onClick: () => void;
   path: string;
   selectedBranch: string | null;
-  repoName: string;
-  openFileModal: (path: string) => void;
+  repoName?: string;
+  openFileModal?: (path: string) => void;
   isSummary?: boolean;
 };
 
@@ -41,7 +41,9 @@ const FolderChip = ({
 
   const navigateToPath = useCallback(
     (path: string) => {
-      openFileModal(path);
+      if (openFileModal) {
+        openFileModal(path);
+      }
     },
     [openFileModal],
   );

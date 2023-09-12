@@ -4,21 +4,20 @@ import ModalOrSidebar from '../ModalOrSidebar';
 import Button from '../Button';
 import { CloseSign } from '../../icons';
 import { DeviceContext } from '../../context/deviceContext';
+import { UIContext } from '../../context/uiContext';
 import BranchesSvg from './BranchesSvg';
 
-type Props = {
-  isOpen: boolean;
-  onClose: () => void;
-};
-
-const CloudFeaturePopup = ({ isOpen, onClose }: Props) => {
+const CloudFeaturePopup = () => {
   const { t } = useTranslation();
   const { openLink } = useContext(DeviceContext);
+  const { isCloudFeaturePopupOpen, setCloudFeaturePopupOpen } = useContext(
+    UIContext.CloudFeaturePopup,
+  );
   return (
     <ModalOrSidebar
       isSidebar={false}
-      shouldShow={isOpen}
-      onClose={onClose}
+      shouldShow={isCloudFeaturePopupOpen}
+      onClose={() => setCloudFeaturePopupOpen(false)}
       isModalSidebarTransition={false}
       setIsModalSidebarTransition={() => {}}
       shouldStretch={false}
@@ -39,7 +38,7 @@ const CloudFeaturePopup = ({ isOpen, onClose }: Props) => {
                 className="text-bg-main hover:text-bg-main-hover cursor-pointer"
                 onClick={() => {
                   openLink('https://bloop.ai/start');
-                  onClose();
+                  setCloudFeaturePopupOpen(false);
                 }}
               >
                 <Trans>Upgrade now</Trans>
@@ -53,7 +52,7 @@ const CloudFeaturePopup = ({ isOpen, onClose }: Props) => {
           <Button
             onClick={() => {
               openLink('https://bloop.ai/upgrade');
-              onClose();
+              setCloudFeaturePopupOpen(false);
             }}
           >
             <Trans>Upgrade plan</Trans>
@@ -65,7 +64,7 @@ const CloudFeaturePopup = ({ isOpen, onClose }: Props) => {
             title={t('Close')}
             variant="tertiary"
             size="small"
-            onClick={onClose}
+            onClick={() => setCloudFeaturePopupOpen(false)}
           >
             <CloseSign />
           </Button>

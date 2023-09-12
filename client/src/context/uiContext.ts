@@ -1,32 +1,6 @@
 import React, { createContext } from 'react';
-import { Theme } from '../types';
-
-type ContextType = {
-  isSettingsOpen: boolean;
-  setSettingsOpen: (v: boolean) => void;
-  symbolsCollapsed: boolean;
-  setSymbolsCollapsed: (v: boolean) => void;
-  settingsSection: number;
-  setSettingsSection: (s: number) => void;
-  onBoardingState: Record<string, any>;
-  setOnBoardingState: React.Dispatch<React.SetStateAction<Record<string, any>>>;
-  isBugReportModalOpen: boolean;
-  setBugReportModalOpen: (b: boolean) => void;
-  isGithubConnected: boolean;
-  setGithubConnected: (b: boolean) => void;
-  isGithubChecked: boolean;
-  shouldShowWelcome: boolean;
-  setShouldShowWelcome: (b: boolean) => void;
-  isRightPanelOpen: boolean;
-  setRightPanelOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  isFiltersOpen: boolean;
-  setFiltersOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  tab: { key: string; name: string; repoName: string };
-  theme: Theme;
-  setTheme: (s: Theme) => void;
-  isPromptGuideOpen: boolean;
-  setPromptGuideOpen: (b: boolean) => void;
-};
+import { RepoSource, Theme } from '../types';
+import { RepoTabType, TabType } from '../types/general';
 
 export const UIContext = {
   Settings: createContext({
@@ -48,6 +22,7 @@ export const UIContext = {
   BugReport: createContext({
     isBugReportModalOpen: false,
     setBugReportModalOpen: (b: boolean) => {},
+    activeTab: 'initial',
   }),
   GitHubConnected: createContext({
     isGithubConnected: false,
@@ -69,11 +44,34 @@ export const UIContext = {
     isPromptGuideOpen: false,
     setPromptGuideOpen: (b: boolean) => {},
   }),
-  Tab: createContext({
-    tab: { key: 'initial', name: 'Home', repoName: '', repoRef: '' },
+  CloudFeaturePopup: createContext({
+    isCloudFeaturePopupOpen: false,
+    setCloudFeaturePopupOpen: (b: boolean) => {},
+  }),
+  UpgradePopup: createContext({
+    isUpgradePopupOpen: false,
+    setUpgradePopupOpen: (b: boolean) => {},
+  }),
+  Tab: createContext<{ tab: RepoTabType }>({
+    tab: {
+      key: 'initial',
+      name: 'Home',
+      type: TabType.REPO,
+      repoName: '',
+      branch: '',
+      repoRef: '',
+      source: RepoSource.LOCAL,
+      navigationHistory: [],
+    },
   }),
   Theme: createContext({
     theme: 'system' as Theme,
     setTheme: (t: Theme) => {},
+  }),
+  HomeScreen: createContext({
+    search: '',
+    setSearch: (t: string) => {},
+    filterType: 'all' as 'all' | 'repos' | 'studios',
+    setFilterType: (t: 'all' | 'repos' | 'studios') => {},
   }),
 };
