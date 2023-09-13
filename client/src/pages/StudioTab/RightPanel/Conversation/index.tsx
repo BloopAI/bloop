@@ -19,7 +19,7 @@ import {
 import Button from '../../../../components/Button';
 import { ArrowRefresh, TrashCanFilled } from '../../../../icons';
 import KeyboardChip from '../../KeyboardChip';
-import { CodeStudioMessageType } from '../../../../types/api';
+import { CodeStudioMessageType, CodeStudioType } from '../../../../types/api';
 import { patchCodeStudio } from '../../../../services/api';
 import useKeyboardNavigation from '../../../../hooks/useKeyboardNavigation';
 import { DeviceContext } from '../../../../context/deviceContext';
@@ -34,7 +34,7 @@ type Props = {
   setIsHistoryOpen: Dispatch<SetStateAction<boolean>>;
   messages: CodeStudioMessageType[];
   studioId: string;
-  refetchCodeStudio: () => Promise<void>;
+  refetchCodeStudio: (keyToUpdate?: keyof CodeStudioType) => Promise<void>;
   isTokenLimitExceeded: boolean;
   isPreviewing: boolean;
   isActiveTab: boolean;
@@ -69,6 +69,7 @@ const Conversation = ({
   isPreviewing,
   handleRestore,
   isActiveTab,
+  refetchCodeStudio,
 }: Props) => {
   const { t } = useTranslation();
   const { inputValue } = useContext(StudioContext.Input);
@@ -224,6 +225,7 @@ const Conversation = ({
       if (ev.data === '[DONE]') {
         eventSource.close();
         setIsLoading(false);
+        refetchCodeStudio('token_counts');
         return;
       }
       try {
@@ -312,6 +314,8 @@ const Conversation = ({
           .filter((m, j) => (andSubsequent ? i > j : i !== j));
       await patchCodeStudio(studioId, {
         messages,
+      }).then(() => {
+        refetchCodeStudio('token_counts');
       });
     },
     [conversation],
@@ -336,7 +340,7 @@ const Conversation = ({
         } else {
           if (inputValue && !isTokenLimitExceeded && requestsLeft) {
             onSubmit();
-          } else {
+          } else if (!requestsLeft) {
             setUpgradePopupOpen(true);
           }
         }

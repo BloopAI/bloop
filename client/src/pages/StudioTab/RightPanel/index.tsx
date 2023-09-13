@@ -3,7 +3,7 @@ import { Trans, useTranslation } from 'react-i18next';
 import TokensUsageProgress from '../TokensUsageProgress';
 import { TOKEN_LIMIT } from '../../../consts/codeStudio';
 import { StudioLeftPanelDataType } from '../../../types/general';
-import { CodeStudioMessageType } from '../../../types/api';
+import { CodeStudioMessageType, CodeStudioType } from '../../../types/api';
 import Conversation from './Conversation';
 
 type Props = {
@@ -12,7 +12,7 @@ type Props = {
   setIsHistoryOpen: Dispatch<SetStateAction<boolean>>;
   messages: CodeStudioMessageType[];
   studioId: string;
-  refetchCodeStudio: () => Promise<void>;
+  refetchCodeStudio: (keyToUpdate?: keyof CodeStudioType) => Promise<void>;
   handleRestore: () => void;
   isPreviewing: boolean;
   hasContextError: boolean;
