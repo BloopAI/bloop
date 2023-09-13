@@ -163,6 +163,7 @@ impl FileResultData {
         repo_ref: String,
         lang: Option<String>,
         branches: String,
+        indexed: bool,
     ) -> Self {
         Self {
             repo_name,
@@ -170,6 +171,7 @@ impl FileResultData {
             repo_ref,
             lang,
             branches,
+            indexed,
         }
     }
 }

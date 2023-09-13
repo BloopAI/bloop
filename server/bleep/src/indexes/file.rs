@@ -581,7 +581,7 @@ impl File {
                     .low()
             {
                 // default console formatter is different when we're debugging. need to print more info here.
-                warn!(?relative_path, ?elapsed, "file took too long to process")
+                warn!(?self.relative_path, ?elapsed, "file took too long to process")
             }
         }
 
