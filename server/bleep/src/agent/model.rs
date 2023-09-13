@@ -23,7 +23,7 @@ pub const GPT_3_5_FINETUNED: AnswerModel = AnswerModel {
     model_name: "gpt-3.5-finetuned",
     answer_headroom: 512,
     prompt_headroom: 1250,
-    history_headroom: 2048,
+    history_headroom: 1024,
 };
 
 pub const GPT_4: AnswerModel = AnswerModel {
@@ -34,6 +34,7 @@ pub const GPT_4: AnswerModel = AnswerModel {
     history_headroom: 2048,
 };
 
+#[allow(clippy::wildcard_in_or_patterns)]
 impl FromStr for AnswerModel {
     type Err = ();
     fn from_str(s: &str) -> Result<Self, Self::Err> {
