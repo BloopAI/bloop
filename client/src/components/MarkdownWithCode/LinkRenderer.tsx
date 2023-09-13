@@ -18,7 +18,6 @@ type Props = {
   navigateRepoPath: (repo: string, path?: string | undefined) => void;
   repoName?: string;
   selectedBranch: string | null;
-  isSummary?: boolean;
   fileChips: MutableRefObject<never[]>;
   hideCode?: boolean;
   updateScrollToIndex: (lines: string) => void;
@@ -45,7 +44,6 @@ const LinkRenderer = ({
   navigateRepoPath,
   repoName,
   selectedBranch,
-  isSummary,
   fileChips,
   hideCode,
   updateScrollToIndex,
@@ -105,7 +103,6 @@ const LinkRenderer = ({
           openFileModal={openFileModal}
           repoName={repoName}
           selectedBranch={selectedBranch}
-          isSummary={isSummary}
         />
       ) : (
         <FileChip
@@ -117,7 +114,6 @@ const LinkRenderer = ({
           lines={linesToUse}
           setFileHighlights={setFileHighlights}
           setHoveredLines={setHoveredLines}
-          isSummary={isSummary}
         />
       )}
     </>

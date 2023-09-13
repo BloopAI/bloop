@@ -11,7 +11,6 @@ type Props = {
   selectedBranch: string | null;
   repoName?: string;
   openFileModal?: (path: string) => void;
-  isSummary?: boolean;
 };
 
 const FolderChip = ({
@@ -20,7 +19,6 @@ const FolderChip = ({
   repoName,
   selectedBranch,
   openFileModal,
-  isSummary,
 }: Props) => {
   const fetchFiles = useCallback(
     async (path?: string) => {
@@ -63,22 +61,20 @@ const FolderChip = ({
           <ArrowOut sizeClassName="w-3.5 h-3.5" />
         </span>
       </button>
-      {!isSummary && (
-        <div
-          className={`w-full my-4 p-4 bg-bg-shade text-sm border border-bg-border rounded-md relative max-h-80 overflow-auto`}
-        >
-          <DirEntry
-            name={path}
-            isDirectory
-            level={0}
-            currentPath={''}
-            fetchFiles={fetchFiles}
-            fullPath={path}
-            navigateToPath={navigateToPath}
-            defaultOpen
-          />
-        </div>
-      )}
+      <div
+        className={`w-full my-4 p-4 bg-bg-shade text-sm border border-bg-border rounded-md relative max-h-80 overflow-auto`}
+      >
+        <DirEntry
+          name={path}
+          isDirectory
+          level={0}
+          currentPath={''}
+          fetchFiles={fetchFiles}
+          fullPath={path}
+          navigateToPath={navigateToPath}
+          defaultOpen
+        />
+      </div>
     </>
   );
 };

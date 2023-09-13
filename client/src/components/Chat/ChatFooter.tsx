@@ -83,8 +83,8 @@ const ChatFooter = ({
       ? [
           ...(conversation[conversation.length - 1] as ChatMessageServer)
             .loadingSteps,
-          ...((conversation[conversation.length - 1] as ChatMessageServer)
-            ?.results?.length
+          ...((conversation[conversation.length - 1] as ChatMessageServer)?.text
+            ?.length
             ? [
                 {
                   displayText: t('Responding...'),
