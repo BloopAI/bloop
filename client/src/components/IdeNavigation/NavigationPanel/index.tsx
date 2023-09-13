@@ -15,14 +15,8 @@ type Props = {
 
 const NavigationPanel = ({ repoName, children }: Props) => {
   const { navigateRepoPath } = useAppNavigation();
-  const { width, handleResize, handleReset } = useResizeableWidth(
-    LEFT_SIDEBAR_WIDTH_KEY,
-    RIGHT_SIDEBAR_WIDTH_KEY,
-    360,
-    false,
-  );
   return (
-    <div className="min-h-full relative flex" style={{ width }}>
+    <div className="min-h-full relative flex w-full">
       <div className="flex flex-1 bg-bg-base flex-col border-r border-bg-border min-h-full select-none overflow-auto">
         <div
           className="w-full border-b border-bg-border flex justify-between h-12 flex-shrink-0 px-6 select-none cursor-pointer"
@@ -38,11 +32,6 @@ const NavigationPanel = ({ repoName, children }: Props) => {
           {children}
         </div>
       </div>
-      <div
-        className="absolute top-0 bottom-0 right-0 w-2 border-r border-bg-border hover:border-bg-main cursor-col-resize"
-        onMouseDown={handleResize}
-        onDoubleClick={handleReset}
-      />
     </div>
   );
 };

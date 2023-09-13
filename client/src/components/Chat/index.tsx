@@ -1,10 +1,4 @@
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { UIContext } from '../../context/uiContext';
 import { DeviceContext } from '../../context/deviceContext';
@@ -20,6 +14,7 @@ import { SearchContext } from '../../context/searchContext';
 import { mapLoadingSteps } from '../../mappers/conversation';
 import { findElementInCurrentTab } from '../../utils/domUtils';
 import { conversationsCache } from '../../services/cache';
+import useResizeableWidth from '../../hooks/useResizeableWidth';
 import DeprecatedClientModal from './DeprecatedClientModal';
 import ChatHeader from './ChatHeader';
 import ChatBody from './ChatBody';
@@ -51,7 +46,12 @@ const Chat = () => {
   const [hideMessagesFrom, setHideMessagesFrom] = useState<null | number>(null);
   const [openHistoryItem, setOpenHistoryItem] =
     useState<OpenChatHistoryItem | null>(null);
-  const chatRef = useRef(null);
+  const { dividerRef, panelRef } = useResizeableWidth(
+    false,
+    'chat_width',
+    30,
+    55,
+  );
 
   const makeSearch = useCallback(
     (
@@ -347,9 +347,15 @@ const Chat = () => {
 
   return (
     <div
-      ref={chatRef}
-      className={`group w-99 flex flex-col bg-chat-bg-sub border-l border-chat-bg-border relative`}
+      ref={panelRef}
+      className={`group flex flex-col bg-chat-bg-sub relative`}
     >
+      <div
+        ref={dividerRef}
+        className="absolute top-0 left-0 transform group -translate-x-1/2 w-2.5 h-full cursor-col-resize flex-shrink-0 z-10"
+      >
+        <div className="mx-auto w-0.5 h-full bg-chat-bg-border group-hover:bg-bg-main" />
+      </div>
       <ChatHeader
         setIsHistoryTab={setIsHistoryTab}
         isHistoryTab={isHistoryTab}
