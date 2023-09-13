@@ -22,14 +22,14 @@ pub const GPT_3_5_FINETUNED: AnswerModel = AnswerModel {
     tokenizer: "gpt-3.5-turbo-0613",
     model_name: "gpt-3.5-finetuned",
     answer_headroom: 512,
-    prompt_headroom: 1250,
+    prompt_headroom: 1600,
     history_headroom: 1024,
 };
 
 pub const GPT_4: AnswerModel = AnswerModel {
     tokenizer: "gpt-4-0613",
     model_name: "gpt-4-0613",
-    answer_headroom: 512,
+    answer_headroom: 1024,
     prompt_headroom: 2500,
     history_headroom: 2048,
 };
