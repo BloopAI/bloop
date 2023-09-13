@@ -84,7 +84,13 @@ const ConversationInput = ({
   const saveAsTemplate = useCallback(() => {
     setSaved(true);
     setTemplates((prev) => [
-      { name: '', content: message, id: 'new', modified_at: '' },
+      {
+        name: '',
+        content: message,
+        id: 'new',
+        modified_at: '',
+        is_default: false,
+      },
       ...prev,
     ]);
     setLeftPanel({ type: StudioLeftPanelType.TEMPLATES });
