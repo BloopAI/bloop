@@ -18,7 +18,7 @@ impl RemoteEmbedder {
         let url = url.join("encode")?;
         Ok(Self {
             url,
-            session: reqwest::Client::builder().gzip(false).build()?,
+            session: reqwest::Client::builder().gzip(true).build()?,
             embedder: LocalEmbedder::new(model_dir)?,
         })
     }
