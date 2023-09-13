@@ -224,10 +224,8 @@ pub(super) async fn prompt_suggestions<'a>(
             .unwrap();
 
         if !classification {
-            println!("--- {}", commit.commit_message);
             continue;
         }
-        println!("+++ {}", commit.commit_message);
 
         let summary = summarize_commit(&llm_gateway, &commit)
             .await
@@ -238,6 +236,10 @@ pub(super) async fn prompt_suggestions<'a>(
             .await
             .context("question failed")
             .unwrap();
+
+        if question == "0" {
+            continue;
+        }
 
         let tag = get_tag(&llm_gateway, &question)
             .await
@@ -299,7 +301,7 @@ async fn classify_commit(
 ) -> anyhow::Result<bool> {
     let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo-0613").unwrap();
     let raw_commit = format!("{}\n\n{}", commit.commit_message, commit.diff);
-    let commit_msg = crate::agent::transcoder::limit_tokens(&raw_commit, bpe, 1024);
+    let commit_msg = crate::agent::transcoder::limit_tokens(&raw_commit, bpe, 1000);
 
     let response = llm_gateway
         .clone()
@@ -366,12 +368,12 @@ For example: "This commit shows how the analytics event for a mouseclick is trac
 
 async fn get_question(llm_gateway: &llm_gateway::Client, summary: &str) -> anyhow::Result<String> {
     let bpe = tiktoken_rs::get_bpe_from_model("gpt-4-0613").unwrap();
-    let summary = crate::agent::transcoder::limit_tokens(summary, bpe, 7000);
+    let summary = crate::agent::transcoder::limit_tokens(summary, bpe, 7168);
 
     llm_gateway
         .clone()
         .model("gpt-4-0613")
-        .max_tokens(50)
+        .max_tokens(64)
         .chat(
             &[
                 Message::system(
@@ -404,7 +406,7 @@ If you cannot write a good question, simply reply with only: 0."#,
 
 async fn get_tag(llm_gateway: &llm_gateway::Client, question: &str) -> anyhow::Result<String> {
     let bpe = tiktoken_rs::get_bpe_from_model("gpt-4-0613").unwrap();
-    let question = crate::agent::transcoder::limit_tokens(question, bpe, 7000);
+    let question = crate::agent::transcoder::limit_tokens(question, bpe, 7168);
     llm_gateway
         .clone()
         .model("gpt-4-0613")
