@@ -58,14 +58,23 @@ const ContentContainer = ({
   const { leftPanelRef, rightPanelRef, dividerRef, containerRef } =
     useResizeableSplitPanel();
 
-  const refetchCodeStudio = useCallback(async () => {
-    if (tab.key) {
-      const resp = await getCodeStudio(tab.key);
-      setCurrentState((prev) =>
-        JSON.stringify(resp) === JSON.stringify(prev) ? prev : resp,
-      );
-    }
-  }, [tab.key]);
+  const refetchCodeStudio = useCallback(
+    async (keyToUpdate?: keyof CodeStudioType) => {
+      if (tab.key) {
+        const resp = await getCodeStudio(tab.key);
+        setCurrentState((prev) => {
+          if (JSON.stringify(resp) === JSON.stringify(prev)) {
+            return prev;
+          }
+          if (keyToUpdate) {
+            return { ...prev, [keyToUpdate]: resp[keyToUpdate] };
+          }
+          return resp;
+        });
+      }
+    },
+    [tab.key],
+  );
 
   useEffect(() => {
     if (isActive) {
