@@ -1,9 +1,11 @@
+import { useContext } from 'react';
 import {
   ChatMessage,
   ChatMessageAuthor,
   ChatMessageServer,
 } from '../../types/general';
 import useScrollToBottom from '../../hooks/useScrollToBottom';
+import { AppNavigationContext } from '../../context/appNavigationContext';
 import Message from './ConversationMessage';
 
 type Props = {
@@ -27,6 +29,7 @@ const Conversation = ({
 }: Props) => {
   const { messagesRef, handleScroll, scrollToBottom } =
     useScrollToBottom(conversation);
+  const { navigatedItem } = useContext(AppNavigationContext);
 
   return (
     <div
@@ -66,6 +69,11 @@ const Conversation = ({
           onMessageEdit={onMessageEdit}
           responseTimestamp={
             m.author === ChatMessageAuthor.Server ? m.responseTimestamp : null
+          }
+          singleFileExplanation={
+            m.author === ChatMessageAuthor.Server &&
+            !!m.explainedFile &&
+            m.explainedFile === navigatedItem?.path
           }
         />
       ))}

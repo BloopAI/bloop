@@ -38,6 +38,7 @@ type Props = {
   loadingSteps?: ChatLoadingStep[];
   i: number;
   onMessageEdit: (queryId: string, i: number) => void;
+  singleFileExplanation?: boolean;
 };
 
 const ConversationMessage = ({
@@ -56,6 +57,7 @@ const ConversationMessage = ({
   repoName,
   onMessageEdit,
   responseTimestamp,
+  singleFileExplanation,
 }: Props) => {
   const { t } = useTranslation();
   const [isLoadingStepsShown, setLoadingStepsShown] = useState(false);
@@ -165,6 +167,7 @@ const ConversationMessage = ({
                     threadId={threadId}
                     recordId={i}
                     repoName={repoName}
+                    hideCode={singleFileExplanation}
                   />
                 ) : (
                   <>
