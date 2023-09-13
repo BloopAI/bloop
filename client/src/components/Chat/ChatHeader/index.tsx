@@ -1,10 +1,11 @@
 import React, { Dispatch, memo, SetStateAction, useContext } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { ArrowLeft, List } from '../../icons';
-import AddStudioContext from '../AddStudioContext';
-import { ChatContext } from '../../context/chatContext';
-import { OpenChatHistoryItem } from '../../types/general';
-import ChipButton from './ChipButton';
+import { ArrowLeft, List } from '../../../icons';
+import AddStudioContext from '../../AddStudioContext';
+import { ChatContext } from '../../../context/chatContext';
+import { OpenChatHistoryItem } from '../../../types/general';
+import ChipButton from '../ChipButton';
+import AnswerSpeedSelector from './AnswerSpeedSelector';
 
 type Props = {
   isHistoryTab: boolean;
@@ -54,6 +55,7 @@ const ChatHeader = ({
           </p>
         )}
         <div className="flex items-center gap-1">
+          <AnswerSpeedSelector />
           <ChipButton onClick={handleNewConversation}>
             <Trans>Create new</Trans>
           </ChipButton>

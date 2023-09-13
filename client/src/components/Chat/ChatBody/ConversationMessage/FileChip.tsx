@@ -6,10 +6,10 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import FileIcon from '../../FileIcon';
-import { ArrowOut } from '../../../icons';
-import { highlightColors } from '../../../consts/code';
-import { FileHighlightsType } from '../../../types/general';
+import FileIcon from '../../../FileIcon';
+import { ArrowOut } from '../../../../icons';
+import { highlightColors } from '../../../../consts/code';
+import { FileHighlightsType } from '../../../../types/general';
 
 type Props = {
   onClick: () => void;

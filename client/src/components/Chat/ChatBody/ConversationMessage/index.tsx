@@ -10,15 +10,15 @@ import {
   QuillIcon,
   Sparkles,
   WrenchAndScrewdriver,
-} from '../../../icons';
-import { DeviceContext } from '../../../context/deviceContext';
-import { ChatLoadingStep, ChatMessageAuthor } from '../../../types/general';
-import { ChatContext } from '../../../context/chatContext';
-import Button from '../../Button';
-import { FileModalContext } from '../../../context/fileModalContext';
-import { LocaleContext } from '../../../context/localeContext';
-import { getDateFnsLocale } from '../../../utils';
-import MarkdownWithCode from '../../MarkdownWithCode';
+} from '../../../../icons';
+import { DeviceContext } from '../../../../context/deviceContext';
+import { ChatLoadingStep, ChatMessageAuthor } from '../../../../types/general';
+import { ChatContext } from '../../../../context/chatContext';
+import Button from '../../../Button';
+import { FileModalContext } from '../../../../context/fileModalContext';
+import { LocaleContext } from '../../../../context/localeContext';
+import { getDateFnsLocale } from '../../../../utils';
+import MarkdownWithCode from '../../../MarkdownWithCode';
 import MessageFeedback from './MessageFeedback';
 import FileChip from './FileChip';
 

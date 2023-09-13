@@ -13,9 +13,9 @@ import {
   ChatMessageAuthor,
   ChatMessageServer,
   OpenChatHistoryItem,
-} from '../../types/general';
-import { ChatContext } from '../../context/chatContext';
-import { findElementInCurrentTab } from '../../utils/domUtils';
+} from '../../../types/general';
+import { ChatContext } from '../../../context/chatContext';
+import { findElementInCurrentTab } from '../../../utils/domUtils';
 import NLInput from './NLInput';
 
 type Props = {

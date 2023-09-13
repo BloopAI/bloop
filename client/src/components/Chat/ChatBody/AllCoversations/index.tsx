@@ -12,18 +12,18 @@ import {
   deleteConversation,
   getAllConversations,
   getConversation,
-} from '../../../services/api';
-import { AllConversationsResponse } from '../../../types/api';
+} from '../../../../services/api';
+import { AllConversationsResponse } from '../../../../types/api';
 import Conversation from '../Conversation';
 import {
   ChatMessage,
   ChatMessageAuthor,
   OpenChatHistoryItem,
-} from '../../../types/general';
-import { conversationsCache } from '../../../services/cache';
-import { mapLoadingSteps } from '../../../mappers/conversation';
-import { LocaleContext } from '../../../context/localeContext';
-import { getDateFnsLocale } from '../../../utils';
+} from '../../../../types/general';
+import { conversationsCache } from '../../../../services/cache';
+import { mapLoadingSteps } from '../../../../mappers/conversation';
+import { LocaleContext } from '../../../../context/localeContext';
+import { getDateFnsLocale } from '../../../../utils';
 import ConversationListItem from './ConversationListItem';
 
 type Props = {

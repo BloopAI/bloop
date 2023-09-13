@@ -15,7 +15,7 @@ import { mapLoadingSteps } from '../../mappers/conversation';
 import { findElementInCurrentTab } from '../../utils/domUtils';
 import { conversationsCache } from '../../services/cache';
 import useResizeableWidth from '../../hooks/useResizeableWidth';
-import DeprecatedClientModal from './DeprecatedClientModal';
+import DeprecatedClientModal from './ChatFooter/DeprecatedClientModal';
 import ChatHeader from './ChatHeader';
 import ChatBody from './ChatBody';
 import ChatFooter from './ChatFooter';

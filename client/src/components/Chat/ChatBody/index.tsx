@@ -6,9 +6,9 @@ import React, {
   useContext,
 } from 'react';
 import { Trans } from 'react-i18next';
-import { Info } from '../../icons';
-import { ChatMessage, OpenChatHistoryItem } from '../../types/general';
-import { ChatContext } from '../../context/chatContext';
+import { Info } from '../../../icons';
+import { ChatMessage, OpenChatHistoryItem } from '../../../types/general';
+import { ChatContext } from '../../../context/chatContext';
 import AllConversations from './AllCoversations';
 import Conversation from './Conversation';
 

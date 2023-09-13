@@ -1,12 +1,12 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import React, { useCallback, useContext, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { Unlike } from '../../../icons';
-import Button from '../../Button';
-import { upvoteAnswer } from '../../../services/api';
-import { DeviceContext } from '../../../context/deviceContext';
-import UpvoteBtn from '../FeedbackBtns/Upvote';
-import DownvoteBtn from '../FeedbackBtns/Downvote';
+import { Unlike } from '../../../../icons';
+import Button from '../../../Button';
+import { upvoteAnswer } from '../../../../services/api';
+import { DeviceContext } from '../../../../context/deviceContext';
+import UpvoteBtn from '../../FeedbackBtns/Upvote';
+import DownvoteBtn from '../../FeedbackBtns/Downvote';
 
 type Props = {
   showInlineFeedback: boolean;

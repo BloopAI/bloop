@@ -3,9 +3,9 @@ import {
   ChatMessage,
   ChatMessageAuthor,
   ChatMessageServer,
-} from '../../types/general';
-import useScrollToBottom from '../../hooks/useScrollToBottom';
-import { AppNavigationContext } from '../../context/appNavigationContext';
+} from '../../../types/general';
+import useScrollToBottom from '../../../hooks/useScrollToBottom';
+import { AppNavigationContext } from '../../../context/appNavigationContext';
 import Message from './ConversationMessage';
 
 type Props = {

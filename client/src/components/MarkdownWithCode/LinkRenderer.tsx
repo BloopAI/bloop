@@ -8,7 +8,7 @@ import {
   useCallback,
   useMemo,
 } from 'react';
-import FileChip from '../Chat/ConversationMessage/FileChip';
+import FileChip from '../Chat/ChatBody/ConversationMessage/FileChip';
 import { FileHighlightsType } from '../../types/general';
 import FolderChip from './FolderChip';
 
