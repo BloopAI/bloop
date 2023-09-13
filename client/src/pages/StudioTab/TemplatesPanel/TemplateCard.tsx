@@ -27,10 +27,17 @@ type Props = {
   id: string;
   name: string;
   content: string;
+  is_default: boolean;
   refetchTemplates: () => void;
 };
 
-const TemplateCard = ({ id, name, content, refetchTemplates }: Props) => {
+const TemplateCard = ({
+  id,
+  name,
+  content,
+  refetchTemplates,
+  is_default,
+}: Props) => {
   const { t } = useTranslation();
   const { setInputValue } = useContext(StudioContext.Setters);
   const [isEditing, setIsEditing] = useState(id === 'new');
@@ -60,14 +67,18 @@ const TemplateCard = ({ id, name, content, refetchTemplates }: Props) => {
           }, 100);
         },
       },
-      {
-        type: MenuItemType.DEFAULT,
-        text: t('Delete'),
-        icon: <TrashCanFilled raw sizeClassName="w-3.5 h-3.5" />,
-        onClick: () => deleteTemplate(id).then(refetchTemplates),
-      },
+      ...(is_default
+        ? []
+        : [
+            {
+              type: MenuItemType.DEFAULT,
+              text: t('Delete'),
+              icon: <TrashCanFilled raw sizeClassName="w-3.5 h-3.5" />,
+              onClick: () => deleteTemplate(id).then(refetchTemplates),
+            },
+          ]),
     ] as ContextMenuItem[];
-  }, [content, id, refetchTemplates, t]);
+  }, [content, id, refetchTemplates, t, is_default]);
 
   useEffect(() => {
     if (ref.current && cloneRef.current) {
@@ -95,10 +106,15 @@ const TemplateCard = ({ id, name, content, refetchTemplates }: Props) => {
       if (id === 'new') {
         postTemplate(form.name, form.content).then(refetchTemplates);
       } else {
-        patchTemplate(id, form).then(refetchTemplates);
+        patchTemplate(id, form).then(() => {
+          refetchTemplates();
+          if (is_default) {
+            setForm({ name, content });
+          }
+        });
       }
     },
-    [form, id, refetchTemplates],
+    [form, id, refetchTemplates, is_default],
   );
 
   return (
