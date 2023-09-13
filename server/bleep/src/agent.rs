@@ -22,6 +22,7 @@ use crate::{
 use self::exchange::{Exchange, SearchStep, Update};
 
 pub mod exchange;
+pub mod model;
 pub mod prompts;
 pub mod transcoder;
 
@@ -36,25 +37,6 @@ mod tools {
     pub mod path;
     pub mod proc;
 }
-
-const ANSWER_MODEL: &str = "gpt-4-0613";
-
-pub struct AnswerModel {
-    /// The name of this model according to tiktoken
-    tokenizer: &'static str,
-
-    /// The name of this model for use in the llm gateway
-    model_name: &'static str,
-
-    /// The number of tokens reserved for the answer
-    headroom: usize,
-}
-
-pub const GPT3_FINETUNED: AnswerModel = AnswerModel {
-    tokenizer: "gpt-3.5-turbo-0613",
-    model_name: "gpt-3.5-finetuned", // ft:gpt-3.5-turbo-0613:bloop::7tkKlNOw
-    headroom: 512,
-};
 
 pub enum Error {
     Timeout(Duration),
@@ -71,6 +53,8 @@ pub struct Agent {
     pub user: User,
     pub thread_id: uuid::Uuid,
     pub query_id: uuid::Uuid,
+
+    pub model: model::AnswerModel,
 
     /// Indicate whether the request was answered.
     ///
@@ -207,11 +191,14 @@ impl Agent {
         ))];
         history.extend(self.history()?);
 
-        let trimmed_history = trim_history(history.clone())?;
+        let trimmed_history = trim_history(history.clone(), self.model)?;
 
         let raw_response = self
             .llm_gateway
-            .chat(&trim_history(history.clone())?, Some(&functions))
+            .chat(
+                &trim_history(history.clone(), self.model)?,
+                Some(&functions),
+            )
             .await?
             .try_fold(
                 llm_gateway::api::FunctionCall::default(),
@@ -429,13 +416,15 @@ impl Agent {
 
 fn trim_history(
     mut history: Vec<llm_gateway::api::Message>,
+    model: model::AnswerModel,
 ) -> Result<Vec<llm_gateway::api::Message>> {
-    const HEADROOM: usize = 2048;
     const HIDDEN: &str = "[HIDDEN]";
 
     let mut tiktoken_msgs = history.iter().map(|m| m.into()).collect::<Vec<_>>();
 
-    while tiktoken_rs::get_chat_completion_max_tokens(ANSWER_MODEL, &tiktoken_msgs)? < HEADROOM {
+    while tiktoken_rs::get_chat_completion_max_tokens(model.tokenizer, &tiktoken_msgs)?
+        < model.history_headroom
+    {
         let _ = history
             .iter_mut()
             .zip(tiktoken_msgs.iter_mut())
@@ -542,7 +531,7 @@ mod tests {
         ];
 
         assert_eq!(
-            trim_history(history).unwrap(),
+            trim_history(history, model::GPT_4).unwrap(),
             vec![
                 llm_gateway::api::Message::system("foo"),
                 llm_gateway::api::Message::user("bar"),
