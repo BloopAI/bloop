@@ -265,7 +265,6 @@ async fn try_execute_agent(
             thread_id,
             query_id,
             exchange_state: ExchangeState::Pending,
-            complete: false,
             model,
         };
 
