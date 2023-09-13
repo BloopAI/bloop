@@ -27,10 +27,9 @@ const PageTemplate = ({ children, renderPage }: PropsWithChildren<Props>) => {
         className="flex mb-16 w-screen overflow-hidden relative"
         style={mainContainerStyle}
       >
-        {renderPage !== 'article-response' &&
-          renderPage !== 'repo' &&
-          renderPage !== 'studio' &&
-          renderPage !== 'home' && <LeftSidebar renderPage={renderPage} />}
+        {(renderPage === 'full-result' || renderPage === 'results') && (
+          <LeftSidebar renderPage={renderPage} />
+        )}
         {children}
         {renderPage !== 'home' && renderPage !== 'studio' && <Chat />}
       </div>

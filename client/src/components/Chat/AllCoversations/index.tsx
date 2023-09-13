@@ -1,9 +1,13 @@
-import React, { useCallback, useContext, useEffect, useState } from 'react';
+import React, {
+  Dispatch,
+  SetStateAction,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from 'react';
 import { format } from 'date-fns';
-import { Trans, useTranslation } from 'react-i18next';
-import ChipButton from '../ChipButton';
-import { ArrowLeft, CloseSign } from '../../../icons';
-import NLInput from '../NLInput';
+import { useTranslation } from 'react-i18next';
 import {
   deleteConversation,
   getAllConversations,
@@ -11,42 +15,34 @@ import {
 } from '../../../services/api';
 import { AllConversationsResponse } from '../../../types/api';
 import Conversation from '../Conversation';
-import { ChatMessage, ChatMessageAuthor } from '../../../types/general';
+import {
+  ChatMessage,
+  ChatMessageAuthor,
+  OpenChatHistoryItem,
+} from '../../../types/general';
 import { conversationsCache } from '../../../services/cache';
 import { mapLoadingSteps } from '../../../mappers/conversation';
-import { findElementInCurrentTab } from '../../../utils/domUtils';
 import { LocaleContext } from '../../../context/localeContext';
 import { getDateFnsLocale } from '../../../utils';
 import ConversationListItem from './ConversationListItem';
 
 type Props = {
-  isHistoryOpen: boolean;
-  setHistoryOpen: (b: boolean) => void;
-  setActive: (b: boolean) => void;
-  setConversation: (b: ChatMessage[]) => void;
-  setThreadId: (b: string) => void;
   repoRef: string;
   repoName: string;
-  handleNewConversation: () => void;
+  openItem: OpenChatHistoryItem | null;
+  setOpenItem: Dispatch<SetStateAction<OpenChatHistoryItem | null>>;
 };
 
 const AllConversations = ({
-  isHistoryOpen,
-  setHistoryOpen,
-  setActive,
-  setThreadId,
-  setConversation,
   repoRef,
   repoName,
-  handleNewConversation,
+  openItem,
+  setOpenItem,
 }: Props) => {
   const { t } = useTranslation();
-  const [openItem, setOpenItem] = useState<ChatMessage[] | null>(null);
   const [conversations, setConversations] = useState<AllConversationsResponse>(
     [],
   );
-  const [openThreadId, setOpenThreadId] = useState('');
-  const [title, setTitle] = useState('');
   const { locale } = useContext(LocaleContext);
 
   const fetchConversations = useCallback(() => {
@@ -54,17 +50,14 @@ const AllConversations = ({
   }, [repoRef]);
 
   useEffect(() => {
-    if (isHistoryOpen) {
-      fetchConversations();
-    }
-  }, [isHistoryOpen, fetchConversations]);
+    fetchConversations();
+  }, [fetchConversations]);
 
   const onDelete = useCallback((threadId: string) => {
     deleteConversation(threadId).then(fetchConversations);
   }, []);
 
   const onClick = useCallback((threadId: string) => {
-    setOpenThreadId(threadId);
     getConversation(threadId).then((resp) => {
       const conv: ChatMessage[] = [];
       resp.forEach((m) => {
@@ -79,54 +72,21 @@ const AllConversations = ({
           author: ChatMessageAuthor.Server,
           isLoading: false,
           loadingSteps: mapLoadingSteps(m.search_steps, t),
-          text: m.conclusion,
-          results: m.answer,
+          text: m.answer,
+          conclusion: m.conclusion,
           isFromHistory: true,
           queryId: m.id,
           responseTimestamp: m.response_timestamp,
           explainedFile: m.focused_chunk?.file_path,
         });
       });
-      setTitle(conv[0].text || '');
-      setOpenItem(conv);
+      setOpenItem({ conversation: conv, threadId });
       conversationsCache[threadId] = conv;
     });
   }, []);
 
   return (
-    <div
-      className={`w-97 flex-shrink-0 bg-chat-bg-sub border-l border-chat-bg-divider h-full flex flex-col overflow-hidden ${
-        isHistoryOpen ? 'mr-0' : '-mr-97'
-      } transition-all duration-300 ease-out-slow`}
-    >
-      <div className="p-4 bg-chat-bg-base/35 border-b border-chat-bg-border flex items-center gap-2 text-label-title">
-        {!!openItem && (
-          <ChipButton variant="filled" onClick={() => setOpenItem(null)}>
-            <ArrowLeft sizeClassName="w-4 h-4" />
-          </ChipButton>
-        )}
-        <p className="flex-1 body-m ellipsis">
-          {openItem ? title : t('Conversations')}
-        </p>
-        {!openItem && (
-          <ChipButton
-            onClick={() => {
-              setHistoryOpen(false);
-              setActive(true);
-              handleNewConversation();
-            }}
-          >
-            <Trans>Create new</Trans>
-          </ChipButton>
-        )}
-        <ChipButton
-          variant="filled"
-          colorScheme="base"
-          onClick={() => setHistoryOpen(false)}
-        >
-          <CloseSign sizeClassName="w-3.5 h-3.5" />
-        </ChipButton>
-      </div>
+    <div className={`flex-1 flex flex-col overflow-auto`}>
       {!openItem && (
         <div className="flex flex-col gap-1 py-4 overflow-auto flex-1 pb-12">
           {conversations.map((c) => (
@@ -147,8 +107,8 @@ const AllConversations = ({
       {!!openItem && (
         <div className="flex-1 px-4 py-2 overflow-auto pb-10">
           <Conversation
-            conversation={openItem}
-            threadId={openThreadId}
+            conversation={openItem.conversation}
+            threadId={openItem.threadId}
             repoRef={repoRef}
             isLoading={false}
             isHistory
@@ -157,22 +117,6 @@ const AllConversations = ({
           />
         </div>
       )}
-      <div className="backdrop-blur-6 bg-chat-bg-base/75 -mt-10 z-40">
-        <div
-          className="p-4"
-          onClick={() => {
-            if (openItem) {
-              setThreadId(openThreadId);
-              setConversation(openItem);
-            }
-            setHistoryOpen(false);
-            setActive(true);
-            findElementInCurrentTab('#question-input')?.focus();
-          }}
-        >
-          <NLInput />
-        </div>
-      </div>
     </div>
   );
 };

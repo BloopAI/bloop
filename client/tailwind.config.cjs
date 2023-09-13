@@ -34,6 +34,7 @@ module.exports = {
         "label-title/15": "rgba(var(--label-title), 0.15)",
         "label-link": "rgb(var(--label-link))",
         "chat-bg-base": "rgb(var(--chat-bg-base))",
+        "chat-bg-base/25": "rgba(var(--chat-bg-base), 0.25)",
         "chat-bg-base/35": "rgba(var(--chat-bg-base), 0.35)",
         "chat-bg-base/50": "rgba(var(--chat-bg-base), 0.5)",
         "chat-bg-base/75": "rgba(var(--chat-bg-base), 0.75)",

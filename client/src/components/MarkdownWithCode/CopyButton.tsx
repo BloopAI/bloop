@@ -4,11 +4,11 @@ import { copyToClipboard } from '../../utils';
 import { CheckIcon, Clipboard, CopyMD } from '../../icons';
 
 type Props = {
-  isCodeStudio?: boolean;
+  isInHeader?: boolean;
   code: string;
 };
 
-const CopyButton = ({ isCodeStudio, code }: Props) => {
+const CopyButton = ({ isInHeader, code }: Props) => {
   const [codeCopied, setCodeCopied] = useState(false);
 
   const onClick = useCallback(() => {
@@ -20,7 +20,7 @@ const CopyButton = ({ isCodeStudio, code }: Props) => {
   return (
     <div
       className={`${
-        isCodeStudio
+        isInHeader
           ? ''
           : code.split('\n').length > 1
           ? 'absolute top-4 right-4 opacity-0 group-code-hover:opacity-100 transition-opacity'
@@ -29,12 +29,12 @@ const CopyButton = ({ isCodeStudio, code }: Props) => {
     >
       <Button
         variant="secondary"
-        size={isCodeStudio ? 'tiny' : 'small'}
+        size={isInHeader ? 'tiny' : 'small'}
         onClick={onClick}
       >
         {codeCopied ? (
           <CheckIcon />
-        ) : isCodeStudio ? (
+        ) : isInHeader ? (
           <CopyMD raw sizeClassName="w-3.5 h-3.5" />
         ) : (
           <Clipboard />

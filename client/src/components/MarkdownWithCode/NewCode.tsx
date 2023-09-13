@@ -30,13 +30,13 @@ const NewCode = ({ code, language, isSummary, isCodeStudio }: Props) => {
             />
             {getPrettyLangName(language)}
           </div>
-          <CopyButton isCodeStudio={isCodeStudio} code={code} />
+          <CopyButton isInHeader={isCodeStudio} code={code} />
         </div>
       )}
       <div className={`overflow-auto ${isCodeStudio ? 'p-2' : ''}`}>
         <Code showLines={false} code={code} language={language} canWrap />
       </div>
-      {!isCodeStudio && <CopyButton isCodeStudio={isCodeStudio} code={code} />}
+      {!isCodeStudio && <CopyButton isInHeader={isCodeStudio} code={code} />}
     </div>
   );
 };

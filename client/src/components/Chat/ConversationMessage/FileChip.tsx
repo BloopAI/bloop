@@ -116,8 +116,8 @@ const FileChip = ({
 
   return (
     <button
-      className={`inline-flex items-center bg-chat-bg-shade rounded-4 overflow-hidden 
-                text-label-base hover:text-label-title border border-transparent hover:border-chat-bg-border 
+      className={`inline-flex items-center bg-chat-bg-base rounded-4 overflow-hidden 
+                text-label-title hover:text-label-title border border-transparent hover:border-chat-bg-border 
                 cursor-pointer align-middle ellipsis`}
       ref={ref}
       onClick={onClick}

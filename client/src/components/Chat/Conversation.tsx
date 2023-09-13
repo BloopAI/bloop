@@ -30,9 +30,7 @@ const Conversation = ({
 
   return (
     <div
-      className={`w-full flex flex-col gap-3 pb-3 overflow-auto ${
-        !isHistory ? 'max-h-60' : ''
-      }`}
+      className={`w-full flex flex-col gap-3 overflow-auto pb-24`}
       ref={messagesRef}
       onScroll={handleScroll}
     >
@@ -43,9 +41,6 @@ const Conversation = ({
           isLoading={m.author === ChatMessageAuthor.Server && m.isLoading}
           loadingSteps={
             m.author === ChatMessageAuthor.Server ? m.loadingSteps : []
-          }
-          results={
-            m.author === ChatMessageAuthor.Server ? m.results : undefined
           }
           isHistory={isHistory}
           author={m.author}
@@ -71,9 +66,6 @@ const Conversation = ({
           onMessageEdit={onMessageEdit}
           responseTimestamp={
             m.author === ChatMessageAuthor.Server ? m.responseTimestamp : null
-          }
-          explainedFile={
-            m.author === ChatMessageAuthor.Server ? m.explainedFile : undefined
           }
         />
       ))}

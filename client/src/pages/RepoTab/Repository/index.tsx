@@ -96,45 +96,6 @@ const RepositoryPage = ({ repositoryData }: Props) => {
     <Skeleton isRepoPage />
   ) : (
     <div className="flex flex-1 overflow-auto">
-      <div
-        className={`h-full bg-bg-base flex flex-col overflow-hidden relative overflow-y-auto ${
-          isRightPanelOpen ? 'w-0' : 'w-[20.25rem]'
-        } transition-all duration-150 flex-shrink-0`}
-      >
-        <div className="p-8 flex flex-row gap-6 justify-between select-none cursor-default border-r border-bg-border">
-          <span className="flex flex-col gap-3">
-            <span className="flex flex-row gap-4 items-center">
-              <span className="rounded-md p-1 w-7 h-7 select-none">
-                {repository.source === RepoSource.LOCAL ? (
-                  <RepositoryIcon />
-                ) : (
-                  <GitHubLogo />
-                )}
-              </span>
-              <span className="flex flex-col">
-                <span>{repository.name}</span>
-                <span className={`flex items-center gap-2 `}>
-                  <div
-                    className={`w-2 h-2 rounded-xl ${
-                      statusTextColor?.color || 'bg-yellow'
-                    }`}
-                  />
-                  <span className="ellipsis text-label-muted text-xs select-none">
-                    <Trans>
-                      {statusTextColor?.text === 'Last updated '
-                        ? 'Synced'
-                        : statusTextColor?.text || repoStatus}
-                    </Trans>
-                  </span>
-                </span>
-              </span>
-            </span>
-          </span>
-        </div>
-        <div className="flex-1 flex">
-          <Filters forceOpen showHeader={false} />
-        </div>
-      </div>
       <div className="p-12 pb-32 w-full overflow-y-auto">
         <RepositoryOverview repository={repository} syncState />
       </div>

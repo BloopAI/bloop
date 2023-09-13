@@ -6,6 +6,7 @@ import Code from '../../../components/CodeBlock/Code';
 import Button from '../../../components/Button';
 import { copyToClipboard } from '../../../utils';
 import { CheckIcon, Clipboard } from '../../../icons';
+import CopyButton from '../../../components/MarkdownWithCode/CopyButton';
 
 type Props = {
   filePath: string;
@@ -47,14 +48,14 @@ const CodeWithBreadcrumbs = ({
 
   return (
     <div
-      className={`text-sm border border-bg-border rounded-md flex-1 overflow-x-auto cursor-pointer ${
+      className={`text-sm border border-chat-bg-border rounded-md flex-1 overflow-x-auto cursor-pointer ${
         isSummary ? '' : 'my-4'
       }`}
       onClick={handleResultClick}
     >
       <div
         className={`flex items-center justify-between gap-2 w-full ${
-          isSummary ? 'bg-chat-bg-sub' : 'bg-bg-shade'
+          isSummary ? 'bg-chat-bg-sub' : 'bg-chat-bg-base'
         } h-13 px-3 cursor-pointer overflow-hidden`}
       >
         <div
@@ -70,34 +71,17 @@ const CodeWithBreadcrumbs = ({
               type === FileTreeFileType.FILE ? onResultClick(path) : {}
             }
           />
+          <CopyButton code={code} isInHeader />
         </div>
       </div>
       <div className="relative">
-        <div className={`relative overflow-x-auto py-4`}>
+        <div className={`relative overflow-x-auto py-4 bg-chat-bg-sub`}>
           <Code
             code={code}
             language={language}
             showLines={startLine !== null}
             lineStart={startLine || 0}
           />
-        </div>
-        <div
-          className={`absolute ${
-            code.split('\n').length > 1 ? 'top-4 right-4' : 'top-2.5 right-2.5'
-          }`}
-        >
-          <Button
-            variant="tertiary"
-            size="small"
-            onClick={() => {
-              copyToClipboard(code);
-              setCodeCopied(true);
-              setTimeout(() => setCodeCopied(false), 2000);
-            }}
-          >
-            {codeCopied ? <CheckIcon /> : <Clipboard />}
-            {codeCopied ? 'Copied' : 'Copy'}
-          </Button>
         </div>
       </div>
     </div>

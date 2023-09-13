@@ -1,5 +1,4 @@
 import React, { useContext, useEffect, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
 import { Trans, useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
 import {
@@ -19,9 +18,9 @@ import Button from '../../Button';
 import { FileModalContext } from '../../../context/fileModalContext';
 import { LocaleContext } from '../../../context/localeContext';
 import { getDateFnsLocale } from '../../../utils';
+import MarkdownWithCode from '../../MarkdownWithCode';
 import MessageFeedback from './MessageFeedback';
 import FileChip from './FileChip';
-import SummaryCardsArticle from './SummaryCards/SummaryCardsArticle';
 
 type Props = {
   author: ChatMessageAuthor;
@@ -37,10 +36,8 @@ type Props = {
   scrollToBottom?: () => void;
   isLoading?: boolean;
   loadingSteps?: ChatLoadingStep[];
-  results?: string;
   i: number;
   onMessageEdit: (queryId: string, i: number) => void;
-  explainedFile?: string;
 };
 
 const ConversationMessage = ({
@@ -55,12 +52,10 @@ const ConversationMessage = ({
   scrollToBottom,
   isLoading,
   loadingSteps,
-  results,
   i,
   repoName,
   onMessageEdit,
   responseTimestamp,
-  explainedFile,
 }: Props) => {
   const { t } = useTranslation();
   const [isLoadingStepsShown, setLoadingStepsShown] = useState(false);
@@ -138,18 +133,6 @@ const ConversationMessage = ({
       )}
       {message ? (
         <>
-          {!isLoading && !!results?.length ? (
-            <div className="mt-3 select-none cursor-default group-summary">
-              {!!results ? (
-                <SummaryCardsArticle
-                  article={results}
-                  threadId={threadId}
-                  i={i}
-                  explainedFile={explainedFile}
-                />
-              ) : null}
-            </div>
-          ) : null}
           <div
             className={`relative bg-chat-bg-shade mt-3 flex items-start p-4 gap-3 border border-chat-bg-divider rounded-lg`}
           >
@@ -175,9 +158,14 @@ const ConversationMessage = ({
               )}
             </div>
             {message && (
-              <pre className="body-s text-label-title whitespace-pre-wrap break-word markdown w-full">
+              <div className="body-s text-label-title code-studio-md w-full break-word overflow-auto">
                 {author === ChatMessageAuthor.Server ? (
-                  <ReactMarkdown>{message}</ReactMarkdown>
+                  <MarkdownWithCode
+                    markdown={message}
+                    threadId={threadId}
+                    recordId={i}
+                    repoName={repoName}
+                  />
                 ) : (
                   <>
                     <span>{message}</span>
@@ -196,7 +184,7 @@ const ConversationMessage = ({
                     )}
                   </>
                 )}
-              </pre>
+              </div>
             )}
           </div>
           <MessageFeedback
