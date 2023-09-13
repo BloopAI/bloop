@@ -352,9 +352,9 @@ const Chat = () => {
     >
       <div
         ref={dividerRef}
-        className="absolute top-0 left-0 transform group -translate-x-1/2 w-2.5 h-full cursor-col-resize flex-shrink-0 z-10"
+        className="absolute top-0 left-0 transform group-custom -translate-x-1/2 w-2.5 h-full cursor-col-resize flex-shrink-0 z-10"
       >
-        <div className="mx-auto w-0.5 h-full bg-chat-bg-border group-hover:bg-bg-main" />
+        <div className="mx-auto w-0.5 h-full bg-chat-bg-border group-custom-hover:bg-bg-main" />
       </div>
       <ChatHeader
         setIsHistoryTab={setIsHistoryTab}

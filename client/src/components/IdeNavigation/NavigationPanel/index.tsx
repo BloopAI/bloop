@@ -16,22 +16,18 @@ type Props = {
 const NavigationPanel = ({ repoName, children }: Props) => {
   const { navigateRepoPath } = useAppNavigation();
   return (
-    <div className="min-h-full relative flex w-full">
-      <div className="flex flex-1 bg-bg-base flex-col border-r border-bg-border min-h-full select-none overflow-auto">
-        <div
-          className="w-full border-b border-bg-border flex justify-between h-12 flex-shrink-0 px-6 select-none cursor-pointer"
-          onClick={() => navigateRepoPath(repoName)}
-        >
-          <TextField
-            value={repoName.replace(/^github\.com\//, '')}
-            icon={<GitHubLogo />}
-            className={'ellipsis subhead-s'}
-          />
-        </div>
-        <div className="flex-1 overflow-auto flex flex-col min-h-full">
-          {children}
-        </div>
+    <div className="relative flex flex-1 flex-col w-full overflow-auto bg-bg-base select-none">
+      <div
+        className="w-full border-b border-bg-border flex justify-between h-12 flex-shrink-0 px-6 select-none cursor-pointer"
+        onClick={() => navigateRepoPath(repoName)}
+      >
+        <TextField
+          value={repoName.replace(/^github\.com\//, '')}
+          icon={<GitHubLogo />}
+          className={'ellipsis subhead-s'}
+        />
       </div>
+      <div className="flex-1 flex flex-col">{children}</div>
     </div>
   );
 };
