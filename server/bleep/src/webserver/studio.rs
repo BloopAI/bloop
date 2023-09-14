@@ -76,12 +76,10 @@ pub async fn create(
 
     let user_id = user.login().ok_or_else(no_user_id)?.to_string();
 
-    let name = params.name.unwrap_or_else(|| "New Studio".to_owned());
-
     let studio_id: i64 = sqlx::query! {
         "INSERT INTO studios (user_id, name) VALUES (?, ?) RETURNING id",
         user_id,
-        name,
+        params.name,
     }
     .fetch_one(&mut transaction)
     .await?
