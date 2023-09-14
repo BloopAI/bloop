@@ -286,7 +286,32 @@ impl Client {
             .await
     }
 
-    pub async fn chat(
+    pub async fn chat(&self, messages: &[api::Message], functions: Option<&[api::Function]>) -> anyhow::Result<String> {
+        const TOTAL_CHAT_RETRIES: usize = 5;
+
+        'retry_loop: for _ in 0..TOTAL_CHAT_RETRIES {
+            let mut buf = String::new();
+            let stream = self.chat_stream(messages, functions).await?;
+            tokio::pin!(stream);
+
+            loop {
+                match stream.next().await {
+                    None => break,
+                    Some(Ok(s)) => buf += &s,
+                    Some(Err(e)) => {
+                        warn!(?e, "token stream errored out, retrying...");
+                        break 'retry_loop;
+                    }
+                }
+            }
+
+            return Ok(buf);
+        }
+
+        Err(anyhow!("chat stream errored too many times, failed to generate response"))
+    }
+
+    pub async fn chat_stream(
         &self,
         messages: &[api::Message],
         functions: Option<&[api::Function]>,
@@ -296,7 +321,7 @@ impl Client {
 
         let mut delay = INITIAL_DELAY;
         for _ in 0..self.max_retries {
-            match self.chat_oneshot(messages, functions).await {
+            match self.chat_stream_oneshot(messages, functions).await {
                 Err(ChatError::TooManyRequests) => {
                     warn!(?delay, "too many LLM requests, retrying with delay...");
                     tokio::time::sleep(delay).await;
@@ -324,7 +349,7 @@ impl Client {
     }
 
     /// Like `chat`, but without exponential backoff.
-    async fn chat_oneshot(
+    async fn chat_stream_oneshot(
         &self,
         messages: &[api::Message],
         functions: Option<&[api::Function]>,

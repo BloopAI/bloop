@@ -1,5 +1,4 @@
 use anyhow::Result;
-use futures::TryStreamExt;
 use tracing::{info, instrument};
 
 use crate::{
@@ -99,8 +98,6 @@ impl Agent {
             .clone()
             .model("gpt-3.5-turbo-0613")
             .chat(&prompt, None)
-            .await?
-            .try_collect::<String>()
             .await?;
 
         tracing::trace!("parsing hyde response");

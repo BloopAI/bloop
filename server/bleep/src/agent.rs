@@ -195,7 +195,7 @@ impl Agent {
 
         let raw_response = self
             .llm_gateway
-            .chat(
+            .chat_stream(
                 &trim_history(history.clone(), self.model)?,
                 Some(&functions),
             )

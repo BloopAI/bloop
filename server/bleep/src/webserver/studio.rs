@@ -571,7 +571,7 @@ pub async fn generate(
         .chain(messages.iter().map(llm_gateway::api::Message::from))
         .collect::<Vec<_>>();
 
-    let tokens = llm_gateway.chat(&llm_messages, None).await?;
+    let tokens = llm_gateway.chat_stream(&llm_messages, None).await?;
 
     let stream = async_stream::try_stream! {
         pin_mut!(tokens);
@@ -894,11 +894,8 @@ async fn extract_relevant_chunks(
     ];
 
     // Call the LLM gateway
-    let response_stream = llm_gateway.chat(&llm_messages, None).await?;
-
-    // Collect the response into a string
-    let result = response_stream
-        .try_collect()
+    let result = llm_gateway
+        .chat(&llm_messages, None)
         .await
         .and_then(|json: String| serde_json::from_str(&json).map_err(anyhow::Error::new));
 
