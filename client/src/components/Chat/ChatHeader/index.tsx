@@ -29,43 +29,39 @@ const ChatHeader = ({
   const { t } = useTranslation();
   const { threadId } = useContext(ChatContext.Values);
   return (
-    <div className="w-full p-4 flex flex-col border-b border-chat-bg-border">
-      <div className="flex justify-between gap-1 items-center">
-        {isHistoryTab ? (
-          <ChipButton
-            variant="filled"
-            onClick={() =>
-              openHistoryItem
-                ? setOpenHistoryItem(null)
-                : setIsHistoryTab(false)
-            }
-          >
-            <ArrowLeft sizeClassName="w-4 h-4" />
-          </ChipButton>
-        ) : (
-          <ChipButton onClick={() => setIsHistoryTab(true)}>
-            <List /> <Trans>All conversations</Trans>
-          </ChipButton>
+    <div className="w-full px-4 h-12 flex justify-between gap-1 items-center border-b border-chat-bg-border">
+      {isHistoryTab ? (
+        <ChipButton
+          variant="filled"
+          onClick={() =>
+            openHistoryItem ? setOpenHistoryItem(null) : setIsHistoryTab(false)
+          }
+        >
+          <ArrowLeft sizeClassName="w-4 h-4" />
+        </ChipButton>
+      ) : (
+        <ChipButton onClick={() => setIsHistoryTab(true)}>
+          <List /> <Trans>All conversations</Trans>
+        </ChipButton>
+      )}
+      {isHistoryTab && (
+        <p className="flex-1 body-m ellipsis">
+          {openHistoryItem
+            ? openHistoryItem.conversation?.[0].text
+            : t('Conversations')}
+        </p>
+      )}
+      <div className="flex items-center gap-1">
+        <AnswerSpeedSelector />
+        <ChipButton onClick={handleNewConversation}>
+          <Trans>Create new</Trans>
+        </ChipButton>
+        {!!threadId && !isLoading && (
+          <AddStudioContext
+            threadId={threadId}
+            name={conversationName || 'New Studio'}
+          />
         )}
-        {isHistoryTab && (
-          <p className="flex-1 body-m ellipsis">
-            {openHistoryItem
-              ? openHistoryItem.conversation?.[0].text
-              : t('Conversations')}
-          </p>
-        )}
-        <div className="flex items-center gap-1">
-          <AnswerSpeedSelector />
-          <ChipButton onClick={handleNewConversation}>
-            <Trans>Create new</Trans>
-          </ChipButton>
-          {!!threadId && !isLoading && (
-            <AddStudioContext
-              threadId={threadId}
-              name={conversationName || 'New Studio'}
-            />
-          )}
-        </div>
       </div>
     </div>
   );

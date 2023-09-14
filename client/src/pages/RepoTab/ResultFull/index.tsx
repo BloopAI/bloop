@@ -6,7 +6,7 @@ import React, {
   useState,
 } from 'react';
 import * as Sentry from '@sentry/react';
-import { Trans } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import FileIcon from '../../../components/FileIcon';
 import Breadcrumbs from '../../../components/Breadcrumbs';
 import CodeFull from '../../../components/CodeBlock/CodeFull';
@@ -17,6 +17,7 @@ import {
   breadcrumbsItemPath,
   humanFileSize,
   isWindowsPath,
+  splitPath,
   splitPathForBreadcrumbs,
 } from '../../../utils';
 import ErrorFallback from '../../../components/ErrorFallback';
@@ -47,6 +48,7 @@ const VERTICAL_PADDINGS = 32;
 const BREADCRUMBS_HEIGHT = 47;
 
 const ResultFull = ({ data, isLoading, selectedBranch }: Props) => {
+  useTranslation();
   const { navigateFullResult, navigateRepoPath } = useAppNavigation();
   const [result, setResult] = useState<FullResult | null>(null);
   const { setSubmittedQuery, setChatOpen, setConversation, setThreadId } =
@@ -145,12 +147,8 @@ const ResultFull = ({ data, isLoading, selectedBranch }: Props) => {
           <div className="flex items-center gap-1 overflow-hidden w-full">
             <FileIcon filename={result?.relativePath?.slice(-5) || ''} />
             {!!result && !!breadcrumbs.length ? (
-              <div className="flex-1">
-                <Breadcrumbs
-                  pathParts={breadcrumbs}
-                  activeStyle="secondary"
-                  path={result.relativePath || ''}
-                />
+              <div className="flex-1 body-s-strong ellipsis">
+                {splitPath(result.relativePath || '')?.pop()}
               </div>
             ) : (
               <div className="w-48 h-4">
