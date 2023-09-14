@@ -58,6 +58,12 @@ impl<'a> Workload<'a> {
             hash.update(self.relative_path.to_string_lossy().as_ref().as_ref());
             hash.update(self.repo_ref.as_bytes());
             hash.update(dir_entry.buffer().unwrap_or_default().as_bytes());
+            hash.update(
+                self.file_filter
+                    .is_allowed(&self.relative_path)
+                    .map(|_| &b"__filter_override"[..])
+                    .unwrap_or(&b"__no_filter_override"[..]),
+            );
             hash.finalize().to_hex().to_string()
         };
 
