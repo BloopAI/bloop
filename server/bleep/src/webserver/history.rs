@@ -203,10 +203,6 @@ pub(super) async fn prompt_suggestions<'a>(
     Query(params): Query<Params>,
     State(app): State<Application>,
 ) -> Result<Json<super::Response<'a>>, Error> {
-    let commits = tokio::task::spawn(filtered_commits(app.clone(), params))
-        .await
-        .context("threads error")??;
-
     let llm_gateway = {
         let answer_api_token = app
             .answer_api_token()
@@ -216,46 +212,58 @@ pub(super) async fn prompt_suggestions<'a>(
         crate::llm_gateway::Client::new(&app.config.answer_api_url).bearer(answer_api_token)
     };
 
-    let mut suggestions = vec![];
-    for commit in commits {
-        let classification = classify_commit(&llm_gateway, &commit)
-            .await
-            .context("classification failed")
-            .unwrap();
+    // Due to `Send` issues on the gix side, we need to split this off quite brutally.
+    let latest_commits = tokio::task::spawn_blocking(|| latest_commits(app, params))
+        .await
+        .context("threads error")??;
 
-        if !classification {
-            continue;
-        }
-
-        let summary = summarize_commit(&llm_gateway, &commit)
-            .await
-            .context("summary failed")
-            .unwrap();
-
-        let question = get_question(&llm_gateway, &summary)
-            .await
-            .context("question failed")
-            .unwrap();
-
-        if question == "0" {
-            continue;
-        }
-
-        let tag = get_tag(&llm_gateway, &question)
-            .await
-            .context("tag failed")
-            .unwrap();
-
-        suggestions.push(Question {
-            text: question,
-            tag,
-        });
-    }
+    let suggestions = expand_commits_to_suggestions(latest_commits, &llm_gateway).await?;
 
     Ok(json(PromptSuggestionResponse { suggestions }))
 }
 
-async fn filtered_commits(app: Application, params: Params) -> Result<Vec<DiffStat>, Error> {
+async fn expand_commits_to_suggestions(
+    mut src_commits: Vec<DiffStat>,
+    llm_gateway: &llm_gateway::Client,
+) -> Result<Vec<Question>, Error> {
+    let mut tres_types = 2usize;
+    let mut tres_files = 4usize;
+    let mut tres_files_max = 15usize;
+    let mut tres_diff_lines = 100usize;
+
+    let mut commits = vec![];
+    while commits.len() < 5 {
+        let drained;
+        (drained, src_commits) = std::mem::take(&mut src_commits)
+            .into_iter()
+            .partition::<Vec<_>, _>(|commit| {
+                commit.file_types.len() > tres_types
+                    && commit.files.len() > tres_files
+                    && commit.files.len() < tres_files_max
+                    && commit.diff.lines().collect::<Vec<_>>().len() > tres_diff_lines
+            });
+
+        commits.extend(
+            futures::future::join_all(
+                drained
+                    .into_iter()
+                    .map(|commit| generate_suggestion(llm_gateway, commit)),
+            )
+            .await
+            .into_iter()
+            .flatten(),
+        );
+
+        tres_types = 1;
+        tres_files = 1;
+        tres_files_max = tres_files_max.saturating_add(5);
+        tres_diff_lines = tres_diff_lines.saturating_sub(20);
+    }
+
+    Ok(commits)
+}
+
+fn latest_commits(app: Application, params: Params) -> Result<Vec<DiffStat>, Error> {
     let repo = gix::open(
         app.repo_pool
             .read(&params.repo_ref, |_k, v| v.disk_path.clone())
@@ -285,14 +293,46 @@ async fn filtered_commits(app: Application, params: Params) -> Result<Vec<DiffSt
         parent,
         commit: head,
     }
-    .take(200)
-    .filter(|commit| {
-        commit.file_types.len() > 2
-            && commit.files.len() > 4
-            && commit.files.len() < 15
-            && commit.diff.lines().collect::<Vec<_>>().len() > 100
-    })
+    .take(100)
     .collect::<Vec<_>>())
+}
+
+async fn generate_suggestion(
+    llm_gateway: &llm_gateway::Client,
+    commit: DiffStat,
+) -> Option<Question> {
+    let classification = classify_commit(llm_gateway, &commit)
+        .await
+        .context("classification failed")
+        .unwrap_or_default();
+
+    if !classification {
+        return None;
+    }
+
+    let summary = summarize_commit(llm_gateway, &commit)
+        .await
+        .context("summary failed")
+        .unwrap();
+
+    let question = get_question(llm_gateway, &summary)
+        .await
+        .context("question failed")
+        .unwrap();
+
+    if question == "0" {
+        return None;
+    }
+
+    let tag = get_tag(llm_gateway, &question)
+        .await
+        .context("tag failed")
+        .unwrap();
+
+    Some(Question {
+        text: question,
+        tag,
+    })
 }
 
 async fn classify_commit(
@@ -301,7 +341,7 @@ async fn classify_commit(
 ) -> anyhow::Result<bool> {
     let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo-0613").unwrap();
     let raw_commit = format!("{}\n\n{}", commit.commit_message, commit.diff);
-    let commit_msg = crate::agent::transcoder::limit_tokens(&raw_commit, bpe, 1000);
+    let commit_msg = crate::agent::transcoder::limit_tokens(&raw_commit, bpe, 3000);
 
     let response = llm_gateway
         .clone()
