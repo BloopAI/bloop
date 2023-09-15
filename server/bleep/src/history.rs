@@ -212,6 +212,7 @@ pub async fn expand_commits_to_suggestions(
             }))
             .await
             .into_iter()
+            .flatten()
             .flatten(),
         );
 
@@ -265,36 +266,33 @@ pub fn latest_commits(
 async fn generate_suggestion(
     llm_gateway: &llm_gateway::Client,
     commit: DiffStat,
-) -> Option<Question> {
+) -> Result<Option<Question>> {
     let classification = classify_commit(llm_gateway, &commit)
         .await
         .context("classification failed")
         .unwrap_or_default();
 
     if !classification {
-        return None;
+        return Ok(None);
     }
 
     let summary = summarize_commit(llm_gateway, &commit)
         .await
-        .context("summary failed")
-        .unwrap();
+        .context("summary failed")?;
 
     let question = get_question(llm_gateway, &summary)
         .await
-        .context("question failed")
-        .unwrap();
+        .context("question failed")?;
 
     if question == "0" {
-        return None;
+        return Ok(None);
     }
 
     let tag = get_tag(llm_gateway, &question)
         .await
-        .context("tag failed")
-        .unwrap();
+        .context("tag failed")?;
 
-    Some(Question { question, tag })
+    Ok(Some(Question { question, tag }))
 }
 
 async fn classify_commit(llm_gateway: &llm_gateway::Client, commit: &DiffStat) -> Result<bool> {
