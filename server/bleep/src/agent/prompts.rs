@@ -149,28 +149,8 @@ A: "#
     )
 }
 
-pub fn answer_article_prompt(aliases: &[usize], context: &str) -> String {
-    // Return different prompts depending on whether there is one or many aliases
-    let one_prompt = format!(
-        r#"{context}#####
-
-A user is looking at the code above, your job is to answer their query.
-
-Your output will be interpreted as bloop-markdown which renders with the following rules:
-- Inline code must be expressed as a link to the correct line of code using the URL format: `[bar](src/foo.rs#L50)` or `[bar](src/foo.rs#L50-L54)`
-- Do NOT output bare symbols. ALL symbols must include a link
-  - E.g. Do not simply write `Bar`, write [`Bar`](src/bar.rs#L100-L105).
-  - E.g. Do not simply write "Foos are functions that create `Foo` values out of thin air." Instead, write: "Foos are functions that create [`Foo`](src/foo.rs#L80-L120) values out of thin air."
-- Only internal links to the current file work
-- Basic markdown text formatting rules are allowed
-
-Here is an example response:
-
-A function [`openCanOfBeans`](src/beans/open.py#L7-L19) is defined. This function is used to handle the opening of beans. It includes the variable [`openCanOfBeans`](src/beans/open.py#L9) which is used to store the value of the tin opener.
-"#
-    );
-
-    let many_prompt = format!(
+pub fn answer_article_prompt(context: &str) -> String {
+    format!(
         r#"{context}####
 
 Your job is to answer a query about a codebase using the information above.
@@ -226,9 +206,7 @@ println!("hello world!");
   - Note: the line range is inclusive
 - When writing example code blocks, use `<GeneratedCode>`, and when quoting existing code, use `<QuotedCode>`.
 - You MUST use XML code blocks instead of markdown."#
-    );
-
-        many_prompt
+    )
 }
 
 pub fn hypothetical_document_prompt(query: &str) -> String {
