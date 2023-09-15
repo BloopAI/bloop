@@ -362,5 +362,8 @@
 	"Manage subscription": "管理订阅",
 	"You've run out of free usage for today, please wait for your quota to reset or upgrade for unlimited usage": "您今天的免费使用时间用完了，请等待您的配额重置或升级无限制",
 	"This file is currently unavailable. Ability to generate will be resumed as soon as this issue is resolved.": "此文件当前不可用。 一旦解决此问题，就会恢复产生的能力。",
-	"Search code studio...": "搜索代码工作室..."
+	"Search code studio...": "搜索代码工作室...",
+	"Index": "指数",
+	"bloop automatically excludes certain files from the indexing. The reason for this might be that the file is to big or is in our list of excluded file types.": "Bloop自动将某些文件从索引中排除。 这样做的原因可能是该文件属于大型或在我们排除的文件类型列表中。",
+	"Force index": "力索引"
 }

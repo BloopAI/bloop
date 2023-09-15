@@ -121,6 +121,7 @@ export interface Directory {
 export interface DirectoryFileEntryData {
   File: {
     lang: string;
+    indexed: boolean;
   };
 }
 

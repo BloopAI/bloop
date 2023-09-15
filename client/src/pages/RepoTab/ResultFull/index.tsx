@@ -10,7 +10,7 @@ import { Trans } from 'react-i18next';
 import FileIcon from '../../../components/FileIcon';
 import Breadcrumbs from '../../../components/Breadcrumbs';
 import CodeFull from '../../../components/CodeBlock/CodeFull';
-import { getHoverables } from '../../../services/api';
+import { forceFileToBeIndexed, getHoverables } from '../../../services/api';
 import { mapFileResult, mapRanges } from '../../../mappers/results';
 import { FullResult } from '../../../types/results';
 import {
@@ -30,6 +30,10 @@ import { Sparkles } from '../../../icons';
 import { ChatContext } from '../../../context/chatContext';
 import { UIContext } from '../../../context/uiContext';
 import AddStudioContext from '../../../components/AddStudioContext';
+import { SyncStatus } from '../../../types/general';
+import { RepositoriesContext } from '../../../context/repositoriesContext';
+import LiteLoaderContainer from '../../../components/Loaders/LiteLoader';
+import { DeviceContext } from '../../../context/deviceContext';
 import FileExplanation from './FileExplanation';
 
 type Props = {
@@ -39,6 +43,8 @@ type Props = {
   selectedBranch: string | null;
   recordId: number;
   threadId: string;
+  path?: string;
+  refetchFile: () => void;
 };
 
 const SIDEBAR_WIDTH = 324;
@@ -54,18 +60,65 @@ const ResultFull = ({
   selectedBranch,
   recordId,
   threadId,
+  refetchFile,
+  path,
 }: Props) => {
   const { navigateFullResult, navigateRepoPath } = useAppNavigation();
   const [result, setResult] = useState<FullResult | null>(null);
   const { data: answer } = useConversation(threadId, recordId);
-  const {
-    setSubmittedQuery,
-    setChatOpen,
-    setSelectedLines,
-    setConversation,
-    setThreadId,
-  } = useContext(ChatContext.Setters);
+  const { setSubmittedQuery, setChatOpen, setConversation, setThreadId } =
+    useContext(ChatContext.Setters);
   const { setRightPanelOpen } = useContext(UIContext.RightPanel);
+  const { repositories } = useContext(RepositoriesContext);
+  const { tab } = useContext(UIContext.Tab);
+  const { isSelfServe } = useContext(DeviceContext);
+  const [indexRequested, setIndexRequested] = useState(false);
+  const [isIndexing, setIsIndexing] = useState(false);
+
+  const repoStatus = useMemo(() => {
+    return (
+      repositories?.find((r) => r.ref === tab.repoRef)?.sync_status ||
+      SyncStatus.Done
+    );
+  }, [repositories, tab.repoRef]);
+
+  useEffect(() => {
+    if (
+      [
+        SyncStatus.Indexing,
+        SyncStatus.Queued,
+        SyncStatus.Syncing,
+        SyncStatus.Indexing,
+      ].includes(repoStatus) &&
+      indexRequested
+    ) {
+      setIsIndexing(true);
+    } else {
+      if (isIndexing) {
+        setTimeout(() => {
+          refetchFile();
+          setIsIndexing(false);
+          setIndexRequested(false);
+        }, 500);
+      }
+    }
+  }, [repoStatus, isIndexing, refetchFile]);
+
+  const onIndexRequested = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (data?.data?.[0]?.data?.relative_path) {
+        forceFileToBeIndexed(tab.repoRef, data?.data?.[0]?.data?.relative_path);
+        setIndexRequested(true);
+        setTimeout(() => refetchFile(), 1000);
+      }
+    },
+    [tab.repoRef, data?.data?.[0]?.data?.relative_path],
+  );
+
+  useEffect(() => {
+    setIndexRequested(false);
+  }, [path]);
 
   useEffect(() => {
     if (!data || data?.data?.[0]?.kind !== 'file') {
@@ -223,7 +276,7 @@ const ResultFull = ({
                 </div>
               ) : result.language === 'jupyter notebook' ? (
                 <IpynbRenderer data={result.code} />
-              ) : (
+              ) : !isSelfServe || data?.data?.[0]?.data?.indexed ? (
                 <CodeFull
                   code={result.code}
                   language={result.language}
@@ -242,6 +295,34 @@ const ResultFull = ({
                   }
                   repoName={result.repoName}
                 />
+              ) : (
+                <div className="flex flex-1 items-center justify-center">
+                  <div className="flex flex-col gap-3 max-w-sm items-center">
+                    <p className="text-label-title body-m-strong">
+                      <Trans>File not indexed</Trans>
+                    </p>
+                    <p className="text-label-base text-center body-s">
+                      <Trans>
+                        bloop automatically excludes certain files from the
+                        indexing. The reason for this might be that the file is
+                        to big or is in our list of excluded file types.
+                      </Trans>
+                    </p>
+                    {!indexRequested ? (
+                      <Button
+                        variant="secondary"
+                        className="mt-6"
+                        onClick={onIndexRequested}
+                      >
+                        <Trans>Force index</Trans>
+                      </Button>
+                    ) : (
+                      <div className="text-bg-main mt-6">
+                        <LiteLoaderContainer sizeClassName="w-8 h-8" />
+                      </div>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
           </div>
