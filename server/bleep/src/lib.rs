@@ -51,6 +51,7 @@ mod collector;
 mod config;
 mod db;
 mod env;
+mod history;
 mod llm_gateway;
 mod remotes;
 mod repo;
