@@ -82,13 +82,13 @@ impl Default for BranchFilter {
 }
 
 /// Configure file filters
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq, Eq)]
 pub struct FileFilterConfig {
     rules: Vec<FileFilterRule>,
 }
 
 /// Rules for what gets included in a repository
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum FileFilterRule {
     /// Include file with the exact relative path

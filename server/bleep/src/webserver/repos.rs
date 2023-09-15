@@ -2,7 +2,7 @@ use std::{collections::HashSet, hash::Hash, time::Duration};
 
 use crate::{
     background::QueuedRepoStatus,
-    repo::{Backend, BranchFilterConfig, RepoRef, Repository, SyncStatus},
+    repo::{Backend, BranchFilterConfig, FileFilterConfig, RepoRef, Repository, SyncStatus},
     state::RepositoryPool,
     Application,
 };
@@ -35,6 +35,7 @@ pub(crate) struct Repo {
     pub(super) last_index: Option<DateTime<Utc>>,
     pub(super) most_common_lang: Option<String>,
     pub(super) branch_filter: BranchFilterConfig,
+    pub(super) file_filter: FileFilterConfig,
     pub(super) branches: Vec<Branch>,
 }
 
@@ -134,6 +135,7 @@ impl From<(&RepoRef, &Repository)> for Repo {
                 ),
             },
             most_common_lang: repo.most_common_lang.clone(),
+            file_filter: repo.file_filter.clone(),
             branch_filter,
             branches,
         }
