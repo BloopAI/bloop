@@ -1,3 +1,4 @@
+use anyhow::{bail, Context};
 use either::Either;
 use tokio::sync::OwnedSemaphorePermit;
 use tracing::{debug, error, info, warn};
@@ -7,6 +8,7 @@ use crate::{
     indexes,
     remotes::RemoteError,
     repo::{Backend, RepoError, RepoMetadata, RepoRef, Repository, SyncStatus},
+    state::RepositoryPool,
     Application,
 };
 
@@ -178,6 +180,19 @@ impl SyncHandle {
             return Err(SyncError::Cancelled);
         }
 
+        let tutorial_questions = {
+            let db = self.app.sql.clone();
+            let llm_gateway = self.app.llm_gateway_client();
+            let repo_pool = self.app.repo_pool.clone();
+            let reporef = self.reporef.clone();
+
+            tokio::task::spawn(generate_tutorial_questions(
+                db,
+                llm_gateway,
+                repo_pool,
+                reporef,
+            ))
+        };
         let indexed = self.index().await;
         let status = match indexed {
             Ok(Either::Left(status)) => Some(status),
@@ -186,6 +201,10 @@ impl SyncHandle {
                 self.app.repo_pool.update(&self.reporef, |_k, repo| {
                     repo.sync_done_with(self.new_branch_filters.as_ref(), state)
                 });
+
+                if let Err(err) = tutorial_questions.await {
+                    error!(?err, "failed to generate tutorial questions");
+                }
 
                 // technically `sync_done_with` does this, but we want to send notifications
                 self.set_status(|_| SyncStatus::Done)
@@ -446,4 +465,56 @@ impl SyncHandle {
             repo.expect("repo was already deleted")
         }
     }
+}
+
+async fn generate_tutorial_questions(
+    db: crate::db::SqlDb,
+    llm_gateway: anyhow::Result<crate::llm_gateway::Client>,
+    repo_pool: RepositoryPool,
+    reporef: RepoRef,
+) -> anyhow::Result<()> {
+    let repo_str = reporef.to_string();
+
+    let rows = sqlx::query! {
+        "SELECT * FROM tutorial_questions \
+         WHERE repo_ref = ?",
+        repo_str,
+    }
+    .fetch_all(db.as_ref())
+    .await?;
+
+    if !rows.is_empty() {
+        return Ok(());
+    }
+
+    let Ok(llm_gateway) = llm_gateway
+    else {
+	bail!("badly configured llm gw");
+    };
+
+    // Due to `Send` issues on the gix side, we need to split this off quite brutally.
+    let latest_commits =
+        tokio::task::spawn_blocking(|| crate::history::latest_commits(repo_pool, reporef, None))
+            .await
+            .context("threads error")??;
+
+    let suggestions =
+        crate::history::expand_commits_to_suggestions(latest_commits, &llm_gateway).await?;
+
+    let mut tx = db.begin().await?;
+    for q in suggestions {
+        _ = sqlx::query!(
+            "INSERT INTO tutorial_questions (question, tag, repo_ref) \
+             VALUES (?, ?, ?)",
+            q.question,
+            q.tag,
+            repo_str,
+        )
+        .execute(&mut tx)
+        .await?;
+    }
+
+    tx.commit().await?;
+
+    Ok(())
 }

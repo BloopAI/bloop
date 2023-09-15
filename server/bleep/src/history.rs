@@ -14,7 +14,7 @@ use serde::Serialize;
 use crate::{
     llm_gateway::{self, api::Message},
     repo::RepoRef,
-    Application,
+    state::RepositoryPool,
 };
 
 #[derive(Default)]
@@ -31,8 +31,8 @@ pub struct DiffStat {
 
 #[derive(Serialize)]
 pub struct Question {
-    text: String,
-    tag: String,
+    pub question: String,
+    pub tag: String,
 }
 
 #[derive(Debug)]
@@ -225,12 +225,12 @@ pub async fn expand_commits_to_suggestions(
 }
 
 pub fn latest_commits(
-    app: Application,
+    repo_pool: RepositoryPool,
     repo_ref: RepoRef,
     branch: Option<String>,
 ) -> Result<Vec<DiffStat>> {
     let repo = gix::open(
-        app.repo_pool
+        repo_pool
             .read(&repo_ref, |_k, v| v.disk_path.clone())
             .context("invalid git repo")?,
     )
@@ -294,10 +294,7 @@ async fn generate_suggestion(
         .context("tag failed")
         .unwrap();
 
-    Some(Question {
-        text: question,
-        tag,
-    })
+    Some(Question { question, tag })
 }
 
 async fn classify_commit(llm_gateway: &llm_gateway::Client, commit: &DiffStat) -> Result<bool> {

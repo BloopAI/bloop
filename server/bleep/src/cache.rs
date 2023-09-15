@@ -243,8 +243,8 @@ impl<'a> FileCache<'a> {
                 let hash = format!("{}{}", key.0, key.1);
                 sqlx::query!(
                     "INSERT INTO file_cache \
-		 (repo_ref, cache_hash) \
-                 VALUES (?, ?)",
+                    (repo_ref, cache_hash) \
+                    VALUES (?, ?)",
                     repo_str,
                     hash,
                 )
