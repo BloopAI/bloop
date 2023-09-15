@@ -3,7 +3,7 @@ use std::sync::Arc;
 use bleep::{analytics, Application, Configuration, Environment};
 use once_cell::sync::OnceCell;
 use sentry::ClientInitGuard;
-use tracing::{error, warn};
+use tracing::error;
 
 use super::{Manager, Payload, Runtime};
 

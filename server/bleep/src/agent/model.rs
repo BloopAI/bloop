@@ -18,9 +18,9 @@ pub struct AnswerModel {
     pub history_headroom: usize,
 }
 
-pub const GPT_3_5_FINETUNED: AnswerModel = AnswerModel {
+pub const GPT_3_5_TURBO_FINETUNED: AnswerModel = AnswerModel {
     tokenizer: "gpt-3.5-turbo-0613",
-    model_name: "gpt-3.5-finetuned",
+    model_name: "gpt-3.5-turbo-finetuned",
     answer_headroom: 512,
     prompt_headroom: 1600,
     history_headroom: 1024,
@@ -40,7 +40,7 @@ impl FromStr for AnswerModel {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "gpt-4" => Ok(GPT_4),
-            "gpt-3.5-finetuned" | _ => Ok(GPT_3_5_FINETUNED),
+            "gpt-3.5-turbo-finetuned" | _ => Ok(GPT_3_5_TURBO_FINETUNED),
         }
     }
 }

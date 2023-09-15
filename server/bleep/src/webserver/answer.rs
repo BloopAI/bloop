@@ -85,7 +85,7 @@ fn default_thread_id() -> uuid::Uuid {
 }
 
 fn default_model() -> agent::model::AnswerModel {
-    agent::model::GPT_3_5_FINETUNED
+    agent::model::GPT_3_5_TURBO_FINETUNED
 }
 
 pub(super) async fn answer(
@@ -394,7 +394,7 @@ pub async fn explain(
         repo_ref: params.repo_ref,
         thread_id: params.thread_id,
         parent_exchange_id: None,
-        model: default_model(),
+        model: agent::model::GPT_4,
     };
 
     let conversation_id = ConversationId {
