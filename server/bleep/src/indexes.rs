@@ -114,7 +114,7 @@ impl Indexes {
             }
 
             if let Some(ref semantic) = semantic {
-                semantic.delete_collection_blocking().await?;
+                semantic.reset_collection_blocking().await?;
             }
         }
         config.source.save_index_version()?;

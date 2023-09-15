@@ -246,7 +246,7 @@ impl Semantic {
         self.embedder.as_ref()
     }
 
-    pub async fn delete_collection_blocking(&self) -> anyhow::Result<()> {
+    pub async fn reset_collection_blocking(&self) -> anyhow::Result<()> {
         _ = self
             .qdrant
             .delete_collection(&self.config.collection_name)
@@ -277,6 +277,13 @@ impl Semantic {
             error!("failed to delete qdrant collection after 60s");
             bail!("deletion failed")
         }
+
+        let CollectionOperationResponse { result, .. } =
+            create_collection(&self.config.collection_name, &self.qdrant)
+                .await
+                .unwrap();
+
+        assert!(result);
 
         Ok(())
     }
