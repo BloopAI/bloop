@@ -46,7 +46,7 @@ pub fn get_last_log_file(config: tauri::State<Configuration>) -> Option<String> 
     let filename = match entries.first() {
         Some(path) => path.path().to_string_lossy().to_string(),
         None => {
-            warn!("No log files found");
+            tracing::warn!("No log files found");
             return None;
         }
     };
