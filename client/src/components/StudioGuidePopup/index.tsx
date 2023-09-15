@@ -43,12 +43,13 @@ const StudioGuidePopup = () => {
         <div className="flex flex-col items-center gap-8 py-8 px-6">
           <div className="flex flex-col gap-3">
             <h4 className="h4 text-label-title">
-              <Trans>Prompt guide</Trans>
+              <Trans>Code Studio</Trans>
             </h4>
             <p className="body-s text-label-base">
               <Trans>
-                Like ChatGPT, bloop responds best to certain prompts. We’ve
-                compiled a really quick guide on how better to prompt bloop.
+                Code Studio helps hobbyists and engineers working on the largest
+                codebases, alike, to collaborate with AI. We recommend watching
+                the guide to maximise your productivity.
               </Trans>
             </p>
           </div>
@@ -58,11 +59,11 @@ const StudioGuidePopup = () => {
             </Button>
             <Button
               onClick={() => {
-                openLink('https://bloop.ai/docs');
+                openLink('https://bloop.ai/docs/code-studio');
                 handlePromptGuideClose();
               }}
             >
-              <Trans>Take a quick look</Trans>
+              <Trans>Watch</Trans>
             </Button>
           </div>
         </div>
