@@ -474,7 +474,6 @@ async fn generate_tutorial_questions(
     reporef: RepoRef,
 ) -> anyhow::Result<()> {
     let repo_str = reporef.to_string();
-
     let rows = sqlx::query! {
         "SELECT * FROM tutorial_questions \
          WHERE repo_ref = ?",
