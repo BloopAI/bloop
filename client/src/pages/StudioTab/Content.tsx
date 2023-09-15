@@ -1,4 +1,11 @@
-import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  memo,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import * as Sentry from '@sentry/react';
 import { Trans } from 'react-i18next';
 import ErrorFallback from '../../components/ErrorFallback';
@@ -17,6 +24,7 @@ import { CodeStudioType, HistoryConversationTurn } from '../../types/api';
 import useResizeableSplitPanel from '../../hooks/useResizeableSplitPanel';
 import { TOKEN_LIMIT } from '../../consts/codeStudio';
 import { Info } from '../../icons';
+import { TabsContext } from '../../context/tabsContext';
 import ContextPanel from './ContextPanel';
 import HistoryPanel from './HistoryPanel';
 import TemplatesPanel from './TemplatesPanel';
@@ -57,11 +65,13 @@ const ContentContainer = ({
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const { leftPanelRef, rightPanelRef, dividerRef, containerRef } =
     useResizeableSplitPanel();
+  const { updateTabName } = useContext(TabsContext);
 
   const refetchCodeStudio = useCallback(
     async (keyToUpdate?: keyof CodeStudioType) => {
       if (tab.key) {
         const resp = await getCodeStudio(tab.key);
+        updateTabName(tab.key, resp.name);
         setCurrentState((prev) => {
           if (JSON.stringify(resp) === JSON.stringify(prev)) {
             return prev;
