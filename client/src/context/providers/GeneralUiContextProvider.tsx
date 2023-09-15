@@ -41,6 +41,7 @@ export const GeneralUiContextProvider = memo(
       !getPlainFromStorage(ONBOARDING_DONE_KEY),
     );
     const [isPromptGuideOpen, setPromptGuideOpen] = useState(false);
+    const [isStudioGuideOpen, setStudioGuideOpen] = useState(false);
     const [isCloudFeaturePopupOpen, setCloudFeaturePopupOpen] = useState(false);
     const [isUpgradePopupOpen, setUpgradePopupOpen] = useState(false);
     const [theme, setTheme] = useState<Theme>(
@@ -115,6 +116,14 @@ export const GeneralUiContextProvider = memo(
       [isPromptGuideOpen],
     );
 
+    const studioContextValue = useMemo(
+      () => ({
+        isStudioGuideOpen,
+        setStudioGuideOpen,
+      }),
+      [isStudioGuideOpen],
+    );
+
     const cloudFeatureContextValue = useMemo(
       () => ({
         isCloudFeaturePopupOpen,
@@ -138,15 +147,17 @@ export const GeneralUiContextProvider = memo(
             <UIContext.GitHubConnected.Provider value={githubContextValue}>
               <UIContext.Theme.Provider value={themeContextValue}>
                 <UIContext.PromptGuide.Provider value={promptContextValue}>
-                  <UIContext.CloudFeaturePopup.Provider
-                    value={cloudFeatureContextValue}
-                  >
-                    <UIContext.UpgradePopup.Provider
-                      value={upgradePopupContextValue}
+                  <UIContext.StudioGuide.Provider value={studioContextValue}>
+                    <UIContext.CloudFeaturePopup.Provider
+                      value={cloudFeatureContextValue}
                     >
-                      {children}
-                    </UIContext.UpgradePopup.Provider>
-                  </UIContext.CloudFeaturePopup.Provider>
+                      <UIContext.UpgradePopup.Provider
+                        value={upgradePopupContextValue}
+                      >
+                        {children}
+                      </UIContext.UpgradePopup.Provider>
+                    </UIContext.CloudFeaturePopup.Provider>
+                  </UIContext.StudioGuide.Provider>
                 </UIContext.PromptGuide.Provider>
               </UIContext.Theme.Provider>
             </UIContext.GitHubConnected.Provider>

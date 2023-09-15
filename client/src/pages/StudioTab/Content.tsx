@@ -1,4 +1,11 @@
-import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  memo,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import * as Sentry from '@sentry/react';
 import { Trans } from 'react-i18next';
 import ErrorFallback from '../../components/ErrorFallback';
@@ -17,6 +24,8 @@ import { CodeStudioType, HistoryConversationTurn } from '../../types/api';
 import useResizeableSplitPanel from '../../hooks/useResizeableSplitPanel';
 import { TOKEN_LIMIT } from '../../consts/codeStudio';
 import { Info } from '../../icons';
+import { getPlainFromStorage, STUDIO_GUIDE_DONE } from '../../services/storage';
+import { UIContext } from '../../context/uiContext';
 import ContextPanel from './ContextPanel';
 import HistoryPanel from './HistoryPanel';
 import TemplatesPanel from './TemplatesPanel';
@@ -48,6 +57,7 @@ const ContentContainer = ({
     type: StudioRightPanelType.CONVERSATION,
     data: null,
   });
+  const { setStudioGuideOpen } = useContext(UIContext.StudioGuide);
   const [isAddContextOpen, setAddContextOpen] = useState(false);
   const [currentState, setCurrentState] =
     useState<CodeStudioType>(emptyCodeStudio);
@@ -75,6 +85,12 @@ const ContentContainer = ({
     },
     [tab.key],
   );
+
+  useEffect(() => {
+    if (!getPlainFromStorage(STUDIO_GUIDE_DONE)) {
+      setStudioGuideOpen(true);
+    }
+  }, []);
 
   useEffect(() => {
     if (isActive) {
