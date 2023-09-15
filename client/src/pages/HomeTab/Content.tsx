@@ -105,6 +105,13 @@ const HomePage = ({ randomKey }: { randomKey?: any }) => {
     setAddReposOpen('studio');
   }, []);
 
+  const handleNewStudio = useCallback(() => {
+    postCodeStudio().then((id) => {
+      handleAddStudioTab('New Studio', id);
+      refreshCodeStudios();
+    });
+  }, []);
+
   return (
     <PageTemplate renderPage="home">
       <div className="w-full flex flex-col mx-auto max-w-6.5xl">
@@ -118,7 +125,7 @@ const HomePage = ({ randomKey }: { randomKey?: any }) => {
             {!isSelfServe && (
               <AddRepoCard type="local" onClick={setAddReposOpen} />
             )}
-            <AddRepoCard type="studio" onClick={setAddReposOpen} />
+            <AddRepoCard type="studio" onClick={handleNewStudio} />
           </div>
         </div>
         <div className="overflow-auto">
@@ -170,11 +177,6 @@ const HomePage = ({ randomKey }: { randomKey?: any }) => {
                 patchCodeStudio(studioToEdit.id, { name }).then(
                   refreshCodeStudios,
                 );
-              } else {
-                postCodeStudio(name).then((id) => {
-                  handleAddStudioTab(name, id);
-                  refreshCodeStudios();
-                });
               }
             } else if (isSubmitted) {
               fetchRepos();
