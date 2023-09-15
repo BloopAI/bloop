@@ -244,6 +244,13 @@ impl Semantic {
     pub fn embedder(&self) -> &dyn Embedder {
         self.embedder.as_ref()
     }
+
+    pub async fn has_collection(&self) -> anyhow::Result<bool> {
+        self.qdrant
+            .has_collection(&self.config.collection_name)
+            .await
+    }
+
     pub async fn delete_collection(&self) -> anyhow::Result<()> {
         _ = self
             .qdrant
