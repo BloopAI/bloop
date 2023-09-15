@@ -728,6 +728,14 @@ async fn populate_studio_name(
         .try_collect::<String>()
         .await?;
 
+    // Normalize studio name by removing:
+    // - surrounding whitespace
+    // - enclosing quotation marks
+    // - the prefix phrase "Understanding "
+    let name = name.trim();
+    let name = name.trim_matches('"');
+    let name = name.trim_start_matches("Understanding ");
+
     debug!("populate studio `{studio_id}` with LLM-generated name: `{name}`");
 
     sqlx::query!("UPDATE studios SET name = ? WHERE id = ?", name, studio_id)
