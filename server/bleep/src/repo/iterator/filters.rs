@@ -24,7 +24,10 @@ pub enum BranchFilterConfig {
 
 impl BranchFilterConfig {
     /// Extend the existing list if `Select`, or override the branch config with the new one.
-    pub(crate) fn patch(&self, old: Option<&BranchFilterConfig>) -> Option<BranchFilterConfig> {
+    pub(crate) fn patch_into(
+        &self,
+        old: Option<&BranchFilterConfig>,
+    ) -> Option<BranchFilterConfig> {
         let Some(BranchFilterConfig::Select(ref old_list)) = old
         else {
 	    return Some(self.clone());
@@ -88,7 +91,7 @@ pub struct FileFilterConfig {
 }
 
 /// Rules for what gets included in a repository
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Hash, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum FileFilterRule {
     /// Include file with the exact relative path
@@ -102,6 +105,41 @@ pub enum FileFilterRule {
 
     /// Exclude files matchin the regex pattern
     ExcludeRegex(String),
+}
+
+impl FileFilterConfig {
+    pub(crate) fn patch_into(&self, old: &FileFilterConfig) -> FileFilterConfig {
+        let mut rules = old.rules.iter().cloned().collect::<HashSet<_>>();
+
+        for rule in &self.rules {
+            if rules.contains(rule) {
+                continue;
+            }
+
+            match rule {
+                r @ FileFilterRule::IncludeFile(f) => {
+                    rules.remove(&FileFilterRule::ExcludeFile(f.to_string()));
+                    rules.insert(r.clone());
+                }
+                r @ FileFilterRule::IncludeRegex(x) => {
+                    rules.remove(&FileFilterRule::ExcludeRegex(x.to_string()));
+                    rules.insert(r.clone());
+                }
+                r @ FileFilterRule::ExcludeFile(f) => {
+                    rules.remove(&FileFilterRule::IncludeFile(f.to_string()));
+                    rules.insert(r.clone());
+                }
+                r @ FileFilterRule::ExcludeRegex(x) => {
+                    rules.remove(&FileFilterRule::IncludeRegex(x.to_string()));
+                    rules.insert(r.clone());
+                }
+            }
+        }
+
+        Self {
+            rules: rules.into_iter().collect(),
+        }
+    }
 }
 
 /// Compiled file filter.

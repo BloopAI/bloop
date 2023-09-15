@@ -225,11 +225,11 @@ impl SyncHandle {
                 .unwrap();
 
             if let Some(ref bf) = self.filter_updates.branch_filter {
-                orig.branch_filter = bf.patch(orig.branch_filter.as_ref());
+                orig.branch_filter = bf.patch_into(orig.branch_filter.as_ref());
             }
 
             if let Some(ref ff) = self.filter_updates.file_filter {
-                orig.file_filter = ff.clone();
+                orig.file_filter = ff.patch_into(&orig.file_filter);
             }
             orig
         };

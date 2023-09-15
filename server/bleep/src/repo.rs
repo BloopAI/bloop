@@ -297,11 +297,11 @@ impl Repository {
             .or_else(|| self.most_common_lang.take());
 
         if let Some(ref bf) = filter_update.branch_filter {
-            self.branch_filter = bf.patch(self.branch_filter.as_ref());
+            self.branch_filter = bf.patch_into(self.branch_filter.as_ref());
         }
 
         if let Some(ref ff) = filter_update.file_filter {
-            self.file_filter = ff.clone();
+            self.file_filter = ff.patch_into(&self.file_filter);
         }
 
         self.sync_status = SyncStatus::Done;

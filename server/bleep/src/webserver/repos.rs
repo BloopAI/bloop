@@ -158,6 +158,7 @@ impl Repo {
             last_index: None,
             most_common_lang: None,
             branch_filter: crate::repo::BranchFilterConfig::Select(vec![]),
+            file_filter: Default::default(),
             branches: vec![],
         }
     }
@@ -175,6 +176,9 @@ impl PartialEq for Repo {
     }
 }
 
+// since it's an output type, there's no downside to having
+// excessively large variants
+#[allow(clippy::large_enum_variant)]
 #[derive(Serialize)]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum ReposResponse {
