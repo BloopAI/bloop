@@ -378,6 +378,36 @@
     },
     "query": "SELECT messages, context FROM studio_snapshots WHERE id = ?"
   },
+  "69c8b59ce4be3fc6edb58563bf69f55ea5dca4646b0ba05820e5d1b2b07c3c82": {
+    "describe": {
+      "columns": [
+        {
+          "name": "repo_ref",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "question",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "tag",
+          "ordinal": 2,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT * FROM tutorial_questions WHERE repo_ref = ?"
+  },
   "69d67f761ba7fb01ffc310f12cd181acb744b76de90e33c039ce7030c27642bc": {
     "describe": {
       "columns": [
@@ -540,6 +570,16 @@
     },
     "query": "SELECT ss.id as 'id!', ss.modified_at, ss.context, ss.messages\n        FROM studio_snapshots ss\n        JOIN studios s ON s.id = ss.studio_id AND s.user_id = ?\n        WHERE ss.studio_id = ?\n        ORDER BY modified_at DESC"
   },
+  "881aa78dfa3cd1bc3aa7a6edb8281aec5a972c1f53607d25c4e1f6d03cd3faef": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 3
+      }
+    },
+    "query": "INSERT INTO tutorial_questions (question, tag, repo_ref) VALUES (?, ?, ?)"
+  },
   "8f99eede8e6c1fb27acc2524c00cebbc2d4e73db8af05599521e3b00c621347f": {
     "describe": {
       "columns": [],
@@ -639,6 +679,30 @@
       }
     },
     "query": "SELECT s.id, s.name, ss.context, ss.messages, ss.modified_at\n        FROM studios s\n        INNER JOIN studio_snapshots ss ON ss.id = ?\n        WHERE s.id = ? AND s.user_id = ?"
+  },
+  "abf57821a0ac6f855a9dc677de87beac319610add247dbff2f4ce9a2eec3ce2a": {
+    "describe": {
+      "columns": [
+        {
+          "name": "question",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "tag",
+          "ordinal": 1,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT question, tag FROM tutorial_questions WHERE repo_ref = ?"
   },
   "ac1299cb16ae8ff77ded6a11241b84414352c12e55ce40b89e5b85109c7dc523": {
     "describe": {

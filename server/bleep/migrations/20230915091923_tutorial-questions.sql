@@ -1,5 +1,5 @@
 CREATE TABLE tutorial_questions (
-    repo_ref TEXT PRIMARY KEY NOT NULL,
-    question TEXT,
-    tag TEXT
+    repo_ref TEXT NOT NULL,
+    question TEXT NOT NULL,
+    tag TEXT NOT NULL
 );
