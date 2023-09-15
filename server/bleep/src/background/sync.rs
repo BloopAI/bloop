@@ -484,22 +484,28 @@ async fn generate_tutorial_questions(
     .await?;
 
     if !rows.is_empty() {
+        debug!(%reporef, "skipping tutorial questions, already have some");
         return Ok(());
     }
 
+    debug!(%reporef, "generating tutorial questions");
     let Ok(llm_gateway) = llm_gateway
     else {
 	bail!("badly configured llm gw");
     };
 
     // Due to `Send` issues on the gix side, we need to split this off quite brutally.
-    let latest_commits =
+    let latest_commits = {
+        let reporef = reporef.clone();
         tokio::task::spawn_blocking(|| crate::history::latest_commits(repo_pool, reporef, None))
             .await
-            .context("threads error")??;
+            .context("threads error")??
+    };
 
     let suggestions =
         crate::history::expand_commits_to_suggestions(latest_commits, &llm_gateway).await?;
+
+    debug!(%reporef, count=suggestions.len(), "found suggestions");
 
     let mut tx = db.begin().await?;
     for q in suggestions {
@@ -516,5 +522,6 @@ async fn generate_tutorial_questions(
 
     tx.commit().await?;
 
+    debug!(%reporef, "suggestions committed");
     Ok(())
 }

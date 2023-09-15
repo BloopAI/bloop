@@ -10,6 +10,7 @@ use gix::{
     Commit, Id,
 };
 use serde::Serialize;
+use tracing::trace;
 
 use crate::{
     llm_gateway::{self, api::Message},
@@ -205,11 +206,10 @@ pub async fn expand_commits_to_suggestions(
             });
 
         commits.extend(
-            futures::future::join_all(
-                drained
-                    .into_iter()
-                    .map(|commit| generate_suggestion(llm_gateway, commit)),
-            )
+            futures::future::join_all(drained.into_iter().map(|commit| {
+                trace!(?commit.commit_message, "generating suggestions");
+                generate_suggestion(llm_gateway, commit)
+            }))
             .await
             .into_iter()
             .flatten(),
