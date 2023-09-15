@@ -65,12 +65,33 @@ export const parseFilters = (input: string) => {
   return filters;
 };
 
-export const getFileExtensionForLang = (lang: string) => {
+export const getFileExtensionForLang = (lang: string, lowercased?: boolean) => {
   if (!lang) {
     return 'default';
   }
   // @ts-ignore
-  return 'index' + langs[lang]?.[0];
+  let ext = langs[lang]?.[0];
+  if (lowercased) {
+    const key = Object.keys(langs).find((key) => key.toLowerCase() === lang);
+    if (key) {
+      // @ts-ignore
+      ext = langs[key]?.[0];
+    }
+  }
+  return 'index' + ext;
+};
+
+export const getPrettyLangName = (lang: string) => {
+  switch (lang) {
+    case 'js':
+    case 'jsx':
+      return 'JavaScript';
+    case 'ts':
+    case 'tsx':
+      return 'TypeScript';
+    default:
+      return Object.keys(langs).find((key) => key.toLowerCase() === lang);
+  }
 };
 
 export const isWindowsPath = (path: string) => path.includes('\\');
@@ -318,6 +339,16 @@ export function humanFileSize(
   return bytes.toFixed(dp) + ' ' + units[u];
 }
 
+export function humanNumber(num: number) {
+  if (!num) {
+    return num;
+  }
+  if (num < 1000) {
+    return num.toString();
+  }
+  return `${parseFloat((num / 1000).toFixed(1))}k`;
+}
+
 export const getDateFnsLocale = (locale: LocaleType) => {
   switch (locale) {
     case 'ja':
@@ -330,3 +361,30 @@ export const getDateFnsLocale = (locale: LocaleType) => {
       return undefined;
   }
 };
+
+export function mergeRanges(ranges: [number, number][]): [number, number][] {
+  ranges.sort((a, b) => a[0] - b[0]);
+
+  const mergedRanges: [number, number][] = [];
+
+  if (ranges.length === 0) {
+    return mergedRanges;
+  }
+
+  let currentRange = ranges[0];
+
+  for (let i = 1; i < ranges.length; i++) {
+    const nextRange = ranges[i];
+
+    if (nextRange[0] <= currentRange[1] + 1) {
+      currentRange[1] = Math.max(currentRange[1], nextRange[1]);
+    } else {
+      mergedRanges.push(currentRange);
+      currentRange = nextRange;
+    }
+  }
+
+  mergedRanges.push(currentRange);
+
+  return mergedRanges;
+}

@@ -20,3 +20,5 @@ export const highlightColors = [
   [145, 49, 117],
   [0, 234, 211],
 ];
+
+export const CODE_LINE_HEIGHT = 20;

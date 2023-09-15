@@ -1,31 +1,37 @@
 import React, { ChangeEvent, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MenuItemType, RepoUi } from '../../types/general';
+import { CodeStudioShortType, MenuItemType, RepoUi } from '../../types/general';
 import TextInput from '../TextInput';
 import { DropdownWithIcon } from '../Dropdown';
 import { Clock, SortAlphabetical } from '../../icons';
 import RepoList from './index';
 
-type Props = {
+type GeneralProps = {
   isLoading?: boolean;
-  repos: RepoUi[];
   containerClassName?: string;
-  source: 'local' | 'GitHub';
-  onSync?: () => void;
-  onFolderChange?: () => void;
+  onSync?: (refOrId: string) => void;
 };
 
-const SearchableRepoList = ({
-  repos,
-  isLoading,
-  containerClassName,
-  source,
-  onSync,
-  onFolderChange,
-}: Props) => {
+type StudioProps = {
+  type: 'studio';
+  items: CodeStudioShortType[];
+  onFolderChange?: never;
+} & GeneralProps;
+
+type RepoProps = {
+  type: 'local' | 'GitHub';
+  items: RepoUi[];
+  onFolderChange?: () => void;
+} & GeneralProps;
+
+type Props = StudioProps | RepoProps;
+
+const SearchableRepoList = ({ containerClassName, ...restProps }: Props) => {
   const { t } = useTranslation();
   const [filter, setFilter] = useState('');
-  const [sortBy, setSortBy] = useState<'name' | 'last_updated'>('name');
+  const [sortBy, setSortBy] = useState<'name' | 'last_updated'>(
+    restProps.type !== 'studio' ? 'name' : 'last_updated',
+  );
 
   const handleChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     setFilter(e.target.value);
@@ -34,7 +40,8 @@ const SearchableRepoList = ({
   return (
     <div
       className={`flex flex-col overflow-auto gap-8 ${
-        repos.filter((r) => r.name.includes(filter)).length > 3
+        restProps.type !== 'studio' &&
+        restProps.items.filter((r) => r.name.includes(filter)).length > 3
           ? 'fade-bottom'
           : ''
       } ${containerClassName || ''}`}
@@ -45,10 +52,14 @@ const SearchableRepoList = ({
           value={filter}
           name="filter"
           onChange={handleChange}
-          placeholder={t('Search repository...')}
+          placeholder={
+            restProps.type === 'studio'
+              ? t('Search code studio...')
+              : t('Search repository...')
+          }
           variant="filled"
         />
-        {source !== 'local' && (
+        {restProps.type !== 'local' && (
           <DropdownWithIcon
             btnVariant="secondary"
             items={[
@@ -70,15 +81,7 @@ const SearchableRepoList = ({
           />
         )}
       </div>
-      <RepoList
-        repos={repos}
-        source={source}
-        filter={filter}
-        sortBy={sortBy}
-        isLoading={isLoading}
-        onSync={onSync}
-        onFolderChange={onFolderChange}
-      />
+      <RepoList {...restProps} filter={filter} sortBy={sortBy} />
     </div>
   );
 };

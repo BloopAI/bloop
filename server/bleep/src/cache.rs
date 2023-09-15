@@ -1,11 +1,15 @@
 use std::{
+    collections::HashSet,
+    ops::Deref,
     sync::{Arc, RwLock},
     time::Instant,
 };
 
 use qdrant_client::qdrant::{PointId, PointStruct};
+use rayon::prelude::ParallelIterator;
+use scc::hash_map::Entry;
 use sqlx::Sqlite;
-use tracing::{error, trace};
+use tracing::{error, info, trace, warn};
 use uuid::Uuid;
 
 use crate::{
@@ -19,10 +23,19 @@ use crate::{
 use super::db::SqlDb;
 
 #[derive(serde::Serialize, serde::Deserialize, Eq)]
-pub(crate) struct FreshValue<T> {
+pub struct FreshValue<T> {
     // default value is `false` on deserialize
     pub(crate) fresh: bool,
     pub(crate) value: T,
+}
+
+impl<T: Default> FreshValue<T> {
+    fn fresh_default() -> Self {
+        Self {
+            fresh: true,
+            value: Default::default(),
+        }
+    }
 }
 
 impl<T> PartialEq for FreshValue<T>
@@ -52,7 +65,75 @@ impl<T> From<T> for FreshValue<T> {
 /// Snapshot of the current state of a FileCache
 /// Since it's atomically (as in ACID) read from SQLite, this will be
 /// representative at a single point in time
-pub(crate) type FileCacheSnapshot = Arc<scc::HashMap<String, FreshValue<()>>>;
+pub struct FileCacheSnapshot<'a> {
+    snapshot: Arc<scc::HashMap<CacheKeys, FreshValue<()>>>,
+    parent: &'a FileCache<'a>,
+}
+
+/// CacheKeys unifies the different keys to different databases.
+///
+/// Different layers of cache use different keys.
+///
+/// Tantivy keys are more specific. Since in Tantivy we can't update
+/// an existing record, all cache keys identify a record in the
+/// database universally (as in, in space & time).
+///
+/// In QDrant, however, it is possible to update existing records,
+/// therefore the cache key is less strong. We use the weaker key to
+/// identify existing, similar records, and update them with a
+/// refreshed property set.
+///
+/// For the specific calculation of what goes into these keys, take a
+/// look at
+/// [`Workload::cache_keys`][crate::indexes::file::Workload::cache_keys]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+pub struct CacheKeys(String, String);
+
+impl CacheKeys {
+    pub fn new(semantic: impl Into<String>, tantivy: impl Into<String>) -> Self {
+        Self(semantic.into(), tantivy.into())
+    }
+
+    pub fn tantivy(&self) -> &str {
+        &self.1
+    }
+
+    pub fn semantic(&self) -> &str {
+        &self.0
+    }
+}
+
+impl<'a> FileCacheSnapshot<'a> {
+    pub(crate) fn parent(&'a self) -> &'a FileCache<'a> {
+        self.parent
+    }
+
+    #[tracing::instrument(skip(self))]
+    pub(crate) fn is_fresh(&self, keys: &CacheKeys) -> bool {
+        match self.snapshot.entry(keys.clone()) {
+            Entry::Occupied(mut val) => {
+                val.get_mut().fresh = true;
+
+                trace!("cache hit");
+                true
+            }
+            Entry::Vacant(val) => {
+                _ = val.insert_entry(FreshValue::fresh_default());
+
+                trace!("cache miss");
+                false
+            }
+        }
+    }
+}
+
+impl<'a> Deref for FileCacheSnapshot<'a> {
+    type Target = scc::HashMap<CacheKeys, FreshValue<()>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.snapshot
+    }
+}
 
 /// Manage the SQL cache for a repository, establishing a
 /// content-addressed space for files in it.
@@ -82,7 +163,8 @@ impl<'a> FileCache<'a> {
         }
     }
 
-    pub(crate) async fn retrieve(&self) -> FileCacheSnapshot {
+    /// Retrieve a file-level snapshot of the cache for the repository in scope.
+    pub(crate) async fn retrieve(&'a self) -> FileCacheSnapshot<'a> {
         let repo_str = self.reporef.to_string();
         let rows = sqlx::query! {
             "SELECT cache_hash FROM file_cache \
@@ -94,40 +176,107 @@ impl<'a> FileCache<'a> {
 
         let output = scc::HashMap::default();
         for row in rows.into_iter().flatten() {
-            _ = output.insert(row.cache_hash, FreshValue::stale(()));
+            let (semantic_hash, tantivy_hash) = row.cache_hash.split_at(64);
+            _ = output.insert(
+                CacheKeys::new(semantic_hash, tantivy_hash),
+                FreshValue::stale(()),
+            );
         }
 
-        output.into()
+        FileCacheSnapshot {
+            parent: self,
+            snapshot: output.into(),
+        }
     }
 
-    pub(crate) async fn persist(&self, cache: FileCacheSnapshot) -> anyhow::Result<()> {
+    /// Synchronize the cache and DBs.
+    ///
+    /// `delete_tantivy` is a callback that takes a single key and
+    /// records the delete operation in a Tantivy writer.
+    ///
+    /// Semantic deletions are handled internally.
+    pub(crate) async fn synchronize(
+        &'a self,
+        cache: FileCacheSnapshot<'a>,
+        delete_tantivy: impl Fn(&str),
+    ) -> anyhow::Result<()> {
         let mut tx = self.db.begin().await?;
         self.delete_files(&mut tx).await?;
 
-        let keys = {
-            let mut keys = vec![];
-            cache.scan_async(|k, _v| keys.push(k.clone())).await;
-            keys
+        // files that are no longer tracked by the git index are to be removed
+        // from the tantivy & qdrant indices
+        let qdrant_stale = {
+            let mut semantic_fresh = HashSet::new();
+            let mut semantic_all = HashSet::new();
+
+            cache.retain(|k, v| {
+                // check if it's already in to avoid unnecessary copies
+                if v.fresh && !semantic_fresh.contains(k.semantic()) {
+                    semantic_fresh.insert(k.semantic().to_string());
+                }
+
+                if !semantic_all.contains(k.semantic()) {
+                    semantic_all.insert(k.semantic().to_string());
+                }
+
+                // just call the passed closure for tantivy
+                if !v.fresh {
+                    delete_tantivy(k.tantivy())
+                }
+
+                v.fresh
+            });
+
+            semantic_all
+                .difference(&semantic_fresh)
+                .cloned()
+                .collect::<Vec<_>>()
         };
 
-        for hash in keys {
-            let repo_str = self.reporef.to_string();
-            sqlx::query!(
-                "INSERT INTO file_cache \
+        // generate a transaction to push the remaining entries
+        // into the sql cache
+        {
+            let mut next = cache.first_occupied_entry_async().await;
+            while let Some(entry) = next {
+                let key = entry.key();
+                let repo_str = self.reporef.to_string();
+                let hash = format!("{}{}", key.0, key.1);
+                sqlx::query!(
+                    "INSERT INTO file_cache \
 		 (repo_ref, cache_hash) \
                  VALUES (?, ?)",
-                repo_str,
-                hash,
-            )
-            .execute(&mut tx)
-            .await?;
+                    repo_str,
+                    hash,
+                )
+                .execute(&mut tx)
+                .await?;
+
+                next = entry.next();
+            }
+
+            tx.commit().await?;
         }
 
-        tx.commit().await?;
+        // batch-delete points from qdrant index
+        if !qdrant_stale.is_empty() {
+            if let Some(semantic) = self.semantic {
+                let semantic = semantic.clone();
+                let reporef = self.reporef.to_string();
+                tokio::spawn(async move {
+                    semantic
+                        .delete_points_for_hash(reporef.as_str(), qdrant_stale.into_iter())
+                        .await;
+                });
+            }
+        }
+
+        // make sure we generate & commit all remaining embeddings
+        self.batched_embed_or_flush_queue(true).await?;
 
         Ok(())
     }
 
+    /// Delete all caches for the repository in scope.
     pub(crate) async fn delete(&self) -> anyhow::Result<()> {
         let mut tx = self.db.begin().await?;
         self.delete_files(&mut tx).await?;
@@ -137,30 +286,12 @@ impl<'a> FileCache<'a> {
         Ok(())
     }
 
-    async fn delete_files(&self, tx: &mut sqlx::Transaction<'_, Sqlite>) -> anyhow::Result<()> {
-        let repo_str = self.reporef.to_string();
-        sqlx::query! {
-            "DELETE FROM file_cache \
-                 WHERE repo_ref = ?",
-            repo_str
-        }
-        .execute(&mut *tx)
-        .await?;
-
-        Ok(())
-    }
-
-    async fn delete_chunks(&self, tx: &mut sqlx::Transaction<'_, Sqlite>) -> anyhow::Result<()> {
-        let repo_str = self.reporef.to_string();
-        sqlx::query! {
-            "DELETE FROM chunk_cache \
-                 WHERE repo_ref = ?",
-            repo_str
-        }
-        .execute(&mut *tx)
-        .await?;
-
-        Ok(())
+    /// Process the next chunk from the embedding queue if the batch size is met.
+    pub fn process_embedding_queue(&self) -> anyhow::Result<()> {
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current()
+                .block_on(async { self.batched_embed_or_flush_queue(false).await })
+        })
     }
 
     /// Commit the embed log, invoking the embedder if batch size is met.
@@ -168,7 +299,7 @@ impl<'a> FileCache<'a> {
     /// If `flush == true`, drain the log, send the entire batch to
     /// the embedder, and commit the results, disregarding the internal
     /// batch sizing.
-    pub async fn batched_process_embed_queue(&self, flush: bool) -> anyhow::Result<()> {
+    async fn batched_embed_or_flush_queue(&self, flush: bool) -> anyhow::Result<()> {
         let Some(semantic) = self.semantic
 	else {
 	    return Ok(());
@@ -188,6 +319,8 @@ impl<'a> FileCache<'a> {
         Ok(())
     }
 
+    /// Empty the queue in batches, and generate embeddings using the
+    /// configured embedder
     async fn embed_queued_points(
         &self,
         semantic: &Semantic,
@@ -249,14 +382,89 @@ impl<'a> FileCache<'a> {
         }
     }
 
-    pub async fn chunks_for_file(&'a self, key: &'a str) -> ChunkCache<'a> {
+    /// Chunks and inserts the buffer content into the semantic db.
+    ///
+    /// Assumes that the semantic db is initialized and usable, otherwise panics.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) async fn process_semantic(
+        &self,
+        cache_keys: &CacheKeys,
+        repo_name: &str,
+        repo_ref: &str,
+        relative_path: &str,
+        buffer: &str,
+        lang_str: &str,
+        branches: &[String],
+    ) {
+        let chunk_cache = self.chunks_for_file(cache_keys).await;
+        let semantic = self.semantic.expect("uninitialized semantic db");
+
+        semantic
+            .chunks_for_buffer(
+                cache_keys.semantic().into(),
+                repo_name,
+                repo_ref,
+                relative_path,
+                buffer,
+                lang_str,
+                branches,
+            )
+            .for_each(|(data, payload)| {
+                let cached = chunk_cache.update_or_embed(&data, payload);
+                if let Err(err) = cached {
+                    warn!(?err, %repo_name, %relative_path, "embedding failed");
+                }
+            });
+
+        match chunk_cache.commit().await {
+            Ok((new, updated, deleted)) => {
+                info!(
+                    repo_name,
+                    relative_path, new, updated, deleted, "Successful commit"
+                )
+            }
+            Err(err) => {
+                warn!(repo_name, relative_path, ?err, "Failed to upsert vectors")
+            }
+        }
+    }
+
+    /// Delete all files in the `file_cache` table for the repository in scope.
+    async fn delete_files(&self, tx: &mut sqlx::Transaction<'_, Sqlite>) -> anyhow::Result<()> {
+        let repo_str = self.reporef.to_string();
+        sqlx::query! {
+            "DELETE FROM file_cache \
+                 WHERE repo_ref = ?",
+            repo_str
+        }
+        .execute(&mut *tx)
+        .await?;
+
+        Ok(())
+    }
+
+    /// Delete all chunks in the `chunk_cache` table for the repository in scope.
+    async fn delete_chunks(&self, tx: &mut sqlx::Transaction<'_, Sqlite>) -> anyhow::Result<()> {
+        let repo_str = self.reporef.to_string();
+        sqlx::query! {
+            "DELETE FROM chunk_cache \
+                 WHERE repo_ref = ?",
+            repo_str
+        }
+        .execute(&mut *tx)
+        .await?;
+
+        Ok(())
+    }
+
+    async fn chunks_for_file(&'a self, key: &'a CacheKeys) -> ChunkCache<'a> {
         ChunkCache::for_file(
             self.db,
             self.semantic
                 .expect("we shouldn't get here without semantic db configured"),
             self.reporef,
             &self.embed_queue,
-            key,
+            key.semantic(),
         )
         .await
     }
@@ -310,8 +518,12 @@ impl<'a> ChunkCache<'a> {
         }
     }
 
-    pub fn update_or_embed(&self, data: &'a str, payload: Payload) -> anyhow::Result<()> {
-        let id = self.cache_key(data, &payload);
+    /// Update a cache entry with the details from `payload`, or create a new embedding.
+    ///
+    /// New insertions are queued, and stored on the repository-level
+    /// `FileCache` instance that created this.
+    fn update_or_embed(&self, data: &'a str, payload: Payload) -> anyhow::Result<()> {
+        let id = self.derive_chunk_uuid(data, &payload);
         let branches_hash = blake3::hash(payload.branches.join("\n").as_ref()).to_string();
 
         match self.cache.entry(id) {
@@ -378,7 +590,7 @@ impl<'a> ChunkCache<'a> {
     /// actually written to qdrant in batches.
     ///
     /// All qdrant operations are executed in batches through a call
-    /// to [`FileCache::commit_chunks`].
+    /// to [`FileCache::commit_embed_log`].
     async fn commit_inserts(
         &self,
         tx: &mut sqlx::Transaction<'_, Sqlite>,
@@ -502,14 +714,9 @@ impl<'a> ChunkCache<'a> {
         Ok(update_size)
     }
 
-    /// Return the cache key for the file that contains these chunks
-    pub fn file_hash(&self) -> String {
-        self.file_cache_key.to_string()
-    }
-
     /// Generate a content hash from the embedding data, and pin it to
     /// the containing file's content id.
-    fn cache_key(&self, data: &str, payload: &Payload) -> String {
+    fn derive_chunk_uuid(&self, data: &str, payload: &Payload) -> String {
         let id = {
             let mut bytes = [0; 16];
             let mut hasher = blake3::Hasher::new();

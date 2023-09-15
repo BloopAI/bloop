@@ -104,10 +104,10 @@
     --default-dark-bg-shade: 41, 41, 47; /* #29292F */
     --default-dark-bg-sub: 26, 26, 31; /* #1A1A1F */
     --default-dark-bg-border: 48, 48, 55;
-    --default-dark-bg-border-hover: 68, 68, 81;
+    --default-dark-bg-border-hover: 68, 68, 81; /* #444451 */
     --default-dark-bg-main: 91, 110, 221;
     --default-dark-bg-main-hover: 114, 133, 238;
-    --default-dark-bg-danger: 199, 54, 62;
+    --default-dark-bg-danger: 199, 54, 62; /* #C7363E */
     --default-dark-bg-danger-hover: 215, 66, 74;
     --default-dark-bg-success: 21, 128, 61;
     --default-dark-bg-success-hover: 33, 197, 94;
@@ -115,7 +115,7 @@
     --default-dark-label-faint: 57, 57, 57;
     --default-dark-label-muted: 85, 85, 85;
     --default-dark-label-base: 185, 185, 185; /* #B9B9B9 */
-    --default-dark-label-title: 238, 238, 238;
+    --default-dark-label-title: 238, 238, 238; /* #EEEEEE */
     --default-dark-label-link: 104, 141, 222;
     --default-dark-chat-bg-base: 37, 38, 56;
     --default-dark-chat-bg-base-hover: 43, 44, 66; /* #2B2C42 */
@@ -1141,6 +1141,15 @@ h5, .h5 {
   letter-spacing: -0.02em;
 }
 
+.body-m-strong {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 600;
+  font-size: 1rem;
+  line-height: 160%;
+  letter-spacing: -0.02em;
+}
+
 .body-s {
   font-family: 'Inter', sans-serif;
   font-style: normal;
@@ -1220,6 +1229,26 @@ h5, .h5 {
   -webkit-mask-image: linear-gradient(to right, black calc(100% - 24px), transparent 100%);
 }
 
+.auto-fade-horizontal {
+  overflow-x: scroll;
+  --fade-length: 40px;
+  --start-fade: 0px;
+  --end-fade: 0px;
+  -webkit-mask: linear-gradient(
+          to right,
+          transparent,
+          black var(--start-fade),
+          black calc(100% - var(--end-fade)),
+          transparent
+  );
+}
+.auto-fade-horizontal[data-overflow-left] {
+  --start-fade: var(--fade-length);
+}
+.auto-fade-horizontal[data-overflow-right] {
+  --end-fade: var(--fade-length);
+}
+
 .backdrop-blur-0 {
   backdrop-filter: blur(0);
   -webkit-backdrop-filter: blur(0);
@@ -1284,7 +1313,17 @@ h5, .h5 {
   margin: revert;
 }
 
+.code-studio-md h1:not(:first-child), .code-studio-md h2:not(:first-child), .code-studio-md h3:not(:first-child), .code-studio-md h4:not(:first-child), .code-studio-md h5:not(:first-child), .code-studio-md h6:not(:first-child), .code-studio-md p:not(:first-child) {
+  margin-top: revert;
+}
+
+.code-studio-md h1:not(:last-child), .code-studio-md h2:not(:last-child), .code-studio-md h3:not(:last-child), .code-studio-md h4:not(:last-child), .code-studio-md h5:not(:last-child), .code-studio-md h6:not(:last-child), .code-studio-md p:not(:last-child) {
+  margin-bottom: revert;
+}
+
 .readme h1, .readme h2, .readme h3, .readme h4, .readme h5, .readme h6, .readme p,
+.code-studio-md h1, .code-studio-md h2, .code-studio-md h3, .code-studio-md h4, .code-studio-md h5,
+.code-studio-md h6, .code-studio-md p,
 .article-response h1, .article-response h2, .article-response h3, .article-response h4, .article-response h5,
 .article-response h6, .article-response p,
 .ipynb-markdown h1, .ipynb-markdown h2, .ipynb-markdown h3, .ipynb-markdown h4, .ipynb-markdown h5,
@@ -1294,11 +1333,11 @@ h5, .h5 {
   user-select: initial;
 }
 
-.ipynb-markdown p:not(:first-child), h1:not(:first-child), h2:not(:first-child), h3:not(:first-child), h4:not(:first-child) {
+.ipynb-markdown p:not(:first-child), .ipynb-markdown h1:not(:first-child), .ipynb-markdown h2:not(:first-child), .ipynb-markdown h3:not(:first-child), .ipynb-markdown h4:not(:first-child){
   margin-top: revert;
 }
 
-.ipynb-markdown p:not(:last-child), h1:not(:last-child), h2:not(:last-child), h3:not(:last-child), h4:not(:last-child) {
+.ipynb-markdown p:not(:last-child), .ipynb-markdown h1:not(:last-child), .ipynb-markdown h2:not(:last-child), .ipynb-markdown h3:not(:last-child), .ipynb-markdown h4:not(:last-child){
   margin-bottom: revert;
 }
 
@@ -1318,37 +1357,37 @@ h5, .h5 {
   padding-bottom: 0.6rem;
 }
 
-.readme h1, .article-response h1, .markdown h1 {
+.readme h1, .article-response h1, .markdown h1, .code-studio-md h1 {
   font-size: 2rem;
 }
 
-.readme h2, .article-response h2, .markdown h2 {
+.readme h2, .article-response h2, .markdown h2, .code-studio-md h2 {
   font-size: 1.5rem;
 }
 
-.readme h3, .article-response h3, .markdown h3 {
+.readme h3, .article-response h3, .markdown h3, .code-studio-md h3 {
   font-size: 1.25rem
 }
 
-.readme h4, .article-response h4, .markdown h4 {
+.readme h4, .article-response h4, .markdown h4, .code-studio-md h4 {
   font-size: 1rem
 }
 
-.readme h5, .article-response h5, .markdown h5 {
+.readme h5, .article-response h5, .markdown h5, .code-studio-md h5 {
   font-size: .875rem
 }
 
-.readme h6, .article-response h6, .markdown h6 {
+.readme h6, .article-response h6, .markdown h6, .code-studio-md h6 {
   font-size: .85rem
 }
 
-.readme ul, .article-response ul, .markdown ul {
+.readme ul, .article-response ul, .markdown ul, .code-studio-md ul {
   list-style: revert;
   margin: revert;
   padding: revert;
 }
 
-.readme ol, .article-response ol, .markdown ol {
+.readme ol, .article-response ol, .markdown ol, .code-studio-md ol {
   list-style: revert;
   margin: revert;
   padding: revert;
@@ -1358,19 +1397,19 @@ h5, .h5 {
   color: rgb(var(--label-link));
 }
 
-.article-response a, .summary-card a {
+.article-response a, .summary-card a, .code-studio-md a {
   background-color: rgb(var(--bg-shade));
   border: 1px solid rgb(var(--bg-border));
   border-radius: 4px;
   padding: 2px 4px;
 }
 
-.article-response li>p {
+.article-response li>p, .code-studio-md li>p {
   margin: 0;
   display: unset;
 }
 
-.article-response code, .summary-card code {
+.article-response code, .summary-card code, .code-studio-md code {
   color: #14B8A6;
   font-family: Menlo, sans-serif;
   font-size: 0.95em;
@@ -1383,7 +1422,7 @@ h5, .h5 {
   border-radius: 4px;
 }
 
-.article-response pre:has(code) {
+.article-response pre:has(code), .code-studio-md pre:has(code) {
   background-color: rgb(var(--bg-shade));
   border: 1px solid rgb(var(--bg-border));
   border-radius: 8px;
@@ -1420,4 +1459,8 @@ h5, .h5 {
 
 .break-word {
   word-break: break-word;
+}
+
+.file-icon-lg span[class*="-icon"]:before {
+  transform: scale(125%);
 }

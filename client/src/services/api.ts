@@ -1,15 +1,23 @@
 import axios, { AxiosInstance } from 'axios';
 import {
   AllConversationsResponse,
+  CodeStudioType,
   ConversationType,
   FileResponse,
+  HistoryConversationTurn,
   HoverablesResponse,
   NLSearchResponse,
   SearchResponse,
+  StudioTemplateType,
   SuggestionsResponse,
   TokenInfoResponse,
 } from '../types/api';
-import { EnvConfig, RepoType } from '../types/general';
+import {
+  CodeStudioShortType,
+  EnvConfig,
+  RepoType,
+  StudioContextFile,
+} from '../types/general';
 
 const DB_API = 'https://api.bloop.ai';
 let http: AxiosInstance;
@@ -35,6 +43,22 @@ export const search = (
         page_size,
         page,
         calculate_totals: page === 0,
+      },
+    })
+    .then((r) => r.data);
+};
+
+export const searchFiles = (
+  q: string,
+  repo_ref: string,
+  page_size: number = 100,
+): Promise<SearchResponse> => {
+  return http
+    .get('/search/path', {
+      params: {
+        q,
+        repo_ref,
+        page_size,
       },
     })
     .then((r) => r.data);
@@ -129,6 +153,8 @@ export const gitHubLogout = () =>
 
 export const getRepos = (): Promise<{ list: RepoType[] }> =>
   http.get('/repos').then((r) => r.data);
+export const getIndexedRepos = (): Promise<{ list: RepoType[] }> =>
+  http.get('/repos/indexed').then((r) => r.data);
 
 const localScanCache: Record<string, any> = {};
 export const scanLocalRepos = (path: string) => {
@@ -245,3 +271,80 @@ export const upvoteAnswer = (
     .then((r) => r.data);
 
 export const getIndexQueue = () => http('/repos/queue').then((r) => r.data);
+
+export const getCodeStudios = (): Promise<CodeStudioShortType[]> =>
+  http('/studio').then((r) => r.data);
+export const patchCodeStudio = (
+  id: string,
+  data: {
+    name?: string;
+    context?: StudioContextFile[];
+    messages?: ({ User: string } | { Assistant: string })[];
+  },
+) => http.patch(`/studio/${id}`, data).then((r) => r.data);
+export const getCodeStudio = (id: string): Promise<CodeStudioType> =>
+  http(`/studio/${id}`).then((r) => r.data);
+export const getCodeStudioHistory = (
+  id: string,
+): Promise<HistoryConversationTurn[]> =>
+  http(`/studio/${id}/snapshots`).then((r) => r.data);
+export const deleteCodeStudio = (id: string): Promise<CodeStudioType> =>
+  http.delete(`/studio/${id}`).then((r) => r.data);
+export const postCodeStudio = (name: string) =>
+  http.post('/studio', { name }).then((r) => r.data);
+export const importCodeStudio = (thread_id: string, studio_id?: string) =>
+  http
+    .post('/studio/import', {}, { params: { thread_id, studio_id } })
+    .then((r) => r.data);
+
+export const getFileTokenCount = (
+  path: string,
+  repo: string,
+  branch?: string,
+  ranges?: [number, number][],
+): Promise<number> =>
+  http
+    .post(`/studio/file-token-count`, {
+      path,
+      repo,
+      branch,
+      ranges,
+    })
+    .then((r) => r.data);
+
+export const getRelatedFiles = (
+  relative_path: string,
+  repo_ref: string,
+  branch?: string,
+): Promise<{ files_importing: string[]; files_imported: string[] }> =>
+  http(`/related-files`, { params: { relative_path, repo_ref, branch } }).then(
+    (r) => r.data,
+  );
+
+export const getRelatedFileRanges = (
+  repo_ref: string,
+  branch: string | undefined,
+  source_file_path: string,
+  related_file_path: string,
+  kind: 'Imported' | 'Importing',
+): Promise<{ ranges: { start: { line: number }; end: { line: number } }[] }> =>
+  http(`/related-files-with-ranges`, {
+    params: { source_file_path, repo_ref, branch, related_file_path, kind },
+  }).then((r) => r.data);
+
+export const getTemplates = (): Promise<StudioTemplateType[]> =>
+  http('/template').then((r) => r.data);
+export const patchTemplate = (
+  id: string,
+  data: {
+    name?: string;
+    content?: string;
+  },
+) => http.patch(`/template/${id}`, data).then((r) => r.data);
+export const deleteTemplate = (id: string): Promise<StudioTemplateType> =>
+  http.delete(`/template/${id}`).then((r) => r.data);
+export const postTemplate = (name: string, content: string) =>
+  http.post('/template', { name, content }).then((r) => r.data);
+export const getQuota = () => http('/quota').then((r) => r.data);
+export const getSubscriptionLink = () =>
+  http('/quota/create-checkout-session').then((r) => r.data);

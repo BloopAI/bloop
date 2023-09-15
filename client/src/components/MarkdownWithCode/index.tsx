@@ -16,27 +16,27 @@ import LinkRenderer from './LinkRenderer';
 import CodeRenderer from './CodeRenderer';
 
 type Props = {
-  openFileModal: (
+  openFileModal?: (
     path: string,
     scrollToLine?: string,
     highlightColor?: string,
   ) => void;
-  repoName: string;
+  repoName?: string;
   markdown: string;
-  isSummary?: boolean;
   hideCode?: boolean;
-  recordId: number;
-  threadId: string;
+  recordId?: number;
+  threadId?: string;
+  isCodeStudio?: boolean;
 };
 
 const MarkdownWithCode = ({
   openFileModal,
   repoName,
   markdown,
-  isSummary,
   hideCode,
   recordId,
   threadId,
+  isCodeStudio,
 }: Props) => {
   const { navigateRepoPath, navigateFullResult } =
     useContext(AppNavigationContext);
@@ -49,10 +49,8 @@ const MarkdownWithCode = ({
 
   useEffect(() => {
     return () => {
-      if (!isSummary) {
-        setFileHighlights({});
-        setHoveredLines(null);
-      }
+      setFileHighlights({});
+      setHoveredLines(null);
     };
   }, []);
 
@@ -74,7 +72,6 @@ const MarkdownWithCode = ({
             navigateRepoPath={navigateRepoPath}
             repoName={repoName}
             selectedBranch={selectedBranch}
-            isSummary={isSummary}
             fileChips={fileChips}
             hideCode={hideCode}
             updateScrollToIndex={updateScrollToIndex}
@@ -104,20 +101,14 @@ const MarkdownWithCode = ({
             navigateFullResult={navigateFullResult}
             recordId={recordId}
             threadId={threadId}
+            isCodeStudio={isCodeStudio}
           >
             {children}
           </CodeRenderer>
         );
       },
     };
-  }, [
-    repoName,
-    openFileModal,
-    isSummary,
-    hideCode,
-    updateScrollToIndex,
-    selectedBranch,
-  ]);
+  }, [repoName, openFileModal, hideCode, updateScrollToIndex, selectedBranch]);
 
   return <ReactMarkdown components={components}>{markdown}</ReactMarkdown>;
 };

@@ -1,13 +1,23 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+} from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import * as Sentry from '@sentry/react';
 import { DeviceContextType } from './context/deviceContext';
 import './index.css';
-import Tab from './Tab';
+import RepoTab from './pages/RepoTab';
 import { TabsContext } from './context/tabsContext';
 import {
   NavigationItem,
   RepoProvider,
+  RepoTabType,
   RepoType,
+  StudioTabType,
+  TabType,
   UITabType,
 } from './types/general';
 import {
@@ -24,6 +34,19 @@ import { AnalyticsContextProvider } from './context/providers/AnalyticsContextPr
 import { buildURLPart, getNavItemFromURL } from './utils/navigationUtils';
 import { DeviceContextProvider } from './context/providers/DeviceContextProvider';
 import useKeyboardNavigation from './hooks/useKeyboardNavigation';
+import StudioTab from './pages/StudioTab';
+import HomeTab from './pages/HomeTab';
+import Settings from './components/Settings';
+import ReportBugModal from './components/ReportBugModal';
+import { GeneralUiContextProvider } from './context/providers/GeneralUiContextProvider';
+import PromptGuidePopup from './components/PromptGuidePopup';
+import Onboarding from './pages/Onboarding';
+import NavBar from './components/NavBar';
+import StatusBar from './components/StatusBar';
+import CloudFeaturePopup from './components/CloudFeaturePopup';
+import ErrorFallback from './components/ErrorFallback';
+import { PersonalQuotaContextProvider } from './context/providers/PersonalQuotaContextProvider';
+import UpgradePopup from './components/UpgradePopup';
 
 type Props = {
   deviceContextValue: DeviceContextType;
@@ -36,10 +59,7 @@ function App({ deviceContextValue }: Props) {
     {
       key: 'initial',
       name: 'Home',
-      repoName: '',
-      repoRef: '',
-      source: RepoSource.LOCAL,
-      navigationHistory: [],
+      type: TabType.HOME,
     },
   ]);
   const location = useLocation();
@@ -47,27 +67,33 @@ function App({ deviceContextValue }: Props) {
   const [repositories, setRepositories] = useState<RepoType[] | undefined>();
   const [isLoading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const [isTransitioning, startTransition] = useTransition();
 
   useEffect(() => {
     if (isLoading) {
       return;
     }
     const tab = tabs.find((t) => t.key === activeTab);
-    if (tab) {
-      if (activeTab === 'initial') {
-        navigate('/');
-        return;
-      }
+    if (tab && tab.type === TabType.HOME) {
+      navigate('/');
+      return;
+    } else if (tab && tab.type === TabType.REPO) {
       const lastNav = tab.navigationHistory[tab.navigationHistory.length - 1];
       navigate(
         `/${encodeURIComponent(tab.repoRef)}/${encodeURIComponent(
           tab.branch || 'all',
         )}/${lastNav ? buildURLPart(lastNav) : ''}`,
       );
+    } else if (tab && tab.type === TabType.STUDIO) {
+      navigate(
+        `/studio/${encodeURIComponent(tab.key)}/${encodeURIComponent(
+          tab.name,
+        )}`,
+      );
     }
   }, [activeTab, tabs]);
 
-  const handleAddTab = useCallback(
+  const handleAddRepoTab = useCallback(
     (
       repoRef: string,
       repoName: string,
@@ -84,6 +110,7 @@ function App({ deviceContextValue }: Props) {
         source,
         branch,
         navigationHistory: navHistory || [],
+        type: TabType.REPO,
       };
       setTabs((prev) => [...prev, newTab]);
       setActiveTab(newTab.key);
@@ -91,20 +118,41 @@ function App({ deviceContextValue }: Props) {
     [],
   );
 
+  const handleAddStudioTab = useCallback((name: string, id: string) => {
+    const newTab: StudioTabType = {
+      key: id,
+      name,
+      type: TabType.STUDIO,
+    };
+    setTabs((prev: UITabType[]) => {
+      const existing = prev.find((t) => t.key === newTab.key);
+      if (existing) {
+        setActiveTab(existing.key);
+        return prev;
+      }
+      return [...prev, newTab];
+    });
+    setActiveTab(newTab.key);
+  }, []);
+
   useEffect(() => {
     if (location.pathname === '/') {
       setLoading(false);
       return;
     }
     if (isLoading && repositories?.length) {
-      const repo = repositories.find(
-        (r) =>
-          r.ref ===
-          decodeURIComponent(location.pathname.slice(1).split('/')[0]),
+      const firstPart = decodeURIComponent(
+        location.pathname.slice(1).split('/')[0],
       );
-      if (repo) {
+      const repo = repositories.find((r) => r.ref === firstPart);
+      if (firstPart === 'studio') {
+        handleAddStudioTab(
+          decodeURIComponent(location.pathname.slice(1).split('/')[2]),
+          decodeURIComponent(location.pathname.slice(1).split('/')[1]),
+        );
+      } else if (repo) {
         const urlBranch = decodeURIComponent(location.pathname.split('/')[2]);
-        handleAddTab(
+        handleAddRepoTab(
           repo.ref,
           repo.provider === RepoProvider.GitHub ? repo.ref : repo.name,
           repo.name,
@@ -156,12 +204,14 @@ function App({ deviceContextValue }: Props) {
     (tabKey: string, history: (prev: NavigationItem[]) => NavigationItem[]) => {
       setTabs((prev) => {
         const tabIndex = prev.findIndex((t) => t.key === tabKey);
-        if (tabIndex < 0) {
+        if (tabIndex < 0 || prev[tabIndex].type !== TabType.REPO) {
           return prev;
         }
         const newTab = {
           ...prev[tabIndex],
-          navigationHistory: history(prev[tabIndex].navigationHistory),
+          navigationHistory: history(
+            (prev[tabIndex] as RepoTabType).navigationHistory,
+          ),
         };
         const newTabs = [...prev];
         newTabs[tabIndex] = newTab;
@@ -212,20 +262,26 @@ function App({ deviceContextValue }: Props) {
   );
   useKeyboardNavigation(handleKeyEvent);
 
+  const handleChangeActiveTab = useCallback((t: string) => {
+    startTransition(() => {
+      setActiveTab(t);
+    });
+  }, []);
+
   const contextValue = useMemo(
     () => ({
       tabs,
-      activeTab,
-      handleAddTab,
+      handleAddRepoTab,
+      handleAddStudioTab,
       handleRemoveTab,
-      setActiveTab,
+      setActiveTab: handleChangeActiveTab,
       updateTabNavHistory,
       updateTabBranch,
     }),
     [
       tabs,
-      activeTab,
-      handleAddTab,
+      handleAddRepoTab,
+      handleAddStudioTab,
       handleRemoveTab,
       updateTabNavHistory,
       updateTabBranch,
@@ -272,9 +328,43 @@ function App({ deviceContextValue }: Props) {
       >
         <RepositoriesContext.Provider value={reposContextValue}>
           <TabsContext.Provider value={contextValue}>
-            {tabs.map((t) => (
-              <Tab key={t.key} isActive={t.key === activeTab} tab={t} />
-            ))}
+            <GeneralUiContextProvider activeTab={activeTab}>
+              <PersonalQuotaContextProvider>
+                <NavBar activeTab={activeTab} />
+                <div className="mt-8" />
+                {tabs.map((t) =>
+                  t.type === TabType.STUDIO ? (
+                    <StudioTab
+                      key={t.key}
+                      isActive={t.key === activeTab}
+                      tab={t}
+                      isTransitioning={isTransitioning}
+                    />
+                  ) : t.type === TabType.REPO ? (
+                    <RepoTab
+                      key={t.key}
+                      isActive={t.key === activeTab}
+                      tab={t}
+                      isTransitioning={isTransitioning}
+                    />
+                  ) : (
+                    <HomeTab
+                      key={t.key}
+                      isActive={t.key === activeTab}
+                      tab={t}
+                      isTransitioning={isTransitioning}
+                    />
+                  ),
+                )}
+                <Settings />
+                <ReportBugModal />
+                <PromptGuidePopup />
+                <Onboarding activeTab={activeTab} />
+                <StatusBar />
+                <CloudFeaturePopup />
+                <UpgradePopup />
+              </PersonalQuotaContextProvider>
+            </GeneralUiContextProvider>
           </TabsContext.Provider>
         </RepositoriesContext.Provider>
       </AnalyticsContextProvider>
@@ -282,4 +372,6 @@ function App({ deviceContextValue }: Props) {
   );
 }
 
-export default App;
+export default Sentry.withErrorBoundary(App, {
+  fallback: (props) => <ErrorFallback {...props} />,
+});

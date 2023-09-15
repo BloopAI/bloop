@@ -424,17 +424,17 @@ impl Semantic {
     }
 
     #[allow(clippy::too_many_arguments)]
-    #[tracing::instrument(skip(self, repo_name, buffer, chunk_cache))]
-    pub async fn insert_points_for_buffer(
-        &self,
-        repo_name: &str,
-        repo_ref: &str,
-        relative_path: &str,
-        buffer: &str,
-        lang_str: &str,
-        branches: &[String],
-        chunk_cache: crate::cache::ChunkCache<'_>,
-    ) {
+    #[tracing::instrument(skip(self, repo_name, buffer))]
+    pub fn chunks_for_buffer<'a>(
+        &'a self,
+        file_cache_key: String,
+        repo_name: &'a str,
+        repo_ref: &'a str,
+        relative_path: &'a str,
+        buffer: &'a str,
+        lang_str: &'a str,
+        branches: &'a [String],
+    ) -> impl ParallelIterator<Item = (String, Payload)> + 'a {
         const MIN_CHUNK_TOKENS: usize = 50;
 
         let chunks = chunk::by_tokens(
@@ -447,13 +447,13 @@ impl Semantic {
         );
         debug!(chunk_count = chunks.len(), "found chunks");
 
-        chunks.par_iter().for_each(|chunk| {
-            let data = format!("{repo_name}\t{relative_path}\n{}", chunk.data,);
+        chunks.into_par_iter().map(move |chunk| {
+            let data = format!("{repo_name}\t{relative_path}\n{}", chunk.data);
             let payload = Payload {
                 repo_name: repo_name.to_owned(),
                 repo_ref: repo_ref.to_owned(),
                 relative_path: relative_path.to_owned(),
-                content_hash: chunk_cache.file_hash(),
+                content_hash: file_cache_key.to_string(),
                 text: chunk.data.to_owned(),
                 lang: lang_str.to_ascii_lowercase(),
                 branches: branches.to_owned(),
@@ -464,23 +464,8 @@ impl Semantic {
                 ..Default::default()
             };
 
-            let cached = chunk_cache.update_or_embed(&data, payload);
-            if let Err(err) = cached {
-                warn!(?err, %repo_name, %relative_path, "embedding failed");
-            }
-        });
-
-        match chunk_cache.commit().await {
-            Ok((new, updated, deleted)) => {
-                info!(
-                    repo_name,
-                    relative_path, new, updated, deleted, "Successful commit"
-                )
-            }
-            Err(err) => {
-                warn!(repo_name, relative_path, ?err, "Failed to upsert vectors")
-            }
-        }
+            (data, payload)
+        })
     }
 
     pub async fn delete_points_for_hash(

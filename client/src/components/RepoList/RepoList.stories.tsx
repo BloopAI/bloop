@@ -109,8 +109,8 @@ export const Default = () => {
         <RepoList
           onSync={() => {}}
           isLoading={false}
-          repos={repos}
-          source="local"
+          items={repos}
+          type="local"
         />
       </div>
     </div>

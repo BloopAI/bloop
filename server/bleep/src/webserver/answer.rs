@@ -22,7 +22,7 @@ use crate::{
     agent::{
         self,
         exchange::{CodeChunk, Exchange, FocusedChunk},
-        Action, Agent,
+        Action, Agent, ExchangeState,
     },
     analytics::{EventData, QueryEvent},
     db::QueryLog,
@@ -121,11 +121,7 @@ pub(super) async fn answer(
         exchanges.truncate(truncate_from_index);
     }
 
-    let query = parser::parse_nl(q)
-        .context("parse error")?
-        .into_semantic()
-        .context("got a 'Grep' query")?
-        .into_owned();
+    let query = parser::parse_nl(q).context("parse error")?.into_owned();
     let query_target = query
         .target
         .as_ref()
@@ -261,7 +257,7 @@ async fn try_execute_agent(
             user,
             thread_id,
             query_id,
-            complete: false,
+            exchange_state: ExchangeState::Pending,
         };
 
         let mut exchange_rx = tokio_stream::wrappers::ReceiverStream::new(exchange_rx);
@@ -312,6 +308,8 @@ async fn try_execute_agent(
             }
         };
 
+        agent.complete(result.is_ok());
+
         match result {
             Ok(_) => {}
             Err(agent::Error::Timeout(duration)) => {
@@ -330,10 +328,6 @@ async fn try_execute_agent(
                 Err(e)?;
             }
         }
-
-        // Storing the conversation here allows us to make subsequent requests.
-        conversations::store(&agent.app.sql, conversation_id, (agent.repo_ref.clone(), agent.exchanges.clone())).await?;
-        agent.complete();
     };
 
     let init_stream = futures::stream::once(async move {
@@ -404,9 +398,6 @@ pub async fn explain(
 
     let mut query = parser::parse_nl(&virtual_req.q)
         .context("failed to parse virtual answer query")?
-        .into_semantic()
-        // We synthesize the query, this should never fail.
-        .unwrap()
         .into_owned();
 
     if let Some(branch) = params.branch {

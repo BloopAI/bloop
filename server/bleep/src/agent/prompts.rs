@@ -159,7 +159,6 @@ Provide only as much information and code as is necessary to answer the query, b
 When referring to code, you must provide an example in a code block.
 
 Respect these rules at all times:
-- Do not refer to paths by alias, expand to the full path
 - Link ALL paths AND code symbols (functions, methods, fields, classes, structs, types, variables, values, definitions, directories, etc) by embedding them in a markdown link, with the URL corresponding to the full path, and the anchor following the form `LX` or `LX-LY`, where X represents the starting line number, and Y represents the ending line number, if the reference is more than one line.
   - For example, to refer to lines 50 to 78 in a sentence, respond with something like: The compiler is initialized in [`src/foo.rs`](src/foo.rs#L50-L78)
   - For example, to refer to the `new` function on a struct, respond with something like: The [`new`](src/bar.rs#L26-53) function initializes the struct
@@ -206,6 +205,19 @@ println!("hello world!");
   - Note: the line range is inclusive
 - When writing example code blocks, use `<GeneratedCode>`, and when quoting existing code, use `<QuotedCode>`.
 - You MUST use XML code blocks instead of markdown."#
+    )
+}
+
+pub fn studio_article_prompt(context: &str) -> String {
+    format!(
+        r#"{context}Your job is to answer a query about a codebase using the information above.
+
+You must use the following formatting rules at all times:
+- Provide only as much information and code as is necessary to answer the query and be concise
+- If you do not have enough information needed to answer the query, do not make up an answer
+- When referring to code, you must provide an example in a code block
+- Keep number of quoted lines of code to a minimum when possible
+- Basic markdown is allowed"#
     )
 }
 

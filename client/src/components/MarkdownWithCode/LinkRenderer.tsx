@@ -8,7 +8,7 @@ import {
   useCallback,
   useMemo,
 } from 'react';
-import FileChip from '../Chat/ConversationMessage/FileChip';
+import FileChip from '../Chat/ChatBody/ConversationMessage/FileChip';
 import { FileHighlightsType } from '../../types/general';
 import FolderChip from './FolderChip';
 
@@ -16,13 +16,12 @@ type Props = {
   href?: string;
   children: ReactNode[];
   navigateRepoPath: (repo: string, path?: string | undefined) => void;
-  repoName: string;
+  repoName?: string;
   selectedBranch: string | null;
-  isSummary?: boolean;
   fileChips: MutableRefObject<never[]>;
   hideCode?: boolean;
   updateScrollToIndex: (lines: string) => void;
-  openFileModal: (
+  openFileModal?: (
     path: string,
     scrollToLine?: string | undefined,
     highlightColor?: string | undefined,
@@ -35,8 +34,8 @@ type Props = {
     recordId?: number,
     threadId?: string,
   ) => void;
-  recordId: number;
-  threadId: string;
+  recordId?: number;
+  threadId?: string;
 };
 
 const LinkRenderer = ({
@@ -45,7 +44,6 @@ const LinkRenderer = ({
   navigateRepoPath,
   repoName,
   selectedBranch,
-  isSummary,
   fileChips,
   hideCode,
   updateScrollToIndex,
@@ -91,7 +89,9 @@ const LinkRenderer = ({
   }, [hideCode, updateScrollToIndex, start, end, filePath, recordId, threadId]);
 
   const handleClickFolder = useCallback(() => {
-    navigateRepoPath(repoName, filePath);
+    if (repoName) {
+      navigateRepoPath(repoName, filePath);
+    }
   }, [navigateRepoPath, repoName, filePath]);
 
   return (
@@ -103,7 +103,6 @@ const LinkRenderer = ({
           openFileModal={openFileModal}
           repoName={repoName}
           selectedBranch={selectedBranch}
-          isSummary={isSummary}
         />
       ) : (
         <FileChip
@@ -115,7 +114,6 @@ const LinkRenderer = ({
           lines={linesToUse}
           setFileHighlights={setFileHighlights}
           setHoveredLines={setHoveredLines}
-          isSummary={isSummary}
         />
       )}
     </>
