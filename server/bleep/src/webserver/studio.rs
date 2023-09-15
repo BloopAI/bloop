@@ -715,7 +715,7 @@ async fn populate_studio_name(
     let llm_gateway = app
         .llm_gateway_client()
         .map_err(|e| Error::user(e).with_status(StatusCode::UNAUTHORIZED))?
-        .model("gpt-3.5-turbo-0613")
+        .model("gpt-3.5-turbo-16k-0613")
         .temperature(0.0);
 
     let messages = &[llm_gateway::api::Message::system(
