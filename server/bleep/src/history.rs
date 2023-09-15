@@ -10,7 +10,7 @@ use gix::{
     Commit, Id,
 };
 use serde::Serialize;
-use tracing::trace;
+use tracing::{error, trace};
 
 use crate::{
     llm_gateway::{self, api::Message},
@@ -205,16 +205,20 @@ pub async fn expand_commits_to_suggestions(
                     && commit.diff.lines().collect::<Vec<_>>().len() > tres_diff_lines
             });
 
-        commits.extend(
-            futures::future::join_all(drained.into_iter().map(|commit| {
-                trace!(?commit.commit_message, "generating suggestions");
-                generate_suggestion(llm_gateway, commit)
-            }))
-            .await
-            .into_iter()
-            .flatten()
-            .flatten(),
-        );
+        for commit in drained {
+            trace!(?commit.commit_message, "generating suggestions");
+            let result = generate_suggestion(llm_gateway, commit).await;
+
+            match result {
+                Ok(Some(sug)) => commits.push(sug),
+                Err(err) => error!(?err, "llm failure"),
+                _ => {}
+            }
+
+            if commits.len() >= 5 {
+                return Ok(commits);
+            }
+        }
 
         tres_types = 1;
         tres_files = 1;
