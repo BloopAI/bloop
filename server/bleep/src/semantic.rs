@@ -2,6 +2,7 @@ use std::{borrow::Cow, collections::HashMap, env, path::Path, sync::Arc};
 
 use crate::{query::parser::SemanticQuery, Configuration};
 
+use anyhow::bail;
 use qdrant_client::{
     prelude::{QdrantClient, QdrantClientConfig},
     qdrant::{
@@ -15,7 +16,7 @@ use qdrant_client::{
 use futures::{stream, StreamExt, TryStreamExt};
 use rayon::prelude::*;
 use thiserror::Error;
-use tracing::{debug, info, warn};
+use tracing::{debug, error, info, warn};
 
 pub mod chunk;
 pub mod embedder;
@@ -245,17 +246,37 @@ impl Semantic {
         self.embedder.as_ref()
     }
 
-    pub async fn has_collection(&self) -> anyhow::Result<bool> {
-        self.qdrant
-            .has_collection(&self.config.collection_name)
-            .await
-    }
-
-    pub async fn delete_collection(&self) -> anyhow::Result<()> {
+    pub async fn delete_collection_blocking(&self) -> anyhow::Result<()> {
         _ = self
             .qdrant
             .delete_collection(&self.config.collection_name)
             .await?;
+
+        let deleted = 'deleted: {
+            for _ in 0..60 {
+                match self
+                    .qdrant
+                    .has_collection(&self.config.collection_name)
+                    .await
+                {
+                    Ok(true) => {
+                        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                    }
+                    Ok(false) => {
+                        break 'deleted true;
+                    }
+                    Err(err) => {
+                        error!(?err, "failed to delete qdrant collection for migration");
+                    }
+                }
+            }
+            false
+        };
+
+        if !deleted {
+            error!("failed to delete qdrant collection after 60s");
+            bail!("deletion failed")
+        }
 
         Ok(())
     }

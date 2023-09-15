@@ -18,7 +18,7 @@ mod schema;
 
 pub use file::File;
 pub use repo::Repo;
-use tracing::{debug, error};
+use tracing::debug;
 
 use crate::{
     background::{SyncHandle, SyncPipes},
@@ -114,28 +114,7 @@ impl Indexes {
             }
 
             if let Some(ref semantic) = semantic {
-                semantic.delete_collection().await?;
-
-                let deleted = 'deleted: {
-                    for _ in 0..60 {
-                        match semantic.has_collection().await {
-                            Ok(true) => {
-                                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-                            }
-                            Ok(false) => {
-                                break 'deleted true;
-                            }
-                            Err(err) => {
-                                error!(?err, "failed to delete qdrant collection for migration");
-                            }
-                        }
-                    }
-                    false
-                };
-
-                if !deleted {
-                    error!("failed to delete qdrant collection after 60s");
-                }
+                semantic.delete_collection_blocking().await?;
             }
         }
         config.source.save_index_version()?;
