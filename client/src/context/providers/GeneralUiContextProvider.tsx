@@ -50,7 +50,7 @@ export const GeneralUiContextProvider = memo(
     );
     const [preferredAnswerSpeed, setPreferredAnswerSpeed] = useState<
       'normal' | 'fast'
-    >((getPlainFromStorage(ANSWER_SPEED_KEY) as 'normal') || 'fast');
+    >((getPlainFromStorage(ANSWER_SPEED_KEY) as 'normal') || 'normal');
 
     useEffect(() => {
       savePlainToStorage(ANSWER_SPEED_KEY, preferredAnswerSpeed);
