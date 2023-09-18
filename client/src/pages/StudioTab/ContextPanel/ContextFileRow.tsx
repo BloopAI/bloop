@@ -3,13 +3,15 @@ import React, {
   memo,
   SetStateAction,
   useCallback,
+  useContext,
   useMemo,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  RepoProvider,
   RepoType,
   StudioContextFile,
-  StudioRightPanelDataType,
+  StudioLeftPanelDataType,
   StudioRightPanelType,
 } from '../../../types/general';
 import FileIcon from '../../../components/FileIcon';
@@ -22,13 +24,16 @@ import {
   TrashCanFilled,
   PlusSignInBubble,
   WarningSign,
+  NewTab,
 } from '../../../icons';
 import Tooltip from '../../../components/Tooltip';
 import RelatedFilesDropdown from '../RelatedFilesDropdown';
+import { TabsContext } from '../../../context/tabsContext';
+import { RepoSource } from '../../../types';
 
 type Props = StudioContextFile & {
   contextFiles: StudioContextFile[];
-  setRightPanel: Dispatch<SetStateAction<StudioRightPanelDataType>>;
+  setLeftPanel: Dispatch<SetStateAction<StudioLeftPanelDataType>>;
   repoFull?: RepoType;
   tokens: number | null;
   onFileHide: (
@@ -60,7 +65,7 @@ const ContextFileRow = ({
   branch,
   hidden,
   contextFiles,
-  setRightPanel,
+  setLeftPanel,
   repoFull,
   onFileRemove,
   onFileHide,
@@ -69,6 +74,7 @@ const ContextFileRow = ({
   isPreviewing,
 }: Props) => {
   const { t } = useTranslation();
+  const { handleAddRepoTab } = useContext(TabsContext);
 
   const mappedRanges = useMemo((): [number, number][] => {
     return ranges.map((r) => [r.start, r.end - 1]);
@@ -76,17 +82,39 @@ const ContextFileRow = ({
 
   const handleClick = useCallback(() => {
     if (repoFull) {
-      setRightPanel({
+      setLeftPanel({
         type: StudioRightPanelType.FILE,
         data: {
           filePath: path,
           branch,
           repo: repoFull,
           initialRanges: mappedRanges,
+          isFileInContext: true,
         },
       });
     }
   }, [path, branch, repoFull, mappedRanges]);
+
+  const handleOpenInNewTab = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (repoFull) {
+        handleAddRepoTab(
+          repoFull?.ref,
+          repoFull?.provider === RepoProvider.GitHub
+            ? repoFull.ref
+            : repoFull.name,
+          repoFull.name,
+          repoFull.provider === RepoProvider.GitHub
+            ? RepoSource.GH
+            : RepoSource.LOCAL,
+          branch,
+          [{ type: 'full-result', path: path, repo: repo }],
+        );
+      }
+    },
+    [repoFull, path, repo, branch],
+  );
 
   return (
     <div
@@ -146,6 +174,18 @@ const ContextFileRow = ({
             <TokensUsageBadge tokens={tokens} />
           </div>
         )}
+        <Button
+          variant="tertiary"
+          size="tiny"
+          onlyIcon
+          title={t('Open in new tab')}
+          className={
+            'opacity-50 group-hover:opacity-100 group-focus:opacity-100'
+          }
+          onClick={handleOpenInNewTab}
+        >
+          <NewTab raw sizeClassName="w-3.5 h-3.5" />
+        </Button>
         <div onClick={(e) => e.stopPropagation()}>
           {repoFull && !isPreviewing && tokens !== null && (
             <RelatedFilesDropdown

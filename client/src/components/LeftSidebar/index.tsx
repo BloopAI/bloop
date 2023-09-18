@@ -9,7 +9,7 @@ type Props = {
 
 const LeftSidebar = ({ renderPage }: Props) => {
   return (
-    <div className="h-full overflow-auto">
+    <div className="h-full overflow-auto bg-bg-base">
       {renderPage === 'full-result' ? <IdeNavigation /> : <Filters />}
     </div>
   );

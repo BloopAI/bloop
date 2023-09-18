@@ -2,6 +2,8 @@ import React, { memo } from 'react';
 import { Trans } from 'react-i18next';
 import { CodeStudioShortType, RepoType } from '../../../types/general';
 import NoRepos from '../ReposSection/RepoCard/NoRepos';
+import Button from '../../../components/Button';
+import { PlusSignInCircle } from '../../../icons';
 import CodeStudioCard from './CodeStudioCard';
 
 type Props = {
@@ -10,6 +12,7 @@ type Props = {
   isFiltered?: boolean;
   showAll: () => void;
   refetchStudios: () => void;
+  handleNewStudio: () => void;
   handleRename: (studio: CodeStudioShortType) => void;
   repositories?: RepoType[];
 };
@@ -24,14 +27,19 @@ const CodeStudiosSection = ({
   refetchStudios,
   handleRename,
   repositories,
+  handleNewStudio,
 }: Props) => {
   return (
     <div className="p-8 overflow-x-auto relative">
-      {!!codeStudios.length && (
-        <h4 className="h4 text-label-title mb-3">
+      <div className="flex items-center gap-3 mb-3">
+        <h4 className="h4 text-label-title">
           <Trans>All studio projects</Trans>
         </h4>
-      )}
+        <Button variant="secondary" size="tiny" onClick={handleNewStudio}>
+          <PlusSignInCircle raw sizeClassName="w-3.5 h-3.5" />
+          Create new
+        </Button>
+      </div>
       <div className="flex flex-wrap gap-3.5 w-full relative items-start">
         {(shouldShowFull ? codeStudios : codeStudios.slice(0, LIMIT)).map(
           (cs) => (

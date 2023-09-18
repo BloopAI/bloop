@@ -10,8 +10,8 @@ import { Trans, useTranslation } from 'react-i18next';
 import Button from '../../../components/Button';
 import {
   RepoType,
-  StudioRightPanelDataType,
-  StudioRightPanelType,
+  StudioLeftPanelDataType,
+  StudioLeftPanelType,
 } from '../../../types/general';
 import { Branch, CursorSelection, Fire } from '../../../icons';
 import FileIcon from '../../../components/FileIcon';
@@ -28,10 +28,11 @@ import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
 import OverflowTracker from '../../../components/OverflowTracker';
 
 type Props = {
-  setRightPanel: Dispatch<SetStateAction<StudioRightPanelDataType>>;
+  setLeftPanel: Dispatch<SetStateAction<StudioLeftPanelDataType>>;
   filePath: string;
   branch: string | null;
   repo: RepoType;
+  isFileInContext: boolean;
   initialRanges?: [number, number][];
   onFileRangesChanged: (
     ranges: [number, number][],
@@ -50,13 +51,14 @@ const HORIZONTAL_PADDINGS = 32;
 const BREADCRUMBS_HEIGHT = 41;
 
 const FilePanel = ({
-  setRightPanel,
+  setLeftPanel,
   filePath,
   branch,
   repo,
   initialRanges,
   onFileRangesChanged,
   isActiveTab,
+  isFileInContext,
 }: Props) => {
   useTranslation();
   const [file, setFile] = useState<File | null>(null);
@@ -121,19 +123,19 @@ const FilePanel = ({
   }, [filePath, repo.ref, branch, selectedLines]);
 
   const onCancel = useCallback(() => {
-    setRightPanel({ type: StudioRightPanelType.CONVERSATION });
-  }, [setRightPanel]);
+    setLeftPanel({ type: StudioLeftPanelType.CONTEXT });
+  }, [setLeftPanel]);
 
   const onSubmit = useCallback(() => {
     onFileRangesChanged(selectedLines, filePath, repo.ref, branch);
-    setRightPanel({ type: StudioRightPanelType.CONVERSATION });
+    setLeftPanel({ type: StudioLeftPanelType.CONTEXT });
   }, [
     onFileRangesChanged,
     selectedLines,
     filePath,
     repo.ref,
     branch,
-    setRightPanel,
+    setLeftPanel,
   ]);
 
   const handleKeyEvent = useCallback(
@@ -161,15 +163,24 @@ const FilePanel = ({
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
           <Button size="small" variant="secondary" onClick={onCancel}>
-            <Trans>Cancel</Trans>
+            {!isFileInContext ||
+            JSON.stringify(initialRanges) !== JSON.stringify(selectedLines) ? (
+              <Trans>Cancel</Trans>
+            ) : (
+              <Trans>Back</Trans>
+            )}
           </Button>
-          <Button size="small" onClick={onSubmit}>
-            <Trans>Save</Trans>
-            <div className="flex items-center gap-1 flex-shrink-0">
-              <KeyboardChip type="cmd" variant="primary" />
-              <KeyboardChip type="S" variant="primary" />
-            </div>
-          </Button>
+          {(!isFileInContext ||
+            JSON.stringify(initialRanges) !==
+              JSON.stringify(selectedLines)) && (
+            <Button size="small" onClick={onSubmit}>
+              <Trans>Save</Trans>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <KeyboardChip type="cmd" variant="primary" />
+                <KeyboardChip type="S" variant="primary" />
+              </div>
+            </Button>
+          )}
         </div>
       </div>
       <div className="flex px-8 py-2 items-center gap-2 border-b border-bg-border bg-bg-sub text-label-base overflow-x-auto flex-shrink-0">
