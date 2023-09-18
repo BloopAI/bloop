@@ -148,6 +148,7 @@ const HomePage = ({ randomKey }: { randomKey?: any }) => {
               refetchStudios={refreshCodeStudios}
               handleRename={handleRename}
               repositories={repositories}
+              handleNewStudio={handleNewStudio}
             />
           )}
           {!!search &&
