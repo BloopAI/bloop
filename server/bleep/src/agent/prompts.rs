@@ -250,6 +250,35 @@ You must use the following formatting rules at all times:
     )
 }
 
+pub fn studio_name_prompt(context_json: &str, messages_json: &str) -> String {
+    format!(
+        r#"Your job is to generate a name for a conversation about software source code, given source code context and conversation history.
+        
+Follow these rules strictly:
+    - You MUST only return the new title, and NO additional text
+    - Be brief, only return a few words, 3-5 is ideal
+    - Do NOT include quotation marks in your title
+    - Do NOT use gerunds (e.g. "Searching for...")
+
+Here are some example titles demonstrating the correct style:
+    - Rust PyO3 Function Reference
+    - Update HelmRelease Chart Version
+    - Readable Code and Tests
+
+######
+
+Here is the source code context:
+=====
+{context_json}
+=====
+
+And here is the serialized conversation:
+=====
+{messages_json}
+====="#
+    )
+}
+
 pub fn hypothetical_document_prompt(query: &str) -> String {
     format!(
         r#"Write a code snippet that could hypothetically be returned by a code search engine as the answer to the query: {query}

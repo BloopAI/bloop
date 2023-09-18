@@ -24,6 +24,7 @@ import { CodeStudioType, HistoryConversationTurn } from '../../types/api';
 import useResizeableSplitPanel from '../../hooks/useResizeableSplitPanel';
 import { TOKEN_LIMIT } from '../../consts/codeStudio';
 import { Info } from '../../icons';
+import { TabsContext } from '../../context/tabsContext';
 import { getPlainFromStorage, STUDIO_GUIDE_DONE } from '../../services/storage';
 import { UIContext } from '../../context/uiContext';
 import ContextPanel from './ContextPanel';
@@ -67,11 +68,13 @@ const ContentContainer = ({
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const { leftPanelRef, rightPanelRef, dividerRef, containerRef } =
     useResizeableSplitPanel();
+  const { updateTabName } = useContext(TabsContext);
 
   const refetchCodeStudio = useCallback(
     async (keyToUpdate?: keyof CodeStudioType) => {
       if (tab.key) {
         const resp = await getCodeStudio(tab.key);
+        updateTabName(tab.key, resp.name);
         setCurrentState((prev) => {
           if (JSON.stringify(resp) === JSON.stringify(prev)) {
             return prev;
