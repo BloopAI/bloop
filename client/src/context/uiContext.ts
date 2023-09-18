@@ -1,4 +1,4 @@
-import React, { createContext } from 'react';
+import React, { createContext, Dispatch, SetStateAction } from 'react';
 import { RepoSource, Theme } from '../types';
 import { RepoTabType, TabType } from '../types/general';
 
@@ -77,5 +77,12 @@ export const UIContext = {
     setSearch: (t: string) => {},
     filterType: 'all' as 'all' | 'repos' | 'studios',
     setFilterType: (t: 'all' | 'repos' | 'studios') => {},
+  }),
+  AnswerSpeed: createContext<{
+    preferredAnswerSpeed: 'normal' | 'fast';
+    setPreferredAnswerSpeed: Dispatch<SetStateAction<'normal' | 'fast'>>;
+  }>({
+    preferredAnswerSpeed: 'fast',
+    setPreferredAnswerSpeed: () => {},
   }),
 };

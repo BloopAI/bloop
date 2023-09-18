@@ -358,5 +358,9 @@
 	"Code Studio": "コードスタジオ",
 	"Watch": "時計",
 	"Code Studio helps hobbyists and engineers working on the largest codebases, alike, to collaborate with AI. We recommend watching the guide to maximise your productivity.": "コードスタジオは、大規模なコードベースに取り組んでいる愛好家やエンジニアが同様に AI と共同作業できるよう支援します。 生産性を最大限に高めるために、ガイドを参照することをお勧めします。",
-	"Open in new tab": "新しいタブで開きます"
+	"Open in new tab": "新しいタブで開きます",
+	"Faster answers may impact the quality of results": "より速い回答は、結果の質に影響を与える可能性があります",
+	"Normal": "普通",
+	"Fast": "速い",
+	"Answer speed": "回答速度"
 }

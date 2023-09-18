@@ -366,5 +366,9 @@
 	"Code Studio": "代码工作室",
 	"Code Studio helps hobbyists and engineers working on the largest codebases, alike, to collaborate with AI. We recommend watching the guide to maximise your productivity.": "代码工作室帮助业余爱好者和从事最大代码库工作的工程师等与人工智能进行协作。 我们建议您观看该指南以最大限度地提高您的工作效率。",
 	"Watch": "手表",
-	"Open in new tab": "在新标签中打开"
+	"Open in new tab": "在新标签中打开",
+	"Answer speed": "答案速度",
+	"Faster answers may impact the quality of results": "更快的答案可能会影响结果的质量",
+	"Normal": "普通的",
+	"Fast": "快速地"
 }

@@ -12,6 +12,7 @@ import { DeviceContext } from '../deviceContext';
 import { getConfig } from '../../services/api';
 import { SettingSections } from '../../components/Settings';
 import {
+  ANSWER_SPEED_KEY,
   getPlainFromStorage,
   ONBOARDING_DONE_KEY,
   savePlainToStorage,
@@ -47,6 +48,13 @@ export const GeneralUiContextProvider = memo(
     const [theme, setTheme] = useState<Theme>(
       (getPlainFromStorage(THEME) as 'system' | null) || 'system',
     );
+    const [preferredAnswerSpeed, setPreferredAnswerSpeed] = useState<
+      'normal' | 'fast'
+    >((getPlainFromStorage(ANSWER_SPEED_KEY) as 'normal') || 'fast');
+
+    useEffect(() => {
+      savePlainToStorage(ANSWER_SPEED_KEY, preferredAnswerSpeed);
+    }, [preferredAnswerSpeed]);
 
     useEffect(() => {
       if (!isSelfServe) {
@@ -140,25 +148,35 @@ export const GeneralUiContextProvider = memo(
       [isUpgradePopupOpen],
     );
 
+    const answerSpeedContextValue = useMemo(
+      () => ({
+        preferredAnswerSpeed,
+        setPreferredAnswerSpeed,
+      }),
+      [preferredAnswerSpeed],
+    );
+
     return (
       <UIContext.Settings.Provider value={settingsContextValue}>
         <UIContext.Onboarding.Provider value={onboardingContextValue}>
           <UIContext.BugReport.Provider value={bugReportContextValue}>
             <UIContext.GitHubConnected.Provider value={githubContextValue}>
               <UIContext.Theme.Provider value={themeContextValue}>
-                <UIContext.PromptGuide.Provider value={promptContextValue}>
-                  <UIContext.StudioGuide.Provider value={studioContextValue}>
-                    <UIContext.CloudFeaturePopup.Provider
-                      value={cloudFeatureContextValue}
-                    >
-                      <UIContext.UpgradePopup.Provider
-                        value={upgradePopupContextValue}
+                <UIContext.AnswerSpeed.Provider value={answerSpeedContextValue}>
+                  <UIContext.PromptGuide.Provider value={promptContextValue}>
+                    <UIContext.StudioGuide.Provider value={studioContextValue}>
+                      <UIContext.CloudFeaturePopup.Provider
+                        value={cloudFeatureContextValue}
                       >
-                        {children}
-                      </UIContext.UpgradePopup.Provider>
-                    </UIContext.CloudFeaturePopup.Provider>
-                  </UIContext.StudioGuide.Provider>
-                </UIContext.PromptGuide.Provider>
+                        <UIContext.UpgradePopup.Provider
+                          value={upgradePopupContextValue}
+                        >
+                          {children}
+                        </UIContext.UpgradePopup.Provider>
+                      </UIContext.CloudFeaturePopup.Provider>
+                    </UIContext.StudioGuide.Provider>
+                  </UIContext.PromptGuide.Provider>
+                </UIContext.AnswerSpeed.Provider>
               </UIContext.Theme.Provider>
             </UIContext.GitHubConnected.Provider>
           </UIContext.BugReport.Provider>
