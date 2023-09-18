@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use futures::TryStreamExt;
 use gix::{
     bstr::ByteSlice,
@@ -10,7 +10,7 @@ use gix::{
     Commit, Id,
 };
 use serde::Serialize;
-use tracing::{error, trace};
+use tracing::{debug, error, trace};
 
 use crate::{
     llm_gateway::{self, api::Message},
@@ -18,7 +18,7 @@ use crate::{
     state::RepositoryPool,
 };
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct DiffStat {
     modified_file_exts: HashSet<String>,
     modified_file_paths: HashSet<String>,
@@ -211,6 +211,7 @@ pub async fn expand_commits_to_suggestions(
                 //  - the number of modified files is less than min_mod_files
                 //  - the number of modified files is greater than max_mod_files
                 //  - the number of diff lines is less than min_diff_lines
+                dbg!("{:?}", &commit);
 
                 let contains_exclude_keyword = COMMIT_EXCLUDE_KEYWORDS
                     .iter()
@@ -248,6 +249,7 @@ pub async fn expand_commits_to_suggestions(
         min_diff_lines = min_diff_lines.saturating_sub(20);
 
         if min_diff_lines <= 60 {
+            error!("Breaking here!");
             break;
         }
     }
@@ -291,6 +293,65 @@ pub fn latest_commits(
     }
     .take(100)
     .collect::<Vec<_>>())
+}
+
+pub async fn generate_tutorial_questions(
+    db: crate::db::SqlDb,
+    llm_gateway: Result<crate::llm_gateway::Client>,
+    repo_pool: RepositoryPool,
+    reporef: RepoRef,
+) -> Result<()> {
+    let repo_str = reporef.to_string();
+    let rows = sqlx::query! {
+        "SELECT * FROM tutorial_questions \
+         WHERE repo_ref = ?",
+        repo_str,
+    }
+    .fetch_all(db.as_ref())
+    .await?;
+
+    if !rows.is_empty() {
+        debug!(%reporef, "skipping tutorial questions, already have some");
+        return Ok(());
+    }
+
+    debug!(%reporef, "generating tutorial questions");
+    let Ok(llm_gateway) = llm_gateway
+    else {
+	bail!("badly configured llm gw");
+    };
+
+    // Due to `Send` issues on the gix side, we need to split this off quite brutally.
+    let latest_commits = {
+        let reporef = reporef.clone();
+        tokio::task::spawn_blocking(|| latest_commits(repo_pool, reporef, None))
+            .await
+            .context("threads error")??
+    };
+
+    error!("About to expand commits to suggestions");
+    let suggestions = expand_commits_to_suggestions(latest_commits, &llm_gateway).await?;
+    error!("{:?}", &suggestions);
+
+    debug!(%reporef, count=suggestions.len(), "found suggestions");
+
+    let mut tx = db.begin().await?;
+    for q in suggestions {
+        _ = sqlx::query!(
+            "INSERT INTO tutorial_questions (question, tag, repo_ref) \
+             VALUES (?, ?, ?)",
+            q.question,
+            q.tag,
+            repo_str,
+        )
+        .execute(&mut tx)
+        .await?;
+    }
+
+    tx.commit().await?;
+
+    debug!(%reporef, "suggestions committed");
+    Ok(())
 }
 
 async fn generate_suggestion(
