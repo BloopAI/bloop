@@ -10,8 +10,8 @@ import { Trans, useTranslation } from 'react-i18next';
 import Button from '../../../components/Button';
 import {
   RepoType,
-  StudioRightPanelDataType,
-  StudioRightPanelType,
+  StudioLeftPanelDataType,
+  StudioLeftPanelType,
 } from '../../../types/general';
 import { Branch, CursorSelection, Fire } from '../../../icons';
 import FileIcon from '../../../components/FileIcon';
@@ -28,7 +28,7 @@ import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
 import OverflowTracker from '../../../components/OverflowTracker';
 
 type Props = {
-  setRightPanel: Dispatch<SetStateAction<StudioRightPanelDataType>>;
+  setLeftPanel: Dispatch<SetStateAction<StudioLeftPanelDataType>>;
   filePath: string;
   branch: string | null;
   repo: RepoType;
@@ -50,7 +50,7 @@ const HORIZONTAL_PADDINGS = 32;
 const BREADCRUMBS_HEIGHT = 41;
 
 const FilePanel = ({
-  setRightPanel,
+  setLeftPanel,
   filePath,
   branch,
   repo,
@@ -121,19 +121,19 @@ const FilePanel = ({
   }, [filePath, repo.ref, branch, selectedLines]);
 
   const onCancel = useCallback(() => {
-    setRightPanel({ type: StudioRightPanelType.CONVERSATION });
-  }, [setRightPanel]);
+    setLeftPanel({ type: StudioLeftPanelType.CONTEXT });
+  }, [setLeftPanel]);
 
   const onSubmit = useCallback(() => {
     onFileRangesChanged(selectedLines, filePath, repo.ref, branch);
-    setRightPanel({ type: StudioRightPanelType.CONVERSATION });
+    setLeftPanel({ type: StudioLeftPanelType.CONTEXT });
   }, [
     onFileRangesChanged,
     selectedLines,
     filePath,
     repo.ref,
     branch,
-    setRightPanel,
+    setLeftPanel,
   ]);
 
   const handleKeyEvent = useCallback(

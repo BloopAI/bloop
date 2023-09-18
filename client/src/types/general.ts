@@ -372,14 +372,17 @@ export type FileStudioPanelType = {
   };
 };
 
-export type StudioLeftPanelDataType = {
-  type: StudioLeftPanelType.CONTEXT | StudioLeftPanelType.TEMPLATES;
+export type StudioLeftPanelDataType =
+  | {
+      type: StudioLeftPanelType.CONTEXT | StudioLeftPanelType.TEMPLATES;
+      data?: null;
+    }
+  | FileStudioPanelType;
+
+export type StudioRightPanelDataType = {
+  type: StudioRightPanelType.CONVERSATION;
   data?: null;
 };
-
-export type StudioRightPanelDataType =
-  | FileStudioPanelType
-  | { type: StudioRightPanelType.CONVERSATION; data?: null };
 
 export type StudioContextFile = {
   path: string;

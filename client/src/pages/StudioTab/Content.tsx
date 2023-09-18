@@ -15,7 +15,6 @@ import {
   StudioContextFile,
   StudioLeftPanelDataType,
   StudioLeftPanelType,
-  StudioRightPanelDataType,
   StudioRightPanelType,
   StudioTabType,
 } from '../../types/general';
@@ -54,10 +53,10 @@ const ContentContainer = ({
     type: StudioLeftPanelType.CONTEXT,
     data: null,
   });
-  const [rightPanel, setRightPanel] = useState<StudioRightPanelDataType>({
-    type: StudioRightPanelType.CONVERSATION,
-    data: null,
-  });
+  // const [rightPanel, setRightPanel] = useState<StudioRightPanelDataType>({
+  //   type: StudioRightPanelType.CONVERSATION,
+  //   data: null,
+  // });
   const { setStudioGuideOpen } = useContext(UIContext.StudioGuide);
   const [isAddContextOpen, setAddContextOpen] = useState(false);
   const [currentState, setCurrentState] =
@@ -129,7 +128,7 @@ const ContentContainer = ({
 
   const onFileSelected = useCallback(
     (repo: RepoType, branch: string | null, filePath: string) => {
-      setRightPanel({
+      setLeftPanel({
         type: StudioRightPanelType.FILE,
         data: { repo, branch, filePath },
       });
@@ -228,7 +227,7 @@ const ContentContainer = ({
     (state?: HistoryConversationTurn, closeHistory?: boolean) => {
       setPreviewingState(state || null);
       if (state) {
-        setRightPanel({ type: StudioRightPanelType.CONVERSATION, data: null });
+        // setRightPanel({ type: StudioRightPanelType.CONVERSATION, data: null });
         setLeftPanel({ type: StudioLeftPanelType.CONTEXT, data: null });
       }
       if (closeHistory) {
@@ -294,7 +293,7 @@ const ContentContainer = ({
             >
               {leftPanel.type === StudioLeftPanelType.CONTEXT ? (
                 <ContextPanel
-                  setRightPanel={setRightPanel}
+                  setLeftPanel={setLeftPanel}
                   setAddContextOpen={setAddContextOpen}
                   studioId={tab.key}
                   contextFiles={stateToShow.context}
@@ -307,6 +306,13 @@ const ContentContainer = ({
                 />
               ) : leftPanel.type === StudioLeftPanelType.TEMPLATES ? (
                 <TemplatesPanel setLeftPanel={setLeftPanel} />
+              ) : leftPanel.type === StudioRightPanelType.FILE ? (
+                <FilePanel
+                  {...leftPanel.data}
+                  setLeftPanel={setLeftPanel}
+                  onFileRangesChanged={onFileRangesChanged}
+                  isActiveTab={isActive}
+                />
               ) : null}
               <AddContextModal
                 isVisible={isAddContextOpen}
@@ -325,29 +331,20 @@ const ContentContainer = ({
               className="w-1/2 flex-shrink-0 flex-grow-0 flex flex-col"
               ref={rightPanelRef}
             >
-              {rightPanel.type === StudioRightPanelType.CONVERSATION ? (
-                <RightPanel
-                  setLeftPanel={setLeftPanel}
-                  studioId={tab.key}
-                  messages={stateToShow.messages}
-                  refetchCodeStudio={refetchCodeStudio}
-                  tokensTotal={stateToShow.token_counts?.total}
-                  setIsHistoryOpen={setIsHistoryOpen}
-                  isPreviewing={!!previewingState}
-                  handleRestore={handleRestore}
-                  hasContextError={stateToShow.token_counts?.per_file?.includes(
-                    null,
-                  )}
-                  isActiveTab={isActive}
-                />
-              ) : rightPanel.type === StudioRightPanelType.FILE ? (
-                <FilePanel
-                  {...rightPanel.data}
-                  setRightPanel={setRightPanel}
-                  onFileRangesChanged={onFileRangesChanged}
-                  isActiveTab={isActive}
-                />
-              ) : null}
+              <RightPanel
+                setLeftPanel={setLeftPanel}
+                studioId={tab.key}
+                messages={stateToShow.messages}
+                refetchCodeStudio={refetchCodeStudio}
+                tokensTotal={stateToShow.token_counts?.total}
+                setIsHistoryOpen={setIsHistoryOpen}
+                isPreviewing={!!previewingState}
+                handleRestore={handleRestore}
+                hasContextError={stateToShow.token_counts?.per_file?.includes(
+                  null,
+                )}
+                isActiveTab={isActive}
+              />
             </div>
           </div>
         </div>

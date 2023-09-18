@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 import {
   RepoType,
   StudioContextFile,
-  StudioRightPanelDataType,
+  StudioLeftPanelDataType,
   StudioRightPanelType,
 } from '../../../types/general';
 import FileIcon from '../../../components/FileIcon';
@@ -28,7 +28,7 @@ import RelatedFilesDropdown from '../RelatedFilesDropdown';
 
 type Props = StudioContextFile & {
   contextFiles: StudioContextFile[];
-  setRightPanel: Dispatch<SetStateAction<StudioRightPanelDataType>>;
+  setLeftPanel: Dispatch<SetStateAction<StudioLeftPanelDataType>>;
   repoFull?: RepoType;
   tokens: number | null;
   onFileHide: (
@@ -60,7 +60,7 @@ const ContextFileRow = ({
   branch,
   hidden,
   contextFiles,
-  setRightPanel,
+  setLeftPanel,
   repoFull,
   onFileRemove,
   onFileHide,
@@ -76,7 +76,7 @@ const ContextFileRow = ({
 
   const handleClick = useCallback(() => {
     if (repoFull) {
-      setRightPanel({
+      setLeftPanel({
         type: StudioRightPanelType.FILE,
         data: {
           filePath: path,
