@@ -107,7 +107,7 @@ pub fn system<'a>(paths: impl IntoIterator<Item = &'a str>) -> String {
 - If functions.code or functions.path did not return any relevant information, call them again with a SIGNIFICANTLY different query. The terms in the new query should not overlap with terms in your old one
 - If the output of a function is empty, try calling the function again with DIFFERENT arguments OR try calling a different function
 - Only call functions.proc with path indices that are under the PATHS heading above
-- Call functions.proc with paths that might contain relevant information. Either because of the path name, or to expand on code that's already been returned by functions.code 
+- Call functions.proc with paths that might contain relevant information. Either because of the path name, or to expand on code that's already been returned by functions.code
 - DO NOT call functions.proc with more than 5 paths
 - DO NOT call functions.proc on the same file more than once
 - ALWAYS call a function. DO NOT answer the question directly"#);
@@ -218,6 +218,35 @@ You must use the following formatting rules at all times:
 - When referring to code, you must provide an example in a code block
 - Keep number of quoted lines of code to a minimum when possible
 - Basic markdown is allowed"#
+    )
+}
+
+pub fn studio_name_prompt(context_json: &str, messages_json: &str) -> String {
+    format!(
+        r#"Your job is to generate a name for a conversation about software source code, given source code context and conversation history.
+
+Follow these rules strictly:
+    - You MUST only return the new title, and NO additional text
+    - Be brief, only return a few words, 3-5 is ideal
+    - Do NOT include quotation marks in your title
+    - Do NOT use gerunds (e.g. "Searching for...")
+
+Here are some example titles demonstrating the correct style:
+    - Rust PyO3 Function Reference
+    - Update HelmRelease Chart Version
+    - Readable Code and Tests
+
+######
+
+Here is the source code context:
+=====
+{context_json}
+=====
+
+And here is the serialized conversation:
+=====
+{messages_json}
+====="#
     )
 }
 

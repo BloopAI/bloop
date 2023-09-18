@@ -1,9 +1,7 @@
 import React, { memo } from 'react';
 import { RenderPage } from '../../pages/RepoTab/Content';
 import IdeNavigation from '../IdeNavigation';
-import Filters from '../Filters';
 import useResizeableWidth from '../../hooks/useResizeableWidth';
-import { LEFT_SIDEBAR_WIDTH_KEY } from '../../services/storage';
 
 type Props = {
   renderPage: RenderPage;

@@ -24,7 +24,7 @@ const ConversationDay = ({
   const { locale } = useContext(LocaleContext);
   return (
     <div className="flex flex-col gap-3 relative">
-      <div className="flex items-center gap-2 body-s-strong text-label-title mb-1 select-none">
+      <div className="flex items-center gap-2 body-s-strong text-label-title mb-1 ml-7 select-none">
         <Calendar className="text-label-base" />
         {!date
           ? format(new Date(), 'EE, d MMM yyyy', getDateFnsLocale(locale))
@@ -34,7 +34,7 @@ const ConversationDay = ({
               getDateFnsLocale(locale),
             )}
       </div>
-      <div className="absolute top-7 left-2.5 bottom-1 w-px bg-bg-border" />
+      <div className="absolute top-[3.75rem] left-2.5 bottom-[4.75rem] w-px bg-bg-border" />
       {turns.map((turn, i) => (
         <ConversationTurn
           key={turn.id}

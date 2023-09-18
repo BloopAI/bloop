@@ -25,6 +25,14 @@ const ConversationTurn = ({
     return messages[messages.length - 1];
   }, []);
 
+  const text = useMemo(() => {
+    return lastMessage
+      ? 'User' in lastMessage
+        ? lastMessage.User
+        : lastMessage.Assistant
+      : '';
+  }, [lastMessage]);
+
   return (
     <button
       className={`flex overflow-hidden flex-col items-start gap-3 p-3 pl-7 rounded-md border text-left ${
@@ -36,7 +44,7 @@ const ConversationTurn = ({
     >
       <div
         className={`absolute top-5 left-1.5 transform translate-x-px w-1.5 h-1.5 rounded-full ${
-          modified_at ? 'bg-bg-border-hover' : 'bg-bg-main'
+          !isCurrent ? 'bg-bg-border-hover' : 'bg-bg-main'
         }`}
       />
       <div
@@ -54,14 +62,12 @@ const ConversationTurn = ({
               getDateFnsLocale(locale),
             )}
       </div>
-      <div className="body-s text-label-title overflow-hidden w-full">
-        <p>
-          {lastMessage &&
-            ('User' in lastMessage ? lastMessage.User : lastMessage.Assistant)
-              .split(' ')
-              .slice(0, 3)
-              .join(' ')}
-        </p>
+      <div
+        className={`body-s ${
+          isPreviewed ? 'text-label-title' : 'text-label-base'
+        } overflow-hidden w-full`}
+      >
+        <p>{text.length > 55 ? text.slice(0, 52) + '...' : text}</p>
       </div>
     </button>
   );

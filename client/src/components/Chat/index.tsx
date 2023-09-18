@@ -29,6 +29,7 @@ const focusInput = () => {
 const Chat = () => {
   const { t } = useTranslation();
   const { tab } = useContext(UIContext.Tab);
+  const { preferredAnswerSpeed } = useContext(UIContext.AnswerSpeed);
   const { apiUrl } = useContext(DeviceContext);
   const { selectedBranch } = useContext(SearchContext.SelectedBranch);
   const { conversation, submittedQuery, threadId } = useContext(
@@ -81,6 +82,8 @@ const Chat = () => {
               queryIdToEdit ? `&parent_query_id=${queryIdToEdit}` : ''
             }`
           : ''
+      }&model=${
+        preferredAnswerSpeed === 'normal' ? 'gpt-4' : 'gpt-3.5-turbo-finetuned'
       }`;
       console.log(url);
       const eventSource = new EventSource(url);
@@ -259,6 +262,7 @@ const Chat = () => {
       selectedBranch,
       t,
       queryIdToEdit,
+      preferredAnswerSpeed,
     ],
   );
 

@@ -44,6 +44,10 @@ export const UIContext = {
     isPromptGuideOpen: false,
     setPromptGuideOpen: (b: boolean) => {},
   }),
+  StudioGuide: createContext({
+    isStudioGuideOpen: false,
+    setStudioGuideOpen: (b: boolean) => {},
+  }),
   CloudFeaturePopup: createContext({
     isCloudFeaturePopupOpen: false,
     setCloudFeaturePopupOpen: (b: boolean) => {},

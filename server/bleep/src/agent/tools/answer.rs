@@ -8,7 +8,7 @@ use tracing::{debug, info, instrument, trace};
 use crate::{
     agent::{
         exchange::{CodeChunk, FocusedChunk, Update},
-        prompts, transcoder, Agent, ANSWER_MODEL,
+        model, prompts, transcoder, Agent,
     },
     analytics::EventData,
     llm_gateway,
@@ -17,8 +17,6 @@ use crate::{
 impl Agent {
     #[instrument(skip(self))]
     pub async fn answer(&mut self, aliases: &[usize]) -> Result<()> {
-        const ANSWER_HEADROOM: usize = 1024; // the number of tokens reserved for the answer
-
         debug!("creating article response");
 
         if aliases.len() == 1 {
@@ -40,14 +38,17 @@ impl Agent {
             .await?;
         }
 
-        let context = self.answer_context(aliases, ANSWER_MODEL).await?;
+        let context = self.answer_context(aliases).await?;
         let system_prompt = prompts::answer_article_prompt(&context);
         let system_message = llm_gateway::api::Message::system(&system_prompt);
         let history = {
             let h = self.utter_history().collect::<Vec<_>>();
-            let system_headroom =
-                tiktoken_rs::num_tokens_from_messages(ANSWER_MODEL, &[(&system_message).into()])?;
-            trim_utter_history(h, ANSWER_HEADROOM + system_headroom)?
+            let system_headroom = tiktoken_rs::num_tokens_from_messages(
+                self.model.tokenizer,
+                &[(&system_message).into()],
+            )?;
+            let headroom = self.model.answer_headroom + system_headroom;
+            trim_utter_history(h, headroom, self.model)?
         };
         let messages = Some(system_message)
             .into_iter()
@@ -57,7 +58,7 @@ impl Agent {
         let mut stream = pin!(
             self.llm_gateway
                 .clone()
-                .model(ANSWER_MODEL)
+                .model(self.model.model_name)
                 .chat(&messages, None)
                 .await?
         );
@@ -106,7 +107,7 @@ impl Agent {
     }
 
     #[instrument(skip(self))]
-    async fn answer_context(&mut self, aliases: &[usize], gpt_model: &str) -> Result<String> {
+    async fn answer_context(&mut self, aliases: &[usize]) -> Result<String> {
         let paths = self.paths().collect::<Vec<_>>();
 
         let mut s = "".to_owned();
@@ -131,14 +132,14 @@ impl Agent {
             }
         }
 
-        let code_chunks = self.canonicalize_code_chunks(&aliases, gpt_model).await;
+        let code_chunks = self.canonicalize_code_chunks(&aliases).await;
 
         // Sometimes, there are just too many code chunks in the context, and deduplication still
         // doesn't trim enough chunks. So, we enforce a hard limit here that stops adding tokens
         // early if we reach a heuristic limit.
-        const PROMPT_HEADROOM: usize = 2500;
-        let bpe = tiktoken_rs::get_bpe_from_model(gpt_model)?;
-        let mut remaining_prompt_tokens = tiktoken_rs::get_completion_max_tokens(gpt_model, &s)?;
+        let bpe = tiktoken_rs::get_bpe_from_model(self.model.tokenizer)?;
+        let mut remaining_prompt_tokens =
+            tiktoken_rs::get_completion_max_tokens(self.model.tokenizer, &s)?;
 
         // Select as many recent chunks as possible
         let mut recent_chunks = Vec::new();
@@ -154,7 +155,7 @@ impl Agent {
 
             let snippet_tokens = bpe.encode_ordinary(&formatted_snippet).len();
 
-            if snippet_tokens >= remaining_prompt_tokens - PROMPT_HEADROOM {
+            if snippet_tokens >= remaining_prompt_tokens - self.model.prompt_headroom {
                 info!("breaking at {} tokens", remaining_prompt_tokens);
                 break;
             }
@@ -234,11 +235,7 @@ impl Agent {
     }
 
     /// Merge overlapping and nearby code chunks
-    async fn canonicalize_code_chunks(
-        &mut self,
-        aliases: &[usize],
-        gpt_model: &str,
-    ) -> Vec<CodeChunk> {
+    async fn canonicalize_code_chunks(&mut self, aliases: &[usize]) -> Vec<CodeChunk> {
         debug!(?aliases, "canonicalizing code chunks");
 
         /// The ratio of code tokens to context size.
@@ -246,8 +243,8 @@ impl Agent {
         /// Making this closure to 1 means that more of the context is taken up by source code.
         const CONTEXT_CODE_RATIO: f32 = 0.5;
 
-        let bpe = tiktoken_rs::get_bpe_from_model(gpt_model).unwrap();
-        let context_size = tiktoken_rs::model::get_context_size(gpt_model);
+        let bpe = tiktoken_rs::get_bpe_from_model(self.model.tokenizer).unwrap();
+        let context_size = tiktoken_rs::model::get_context_size(self.model.tokenizer);
         let max_tokens = (context_size as f32 * CONTEXT_CODE_RATIO) as usize;
 
         // Note: The end line number here is *not* inclusive.
@@ -380,12 +377,13 @@ impl Agent {
 fn trim_utter_history(
     mut history: Vec<llm_gateway::api::Message>,
     headroom: usize,
+    model: model::AnswerModel,
 ) -> Result<Vec<llm_gateway::api::Message>> {
     let mut tiktoken_msgs: Vec<tiktoken_rs::ChatCompletionRequestMessage> =
         history.iter().map(|m| m.into()).collect::<Vec<_>>();
 
     // remove the earliest messages, one by one, until we can accommodate into prompt
-    while tiktoken_rs::get_chat_completion_max_tokens(ANSWER_MODEL, &tiktoken_msgs)? < headroom {
+    while tiktoken_rs::get_chat_completion_max_tokens(model.tokenizer, &tiktoken_msgs)? < headroom {
         if !tiktoken_msgs.is_empty() {
             tiktoken_msgs.remove(0);
             history.remove(0);
@@ -434,14 +432,14 @@ mod tests {
 
         // the answer needs 8100 tokens of 8192, the utter history can admit just one message
         assert_eq!(
-            trim_utter_history(history.clone(), 8100).unwrap(),
+            trim_utter_history(history.clone(), 8100, model::GPT_4).unwrap(),
             vec![llm_gateway::api::Message::user("corge"),]
         );
 
         // the answer needs just 4000 tokens of 8192, the utter history can accomodate
         // one long_string, but no more long_strings
         assert_eq!(
-            trim_utter_history(history, 4000).unwrap(),
+            trim_utter_history(history, 4000, model::GPT_4).unwrap(),
             vec![
                 llm_gateway::api::Message::assistant("quux"),
                 llm_gateway::api::Message::user("fred"),

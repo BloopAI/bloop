@@ -2,11 +2,6 @@ import React, { ReactNode } from 'react';
 import { GitHubLogo } from '../../../icons';
 import TextField from '../../TextField';
 import useAppNavigation from '../../../hooks/useAppNavigation';
-import useResizeableWidth from '../../../hooks/useResizeableWidth';
-import {
-  LEFT_SIDEBAR_WIDTH_KEY,
-  RIGHT_SIDEBAR_WIDTH_KEY,
-} from '../../../services/storage';
 
 type Props = {
   repoName: string;
