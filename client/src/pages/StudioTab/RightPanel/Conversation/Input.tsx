@@ -23,8 +23,8 @@ import {
 import { DeviceContext } from '../../../../context/deviceContext';
 import {
   StudioConversationMessageAuthor,
-  StudioLeftPanelType,
   StudioLeftPanelDataType,
+  StudioLeftPanelType,
 } from '../../../../types/general';
 import MarkdownWithCode from '../../../../components/MarkdownWithCode';
 import { StudioContext } from '../../../../context/studioContext';
@@ -117,7 +117,15 @@ const ConversationInput = ({
           ) : (
             <Sparkles raw sizeClassName="w-4 h-4" />
           )}
-          <Trans>{author}</Trans>
+          {author === StudioConversationMessageAuthor.USER ? (
+            envConfig.github_user?.login ? (
+              envConfig.github_user?.login
+            ) : (
+              <Trans>User</Trans>
+            )
+          ) : (
+            'bloop'
+          )}
         </span>
         {isFocused || i === undefined ? (
           <div className="flex items-center gap-2">
