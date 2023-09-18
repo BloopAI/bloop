@@ -83,6 +83,7 @@ const ContextFileRow = ({
           branch,
           repo: repoFull,
           initialRanges: mappedRanges,
+          isFileInContext: true,
         },
       });
     }

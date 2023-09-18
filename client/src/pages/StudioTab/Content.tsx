@@ -130,7 +130,7 @@ const ContentContainer = ({
     (repo: RepoType, branch: string | null, filePath: string) => {
       setLeftPanel({
         type: StudioRightPanelType.FILE,
-        data: { repo, branch, filePath },
+        data: { repo, branch, filePath, isFileInContext: false },
       });
     },
     [],

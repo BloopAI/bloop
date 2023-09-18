@@ -32,6 +32,7 @@ type Props = {
   filePath: string;
   branch: string | null;
   repo: RepoType;
+  isFileInContext: boolean;
   initialRanges?: [number, number][];
   onFileRangesChanged: (
     ranges: [number, number][],
@@ -57,6 +58,7 @@ const FilePanel = ({
   initialRanges,
   onFileRangesChanged,
   isActiveTab,
+  isFileInContext,
 }: Props) => {
   useTranslation();
   const [file, setFile] = useState<File | null>(null);
@@ -161,15 +163,24 @@ const FilePanel = ({
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
           <Button size="small" variant="secondary" onClick={onCancel}>
-            <Trans>Cancel</Trans>
+            {!isFileInContext ||
+            JSON.stringify(initialRanges) !== JSON.stringify(selectedLines) ? (
+              <Trans>Cancel</Trans>
+            ) : (
+              <Trans>Back</Trans>
+            )}
           </Button>
-          <Button size="small" onClick={onSubmit}>
-            <Trans>Save</Trans>
-            <div className="flex items-center gap-1 flex-shrink-0">
-              <KeyboardChip type="cmd" variant="primary" />
-              <KeyboardChip type="S" variant="primary" />
-            </div>
-          </Button>
+          {(!isFileInContext ||
+            JSON.stringify(initialRanges) !==
+              JSON.stringify(selectedLines)) && (
+            <Button size="small" onClick={onSubmit}>
+              <Trans>Save</Trans>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <KeyboardChip type="cmd" variant="primary" />
+                <KeyboardChip type="S" variant="primary" />
+              </div>
+            </Button>
+          )}
         </div>
       </div>
       <div className="flex px-8 py-2 items-center gap-2 border-b border-bg-border bg-bg-sub text-label-base overflow-x-auto flex-shrink-0">

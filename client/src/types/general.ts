@@ -368,6 +368,7 @@ export type FileStudioPanelType = {
     repo: RepoType;
     branch: string | null;
     filePath: string;
+    isFileInContext: boolean;
     initialRanges?: [number, number][];
   };
 };
