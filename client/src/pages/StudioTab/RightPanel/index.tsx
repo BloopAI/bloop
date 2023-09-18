@@ -49,7 +49,7 @@ const RightPanel = ({
               >
                 #
               </span>{' '}
-              of #
+              of # tokens
             </Trans>
           </span>
         </div>

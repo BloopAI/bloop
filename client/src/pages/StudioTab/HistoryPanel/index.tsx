@@ -11,7 +11,7 @@ import Button from '../../../components/Button';
 import { CloseSign } from '../../../icons';
 import { HistoryConversationTurn } from '../../../types/api';
 import { getCodeStudioHistory } from '../../../services/api';
-import ConversationTurn from './ConversationDay';
+import ConversationDay from './ConversationDay';
 
 type Props = {
   setIsHistoryOpen: Dispatch<SetStateAction<boolean>>;
@@ -57,7 +57,7 @@ const HistoryPanel = ({ setIsHistoryOpen, studioId, handlePreview }: Props) => {
   );
 
   return (
-    <div className="flex flex-col w-52 flex-shrink-0 border-r border-bg-border overflow-auto">
+    <div className="flex flex-col w-60 flex-shrink-0 border-r border-bg-border overflow-auto">
       <div className="flex gap-1 px-8 justify-between items-center border-b flex-shrink-0 border-bg-border bg-bg-shade shadow-low h-11.5">
         <div className="flex items-center gap-3">
           <p className="body-s text-label-title">
@@ -74,9 +74,9 @@ const HistoryPanel = ({ setIsHistoryOpen, studioId, handlePreview }: Props) => {
           <CloseSign />
         </Button>
       </div>
-      <div className="flex flex-col gap-4 py-8 px-4 overflow-auto">
+      <div className="flex flex-col gap-4 py-8 px-2 overflow-auto">
         {Object.keys(history).map((date, i) => (
-          <ConversationTurn
+          <ConversationDay
             key={date}
             date={date}
             turns={history[date]}
