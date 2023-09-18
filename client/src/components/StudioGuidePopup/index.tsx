@@ -10,7 +10,7 @@ import PromptSvg from './PromptSvg';
 
 const StudioGuidePopup = () => {
   const { t } = useTranslation();
-  const { openLink, setEnvConfig, envConfig } = useContext(DeviceContext);
+  const { openLink } = useContext(DeviceContext);
   const { isStudioGuideOpen, setStudioGuideOpen } = useContext(
     UIContext.StudioGuide,
   );
