@@ -180,6 +180,7 @@ impl SyncHandle {
             return Err(SyncError::Cancelled);
         }
 
+        // TODO: this should only run once
         let tutorial_questions = {
             let db = self.app.sql.clone();
             let llm_gateway = self.app.llm_gateway_client();
@@ -496,13 +497,15 @@ async fn generate_tutorial_questions(
     // Due to `Send` issues on the gix side, we need to split this off quite brutally.
     let latest_commits = {
         let reporef = reporef.clone();
-        tokio::task::spawn_blocking(|| crate::history::latest_commits(repo_pool, reporef, None))
+        tokio::task::spawn_blocking(|| crate::commits::latest_commits(repo_pool, reporef, None))
             .await
             .context("threads error")??
     };
 
+    error!("About to expand commits to suggestions");
     let suggestions =
-        crate::history::expand_commits_to_suggestions(latest_commits, &llm_gateway).await?;
+        crate::commits::expand_commits_to_suggestions(latest_commits, &llm_gateway).await?;
+    error!("{:?}", &suggestions);
 
     debug!(%reporef, count=suggestions.len(), "found suggestions");
 
