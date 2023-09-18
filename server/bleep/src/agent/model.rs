@@ -34,10 +34,10 @@ pub const GPT_4: AnswerModel = AnswerModel {
     history_headroom: 2048,
 };
 
-#[allow(clippy::wildcard_in_or_patterns)]
 impl FromStr for AnswerModel {
     type Err = ();
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        #[allow(clippy::wildcard_in_or_patterns)]
         match s {
             "gpt-4" => Ok(GPT_4),
             "gpt-3.5-turbo-finetuned" | _ => Ok(GPT_3_5_TURBO_FINETUNED),
