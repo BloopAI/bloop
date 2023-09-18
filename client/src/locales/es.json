@@ -341,9 +341,9 @@
 	"Rename code studio": "Cambiar el nombre de Code Studio",
 	"Can’t open studio project": "No se puede abrir el proyecto de estudio",
 	"One or more repositories used in this studio project is being indexed. Try again when this process in complete.": "Se están indexando uno o más repositorios utilizados en este proyecto de estudio. Intente nuevamente cuando este proceso esté completo.",
-	"<0>#</0> of #": "<0>{{count}}</0> de {{total}}",
-	"<0>#</0> of #_one": "<0>{{count}}</0> de {{total}}",
-	"<0>#</0> of #_other": "<0>{{count}}</0> de {{total}}",
+	"<0>#</0> of # tokens": "<0>{{count}}</0> de {{total}} fichas",
+	"<0>#</0> of # tokens_one": "<0>{{count}}</0> de {{total}} fichas",
+	"<0>#</0> of # tokens_other": "<0>{{count}}</0> de {{total}} fichas",
 	"Templates": "Plantillas",
 	"No related files found": "No se encontraron archivos relacionados",
 	"Unavailable": "Indisponible",
@@ -360,5 +360,9 @@
 	"Faster answers may impact the quality of results": "Las respuestas más rápidas pueden afectar la calidad de los resultados",
 	"Normal": "Normal",
 	"Answer speed": "Velocidad de respuesta",
-	"Fast": "Rápida"
+	"Fast": "Rápida",
+	"Code Studio": "Estudio de código",
+	"Watch": "Mirar",
+	"Code Studio helps hobbyists and engineers working on the largest codebases, alike, to collaborate with AI. We recommend watching the guide to maximise your productivity.": "Estudio de código ayuda a los aficionados e ingenieros que trabajan en las bases de código más grandes, por igual, a colaborar con IA. Recomendamos ver la guía para maximizar su productividad.",
+	"Open in new tab": "Abrir en una pestaña nueva"
 }

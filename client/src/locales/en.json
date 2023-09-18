@@ -340,9 +340,9 @@
 	"Rename code studio": "Rename code studio",
 	"One or more repositories used in this studio project is being indexed. Try again when this process in complete.": "One or more repositories used in this studio project is being indexed. Try again when this process in complete.",
 	"Can’t open studio project": "Can’t open studio project",
-	"<0>#</0> of #": "<0>{{count}}</0> of {{total}}",
-	"<0>#</0> of #_one": "<0>{{count}}</0> of {{total}}",
-	"<0>#</0> of #_other": "<0>{{count}}</0> of {{total}}",
+	"<0>#</0> of # tokens": "<0>{{count}}</0> of {{total}} tokens",
+	"<0>#</0> of # tokens_one": "<0>{{count}}</0> of {{total}} tokens",
+	"<0>#</0> of # tokens_other": "<0>{{count}}</0> of {{total}} tokens",
 	"Templates": "Templates",
 	"No related files found": "No related files found",
 	"Unavailable": "Unavailable",
@@ -360,5 +360,9 @@
 	"Fast": "Fast",
 	"Answer speed": "Answer speed",
 	"Faster answers may impact the quality of results": "Faster answers may impact the quality of results",
-	"Normal": "Normal"
+	"Normal": "Normal",
+	"Code Studio": "Code Studio",
+	"Code Studio helps hobbyists and engineers working on the largest codebases, alike, to collaborate with AI. We recommend watching the guide to maximise your productivity.": "Code Studio helps hobbyists and engineers working on the largest codebases, alike, to collaborate with AI. We recommend watching the guide to maximise your productivity.",
+	"Watch": "Watch",
+	"Open in new tab": "Open in new tab"
 }

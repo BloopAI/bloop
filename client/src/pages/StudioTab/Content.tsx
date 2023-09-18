@@ -1,4 +1,11 @@
-import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  memo,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import * as Sentry from '@sentry/react';
 import { Trans } from 'react-i18next';
 import ErrorFallback from '../../components/ErrorFallback';
@@ -8,7 +15,6 @@ import {
   StudioContextFile,
   StudioLeftPanelDataType,
   StudioLeftPanelType,
-  StudioRightPanelDataType,
   StudioRightPanelType,
   StudioTabType,
 } from '../../types/general';
@@ -17,6 +23,9 @@ import { CodeStudioType, HistoryConversationTurn } from '../../types/api';
 import useResizeableSplitPanel from '../../hooks/useResizeableSplitPanel';
 import { TOKEN_LIMIT } from '../../consts/codeStudio';
 import { Info } from '../../icons';
+import { TabsContext } from '../../context/tabsContext';
+import { getPlainFromStorage, STUDIO_GUIDE_DONE } from '../../services/storage';
+import { UIContext } from '../../context/uiContext';
 import ContextPanel from './ContextPanel';
 import HistoryPanel from './HistoryPanel';
 import TemplatesPanel from './TemplatesPanel';
@@ -44,10 +53,11 @@ const ContentContainer = ({
     type: StudioLeftPanelType.CONTEXT,
     data: null,
   });
-  const [rightPanel, setRightPanel] = useState<StudioRightPanelDataType>({
-    type: StudioRightPanelType.CONVERSATION,
-    data: null,
-  });
+  // const [rightPanel, setRightPanel] = useState<StudioRightPanelDataType>({
+  //   type: StudioRightPanelType.CONVERSATION,
+  //   data: null,
+  // });
+  const { setStudioGuideOpen } = useContext(UIContext.StudioGuide);
   const [isAddContextOpen, setAddContextOpen] = useState(false);
   const [currentState, setCurrentState] =
     useState<CodeStudioType>(emptyCodeStudio);
@@ -57,11 +67,13 @@ const ContentContainer = ({
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const { leftPanelRef, rightPanelRef, dividerRef, containerRef } =
     useResizeableSplitPanel();
+  const { updateTabName } = useContext(TabsContext);
 
   const refetchCodeStudio = useCallback(
     async (keyToUpdate?: keyof CodeStudioType) => {
       if (tab.key) {
         const resp = await getCodeStudio(tab.key);
+        updateTabName(tab.key, resp.name);
         setCurrentState((prev) => {
           if (JSON.stringify(resp) === JSON.stringify(prev)) {
             return prev;
@@ -75,6 +87,12 @@ const ContentContainer = ({
     },
     [tab.key],
   );
+
+  useEffect(() => {
+    if (!getPlainFromStorage(STUDIO_GUIDE_DONE)) {
+      setStudioGuideOpen(true);
+    }
+  }, []);
 
   useEffect(() => {
     if (isActive) {
@@ -110,9 +128,9 @@ const ContentContainer = ({
 
   const onFileSelected = useCallback(
     (repo: RepoType, branch: string | null, filePath: string) => {
-      setRightPanel({
+      setLeftPanel({
         type: StudioRightPanelType.FILE,
-        data: { repo, branch, filePath },
+        data: { repo, branch, filePath, isFileInContext: false },
       });
     },
     [],
@@ -209,7 +227,7 @@ const ContentContainer = ({
     (state?: HistoryConversationTurn, closeHistory?: boolean) => {
       setPreviewingState(state || null);
       if (state) {
-        setRightPanel({ type: StudioRightPanelType.CONVERSATION, data: null });
+        // setRightPanel({ type: StudioRightPanelType.CONVERSATION, data: null });
         setLeftPanel({ type: StudioLeftPanelType.CONTEXT, data: null });
       }
       if (closeHistory) {
@@ -265,7 +283,7 @@ const ContentContainer = ({
           )}
           <div
             className={`flex flex-1 relative ${
-              isHistoryOpen ? 'w-[calc(100%-13rem)]' : 'w-full'
+              isHistoryOpen ? 'w-[calc(100%-15rem)]' : 'w-full'
             }`}
             ref={containerRef}
           >
@@ -275,7 +293,7 @@ const ContentContainer = ({
             >
               {leftPanel.type === StudioLeftPanelType.CONTEXT ? (
                 <ContextPanel
-                  setRightPanel={setRightPanel}
+                  setLeftPanel={setLeftPanel}
                   setAddContextOpen={setAddContextOpen}
                   studioId={tab.key}
                   contextFiles={stateToShow.context}
@@ -288,6 +306,13 @@ const ContentContainer = ({
                 />
               ) : leftPanel.type === StudioLeftPanelType.TEMPLATES ? (
                 <TemplatesPanel setLeftPanel={setLeftPanel} />
+              ) : leftPanel.type === StudioRightPanelType.FILE ? (
+                <FilePanel
+                  {...leftPanel.data}
+                  setLeftPanel={setLeftPanel}
+                  onFileRangesChanged={onFileRangesChanged}
+                  isActiveTab={isActive}
+                />
               ) : null}
               <AddContextModal
                 isVisible={isAddContextOpen}
@@ -306,29 +331,20 @@ const ContentContainer = ({
               className="w-1/2 flex-shrink-0 flex-grow-0 flex flex-col"
               ref={rightPanelRef}
             >
-              {rightPanel.type === StudioRightPanelType.CONVERSATION ? (
-                <RightPanel
-                  setLeftPanel={setLeftPanel}
-                  studioId={tab.key}
-                  messages={stateToShow.messages}
-                  refetchCodeStudio={refetchCodeStudio}
-                  tokensTotal={stateToShow.token_counts?.total}
-                  setIsHistoryOpen={setIsHistoryOpen}
-                  isPreviewing={!!previewingState}
-                  handleRestore={handleRestore}
-                  hasContextError={stateToShow.token_counts?.per_file?.includes(
-                    null,
-                  )}
-                  isActiveTab={isActive}
-                />
-              ) : rightPanel.type === StudioRightPanelType.FILE ? (
-                <FilePanel
-                  {...rightPanel.data}
-                  setRightPanel={setRightPanel}
-                  onFileRangesChanged={onFileRangesChanged}
-                  isActiveTab={isActive}
-                />
-              ) : null}
+              <RightPanel
+                setLeftPanel={setLeftPanel}
+                studioId={tab.key}
+                messages={stateToShow.messages}
+                refetchCodeStudio={refetchCodeStudio}
+                tokensTotal={stateToShow.token_counts?.total}
+                setIsHistoryOpen={setIsHistoryOpen}
+                isPreviewing={!!previewingState}
+                handleRestore={handleRestore}
+                hasContextError={stateToShow.token_counts?.per_file?.includes(
+                  null,
+                )}
+                isActiveTab={isActive}
+              />
             </div>
           </div>
         </div>

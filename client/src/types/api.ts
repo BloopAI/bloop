@@ -302,6 +302,7 @@ export type StudioTemplateType = {
   name: string;
   content: string;
   modified_at: string;
+  is_default: boolean;
 };
 
 export type HistoryConversationTurn = CodeStudioType & {

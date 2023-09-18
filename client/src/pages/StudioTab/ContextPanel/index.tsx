@@ -14,13 +14,13 @@ import KeyboardChip from '../KeyboardChip';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
 import {
   StudioContextFile,
-  StudioRightPanelDataType,
+  StudioLeftPanelDataType,
 } from '../../../types/general';
 import { RepositoriesContext } from '../../../context/repositoriesContext';
 import ContextFileRow from './ContextFileRow';
 
 type Props = {
-  setRightPanel: Dispatch<SetStateAction<StudioRightPanelDataType>>;
+  setLeftPanel: Dispatch<SetStateAction<StudioLeftPanelDataType>>;
   setAddContextOpen: Dispatch<SetStateAction<boolean>>;
   studioId: string;
   contextFiles: StudioContextFile[];
@@ -53,7 +53,7 @@ type FileList = {
 }[];
 
 const ContextPanel = ({
-  setRightPanel,
+  setLeftPanel,
   setAddContextOpen,
   contextFiles,
   tokensPerFile,
@@ -181,7 +181,7 @@ const ContextPanel = ({
                   key={file.repo + file.branch + file.path}
                   {...file}
                   contextFiles={contextFiles}
-                  setRightPanel={setRightPanel}
+                  setLeftPanel={setLeftPanel}
                   repoFull={repositories?.find((r) => r.ref === file.repo)}
                   tokens={tokensPerFile[file.originalIndex]}
                   onFileRemove={onFileRemove}

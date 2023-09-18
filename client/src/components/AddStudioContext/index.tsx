@@ -84,16 +84,7 @@ const AddStudioContext = ({ filePath, threadId, name }: Props) => {
             console.log(err);
           }
         } else {
-          const exising = studios
-            .filter((s) => s.name.startsWith('New Code Studio'))
-            .sort((a, b) => a.name.localeCompare(b.name));
-          const lastNum = Number(
-            exising[exising.length - 1]?.name.split('#').pop() || 0,
-          );
-          const name = `New Code Studio${
-            exising.length ? ` #${Number.isNaN(lastNum) ? 1 : lastNum + 1}` : ''
-          }`;
-          const id = await postCodeStudio(name);
+          const id = await postCodeStudio();
           await patchCodeStudio(id, {
             context: [
               {
@@ -105,7 +96,7 @@ const AddStudioContext = ({ filePath, threadId, name }: Props) => {
               },
             ],
           });
-          handleAddStudioTab(name, id);
+          handleAddStudioTab('New Studio', id);
           refetchStudios();
         }
       } else if (threadId) {
