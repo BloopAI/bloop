@@ -1,4 +1,4 @@
-use crate::{history::Question, repo::RepoRef, Application};
+use crate::{commits::Question, repo::RepoRef, Application};
 use anyhow::Context;
 use axum::{extract::State, Json};
 

@@ -20,17 +20,17 @@ use crate::{
 
 #[derive(Default)]
 pub struct DiffStat {
-    file_types: HashSet<String>,
-    files: HashSet<String>,
-    insertions: usize,
-    deletions: usize,
-    line_insertions: usize,
-    line_deletions: usize,
+    modified_file_exts: HashSet<String>,
+    modified_file_paths: HashSet<String>,
+    num_file_insertions: usize,
+    num_file_deletions: usize,
+    num_line_insertions: usize,
+    num_line_deletions: usize,
     commit_message: String,
     diff: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct Question {
     pub question: String,
     pub tag: String,
@@ -83,17 +83,17 @@ impl<'a> Iterator for CommitIterator<'a> {
                     .map(|ext| ext.to_string_lossy().to_string());
 
                 if let Some(ext) = ext {
-                    stats.file_types.insert(ext);
+                    stats.modified_file_exts.insert(ext);
                 }
 
                 let location = change.location.to_str_lossy();
-                stats.files.insert(location.to_string());
+                stats.modified_file_paths.insert(location.to_string());
 
                 match &change.event {
                     gix::object::tree::diff::change::Event::Addition { entry_mode, id }
                         if matches!(entry_mode, EntryMode::Blob) =>
                     {
-                        stats.insertions += 1;
+                        stats.num_file_insertions += 1;
                         add_diff(
                             &location,
                             "".into(),
@@ -104,7 +104,7 @@ impl<'a> Iterator for CommitIterator<'a> {
                     gix::object::tree::diff::change::Event::Deletion { entry_mode, id }
                         if matches!(entry_mode, EntryMode::Blob) =>
                     {
-                        stats.deletions += 1;
+                        stats.num_file_deletions += 1;
                         add_diff(
                             &location,
                             id.object().unwrap().data.as_bstr().to_str_lossy(),
@@ -119,8 +119,8 @@ impl<'a> Iterator for CommitIterator<'a> {
                         entry_mode,
                         ..
                     } if matches!(entry_mode, EntryMode::Blob) => {
-                        stats.line_deletions += diff.removals as usize;
-                        stats.line_insertions += diff.insertions as usize;
+                        stats.num_line_deletions += diff.removals as usize;
+                        stats.num_line_insertions += diff.insertions as usize;
 
                         let platform = Platform::from_ids(source_id, id).unwrap();
                         let old = platform.old.data.as_bstr().to_str_lossy();
@@ -188,45 +188,71 @@ pub async fn expand_commits_to_suggestions(
     mut src_commits: Vec<DiffStat>,
     llm_gateway: &llm_gateway::Client,
 ) -> Result<Vec<Question>> {
-    let mut tres_types = 2usize;
-    let mut tres_files = 4usize;
-    let mut tres_files_max = 15usize;
-    let mut tres_diff_lines = 100usize;
+    const NUM_QUESTION_SUGGESTIONS: usize = 5;
+    const COMMIT_EXCLUDE_KEYWORDS: [&str; 7] = [
+        "merge", "revert", "bump", "chore", "fix", "refactor", "docs",
+    ];
+    const COMMIT_EXCLUDE_EXTENSIONS: [&str; 7] =
+        ["md", "txt", "json", "toml", "yml", "yaml", "rst"];
 
-    let mut commits = vec![];
-    while commits.len() < 5 {
+    let mut min_mod_files = 2usize;
+    let mut max_mod_files = 15usize;
+    let mut min_diff_lines = 100usize;
+
+    let mut questions = vec![];
+    while questions.len() < NUM_QUESTION_SUGGESTIONS {
         let drained;
         (drained, src_commits) = std::mem::take(&mut src_commits)
             .into_iter()
             .partition::<Vec<_>, _>(|commit| {
-                commit.file_types.len() > tres_types
-                    && commit.files.len() > tres_files
-                    && commit.files.len() < tres_files_max
-                    && commit.diff.lines().collect::<Vec<_>>().len() > tres_diff_lines
-            });
+                // Skip commits where:
+                //  - the message contains one of the COMMIT_EXCLUDE_KEYWORDS
+                //  - all of the modified files are not in COMMIT_EXCLUDE_EXTENSIONS
+                //  - the number of modified files is less than min_mod_files
+                //  - the number of modified files is greater than max_mod_files
+                //  - the number of diff lines is less than min_diff_lines
 
+                let contains_exclude_keyword = COMMIT_EXCLUDE_KEYWORDS
+                    .iter()
+                    .any(|keyword| commit.commit_message.to_lowercase().contains(keyword));
+
+                let all_files_excluded = commit
+                    .modified_file_exts
+                    .iter()
+                    .all(|ext| COMMIT_EXCLUDE_EXTENSIONS.contains(&ext.as_str()));
+
+                !all_files_excluded
+                    && !contains_exclude_keyword
+                    && commit.modified_file_paths.len() > min_mod_files
+                    && commit.modified_file_paths.len() < max_mod_files
+                    && commit.diff.lines().collect::<Vec<_>>().len() > min_diff_lines
+            });
+        error!("processing {:?} commits", drained.len());
         for commit in drained {
             trace!(?commit.commit_message, "generating suggestions");
             let result = generate_suggestion(llm_gateway, commit).await;
 
             match result {
-                Ok(Some(sug)) => commits.push(sug),
+                Ok(Some(sug)) => questions.push(sug),
                 Err(err) => error!(?err, "llm failure"),
                 _ => {}
             }
 
-            if commits.len() >= 5 {
-                return Ok(commits);
+            if questions.len() >= NUM_QUESTION_SUGGESTIONS {
+                return Ok(questions);
             }
         }
 
-        tres_types = 1;
-        tres_files = 1;
-        tres_files_max = tres_files_max.saturating_add(5);
-        tres_diff_lines = tres_diff_lines.saturating_sub(20);
+        min_mod_files = 1;
+        max_mod_files = max_mod_files.saturating_add(5);
+        min_diff_lines = min_diff_lines.saturating_sub(20);
+
+        if min_diff_lines <= 60 {
+            break;
+        }
     }
 
-    Ok(commits)
+    Ok(questions)
 }
 
 pub fn latest_commits(
