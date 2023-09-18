@@ -283,7 +283,7 @@ const ContentContainer = ({
           )}
           <div
             className={`flex flex-1 relative ${
-              isHistoryOpen ? 'w-[calc(100%-13rem)]' : 'w-full'
+              isHistoryOpen ? 'w-[calc(100%-15rem)]' : 'w-full'
             }`}
             ref={containerRef}
           >

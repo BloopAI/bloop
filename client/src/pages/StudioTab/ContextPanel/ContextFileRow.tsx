@@ -169,7 +169,7 @@ const ContextFileRow = ({
           {/*  branch={branch}*/}
           {/*/>*/}
         </div>
-        {tokens !== null && (
+        {tokens !== null && tokens !== undefined && (
           <div className="w-16 flex items-center flex-shrink-0">
             <TokensUsageBadge tokens={tokens} />
           </div>
