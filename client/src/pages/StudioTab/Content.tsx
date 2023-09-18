@@ -25,6 +25,8 @@ import useResizeableSplitPanel from '../../hooks/useResizeableSplitPanel';
 import { TOKEN_LIMIT } from '../../consts/codeStudio';
 import { Info } from '../../icons';
 import { TabsContext } from '../../context/tabsContext';
+import { getPlainFromStorage, STUDIO_GUIDE_DONE } from '../../services/storage';
+import { UIContext } from '../../context/uiContext';
 import ContextPanel from './ContextPanel';
 import HistoryPanel from './HistoryPanel';
 import TemplatesPanel from './TemplatesPanel';
@@ -56,6 +58,7 @@ const ContentContainer = ({
     type: StudioRightPanelType.CONVERSATION,
     data: null,
   });
+  const { setStudioGuideOpen } = useContext(UIContext.StudioGuide);
   const [isAddContextOpen, setAddContextOpen] = useState(false);
   const [currentState, setCurrentState] =
     useState<CodeStudioType>(emptyCodeStudio);
@@ -85,6 +88,12 @@ const ContentContainer = ({
     },
     [tab.key],
   );
+
+  useEffect(() => {
+    if (!getPlainFromStorage(STUDIO_GUIDE_DONE)) {
+      setStudioGuideOpen(true);
+    }
+  }, []);
 
   useEffect(() => {
     if (isActive) {

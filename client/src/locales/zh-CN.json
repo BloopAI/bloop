@@ -362,5 +362,8 @@
 	"Manage subscription": "管理订阅",
 	"You've run out of free usage for today, please wait for your quota to reset or upgrade for unlimited usage": "您今天的免费使用时间用完了，请等待您的配额重置或升级无限制",
 	"This file is currently unavailable. Ability to generate will be resumed as soon as this issue is resolved.": "此文件当前不可用。 一旦解决此问题，就会恢复产生的能力。",
-	"Search code studio...": "搜索代码工作室..."
+	"Search code studio...": "搜索代码工作室...",
+	"Code Studio": "代码工作室",
+	"Code Studio helps hobbyists and engineers working on the largest codebases, alike, to collaborate with AI. We recommend watching the guide to maximise your productivity.": "代码工作室帮助业余爱好者和从事最大代码库工作的工程师等与人工智能进行协作。 我们建议您观看该指南以最大限度地提高您的工作效率。",
+	"Watch": "手表"
 }

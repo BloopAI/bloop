@@ -47,6 +47,7 @@ import CloudFeaturePopup from './components/CloudFeaturePopup';
 import ErrorFallback from './components/ErrorFallback';
 import { PersonalQuotaContextProvider } from './context/providers/PersonalQuotaContextProvider';
 import UpgradePopup from './components/UpgradePopup';
+import StudioGuidePopup from './components/StudioGuidePopup';
 
 type Props = {
   deviceContextValue: DeviceContextType;
@@ -377,6 +378,7 @@ function App({ deviceContextValue }: Props) {
                 <Settings />
                 <ReportBugModal />
                 <PromptGuidePopup />
+                <StudioGuidePopup />
                 <Onboarding activeTab={activeTab} />
                 <StatusBar />
                 <CloudFeaturePopup />

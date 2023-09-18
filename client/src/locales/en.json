@@ -356,5 +356,8 @@
 	"Usage resets in": "Usage resets in",
 	"You've run out of free usage for today, please wait for your quota to reset or upgrade for unlimited usage": "You've run out of free usage for today, please wait for your quota to reset or upgrade for unlimited usage",
 	"This file is currently unavailable. Ability to generate will be resumed as soon as this issue is resolved.": "This file is currently unavailable. Ability to generate will be resumed as soon as this issue is resolved.",
-	"Search code studio...": "Search code studio..."
+	"Search code studio...": "Search code studio...",
+	"Code Studio": "Code Studio",
+	"Code Studio helps hobbyists and engineers working on the largest codebases, alike, to collaborate with AI. We recommend watching the guide to maximise your productivity.": "Code Studio helps hobbyists and engineers working on the largest codebases, alike, to collaborate with AI. We recommend watching the guide to maximise your productivity.",
+	"Watch": "Watch"
 }
