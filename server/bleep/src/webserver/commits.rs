@@ -10,18 +10,18 @@ pub(super) struct Params {
 }
 
 #[derive(serde::Serialize)]
-pub(super) struct PromptSuggestionResponse {
-    suggestions: Vec<Question>,
+pub(super) struct TutorialQuestionsResponse {
+    questions: Vec<Question>,
 }
 
-impl super::ApiResponse for PromptSuggestionResponse {}
+impl super::ApiResponse for TutorialQuestionsResponse {}
 
-pub(super) async fn prompt_suggestions<'a>(
+pub(super) async fn tutorial_questions<'a>(
     Query(Params { repo_ref }): Query<Params>,
     State(app): State<Application>,
 ) -> Result<Json<super::Response<'a>>, Error> {
     let repo_str = repo_ref.to_string();
-    let suggestions = sqlx::query_as!(
+    let questions = sqlx::query_as!(
         Question,
         "SELECT question, tag FROM tutorial_questions \
          WHERE repo_ref = ?",
@@ -31,5 +31,5 @@ pub(super) async fn prompt_suggestions<'a>(
     .await
     .context("database error")?;
 
-    Ok(json(PromptSuggestionResponse { suggestions }))
+    Ok(json(TutorialQuestionsResponse { questions }))
 }

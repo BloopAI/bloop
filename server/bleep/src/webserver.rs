@@ -55,7 +55,7 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         // repo management
         .nest("/repos", repos::router())
         // intelligence
-        .route("/prompt-suggestions", get(commits::prompt_suggestions))
+        .route("/tutorial-questions", get(commits::tutorial_questions))
         .route("/hoverable", get(hoverable::handle))
         .route("/token-info", get(intelligence::handle))
         .route("/related-files", get(intelligence::related_files))
