@@ -4,7 +4,7 @@ use anyhow::{bail, Context, Result};
 use futures::TryStreamExt;
 use gix::{
     bstr::ByteSlice,
-    diff::blob::{Algorithm, UnifiedDiffBuilder},
+    diff::blob::{sink::Counter, Algorithm, UnifiedDiffBuilder},
     object::{blob::diff::Platform, tree::diff::Action},
     objs::tree::EntryMode,
     Commit, Id,
@@ -24,8 +24,8 @@ pub struct DiffStat {
     modified_file_paths: HashSet<String>,
     num_file_insertions: usize,
     num_file_deletions: usize,
-    num_line_insertions: usize,
-    num_line_deletions: usize,
+    num_line_insertions: u32,
+    num_line_deletions: u32,
     commit_message: String,
     diff: String,
 }
@@ -66,7 +66,15 @@ impl<'a> Iterator for CommitIterator<'a> {
 	};
 
         let parent_commit = parent_id.object().unwrap().into_commit();
-        let mut stats = DiffStat::default();
+        let mut stats = DiffStat {
+            commit_message: self
+                .commit
+                .message_raw()
+                .unwrap()
+                .to_str_lossy()
+                .to_string(),
+            ..Default::default()
+        };
 
         _ = self
             .commit
@@ -115,13 +123,9 @@ impl<'a> Iterator for CommitIterator<'a> {
                     gix::object::tree::diff::change::Event::Rewrite {
                         source_id,
                         id,
-                        diff: Some(diff),
                         entry_mode,
                         ..
                     } if matches!(entry_mode, EntryMode::Blob) => {
-                        stats.num_line_deletions += diff.removals as usize;
-                        stats.num_line_insertions += diff.insertions as usize;
-
                         let platform = Platform::from_ids(source_id, id).unwrap();
                         let old = platform.old.data.as_bstr().to_str_lossy();
                         let new = platform.new.data.as_bstr().to_str_lossy();
@@ -147,13 +151,6 @@ impl<'a> Iterator for CommitIterator<'a> {
             })
             .unwrap();
 
-        stats.commit_message = self
-            .commit
-            .message_raw()
-            .unwrap()
-            .to_str_lossy()
-            .to_string();
-
         self.commit = parent_commit;
         self.parent = self.commit.parent_ids().next();
 
@@ -175,12 +172,15 @@ fn add_diff(
 "#
     );
 
-    stats.diff += gix::diff::blob::diff(
+    let diff = gix::diff::blob::diff(
         Algorithm::Histogram,
         &input,
-        UnifiedDiffBuilder::new(&input),
-    )
-    .as_str();
+        Counter::new(UnifiedDiffBuilder::new(&input)),
+    );
+    // Confusingly these are inverted
+    stats.num_line_insertions += &diff.removals;
+    stats.num_line_deletions += &diff.insertions;
+    stats.diff += diff.wrapped.as_str();
     stats.diff += "\n";
 }
 
@@ -195,62 +195,51 @@ pub async fn expand_commits_to_suggestions(
     const COMMIT_EXCLUDE_EXTENSIONS: [&str; 7] =
         ["md", "txt", "json", "toml", "yml", "yaml", "rst"];
 
-    let mut min_mod_files = 2usize;
-    let mut max_mod_files = 15usize;
-    let mut min_diff_lines = 100usize;
+    let min_mod_files = 1usize;
+    let max_mod_files = 15usize;
+    let min_diff_lines = 100usize;
 
     let mut questions = vec![];
-    while questions.len() < NUM_QUESTION_SUGGESTIONS {
-        let drained;
-        (drained, src_commits) = std::mem::take(&mut src_commits)
-            .into_iter()
-            .partition::<Vec<_>, _>(|commit| {
-                // Skip commits where:
-                //  - the message contains one of the COMMIT_EXCLUDE_KEYWORDS
-                //  - all of the modified files are not in COMMIT_EXCLUDE_EXTENSIONS
-                //  - the number of modified files is less than min_mod_files
-                //  - the number of modified files is greater than max_mod_files
-                //  - the number of diff lines is less than min_diff_lines
-                dbg!("{:?}", &commit);
+    let drained;
+    (drained, _) = std::mem::take(&mut src_commits)
+        .into_iter()
+        .partition::<Vec<_>, _>(|commit| {
+            // Skip commits where:
+            //  - the message contains one of the COMMIT_EXCLUDE_KEYWORDS
+            //  - all of the modified files are not in COMMIT_EXCLUDE_EXTENSIONS
+            //  - the number of modified files is less than min_mod_files
+            //  - the number of modified files is greater than max_mod_files
+            //  - the number of diff lines is less than min_diff_lines
+            let contains_exclude_keyword = COMMIT_EXCLUDE_KEYWORDS
+                .iter()
+                .any(|keyword| commit.commit_message.to_lowercase().contains(keyword));
 
-                let contains_exclude_keyword = COMMIT_EXCLUDE_KEYWORDS
-                    .iter()
-                    .any(|keyword| commit.commit_message.to_lowercase().contains(keyword));
+            let all_files_excluded = commit
+                .modified_file_exts
+                .iter()
+                .all(|ext| COMMIT_EXCLUDE_EXTENSIONS.contains(&ext.as_str()));
 
-                let all_files_excluded = commit
-                    .modified_file_exts
-                    .iter()
-                    .all(|ext| COMMIT_EXCLUDE_EXTENSIONS.contains(&ext.as_str()));
+            !all_files_excluded
+                && !contains_exclude_keyword
+                && commit.modified_file_paths.len() > min_mod_files
+                && commit.modified_file_paths.len() < max_mod_files
+                && commit.diff.lines().collect::<Vec<_>>().len() > min_diff_lines
+                && commit.num_line_insertions > commit.num_line_deletions * 2
+        });
 
-                !all_files_excluded
-                    && !contains_exclude_keyword
-                    && commit.modified_file_paths.len() > min_mod_files
-                    && commit.modified_file_paths.len() < max_mod_files
-                    && commit.diff.lines().collect::<Vec<_>>().len() > min_diff_lines
-            });
-        error!("processing {:?} commits", drained.len());
-        for commit in drained {
-            trace!(?commit.commit_message, "generating suggestions");
-            let result = generate_suggestion(llm_gateway, commit).await;
+    error!("processing {:?} commits", drained.len());
+    for commit in drained {
+        trace!(?commit.commit_message, "generating suggestions");
+        let result = generate_suggestion(llm_gateway, commit).await;
 
-            match result {
-                Ok(Some(sug)) => questions.push(sug),
-                Err(err) => error!(?err, "llm failure"),
-                _ => {}
-            }
-
-            if questions.len() >= NUM_QUESTION_SUGGESTIONS {
-                return Ok(questions);
-            }
+        match result {
+            Ok(Some(sug)) => questions.push(sug),
+            Err(err) => error!(?err, "llm failure"),
+            _ => {}
         }
 
-        min_mod_files = 1;
-        max_mod_files = max_mod_files.saturating_add(5);
-        min_diff_lines = min_diff_lines.saturating_sub(20);
-
-        if min_diff_lines <= 60 {
-            error!("Breaking here!");
-            break;
+        if questions.len() >= NUM_QUESTION_SUGGESTIONS {
+            return Ok(questions);
         }
     }
 
