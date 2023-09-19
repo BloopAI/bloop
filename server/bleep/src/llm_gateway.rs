@@ -286,7 +286,11 @@ impl Client {
             .await
     }
 
-    pub async fn chat(&self, messages: &[api::Message], functions: Option<&[api::Function]>) -> anyhow::Result<String> {
+    pub async fn chat(
+        &self,
+        messages: &[api::Message],
+        functions: Option<&[api::Function]>,
+    ) -> anyhow::Result<String> {
         const TOTAL_CHAT_RETRIES: usize = 5;
 
         'retry_loop: for _ in 0..TOTAL_CHAT_RETRIES {
@@ -308,7 +312,9 @@ impl Client {
             return Ok(buf);
         }
 
-        Err(anyhow!("chat stream errored too many times, failed to generate response"))
+        Err(anyhow!(
+            "chat stream errored too many times, failed to generate response"
+        ))
     }
 
     pub async fn chat_stream(

@@ -53,11 +53,9 @@ async fn get_request<T: for<'a> Deserialize<'a>>(
     } else {
         let status = response.status();
         match response.text().await {
-            Ok(body) if !body.is_empty() => {
-                Err(Error::internal(format!(
-                    "request failed with status code {status}: {body}",
-                )))
-            }
+            Ok(body) if !body.is_empty() => Err(Error::internal(format!(
+                "request failed with status code {status}: {body}",
+            ))),
             Ok(_) => Err(Error::internal(format!(
                 "request failed with status code {status}, response had no body",
             ))),
