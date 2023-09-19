@@ -304,7 +304,7 @@ impl Client {
                     Some(Ok(s)) => buf += &s,
                     Some(Err(e)) => {
                         warn!(?e, "token stream errored out, retrying...");
-                        break 'retry_loop;
+                        continue 'retry_loop;
                     }
                 }
             }

@@ -722,11 +722,7 @@ async fn populate_studio_name(
         &prompts::studio_name_prompt(&context_json, &messages_json),
     )];
 
-    let name = llm_gateway
-        .chat(messages, None)
-        .await?
-        .try_collect::<String>()
-        .await?;
+    let name = llm_gateway.chat(messages, None).await?;
 
     // Normalize studio name by removing:
     // - surrounding whitespace
