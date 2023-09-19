@@ -120,7 +120,12 @@ const RepositoryOverview = ({ syncState, repository }: Props) => {
             <div className="py-4 text-xs overflow-x-auto px-4 readme">
               <div
                 dangerouslySetInnerHTML={{
-                  __html: sanitizeHtml(readme.contents),
+                  __html: sanitizeHtml(readme.contents, {
+                    allowedTags: sanitizeHtml.defaults.allowedTags.concat([
+                      'img',
+                    ]),
+                    allowedAttributes: { img: ['src', 'alt'] },
+                  }),
                 }}
                 onClick={handleClick}
               />
