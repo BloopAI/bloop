@@ -22,7 +22,7 @@ const typeMap = {
   github: {
     icon: <RepositoryFilled raw sizeClassName="w-3.5 h-4" />,
     title: 'Your GitHub repository',
-    description: 'Any repository from you private GitHub account',
+    description: 'Any repository from your private GitHub account',
   },
   public: {
     icon: <Globe2 raw sizeClassName="w-4 h-4" />,
