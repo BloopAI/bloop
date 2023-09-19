@@ -18,6 +18,8 @@ use crate::{
     state::RepositoryPool,
 };
 
+const COMMIT_EXCLUDE_EXTENSIONS: [&str; 7] = ["md", "txt", "json", "toml", "yml", "yaml", "rst"];
+
 #[derive(Default, Debug)]
 pub struct DiffStat {
     modified_file_exts: HashSet<String>,
@@ -90,7 +92,7 @@ impl<'a> Iterator for CommitIterator<'a> {
                     .extension()
                     .map(|ext| ext.to_string_lossy().to_string());
 
-                if let Some(ext) = ext {
+                if let Some(ext) = ext.clone() {
                     stats.modified_file_exts.insert(ext);
                 }
 
@@ -104,6 +106,7 @@ impl<'a> Iterator for CommitIterator<'a> {
                         stats.num_file_insertions += 1;
                         add_diff(
                             &location,
+                            &ext.as_deref(),
                             "".into(),
                             id.object().unwrap().data.as_bstr().to_str_lossy(),
                             &mut stats,
@@ -115,6 +118,7 @@ impl<'a> Iterator for CommitIterator<'a> {
                         stats.num_file_deletions += 1;
                         add_diff(
                             &location,
+                            &ext.as_deref(),
                             id.object().unwrap().data.as_bstr().to_str_lossy(),
                             "".into(),
                             &mut stats,
@@ -129,7 +133,7 @@ impl<'a> Iterator for CommitIterator<'a> {
                         let platform = Platform::from_ids(source_id, id).unwrap();
                         let old = platform.old.data.as_bstr().to_str_lossy();
                         let new = platform.new.data.as_bstr().to_str_lossy();
-                        add_diff(&location, old, new, &mut stats);
+                        add_diff(&location, &ext.as_deref(), old, new, &mut stats);
                     }
                     gix::object::tree::diff::change::Event::Modification {
                         previous_entry_mode,
@@ -142,7 +146,7 @@ impl<'a> Iterator for CommitIterator<'a> {
                         let platform = Platform::from_ids(previous_id, id).unwrap();
                         let old = platform.old.data.as_bstr().to_str_lossy();
                         let new = platform.new.data.as_bstr().to_str_lossy();
-                        add_diff(&location, old, new, &mut stats);
+                        add_diff(&location, &ext.as_deref(), old, new, &mut stats);
                     }
                     _ => {}
                 }
@@ -160,6 +164,7 @@ impl<'a> Iterator for CommitIterator<'a> {
 
 fn add_diff(
     location: &str,
+    extension: &Option<&str>,
     old: std::borrow::Cow<'_, str>,
     new: std::borrow::Cow<'_, str>,
     stats: &mut DiffStat,
@@ -177,39 +182,43 @@ fn add_diff(
         &input,
         Counter::new(UnifiedDiffBuilder::new(&input)),
     );
-    // Confusingly these are inverted
-    stats.num_line_insertions += &diff.removals;
-    stats.num_line_deletions += &diff.insertions;
+
+    if let Some(ext) = extension {
+        if !COMMIT_EXCLUDE_EXTENSIONS.contains(ext) {
+            // Confusingly these are inverted
+            stats.num_line_insertions += &diff.removals;
+            stats.num_line_deletions += &diff.insertions;
+        }
+    }
+
     stats.diff += diff.wrapped.as_str();
     stats.diff += "\n";
 }
 
 pub async fn expand_commits_to_suggestions(
-    mut src_commits: Vec<DiffStat>,
+    src_commits: Vec<DiffStat>,
     llm_gateway: &llm_gateway::Client,
 ) -> Result<Vec<Question>> {
     const NUM_QUESTION_SUGGESTIONS: usize = 5;
     const COMMIT_EXCLUDE_KEYWORDS: [&str; 7] = [
         "merge", "revert", "bump", "chore", "fix", "refactor", "docs",
     ];
-    const COMMIT_EXCLUDE_EXTENSIONS: [&str; 7] =
-        ["md", "txt", "json", "toml", "yml", "yaml", "rst"];
 
     let min_mod_files = 1usize;
-    let max_mod_files = 15usize;
+    let max_mod_files = 20usize;
     let min_diff_lines = 100usize;
 
     let mut questions = vec![];
-    let drained;
-    (drained, _) = std::mem::take(&mut src_commits)
+    let mut filtered_commits = src_commits
         .into_iter()
-        .partition::<Vec<_>, _>(|commit| {
+        .filter(|commit| {
             // Skip commits where:
             //  - the message contains one of the COMMIT_EXCLUDE_KEYWORDS
             //  - all of the modified files are not in COMMIT_EXCLUDE_EXTENSIONS
             //  - the number of modified files is less than min_mod_files
             //  - the number of modified files is greater than max_mod_files
             //  - the number of diff lines is less than min_diff_lines
+
             let contains_exclude_keyword = COMMIT_EXCLUDE_KEYWORDS
                 .iter()
                 .any(|keyword| commit.commit_message.to_lowercase().contains(keyword));
@@ -225,10 +234,17 @@ pub async fn expand_commits_to_suggestions(
                 && commit.modified_file_paths.len() < max_mod_files
                 && commit.diff.lines().collect::<Vec<_>>().len() > min_diff_lines
                 && commit.num_line_insertions > commit.num_line_deletions * 2
-        });
+        })
+        .collect::<Vec<_>>();
 
-    error!("processing {:?} commits", drained.len());
-    for commit in drained {
+    // sort commits by max difference between insertions and deletions
+    filtered_commits.sort_by(|a, b| {
+        (a.num_line_insertions - a.num_line_deletions)
+            .cmp(&(b.num_line_insertions - b.num_line_deletions))
+    });
+
+    debug!("processing {:?} commits", filtered_commits.len());
+    for commit in filtered_commits {
         trace!(?commit.commit_message, "generating suggestions");
         let result = generate_suggestion(llm_gateway, commit).await;
 
@@ -284,6 +300,143 @@ pub fn latest_commits(
     .collect::<Vec<_>>())
 }
 
+async fn generate_suggestion(
+    llm_gateway: &llm_gateway::Client,
+    commit: DiffStat,
+) -> Result<Option<Question>> {
+    let classification = classify_commit(llm_gateway, &commit)
+        .await
+        .context("classification failed")
+        .unwrap_or_default();
+
+    if !classification {
+        return Ok(None);
+    }
+
+    let question = get_question(llm_gateway, &commit)
+        .await
+        .context("question failed")?;
+
+    if question == "0" {
+        return Ok(None);
+    }
+
+    let tag = get_tag(llm_gateway, &question)
+        .await
+        .context("tag failed")?;
+
+    Ok(Some(Question { question, tag }))
+}
+
+async fn classify_commit(llm_gateway: &llm_gateway::Client, commit: &DiffStat) -> Result<bool> {
+    let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo-0613").unwrap();
+    let raw_commit = format!("{}\n\n{}", commit.commit_message, commit.diff);
+    let commit_msg = crate::agent::transcoder::limit_tokens(&raw_commit, bpe, 3000);
+
+    let response = llm_gateway
+        .clone()
+        .model("gpt-3.5-turbo-0613")
+        .max_tokens(1)
+        .chat(
+            &[
+                Message::system(
+                    "Your job is to classify whether a commit introduces new functionality or not.
+1. New functionality
+2. No new functionality
+
+Output your classification as a number between 1 and 2. Output only a number.   
+Example output: 2",
+                ),
+                Message::user(commit_msg),
+            ],
+            None,
+        )
+        .await
+        .context("llm error")?
+        .try_collect::<String>()
+        .await
+        .context("llm error")?;
+
+    let result: u8 = response.parse()?;
+    Ok(result == 1)
+}
+
+async fn get_question(llm_gateway: &llm_gateway::Client, commit: &DiffStat) -> Result<String> {
+    let bpe = tiktoken_rs::get_bpe_from_model("gpt-4-0613").unwrap();
+    let raw_commit = format!("{}\n\n{}", commit.commit_message, commit.diff);
+    let commit = crate::agent::transcoder::limit_tokens(&raw_commit, bpe, 7000);
+
+    llm_gateway
+        .clone()
+        .model("gpt-4-0613")
+        .max_tokens(64)
+        .chat(
+            &[
+                Message::system(
+                    r#"While writing technical documentation for a project, you need to identify useful parts of the codebase that new developers should learn about.
+Output a question that a new developer could answer from the information.
+
+Follow these rules at all times:
+- Start with How. For example: How are analytics events for mouseclicks tracked?
+- Phrase your question in the present tense
+- Do not refer to changes, improvements or fixes
+- Do not refer to classes, functions, files or variables
+- Refer only to core concepts
+- Examples of good questions:
+  - How does analytics work?
+  - How does the deployment script work?
+  - How does the authentication work?
+  
+If you cannot write a good question, simply reply: 0"#,
+                ),
+                Message::user(commit),
+            ],
+            None,
+        )
+        .await
+        .context("llm error")?
+        .try_collect::<String>()
+        .await
+        .context("llm error")
+}
+
+async fn get_tag(llm_gateway: &llm_gateway::Client, question: &str) -> Result<String> {
+    let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo-0613").unwrap();
+    let question = crate::agent::transcoder::limit_tokens(question, bpe, 7168);
+    llm_gateway
+        .clone()
+        .model("gpt-3.5-turbo-0613")
+        .max_tokens(6)
+        .chat(
+            &[
+                Message::system(
+                    r#"Your job is to create a one or two unhyphenated word tag for this question. The tag should easily identify the question and consist only of the noun.
+
+DO NOT include the words: feature, question, user, how to, implementation, functionality, support, mechanism.
+DO NOT hyphenate words.
+
+Some examples:
+
+User: How does analytics work?
+Assistant: analytics
+
+User: What time does the job run each day?
+Assistant: job time
+
+User: How do we initialise the backend, before the frontend?
+Assistant: initialisation"#,
+                ),
+                Message::user(question),
+            ],
+            None,
+        )
+        .await
+        .context("llm error")?
+        .try_collect::<String>()
+        .await
+        .context("llm error")
+}
+
 pub async fn generate_tutorial_questions(
     db: crate::db::SqlDb,
     llm_gateway: Result<crate::llm_gateway::Client>,
@@ -318,11 +471,10 @@ pub async fn generate_tutorial_questions(
             .context("threads error")??
     };
 
-    error!("About to expand commits to suggestions");
     let suggestions = expand_commits_to_suggestions(latest_commits, &llm_gateway).await?;
-    error!("{:?}", &suggestions);
 
     debug!(%reporef, count=suggestions.len(), "found suggestions");
+    tracing::info!("{:?}", &suggestions);
 
     let mut tx = db.begin().await?;
     for q in suggestions {
@@ -341,176 +493,4 @@ pub async fn generate_tutorial_questions(
 
     debug!(%reporef, "suggestions committed");
     Ok(())
-}
-
-async fn generate_suggestion(
-    llm_gateway: &llm_gateway::Client,
-    commit: DiffStat,
-) -> Result<Option<Question>> {
-    let classification = classify_commit(llm_gateway, &commit)
-        .await
-        .context("classification failed")
-        .unwrap_or_default();
-
-    if !classification {
-        return Ok(None);
-    }
-
-    let summary = summarize_commit(llm_gateway, &commit)
-        .await
-        .context("summary failed")?;
-
-    let question = get_question(llm_gateway, &summary)
-        .await
-        .context("question failed")?;
-
-    if question == "0" {
-        return Ok(None);
-    }
-
-    let tag = get_tag(llm_gateway, &question)
-        .await
-        .context("tag failed")?;
-
-    Ok(Some(Question { question, tag }))
-}
-
-async fn classify_commit(llm_gateway: &llm_gateway::Client, commit: &DiffStat) -> Result<bool> {
-    let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo-0613").unwrap();
-    let raw_commit = format!("{}\n\n{}", commit.commit_message, commit.diff);
-    let commit_msg = crate::agent::transcoder::limit_tokens(&raw_commit, bpe, 3000);
-
-    let response = llm_gateway
-        .clone()
-        .model("gpt-3.5-turbo-0613")
-        .max_tokens(1)
-        .chat(
-            &[
-                Message::system(
-                    "Your job is to classify the commit into one of the following categories:
-1. New functionality
-2. Bug fix
-3. Refactoring
-4. Documentation
-5. Other
-
-Output your classification as a number between 1 and 5. Output only a number.
-Example output: 2.",
-                ),
-                Message::user(commit_msg),
-            ],
-            None,
-        )
-        .await
-        .context("llm error")?
-        .try_collect::<String>()
-        .await
-        .context("llm error")?;
-
-    let result: u8 = response.parse()?;
-    Ok(result == 1)
-}
-
-async fn summarize_commit(llm_gateway: &llm_gateway::Client, commit: &DiffStat) -> Result<String> {
-    let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo-0613").unwrap();
-    let raw_commit = format!("{}\n\n{}", commit.commit_message, commit.diff);
-    let commit_msg = crate::agent::transcoder::limit_tokens(&raw_commit, bpe, 15000);
-
-    llm_gateway
-        .clone()
-        .model("gpt-3.5-turbo-16k-0613")
-        .max_tokens(256)
-        .chat(
-            &[
-                Message::system(
-                    r#"What is shown in this commit?
-
-Start with "This commit shows how".
-
-For example: "This commit shows how the analytics event for a mouseclick is tracked"."#,
-                ),
-                Message::user(commit_msg),
-            ],
-            None,
-        )
-        .await
-        .context("llm error")?
-        .try_collect::<String>()
-        .await
-        .context("llm error")
-}
-
-async fn get_question(llm_gateway: &llm_gateway::Client, summary: &str) -> Result<String> {
-    let bpe = tiktoken_rs::get_bpe_from_model("gpt-4-0613").unwrap();
-    let summary = crate::agent::transcoder::limit_tokens(summary, bpe, 7168);
-
-    llm_gateway
-        .clone()
-        .model("gpt-4-0613")
-        .max_tokens(64)
-        .chat(
-            &[
-                Message::system(
-                    r#"While writing technical documentation for a project, you need to identify useful parts of the codebase that new developers should learn about.
-Output a question that a new developer could answer from the information.
-
-Follow these rules at all times:
-- Start with How. For example: How are analytics events for mouseclicks tracked?
-- Phrase your question in the present tense
-- Do not refer to changes, improvements or fixes
-- Do not refer to classes, functions, files or variables
-- Refer only to core concepts
-- Examples of good questions:
-  - How does analytics work?
-  - How does the deployment script work?
-  - How does the authentication work?
-  
-If you cannot write a good question, simply reply with only: 0."#,
-                ),
-                Message::user(summary),
-            ],
-            None,
-        )
-        .await
-        .context("llm error")?
-        .try_collect::<String>()
-        .await
-        .context("llm error")
-}
-
-async fn get_tag(llm_gateway: &llm_gateway::Client, question: &str) -> Result<String> {
-    let bpe = tiktoken_rs::get_bpe_from_model("gpt-4-0613").unwrap();
-    let question = crate::agent::transcoder::limit_tokens(question, bpe, 7168);
-    llm_gateway
-        .clone()
-        .model("gpt-4-0613")
-        .max_tokens(6)
-        .chat(
-            &[
-                Message::system(
-                    r#"Your job is to create a one or two unhyphenated word tag for this question. The tag should easily identify the question and consist only of the noun.
-
-DO NOT include the words: feature, question, user, how to, implementation, functionality, support, mechanism.
-DO NOT hyphenate words.
-
-Some examples:
-
-User: How does analytics work?
-Assistant: analytics
-
-User: What time does the job run each day?
-Assistant: job time
-
-User: How do we initialise the backend, before the frontend?
-Assistant: initialisation"#,
-                ),
-                Message::user(question),
-            ],
-            None,
-        )
-        .await
-        .context("llm error")?
-        .try_collect::<String>()
-        .await
-        .context("llm error")
 }
