@@ -348,3 +348,19 @@ export const postTemplate = (name: string, content: string) =>
 export const getQuota = () => http('/quota').then((r) => r.data);
 export const getSubscriptionLink = () =>
   http('/quota/create-checkout-session').then((r) => r.data);
+
+
+
+  export const getPromptSuggestions = (
+    repo_ref: string,
+    branch: string,
+  ): Promise<PromptSuggestionsResponse> => {
+    return http
+      .get('/prompt-suggestions', {
+        params: {
+          repo_ref,
+          branch,
+        },
+      })
+      .then((r) => r.data);
+  };
