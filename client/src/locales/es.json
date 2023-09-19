@@ -366,5 +366,7 @@
 	"Code Studio helps hobbyists and engineers working on the largest codebases, alike, to collaborate with AI. We recommend watching the guide to maximise your productivity.": "Estudio de código ayuda a los aficionados e ingenieros que trabajan en las bases de código más grandes, por igual, a colaborar con IA. Recomendamos ver la guía para maximizar su productividad.",
 	"Open in new tab": "Abrir en una pestaña nueva",
 	"GPT-4 based, code blocks, includes code links": "Basado en GPT-4, bloqueos de código, incluye enlaces de código",
-	"GPT-3.5 based, no code blocks, includes code links": "Basado en GPT-3.5, sin bloques de código, incluye enlaces de código"
+	"GPT-3.5 based, no code blocks, includes code links": "Basado en GPT-3.5, sin bloques de código, incluye enlaces de código",
+	"I can answer your questions about <2>#repo</2>.": "Puedo responder a sus preguntas sobre <2>{{repoName}}</2>.",
+	"Hi, I am bloop!": "¡Hola, soy bloop!"
 }

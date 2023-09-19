@@ -1,13 +1,7 @@
-import React, {
-  Dispatch,
-  memo,
-  SetStateAction,
-  useCallback,
-  useContext,
-} from 'react';
-import { Trans } from 'react-i18next';
+import React, { Dispatch, memo, SetStateAction, useContext } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { Info } from '../../../icons';
-import { ChatMessage, OpenChatHistoryItem } from '../../../types/general';
+import { OpenChatHistoryItem } from '../../../types/general';
 import { ChatContext } from '../../../context/chatContext';
 import AllConversations from './AllCoversations';
 import Conversation from './Conversation';
@@ -37,6 +31,7 @@ const ChatBody = ({
   openHistoryItem,
   setOpenHistoryItem,
 }: Props) => {
+  useTranslation();
   const { conversation, threadId } = useContext(ChatContext.Values);
   return (
     <div
@@ -60,10 +55,13 @@ const ChatBody = ({
               className="w-16 h-16 mb-5"
             />
             <p className="body-m-strong text-label-title mb-1">
-              Hi, I am bloop!
+              <Trans>Hi, I am bloop!</Trans>
             </p>
             <p className="body-s text-label-base">
-              I am here to answer any of your questions related to {tabName}.
+              <Trans values={{ repoName: tabName }}>
+                I can answer your questions about{' '}
+                <span className="italic">#repo</span>.
+              </Trans>
             </p>
           </div>
         </div>

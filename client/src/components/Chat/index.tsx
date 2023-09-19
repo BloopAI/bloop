@@ -32,16 +32,20 @@ const Chat = () => {
   const { preferredAnswerSpeed } = useContext(UIContext.AnswerSpeed);
   const { apiUrl } = useContext(DeviceContext);
   const { selectedBranch } = useContext(SearchContext.SelectedBranch);
-  const { conversation, submittedQuery, threadId } = useContext(
+  const { conversation, submittedQuery, threadId, isHistoryTab } = useContext(
     ChatContext.Values,
   );
-  const { setThreadId, setSelectedLines, setSubmittedQuery, setConversation } =
-    useContext(ChatContext.Setters);
+  const {
+    setThreadId,
+    setSelectedLines,
+    setSubmittedQuery,
+    setIsHistoryTab,
+    setConversation,
+  } = useContext(ChatContext.Setters);
   const { navigateRepoPath, navigatedItem, navigateFullResult } =
     useContext(AppNavigationContext);
   const [isLoading, setLoading] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
-  const [isHistoryTab, setIsHistoryTab] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [queryIdToEdit, setQueryIdToEdit] = useState('');
   const [hideMessagesFrom, setHideMessagesFrom] = useState<null | number>(null);
@@ -315,6 +319,12 @@ const Chat = () => {
     focusInput();
   }, []);
 
+  useEffect(() => {
+    if (!isHistoryTab) {
+      setOpenHistoryItem(null);
+    }
+  }, [isHistoryTab]);
+
   const handleNewConversation = useCallback(() => {
     stopGenerating();
     setConversation([]);
@@ -322,6 +332,7 @@ const Chat = () => {
     setThreadId('');
     setSubmittedQuery('');
     setSelectedLines(null);
+    setIsHistoryTab(false);
     if (
       navigatedItem?.type === 'conversation-result' ||
       navigatedItem?.type === 'article-response'

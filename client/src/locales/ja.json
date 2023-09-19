@@ -225,11 +225,11 @@
 	"and ": "と",
 	"Privacy policy": "プライバシーポリシー",
 	"Welcome to bloop": "bloopへようこそ",
-  "Unlock the value of your existing code, using AI": "AIを使用して既存のコードの価値を引き出します",
-  "Search code in natural language": "自然言語でコードを検索する",
-  "Ask questions about your codebases in natural language, just like you’d speak to ChatGPT. Get started by syncing a repo, then open the repo and start chatting.": "ChatGPTに話すように、自然言語でコードベースについて質問します。リポジトリを同期して開始し、リポジトリを開いてチャットを開始します。",
-  "Generate code using AI": "AIを使用してコードを生成する",
-  "Code studio helps you write scripts, create unit tests, debug issues or generate anything else you can think of using AI! Sync a repo, then create a code studio project.": "Code Studioは、AIを使用してスクリプトを作成したり、ユニットテストを作成したり、問題をデバッグしたり、他に思いつくものを生成するのに役立ちます！ リポジトリを同期し、Code Studioプロジェクトを作成します。",
+	"Unlock the value of your existing code, using AI": "AIを使用して既存のコードの価値を引き出します",
+	"Search code in natural language": "自然言語でコードを検索する",
+	"Ask questions about your codebases in natural language, just like you’d speak to ChatGPT. Get started by syncing a repo, then open the repo and start chatting.": "ChatGPTに話すように、自然言語でコードベースについて質問します。リポジトリを同期して開始し、リポジトリを開いてチャットを開始します。",
+	"Generate code using AI": "AIを使用してコードを生成する",
+	"Code studio helps you write scripts, create unit tests, debug issues or generate anything else you can think of using AI! Sync a repo, then create a code studio project.": "Code Studioは、AIを使用してスクリプトを作成したり、ユニットテストを作成したり、問題をデバッグしたり、他に思いつくものを生成するのに役立ちます！ リポジトリを同期し、Code Studioプロジェクトを作成します。",
 	"Got it": "理解しました",
 	"Precise code navigation": "正確なコードナビゲーション",
 	"Show search steps": "検索手順を表示する",
@@ -363,5 +363,7 @@
 	"Normal": "普通",
 	"Answer speed": "回答速度",
 	"Fast": "速い",
-	"GPT-4 based, code blocks, includes code links": "GPT-4ベースのコードブロックには、コードリンクが含まれています"
+	"GPT-4 based, code blocks, includes code links": "GPT-4ベースのコードブロックには、コードリンクが含まれています",
+	"I can answer your questions about <2>#repo</2>.": "<2>{{repoName}}</2>についてのあなたの質問に答えることができます。",
+	"Hi, I am bloop!": "こんにちは、bloop です！"
 }

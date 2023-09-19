@@ -17,7 +17,7 @@ const NewCode = ({ code, language, isSummary, isCodeStudio }: Props) => {
         !isSummary
           ? isCodeStudio
             ? 'my-4 bg-bg-sub text-xs'
-            : 'my-4 p-4 bg-bg-shade text-sm'
+            : 'my-4 py-2 bg-chat-bg-sub text-sm'
           : 'bg-chat-bg-sub text-sm'
       } border border-bg-border rounded-md relative group-code`}
     >

@@ -228,11 +228,11 @@
 	"and ": "和",
 	"Privacy policy": "隐私政策",
 	"Welcome to bloop": "欢迎来到bloop",
-  "Unlock the value of your existing code, using AI": "利用AI解锁您现有代码的价值",
-  "Search code in natural language": "用自然语言搜索代码",
-  "Ask questions about your codebases in natural language, just like you’d speak to ChatGPT. Get started by syncing a repo, then open the repo and start chatting.": "用自然语言向您的代码库提问，就像您和ChatGPT对话一样。首先同步一个仓库，然后打开仓库开始聊天。",
-  "Generate code using AI": "使用AI生成代码",
-  "Code studio helps you write scripts, create unit tests, debug issues or generate anything else you can think of using AI! Sync a repo, then create a code studio project.": "代码工作室可以帮助您使用AI编写脚本、创建单元测试、调试问题或生成您能想到的任何其他内容！同步一个仓库，然后创建一个代码工作室项目。",
+	"Unlock the value of your existing code, using AI": "利用AI解锁您现有代码的价值",
+	"Search code in natural language": "用自然语言搜索代码",
+	"Ask questions about your codebases in natural language, just like you’d speak to ChatGPT. Get started by syncing a repo, then open the repo and start chatting.": "用自然语言向您的代码库提问，就像您和ChatGPT对话一样。首先同步一个仓库，然后打开仓库开始聊天。",
+	"Generate code using AI": "使用AI生成代码",
+	"Code studio helps you write scripts, create unit tests, debug issues or generate anything else you can think of using AI! Sync a repo, then create a code studio project.": "代码工作室可以帮助您使用AI编写脚本、创建单元测试、调试问题或生成您能想到的任何其他内容！同步一个仓库，然后创建一个代码工作室项目。",
 	"Got it": "了解了",
 	"Precise code navigation": "精确的代码导航",
 	"Show search steps": "显示搜索步骤",
@@ -371,5 +371,7 @@
 	"GPT-3.5 based, no code blocks, includes code links": "基于GPT-3.5，无代码块，包括代码链接",
 	"Answer speed": "答案速度",
 	"Normal": "普通的",
-	"Fast": "快速地"
+	"Fast": "快速地",
+	"I can answer your questions about <2>#repo</2>.": "我可以回答您有关<2>{{repoName}}</2>的问题。",
+	"Hi, I am bloop!": "嗨，我是bloop！"
 }

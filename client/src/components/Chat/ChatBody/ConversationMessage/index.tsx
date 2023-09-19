@@ -7,7 +7,6 @@ import {
   MagnifyTool,
   PenUnderline,
   PointClick,
-  QuillIcon,
   Sparkles,
   WrenchAndScrewdriver,
 } from '../../../../icons';
@@ -15,10 +14,10 @@ import { DeviceContext } from '../../../../context/deviceContext';
 import { ChatLoadingStep, ChatMessageAuthor } from '../../../../types/general';
 import { ChatContext } from '../../../../context/chatContext';
 import Button from '../../../Button';
-import { FileModalContext } from '../../../../context/fileModalContext';
 import { LocaleContext } from '../../../../context/localeContext';
 import { getDateFnsLocale } from '../../../../utils';
 import MarkdownWithCode from '../../../MarkdownWithCode';
+import { AppNavigationContext } from '../../../../context/appNavigationContext';
 import MessageFeedback from './MessageFeedback';
 import FileChip from './FileChip';
 
@@ -63,7 +62,7 @@ const ConversationMessage = ({
   const [isLoadingStepsShown, setLoadingStepsShown] = useState(false);
   const { envConfig } = useContext(DeviceContext);
   const { setChatOpen } = useContext(ChatContext.Setters);
-  const { openFileModal } = useContext(FileModalContext);
+  const { navigateFullResult } = useContext(AppNavigationContext);
   const { locale } = useContext(LocaleContext);
 
   useEffect(() => {
@@ -90,7 +89,9 @@ const ConversationMessage = ({
               <span>{s.type === 'proc' ? t('Reading ') : s.displayText}</span>
               {s.type === 'proc' ? (
                 <FileChip
-                  onClick={() => openFileModal(s.path)}
+                  onClick={() =>
+                    navigateFullResult(s.path, undefined, i, threadId)
+                  }
                   fileName={s.path.split('/').pop() || ''}
                   filePath={s.path || ''}
                 />
@@ -138,7 +139,7 @@ const ConversationMessage = ({
           <div
             className={`relative bg-chat-bg-shade mt-3 flex items-start p-4 gap-3 border border-chat-bg-divider rounded-lg`}
           >
-            <div className="relative">
+            <div className="absolute top-4 left-4">
               <div className="w-6 h-6 rounded-full bg-chat-bg-border overflow-hidden flex items-center justify-center select-none">
                 {author === ChatMessageAuthor.User ? (
                   <img
@@ -151,16 +152,9 @@ const ConversationMessage = ({
                   </div>
                 )}
               </div>
-              {author === ChatMessageAuthor.User && (
-                <div className="absolute -bottom-1 -right-1 w-4 h-3 bg-chat-bg-border box-content border-2 border-chat-bg-shade text-label-title rounded-full flex items-center justify-center">
-                  <div className="w-1.5 h-2">
-                    <QuillIcon raw />
-                  </div>
-                </div>
-              )}
             </div>
             {message && (
-              <div className="body-s text-label-title code-studio-md w-full break-word overflow-auto">
+              <div className="body-s text-label-title code-studio-md padding-start w-full break-word overflow-auto">
                 {author === ChatMessageAuthor.Server ? (
                   <MarkdownWithCode
                     markdown={message}
@@ -171,7 +165,7 @@ const ConversationMessage = ({
                   />
                 ) : (
                   <>
-                    <span>{message}</span>
+                    <div className="pl-8">{message}</div>
                     {!isHistory && !!queryId && (
                       <div className="absolute bottom-1 right-1">
                         <Button

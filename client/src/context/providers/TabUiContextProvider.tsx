@@ -8,7 +8,6 @@ export const TabUiContextProvider = memo(
     tab,
   }: PropsWithChildren<{ tab: RepoTabType | HomeTabType }>) => {
     const [symbolsCollapsed, setSymbolsCollapsed] = useState(true);
-    const [isRightPanelOpen, setRightPanelOpen] = useState(false);
     const [isFiltersOpen, setFiltersOpen] = useState(true);
     const [search, setSearch] = useState('');
     const [filterType, setFilterType] = useState<'all' | 'repos' | 'studios'>(
@@ -21,14 +20,6 @@ export const TabUiContextProvider = memo(
         setSymbolsCollapsed,
       }),
       [symbolsCollapsed],
-    );
-
-    const rightPanelContextValue = useMemo(
-      () => ({
-        isRightPanelOpen,
-        setRightPanelOpen,
-      }),
-      [isRightPanelOpen],
     );
 
     const filtersContextValue = useMemo(
@@ -61,13 +52,11 @@ export const TabUiContextProvider = memo(
 
     return (
       <UIContext.Symbols.Provider value={symbolsContextValue}>
-        <UIContext.RightPanel.Provider value={rightPanelContextValue}>
-          <UIContext.Filters.Provider value={filtersContextValue}>
-            <UIContext.HomeScreen.Provider value={homeContextValue}>
-              {WrappedChildren}
-            </UIContext.HomeScreen.Provider>
-          </UIContext.Filters.Provider>
-        </UIContext.RightPanel.Provider>
+        <UIContext.Filters.Provider value={filtersContextValue}>
+          <UIContext.HomeScreen.Provider value={homeContextValue}>
+            {WrappedChildren}
+          </UIContext.HomeScreen.Provider>
+        </UIContext.Filters.Provider>
       </UIContext.Symbols.Provider>
     );
   },

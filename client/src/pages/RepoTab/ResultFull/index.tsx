@@ -8,7 +8,6 @@ import React, {
 import * as Sentry from '@sentry/react';
 import { Trans, useTranslation } from 'react-i18next';
 import FileIcon from '../../../components/FileIcon';
-import Breadcrumbs from '../../../components/Breadcrumbs';
 import CodeFull from '../../../components/CodeBlock/CodeFull';
 import { getHoverables } from '../../../services/api';
 import { mapFileResult, mapRanges } from '../../../mappers/results';
@@ -28,7 +27,6 @@ import IpynbRenderer from '../../../components/IpynbRenderer';
 import Button from '../../../components/Button';
 import { Sparkles } from '../../../icons';
 import { ChatContext } from '../../../context/chatContext';
-import { UIContext } from '../../../context/uiContext';
 import AddStudioContext from '../../../components/AddStudioContext';
 
 type Props = {
@@ -51,9 +49,13 @@ const ResultFull = ({ data, isLoading, selectedBranch }: Props) => {
   useTranslation();
   const { navigateFullResult, navigateRepoPath } = useAppNavigation();
   const [result, setResult] = useState<FullResult | null>(null);
-  const { setSubmittedQuery, setChatOpen, setConversation, setThreadId } =
-    useContext(ChatContext.Setters);
-  const { setRightPanelOpen } = useContext(UIContext.RightPanel);
+  const {
+    setSubmittedQuery,
+    setChatOpen,
+    setConversation,
+    setIsHistoryTab,
+    setThreadId,
+  } = useContext(ChatContext.Setters);
 
   useEffect(() => {
     if (!data || data?.data?.[0]?.kind !== 'file') {
@@ -123,7 +125,7 @@ const ResultFull = ({ data, isLoading, selectedBranch }: Props) => {
       setConversation([]);
       setThreadId('');
       const endLine = result.code.split(/\n(?!$)/g).length - 1;
-      setRightPanelOpen(false);
+      setIsHistoryTab(false);
       setSubmittedQuery(
         `#explain_${result.relativePath}:0-${endLine}-${Date.now()}`,
       );

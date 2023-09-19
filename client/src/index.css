@@ -1464,3 +1464,7 @@ h5, .h5 {
 .file-icon-lg span[class*="-icon"]:before {
   transform: scale(125%);
 }
+
+.padding-start > *:first-child {
+  padding-left: 32px;
+}

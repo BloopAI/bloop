@@ -56,10 +56,14 @@ const ChatHeader = ({
         <ChipButton onClick={handleNewConversation}>
           <Trans>Create new</Trans>
         </ChipButton>
-        {!!threadId && !isLoading && (
+        {(!!threadId || !!openHistoryItem?.threadId) && !isLoading && (
           <AddStudioContext
-            threadId={threadId}
-            name={conversationName || 'New Studio'}
+            threadId={openHistoryItem?.threadId || threadId}
+            name={
+              openHistoryItem?.conversation?.[0]?.text ||
+              conversationName ||
+              'New Studio'
+            }
           />
         )}
       </div>

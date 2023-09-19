@@ -14,7 +14,6 @@ import { FullResult } from '../../../types/results';
 import { FullResultModeEnum } from '../../../types/general';
 import ModalOrSidebar from '../../../components/ModalOrSidebar';
 import { ChatContext } from '../../../context/chatContext';
-import { UIContext } from '../../../context/uiContext';
 import ModeToggle from './ModeToggle';
 import Subheader from './Subheader';
 
@@ -27,9 +26,13 @@ type Props = {
 
 const ResultModal = ({ result, onResultClosed, mode, setMode }: Props) => {
   const { t } = useTranslation();
-  const { setSubmittedQuery, setChatOpen, setConversation, setThreadId } =
-    useContext(ChatContext.Setters);
-  const { setRightPanelOpen } = useContext(UIContext.RightPanel);
+  const {
+    setSubmittedQuery,
+    setChatOpen,
+    setConversation,
+    setIsHistoryTab,
+    setThreadId,
+  } = useContext(ChatContext.Setters);
 
   useEffect(() => {
     const action =
@@ -62,7 +65,7 @@ const ResultModal = ({ result, onResultClosed, mode, setMode }: Props) => {
       setConversation([]);
       setThreadId('');
       const endLine = result.code.split(/\n(?!$)/g).length - 1;
-      setRightPanelOpen(false);
+      setIsHistoryTab(false);
       setSubmittedQuery(
         `#explain_${result.relativePath}:0-${endLine}-${Date.now()}`,
       );

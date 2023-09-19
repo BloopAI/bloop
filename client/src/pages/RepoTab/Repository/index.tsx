@@ -1,18 +1,12 @@
-import React, { memo, useContext, useEffect, useMemo, useState } from 'react';
-import { Trans } from 'react-i18next';
+import React, { memo, useContext, useEffect, useState } from 'react';
 import { SearchContext } from '../../../context/searchContext';
-import { FileTreeFileType, Repository, RepoSource } from '../../../types';
+import { FileTreeFileType, Repository } from '../../../types';
 import Skeleton from '../../../components/Skeleton';
 import { mapDirResult } from '../../../mappers/results';
 import { DirectorySearchResponse } from '../../../types/api';
 import FileIcon from '../../../components/FileIcon';
-import Filters from '../../../components/Filters';
 import { arrayUnique } from '../../../utils';
 import { getRepoSource } from '../../../utils/file';
-import { GitHubLogo, Repository as RepositoryIcon } from '../../../icons';
-import { RepositoriesContext } from '../../../context/repositoriesContext';
-import { STATUS_MAP } from '../../HomeTab/ReposSection/RepoCard';
-import { UIContext } from '../../../context/uiContext';
 import RepositoryOverview from './RepositoryOverview';
 
 type Props = {
@@ -23,20 +17,10 @@ const RepositoryPage = ({ repositoryData }: Props) => {
   const [repository, setRepository] = useState<Repository | undefined>();
   const [initialLoad, setInitialLoad] = useState(true);
   const { setFilters } = useContext(SearchContext.Filters);
-  const { repositories } = useContext(RepositoriesContext);
-  const { isRightPanelOpen } = useContext(UIContext.RightPanel);
 
   useEffect(() => {
     setInitialLoad(false);
   }, []);
-
-  const repoStatus = useMemo(() => {
-    return (
-      repositories?.find(
-        (r) => r.ref === repositoryData?.data?.[0]?.data.repo_ref,
-      )?.sync_status || 'done'
-    );
-  }, [repositories]);
 
   useEffect(() => {
     if (!repositoryData) {
@@ -86,11 +70,6 @@ const RepositoryPage = ({ repositoryData }: Props) => {
       },
     ]);
   }, [repository]);
-
-  const statusTextColor = useMemo(
-    () => STATUS_MAP[typeof repoStatus === 'string' ? repoStatus : 'error'],
-    [repoStatus],
-  );
 
   return !repository || initialLoad ? (
     <Skeleton isRepoPage />
