@@ -65,6 +65,8 @@ fn disable_telemetry() {
 
 #[tauri::command]
 fn show_folder_in_finder(path: String) {
+    let path = PathBuf::from(path).canonicalize().unwrap();
+
     #[cfg(target_os = "macos")]
     {
         std::process::Command::new("open")
