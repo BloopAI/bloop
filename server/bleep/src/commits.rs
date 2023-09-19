@@ -195,11 +195,11 @@ fn add_diff(
     stats.diff += "\n";
 }
 
-pub async fn expand_commits_to_suggestions(
+pub async fn expand_commits_to_questions(
     src_commits: Vec<DiffStat>,
     llm_gateway: &llm_gateway::Client,
 ) -> Result<Vec<Question>> {
-    const NUM_QUESTION_SUGGESTIONS: usize = 5;
+    const NUM_TUTORIAL_QUESTIONS: usize = 5;
     const COMMIT_EXCLUDE_KEYWORDS: [&str; 7] = [
         "merge", "revert", "bump", "chore", "fix", "refactor", "docs",
     ];
@@ -245,8 +245,8 @@ pub async fn expand_commits_to_suggestions(
 
     debug!("processing {:?} commits", filtered_commits.len());
     for commit in filtered_commits {
-        trace!(?commit.commit_message, "generating suggestions");
-        let result = generate_suggestion(llm_gateway, commit).await;
+        trace!(?commit.commit_message, "generating questions");
+        let result = generate_question(llm_gateway, commit).await;
 
         match result {
             Ok(Some(sug)) => questions.push(sug),
@@ -254,7 +254,7 @@ pub async fn expand_commits_to_suggestions(
             _ => {}
         }
 
-        if questions.len() >= NUM_QUESTION_SUGGESTIONS {
+        if questions.len() >= NUM_TUTORIAL_QUESTIONS {
             return Ok(questions);
         }
     }
@@ -300,7 +300,7 @@ pub fn latest_commits(
     .collect::<Vec<_>>())
 }
 
-async fn generate_suggestion(
+async fn generate_question(
     llm_gateway: &llm_gateway::Client,
     commit: DiffStat,
 ) -> Result<Option<Question>> {
@@ -471,13 +471,13 @@ pub async fn generate_tutorial_questions(
             .context("threads error")??
     };
 
-    let suggestions = expand_commits_to_suggestions(latest_commits, &llm_gateway).await?;
+    let questions = expand_commits_to_questions(latest_commits, &llm_gateway).await?;
 
-    debug!(%reporef, count=suggestions.len(), "found suggestions");
-    tracing::info!("{:?}", &suggestions);
+    debug!(%reporef, count=questions.len(), "found questions");
+    tracing::info!("{:?}", &questions);
 
     let mut tx = db.begin().await?;
-    for q in suggestions {
+    for q in questions {
         _ = sqlx::query!(
             "INSERT INTO tutorial_questions (question, tag, repo_ref) \
              VALUES (?, ?, ?)",
@@ -491,6 +491,6 @@ pub async fn generate_tutorial_questions(
 
     tx.commit().await?;
 
-    debug!(%reporef, "suggestions committed");
+    debug!(%reporef, "questions committed");
     Ok(())
 }
