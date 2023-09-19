@@ -8,7 +8,7 @@ import React, {
   useContext,
   useMemo,
   useEffect,
-  useState
+  useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -18,9 +18,9 @@ import {
 } from '../../../types/general';
 import { ChatContext } from '../../../context/chatContext';
 import { findElementInCurrentTab } from '../../../utils/domUtils';
-import NLInput from './NLInput';
 import { UIContext } from '../../../context/uiContext';
-import {getPromptSuggestions} from "../../../services/api.ts";
+import { getPromptSuggestions } from '../../../services/api.ts';
+import NLInput from './NLInput';
 
 type Props = {
   inputValue: string;
@@ -119,7 +119,6 @@ const ChatFooter = ({
     }
   }, [isHistoryOpen, openHistoryItem, setHistoryOpen]);
 
-
   const { tab } = useContext(UIContext.Tab);
   const repoRef = tab.repoRef;
   const branch = tab.branch;
@@ -129,15 +128,23 @@ const ChatFooter = ({
       if (res && res.suggestions) {
         setTutorialQuestions(res.suggestions);
       }
-    })
-  }, [])
+    });
+  }, []);
 
   return (
     <div className="flex flex-col w-full absolute bottom-0 left-0 p-4 bg-chat-bg-base/25 backdrop-blur-6 border-t border-chat-bg-border">
       <div className="flex items-center justify-between w-full mb-2">
         <div className="flex items-center overflow-x-auto">
-          {tutorialQuestions && tutorialQuestions.map(({tag, question}) => (<button className="rounded-xl inline bg-chat-bg-base mr-2 py-1 px-2 whitespace-nowrap" onClick={() => setInputValue(question)}>{tag}</button>)
-)}
+          {tutorialQuestions &&
+            tutorialQuestions.map(({ tag, question }, key) => (
+              <button
+                key={key}
+                className="rounded-xl inline bg-chat-bg-base mr-2 py-1 px-2 whitespace-nowrap"
+                onClick={() => setInputValue(question)}
+              >
+                {tag}
+              </button>
+            ))}
         </div>
       </div>
       <form onSubmit={onSubmit} className="w-full" onClick={onFormClick}>
