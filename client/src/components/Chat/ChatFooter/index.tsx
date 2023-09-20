@@ -10,7 +10,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import {
   ChatMessageAuthor,
   ChatMessageServer,
@@ -21,6 +21,11 @@ import { findElementInCurrentTab } from '../../../utils/domUtils';
 import { getTutorialQuestions } from '../../../services/api';
 import OverflowTracker from '../../OverflowTracker';
 import { TutorialQuestionType } from '../../../types/api';
+import {
+  getJsonFromStorage,
+  HIDE_TUTORIALS_KEY,
+  saveJsonToStorage,
+} from '../../../services/storage';
 import NLInput from './NLInput';
 
 type Props = {
@@ -61,10 +66,22 @@ const ChatFooter = ({
   const { setSelectedLines, setSubmittedQuery, setConversation, setThreadId } =
     useContext(ChatContext.Setters);
   const [tutorials, setTutorials] = useState<TutorialQuestionType[]>([]);
+  const [tutorialsHidden, setTutorialsHidden] = useState(
+    getJsonFromStorage<string[]>(HIDE_TUTORIALS_KEY)?.includes(repoRef),
+  );
 
   useEffect(() => {
     getTutorialQuestions(repoRef).then((resp) => setTutorials(resp.questions));
   }, []);
+
+  const onHideTutorials = useCallback(() => {
+    setTutorialsHidden(true);
+    const prev = getJsonFromStorage<string[]>(HIDE_TUTORIALS_KEY);
+    saveJsonToStorage(
+      HIDE_TUTORIALS_KEY,
+      prev ? [...prev, repoRef] : [repoRef],
+    );
+  }, [repoRef]);
 
   const onSubmit = useCallback(
     (e?: FormEvent) => {
@@ -127,7 +144,7 @@ const ChatFooter = ({
 
   return (
     <div className="flex flex-col gap-3 w-full absolute bottom-0 left-0 p-4 bg-chat-bg-base/25 backdrop-blur-6 border-t border-chat-bg-border">
-      {!isHistoryOpen && !!tutorials.length && (
+      {!isHistoryOpen && !!tutorials.length && !tutorialsHidden && (
         <div className="w-full overflow-auto">
           <OverflowTracker className="auto-fade-horizontal">
             <div className="flex items-center gap-1">
@@ -140,6 +157,14 @@ const ChatFooter = ({
                   {t.tag}
                 </button>
               ))}
+              <button
+                key="hide"
+                className="pl-3 pr-2.5 py-1 flex items-center gap-1 rounded-full border border-chat-bg-divider bg-chat-bg-shade flex-shrink-0 caption text-label-muted"
+                onClick={onHideTutorials}
+              >
+                <Trans>Hide</Trans>
+                {/*<CloseSign raw sizeClassName="w-2 h-2" />*/}
+              </button>
             </div>
           </OverflowTracker>
         </div>
