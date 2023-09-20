@@ -363,7 +363,7 @@ const Chat = () => {
   return (
     <div
       ref={panelRef}
-      className={`group flex flex-col bg-chat-bg-sub relative`}
+      className={`group flex flex-col bg-chat-bg-sub relative min-w-[24rem]`}
     >
       <div
         ref={dividerRef}
