@@ -57,24 +57,23 @@ const UserForm = ({ form, setForm, onContinue }: Props) => {
     });
   }, []);
 
-  useEffect(() => {
-    if (isTimedOut) {
-      gitHubDeviceLogin().then((data) => {
-        setLoginUrl(data.authentication_needed.url);
-      });
-    }
-  }, [isTimedOut]);
-
   const onClick = useCallback(() => {
     if (isGithubConnected) {
       handleLogout();
       setBtnClicked(false);
     } else {
-      setIsTimedOut(false);
-      openLink(loginUrl);
+      if (isTimedOut) {
+        setIsTimedOut(false);
+        gitHubDeviceLogin().then((data) => {
+          setLoginUrl(data.authentication_needed.url);
+          openLink(data.authentication_needed.url);
+        });
+      } else {
+        openLink(loginUrl);
+      }
       setBtnClicked(true);
     }
-  }, [isGithubConnected, loginUrl, openLink]);
+  }, [isGithubConnected, loginUrl, openLink, isTimedOut]);
 
   const checkGHAuth = useCallback(async () => {
     const d = await getConfig();
