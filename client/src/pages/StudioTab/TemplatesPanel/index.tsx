@@ -41,8 +41,13 @@ const TemplatesPanel = ({ setLeftPanel }: Props) => {
         </div>
       </div>
       <div className="p-8 flex flex-col gap-3 overflow-auto">
-        {templates.map((t) => (
-          <TemplateCard key={t.id} {...t} refetchTemplates={refetchTemplates} />
+        {templates.map((t, i) => (
+          <TemplateCard
+            key={t.id}
+            {...t}
+            refetchTemplates={refetchTemplates}
+            i={i}
+          />
         ))}
       </div>
     </div>

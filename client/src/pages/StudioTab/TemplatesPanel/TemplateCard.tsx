@@ -29,6 +29,7 @@ type Props = {
   content: string;
   is_default: boolean;
   refetchTemplates: () => void;
+  i: number;
 };
 
 const TemplateCard = ({
@@ -37,17 +38,25 @@ const TemplateCard = ({
   content,
   refetchTemplates,
   is_default,
+  i,
 }: Props) => {
   const { t } = useTranslation();
   const { setInputValue } = useContext(StudioContext.Setters);
   const [isEditing, setIsEditing] = useState(id === 'new');
   const [form, setForm] = useState({ name, content });
-  const ref = useRef<HTMLTextAreaElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const cloneRef = useRef<HTMLTextAreaElement | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     setForm({ name, content });
   }, [content, name]);
+
+  useEffect(() => {
+    if (i === 0) {
+      btnRef.current?.focus();
+    }
+  }, []);
 
   const dropdownItems = useMemo(() => {
     return [
@@ -58,11 +67,11 @@ const TemplateCard = ({
         onClick: () => {
           setIsEditing(true);
           setTimeout(() => {
-            if (ref.current) {
-              ref.current.focus();
+            if (textareaRef.current) {
+              textareaRef.current.focus();
               // set caret at the end of textarea
-              ref.current.selectionStart = content.length;
-              ref.current.selectionEnd = content.length;
+              textareaRef.current.selectionStart = content.length;
+              textareaRef.current.selectionEnd = content.length;
             }
           }, 100);
         },
@@ -81,13 +90,13 @@ const TemplateCard = ({
   }, [content, id, refetchTemplates, t, is_default]);
 
   useEffect(() => {
-    if (ref.current && cloneRef.current) {
+    if (textareaRef.current && cloneRef.current) {
       cloneRef.current.style.height = '22px';
       const scrollHeight = cloneRef.current.scrollHeight;
 
       // We then set the height directly, outside of the render loop
       // Trying to set this with state or a ref will product an incorrect value.
-      ref.current.style.height =
+      textareaRef.current.style.height =
         Math.min(Math.max(scrollHeight, 22), 300) + 'px';
     }
   }, [content, isEditing]);
@@ -164,6 +173,7 @@ const TemplateCard = ({
               size="tiny"
               key="use"
               onClick={() => setInputValue(content)}
+              ref={btnRef}
             >
               <Trans>Use</Trans>
             </Button>
@@ -191,7 +201,7 @@ const TemplateCard = ({
               rows={1}
               autoComplete="off"
               spellCheck="false"
-              ref={ref}
+              ref={textareaRef}
             />
             <textarea
               className={`resize-none body-s absolute top-0 left-0 right-0 -z-10`}
