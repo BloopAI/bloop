@@ -1,4 +1,10 @@
-import React, { memo, useCallback, useEffect, useState } from 'react';
+import React, {
+  memo,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from 'react';
 import { Trans } from 'react-i18next';
 import { ChevronRightFilled, EyeCut, FolderClosed } from '../../icons';
 import FileIcon from '../FileIcon';
@@ -7,6 +13,7 @@ import Button from '../Button';
 import { forceFileToBeIndexed } from '../../services/api';
 import { SyncStatus } from '../../types/general';
 import LiteLoaderContainer from '../Loaders/LiteLoader';
+import { DeviceContext } from '../../context/deviceContext';
 
 type Props = {
   name: string;
@@ -40,6 +47,7 @@ const DirEntry = ({
   const [isOpen, setOpen] = useState(
     defaultOpen || (currentPath && name.includes(currentPath)),
   );
+  const { isSelfServe } = useContext(DeviceContext);
   const [indexRequested, setIndexRequested] = useState(false);
   const [isIndexing, setIsIndexing] = useState(false);
   const [subItems, setSubItems] = useState<DirectoryEntry[] | null>(null);
@@ -142,7 +150,7 @@ const DirEntry = ({
           <EyeCut />
         )}
         {isDirectory ? name.slice(0, -1) : name}
-        {!indexed && !indexRequested && (
+        {!indexed && !indexRequested && isSelfServe && (
           <Button variant="secondary" size="tiny" onClick={onIndexRequested}>
             <Trans>Index</Trans>
           </Button>

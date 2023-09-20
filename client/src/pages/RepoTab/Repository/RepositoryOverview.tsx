@@ -41,7 +41,7 @@ type Props = {
 
 const RepositoryOverview = ({ repository, repoStatus }: Props) => {
   const [sortedFiles, setSortedFiles] = useState(repository.files);
-  const { openLink, isSelfServe } = useContext(DeviceContext);
+  const { openLink } = useContext(DeviceContext);
   const { selectedBranch } = useContext(SearchContext.SelectedBranch);
 
   const [readme, setReadme] = useState<{
@@ -63,12 +63,7 @@ const RepositoryOverview = ({ repository, repoStatus }: Props) => {
       setReadme(null);
     }
 
-    const files = isSelfServe
-      ? repository.files
-      : repository.files.filter(
-          (f) => f.type === FileTreeFileType.DIR || f.indexed,
-        );
-    setSortedFiles(files.sort(sortFiles));
+    setSortedFiles(repository.files.sort(sortFiles));
   }, [repository.files, selectedBranch]);
 
   useEffect(() => {

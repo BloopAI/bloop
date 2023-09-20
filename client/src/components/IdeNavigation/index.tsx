@@ -24,7 +24,6 @@ const IdeNavigation = () => {
   const [files, setFiles] = useState<DirectoryEntry[]>([]);
   const { navigateFullResult } = useContext(AppNavigationContext);
   const { repositories } = useContext(RepositoriesContext);
-  const { isSelfServe } = useContext(DeviceContext);
 
   const fetchFiles = useCallback(
     async (path?: string) => {
@@ -34,12 +33,7 @@ const IdeNavigation = () => {
       if (!resp.data?.[0]?.data) {
         return [];
       }
-      const files = isSelfServe
-        ? (resp.data[0].data as Directory)?.entries
-        : (resp.data[0].data as Directory)?.entries.filter(
-            (e) => e.entry_data === 'Directory' || e.entry_data.File.indexed,
-          );
-      return files.sort((a, b) => {
+      return (resp.data[0].data as Directory)?.entries.sort((a, b) => {
         if ((a.entry_data === 'Directory') === (b.entry_data === 'Directory')) {
           return a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1;
         } else {

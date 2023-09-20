@@ -276,7 +276,7 @@ const ResultFull = ({
                 </div>
               ) : result.language === 'jupyter notebook' ? (
                 <IpynbRenderer data={result.code} />
-              ) : !isSelfServe || data?.data?.[0]?.data?.indexed ? (
+              ) : data?.data?.[0]?.data?.indexed ? (
                 <CodeFull
                   code={result.code}
                   language={result.language}
@@ -308,7 +308,7 @@ const ResultFull = ({
                         to big or is in our list of excluded file types.
                       </Trans>
                     </p>
-                    {!indexRequested ? (
+                    {!indexRequested && isSelfServe ? (
                       <Button
                         variant="secondary"
                         className="mt-6"
@@ -316,11 +316,11 @@ const ResultFull = ({
                       >
                         <Trans>Force index</Trans>
                       </Button>
-                    ) : (
+                    ) : indexRequested ? (
                       <div className="text-bg-main mt-6">
                         <LiteLoaderContainer sizeClassName="w-8 h-8" />
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               )}
