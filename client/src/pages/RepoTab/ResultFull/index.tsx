@@ -304,8 +304,8 @@ const ResultFull = ({
                     <p className="text-label-base text-center body-s">
                       <Trans>
                         bloop automatically excludes certain files from the
-                        indexing. The reason for this might be that the file is
-                        to big or is in our list of excluded file types.
+                        indexing. This file might be too big or it might have an
+                        excluded file type.
                       </Trans>
                     </p>
                     {!indexRequested && isSelfServe ? (

@@ -364,6 +364,6 @@
 	"This file is currently unavailable. Ability to generate will be resumed as soon as this issue is resolved.": "此文件当前不可用。 一旦解决此问题，就会恢复产生的能力。",
 	"Search code studio...": "搜索代码工作室...",
 	"Index": "指数",
-	"bloop automatically excludes certain files from the indexing. The reason for this might be that the file is to big or is in our list of excluded file types.": "Bloop自动将某些文件从索引中排除。 这样做的原因可能是该文件属于大型或在我们排除的文件类型列表中。",
-	"Force index": "力索引"
+	"Force index": "力索引",
+	"bloop automatically excludes certain files from the indexing. This file might be too big or it might have an excluded file type.": "Bloop自动将某些文件从索引中排除。 该文件可能太大，或者可能具有排除的文件类型。"
 }

@@ -359,6 +359,6 @@
 	"Search code studio...": "Search code studio...",
 	"Index": "Index",
 	"File not indexed": "File not indexed",
-	"bloop automatically excludes certain files from the indexing. The reason for this might be that the file is to big or is in our list of excluded file types.": "bloop automatically excludes certain files from the indexing. The reason for this might be that the file is to big or is in our list of excluded file types.",
-	"Force index": "Force index"
+	"Force index": "Force index",
+	"bloop automatically excludes certain files from the indexing. This file might be too big or it might have an excluded file type.": "bloop automatically excludes certain files from the indexing. This file might be too big or it might have an excluded file type."
 }

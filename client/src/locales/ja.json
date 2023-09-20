@@ -357,6 +357,6 @@
 	"Search code studio...": "コードスタジオを検索...",
 	"Index": "索引",
 	"File not indexed": "ファイルはインデックス化されていません",
-	"bloop automatically excludes certain files from the indexing. The reason for this might be that the file is to big or is in our list of excluded file types.": "Bloopは、インデックスから特定のファイルを自動的に除外します。 この理由は、ファイルが大きくなるか、除外されたファイルタイプのリストにあるためかもしれません。",
-	"Force index": "フォースインデックス"
+	"Force index": "フォースインデックス",
+	"bloop automatically excludes certain files from the indexing. This file might be too big or it might have an excluded file type.": "Bloopは、インデックスから特定のファイルを自動的に除外します。 このファイルが大きすぎるか、除外されたファイルタイプがある場合があります。"
 }
