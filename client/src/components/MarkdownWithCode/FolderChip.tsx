@@ -1,25 +1,20 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useContext } from 'react';
 import { ArrowOut, FolderClosed } from '../../icons';
 import DirEntry from '../IdeNavigation/DirEntry';
 import { search } from '../../services/api';
 import { buildRepoQuery } from '../../utils';
 import { Directory } from '../../types/api';
+import { AppNavigationContext } from '../../context/appNavigationContext';
 
 type Props = {
   onClick: () => void;
   path: string;
   selectedBranch: string | null;
   repoName?: string;
-  openFileModal?: (path: string) => void;
 };
 
-const FolderChip = ({
-  onClick,
-  path,
-  repoName,
-  selectedBranch,
-  openFileModal,
-}: Props) => {
+const FolderChip = ({ onClick, path, repoName, selectedBranch }: Props) => {
+  const { navigateFullResult } = useContext(AppNavigationContext);
   const fetchFiles = useCallback(
     async (path?: string) => {
       const resp = await search(buildRepoQuery(repoName, path, selectedBranch));
@@ -39,12 +34,11 @@ const FolderChip = ({
 
   const navigateToPath = useCallback(
     (path: string) => {
-      if (openFileModal) {
-        openFileModal(path);
-      }
+      navigateFullResult(path);
     },
-    [openFileModal],
+    [navigateFullResult],
   );
+
   return (
     <>
       <button

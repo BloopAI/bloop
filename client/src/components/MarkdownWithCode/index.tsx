@@ -16,11 +16,6 @@ import LinkRenderer from './LinkRenderer';
 import CodeRenderer from './CodeRenderer';
 
 type Props = {
-  openFileModal?: (
-    path: string,
-    scrollToLine?: string,
-    highlightColor?: string,
-  ) => void;
   repoName?: string;
   markdown: string;
   hideCode?: boolean;
@@ -30,7 +25,6 @@ type Props = {
 };
 
 const MarkdownWithCode = ({
-  openFileModal,
   repoName,
   markdown,
   hideCode,
@@ -75,7 +69,6 @@ const MarkdownWithCode = ({
             fileChips={fileChips}
             hideCode={hideCode}
             updateScrollToIndex={updateScrollToIndex}
-            openFileModal={openFileModal}
             setFileHighlights={setFileHighlights}
             setHoveredLines={setHoveredLines}
             navigateFullResult={navigateFullResult}
@@ -108,7 +101,7 @@ const MarkdownWithCode = ({
         );
       },
     };
-  }, [repoName, openFileModal, hideCode, updateScrollToIndex, selectedBranch]);
+  }, [repoName, hideCode, updateScrollToIndex, selectedBranch]);
 
   return <ReactMarkdown components={components}>{markdown}</ReactMarkdown>;
 };
