@@ -89,6 +89,11 @@ hyperpolyglot = { git = "https://github.com/bloopai/hyperpolyglot" }
 blake3 = "1.5.0"
 notify-debouncer-mini = { version = "0.3.0", default-features = false }
 
+# doc scraper
+select = "0.6"
+tree-sitter-md = "0.1.5"
+url = "2.4.1"
+
 # misc
 serde = "1.0.188"
 regex = "1.9.5"

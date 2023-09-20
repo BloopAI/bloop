@@ -548,7 +548,7 @@ fn init_ort_dylib(dylib_dir: impl AsRef<Path>) {
     }
 }
 
-// Exact match filter
+/// Exact match filter
 pub(crate) fn make_kv_keyword_filter(key: &str, value: &str) -> FieldCondition {
     let key = key.to_owned();
     let value = value.to_owned();
