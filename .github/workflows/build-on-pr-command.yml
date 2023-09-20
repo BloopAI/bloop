@@ -25,13 +25,16 @@ jobs:
         env:
           ACTOR: ${{ github.triggering_actor }}
         run: |
-          if curl -L \
+          members=$(curl -L \
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer ${{ secrets.BLOOP_DEVOPS_PAT}}"\
             -H "X-GitHub-Api-Version: 2022-11-28" \
-            https://api.github.com/orgs/BloopAI/members | jq -r ".[] .login" | grep ${ACTOR}; then
-            echo "is-member=true" >> $GITHUB_OUTPUT
-          fi
+            https://api.github.com/orgs/BloopAI/members | jq -r ".[] .login")
+          for member in $(echo ${members}); do 
+            if [[ $member = $ACTOR ]]; then 
+              echo "is-member=true" >> $GITHUB_OUTPUT
+            fi
+          done
 
   build_tag:
     runs-on: ubuntu-latest

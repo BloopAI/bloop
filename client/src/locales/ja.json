@@ -33,7 +33,7 @@
 	"key": "キー",
 	"Add a repository from your local machine": "ローカルマシンからリポジトリを追加する",
 	"Your GitHub repository": "あなたのGitHubリポジトリ",
-	"Any repository from you private GitHub account": "プライベートGitHubアカウントからのリポジトリ",
+	"Any repository from your private GitHub account": "プライベートGitHubアカウントからのリポジトリ",
 	"Local repository": "ローカルリポジトリ",
 	"Any public repository hosted on GitHub": "GitHubでホストされているパブリックリポジトリ",
 	"Add": "追加",
