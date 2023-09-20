@@ -1,4 +1,4 @@
-import React, { MouseEvent, useState } from 'react';
+import React, { MouseEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import TextField from '../../TextField';
 import { CheckIcon, TrashCan } from '../../../icons';
@@ -16,6 +16,8 @@ export type ItemProps = {
   disabled?: boolean;
   tooltip?: string;
   underline?: boolean;
+  i: number;
+  isVisible: boolean;
 };
 
 const Item = ({
@@ -28,10 +30,19 @@ const Item = ({
   tooltip,
   onMouseOver,
   underline,
+  i,
+  isVisible,
 }: ItemProps) => {
   const { t } = useTranslation();
   const [selected, setSelected] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (isVisible && i === 0) {
+      btnRef.current?.focus();
+    }
+  }, [isVisible]);
 
   const handleClick = (e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
@@ -63,6 +74,7 @@ const Item = ({
       disabled={disabled}
       onMouseOver={onMouseOver}
       onFocus={onMouseOver}
+      ref={btnRef}
     >
       {underline && (
         <div className="absolute -bottom-px -left-1 -right-1 h-px bg-bg-border " />
