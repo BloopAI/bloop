@@ -15,8 +15,8 @@ const useResizeableWidth = (
     const divider = dividerRef.current;
 
     const savedPanelSize = Number(localStorage.getItem(localStorageKey));
-    if (savedPanelSize && panel) {
-      panel.style.width = `${savedPanelSize}%`;
+    if (panel) {
+      panel.style.width = `${savedPanelSize || defaultWidth}%`;
     }
 
     const handleMouseDown = (e: MouseEvent) => {
