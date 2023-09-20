@@ -67,7 +67,7 @@ jobs:
           echo "$VHUI_INI_BASE64" | base64 --decode > vhui.ini
           vhui64 --config vhui.ini
           echo "$BLOOP_CER_BASE64" | base64 --decode > bloop.cer
-
+          /c/Program\ Files/SafeNet/Authentication/SAC/x64/SACMonitor.exe &
       - name: Use Node.js
         uses: actions/setup-node@v3
         with:
