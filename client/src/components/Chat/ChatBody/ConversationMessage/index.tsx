@@ -18,6 +18,11 @@ import { LocaleContext } from '../../../../context/localeContext';
 import { getDateFnsLocale } from '../../../../utils';
 import MarkdownWithCode from '../../../MarkdownWithCode';
 import { AppNavigationContext } from '../../../../context/appNavigationContext';
+import {
+  getPlainFromStorage,
+  LOADING_STEPS_SHOWN_KEY,
+  savePlainToStorage,
+} from '../../../../services/storage';
 import MessageFeedback from './MessageFeedback';
 import FileChip from './FileChip';
 
@@ -59,11 +64,20 @@ const ConversationMessage = ({
   singleFileExplanation,
 }: Props) => {
   const { t } = useTranslation();
-  const [isLoadingStepsShown, setLoadingStepsShown] = useState(false);
+  const [isLoadingStepsShown, setLoadingStepsShown] = useState(
+    !!Number(getPlainFromStorage(LOADING_STEPS_SHOWN_KEY)) || false,
+  );
   const { envConfig } = useContext(DeviceContext);
   const { setChatOpen } = useContext(ChatContext.Setters);
   const { navigateFullResult } = useContext(AppNavigationContext);
   const { locale } = useContext(LocaleContext);
+
+  useEffect(() => {
+    savePlainToStorage(
+      LOADING_STEPS_SHOWN_KEY,
+      isLoadingStepsShown ? '1' : '0',
+    );
+  }, [isLoadingStepsShown]);
 
   useEffect(() => {
     setChatOpen(true);

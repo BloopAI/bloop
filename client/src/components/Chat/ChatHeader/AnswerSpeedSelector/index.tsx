@@ -50,7 +50,7 @@ const AnswerSpeedSelector = ({}: Props) => {
           !isVisible ? null : (
             <div
               id="dropdown"
-              className={`rounded-md bg-chat-bg-base border border-chat-bg-border shadow-high w-[27rem] flex flex-col`}
+              className={`rounded-md overflow-hidden bg-chat-bg-base border border-chat-bg-border shadow-high w-[27rem] flex flex-col`}
             >
               <div className="bg-chat-bg-shade border-b border-chat-bg-border p-3 caption-strong">
                 <Trans>Answer speed</Trans>
