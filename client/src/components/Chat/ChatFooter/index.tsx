@@ -147,7 +147,7 @@ const ChatFooter = ({
       {!isHistoryOpen && !!tutorials.length && !tutorialsHidden && (
         <div className="w-full overflow-auto">
           <OverflowTracker className="auto-fade-horizontal">
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 flex-nowrap w-max">
               {tutorials.map((t, i) => (
                 <button
                   key={i}
@@ -163,7 +163,6 @@ const ChatFooter = ({
                 onClick={onHideTutorials}
               >
                 <Trans>Hide</Trans>
-                {/*<CloseSign raw sizeClassName="w-2 h-2" />*/}
               </button>
             </div>
           </OverflowTracker>
