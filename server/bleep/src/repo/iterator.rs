@@ -90,7 +90,7 @@ fn should_index<P: AsRef<Path>>(p: &P) -> bool {
     const EXT_BLACKLIST: &[&str] = &[
         // graphics
         "png", "jpg", "jpeg", "ico", "bmp", "bpg", "eps", "pcx", "ppm", "tga", "tiff", "wmf", "xpm",
-        "svg",
+        "svg", "riv",
         // fonts
         "ttf", "woff2", "fnt", "fon", "otf",
         // documents
