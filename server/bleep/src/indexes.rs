@@ -10,11 +10,13 @@ use tantivy::{
     DocAddress, Document, IndexReader, IndexWriter, Score,
 };
 
+pub mod doc;
 pub mod file;
 pub mod reader;
 pub mod repo;
 mod schema;
 
+pub use doc::Doc;
 pub use file::File;
 pub use repo::Repo;
 use tracing::debug;
@@ -76,6 +78,7 @@ impl<'a> GlobalWriteHandle<'a> {
 pub struct Indexes {
     pub repo: Indexer<Repo>,
     pub file: Indexer<File>,
+    pub doc: Doc,
     write_mutex: tokio::sync::Mutex<()>,
 }
 
@@ -94,6 +97,7 @@ impl Indexes {
                 config.buffer_size,
                 config.max_threads,
             )?,
+            doc: Doc::create(sql, semantic).await?,
             write_mutex: Default::default(),
         })
     }

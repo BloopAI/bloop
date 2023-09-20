@@ -61,6 +61,7 @@ mod env;
 mod llm_gateway;
 mod remotes;
 mod repo;
+mod scraper;
 mod webserver;
 
 mod ee;

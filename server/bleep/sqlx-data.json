@@ -116,6 +116,42 @@
     },
     "query": "INSERT INTO conversations (user_id, thread_id, repo_ref, title, exchanges, created_at) VALUES (?, ?, ?, ?, ?, strftime('%s', 'now'))"
   },
+  "23616a632f6a65234b3e5d80bb36f845711ee94372cfe18b1f686f663f5ae8e4": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "url",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "modified_at",
+          "ordinal": 3,
+          "type_info": "Datetime"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 0
+      }
+    },
+    "query": "SELECT id, name, url, modified_at FROM docs"
+  },
   "359b4d0fa1fcb081767303103b23f0650568cf4e79787c7ddcd21af5bad6761b": {
     "describe": {
       "columns": [],
@@ -168,6 +204,24 @@
     },
     "query": "SELECT id, name, modified_at, content, user_id IS NULL as \"is_default: bool\"\n        FROM templates\n        WHERE user_id = ? OR user_id IS NULL"
   },
+  "38d0daccf0db90300be1f13ee5f4626af929d83e91d2df0f73ec9354fd7b16ff": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "DELETE FROM docs WHERE id = ? RETURNING id"
+  },
   "392b563bb3af6711817fe99335d053691750426762dcde7b0381dc9f69cd804e": {
     "describe": {
       "columns": [],
@@ -195,6 +249,16 @@
       }
     },
     "query": "SELECT ss.id\n        FROM studio_snapshots ss\n        JOIN studios s ON s.id = ss.studio_id AND s.user_id = ?\n        WHERE ss.studio_id = ?\n        ORDER BY ss.modified_at DESC\n        LIMIT 1"
+  },
+  "454d7dfb50480aae5ad9c8372262d55a302e214e1c7ceb8d62b53832f75bd85b": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "UPDATE docs SET modified_at = datetime('now') WHERE id = ?"
   },
   "476c0b82963b9a2333edec797133770f32c8269a21a17d3165e7785f69e886ab": {
     "describe": {
@@ -315,6 +379,16 @@
       }
     },
     "query": "UPDATE templates SET content = ? WHERE id = ?"
+  },
+  "57edfb7d2686a1a5e2ea62bd165ef4baa0cf070a96070c694e7af914be5b3a9a": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "INSERT INTO docs (name, url) VALUES (?, ?)"
   },
   "5bdd10bd3029a70911749c200c1680224e2fb9f4ce1bf463a6ebfcdf3de10ad6": {
     "describe": {
@@ -858,6 +932,24 @@
     },
     "query": "UPDATE studio_snapshots SET messages = ? WHERE id = ?"
   },
+  "dcb7f9427283203bce10fe7d618057ef3eab5f6af2277e7a1ac8ba050609894d": {
+    "describe": {
+      "columns": [
+        {
+          "name": "url",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT url FROM docs WHERE id = ?"
+  },
   "e444f39d4fc9219873c7a8565a13e65e4646658631b785431cb64ca0cc5d6ab9": {
     "describe": {
       "columns": [
@@ -901,6 +993,42 @@
       }
     },
     "query": "DELETE FROM chunk_cache WHERE repo_ref = ?"
+  },
+  "f45d89d1b5ff04b3edeefb6ee7cadef60d520c1bb9bc2db548fa3e2b471fc23a": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "url",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "modified_at",
+          "ordinal": 3,
+          "type_info": "Datetime"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT id, name, url, modified_at FROM docs WHERE id = ?"
   },
   "fd74b491f6b06bb58c7d62b461094e5463e397bb649ae338c2b1a0e67e6155c3": {
     "describe": {

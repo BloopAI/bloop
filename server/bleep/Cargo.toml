@@ -137,6 +137,11 @@ ring = "0.16.20"
 hex = "0.4.3"
 base64 = "0.21.4"
 
+# doc scraper
+select = "0.6"
+tree-sitter-md = "0.1.5"
+url = "2.4.1"
+
 # misc
 serde = "1.0.188"
 erased-serde = "0.3.31"

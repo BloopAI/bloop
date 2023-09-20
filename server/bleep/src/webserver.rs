@@ -18,6 +18,7 @@ pub mod answer;
 mod autocomplete;
 mod commits;
 mod config;
+mod docs;
 mod file;
 mod github;
 mod hoverable;
@@ -55,6 +56,18 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         .route("/index", get(index::handle))
         // repo management
         .nest("/repos", repos::router())
+        // docs management
+        .nest(
+            "/docs",
+            Router::new()
+                .route("/", get(docs::list))
+                .route("/:id", get(docs::list_one))
+                .route("/:id", delete(docs::delete))
+                .route("/:id/resync", get(docs::resync))
+                .route("/:id/search", get(docs::search))
+                .route("/:id/fetch", get(docs::fetch))
+                .route("/sync", get(docs::sync)),
+        )
         // intelligence
         .route("/tutorial-questions", get(commits::tutorial_questions))
         .route("/hoverable", get(hoverable::handle))
