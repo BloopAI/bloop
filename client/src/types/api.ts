@@ -309,3 +309,8 @@ export type HistoryConversationTurn = CodeStudioType & {
   id: number;
   modified_at: string;
 };
+
+export type TutorialQuestionType = {
+  tag: string;
+  question: string;
+};

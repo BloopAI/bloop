@@ -33,7 +33,9 @@ const Conversation = ({
 
   return (
     <div
-      className={`w-full flex flex-col gap-3 overflow-auto pb-24`}
+      className={`w-full flex flex-col gap-3 overflow-auto ${
+        isHistory ? 'pb-24' : 'pb-36'
+      }`}
       ref={messagesRef}
       onScroll={handleScroll}
     >

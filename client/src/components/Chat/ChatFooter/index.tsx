@@ -6,7 +6,9 @@ import React, {
   SetStateAction,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
+  useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -16,6 +18,9 @@ import {
 } from '../../../types/general';
 import { ChatContext } from '../../../context/chatContext';
 import { findElementInCurrentTab } from '../../../utils/domUtils';
+import { getTutorialQuestions } from '../../../services/api';
+import OverflowTracker from '../../OverflowTracker';
+import { TutorialQuestionType } from '../../../types/api';
 import NLInput from './NLInput';
 
 type Props = {
@@ -29,6 +34,7 @@ type Props = {
   hideMessagesFrom: number | null;
   stopGenerating: () => void;
   openHistoryItem: OpenChatHistoryItem | null;
+  repoRef: string;
 };
 
 const blurInput = () => {
@@ -46,6 +52,7 @@ const ChatFooter = ({
   openHistoryItem,
   isHistoryOpen,
   setHistoryOpen,
+  repoRef,
 }: Props) => {
   const { t } = useTranslation();
   const { conversation, selectedLines, submittedQuery } = useContext(
@@ -53,6 +60,11 @@ const ChatFooter = ({
   );
   const { setSelectedLines, setSubmittedQuery, setConversation, setThreadId } =
     useContext(ChatContext.Setters);
+  const [tutorials, setTutorials] = useState<TutorialQuestionType[]>([]);
+
+  useEffect(() => {
+    getTutorialQuestions(repoRef).then((resp) => setTutorials(resp.questions));
+  }, []);
 
   const onSubmit = useCallback(
     (e?: FormEvent) => {
@@ -114,7 +126,24 @@ const ChatFooter = ({
   }, [isHistoryOpen, openHistoryItem, setHistoryOpen]);
 
   return (
-    <div className="flex flex-col w-full absolute bottom-0 left-0 p-4 bg-chat-bg-base/25 backdrop-blur-6 border-t border-chat-bg-border">
+    <div className="flex flex-col gap-3 w-full absolute bottom-0 left-0 p-4 bg-chat-bg-base/25 backdrop-blur-6 border-t border-chat-bg-border">
+      {!isHistoryOpen && !!tutorials.length && (
+        <div className="w-full overflow-auto">
+          <OverflowTracker className="auto-fade-horizontal">
+            <div className="flex items-center gap-1">
+              {tutorials.map((t, i) => (
+                <button
+                  key={i}
+                  className="px-3 py-1 rounded-full border border-chat-bg-divider bg-chat-bg-shade flex-shrink-0 caption text-label-base"
+                  onClick={() => setInputValue(t.question)}
+                >
+                  {t.tag}
+                </button>
+              ))}
+            </div>
+          </OverflowTracker>
+        </div>
+      )}
       <form onSubmit={onSubmit} className="w-full" onClick={onFormClick}>
         <NLInput
           id="question-input"
