@@ -361,5 +361,7 @@
 	"Faster answers may impact the quality of results": "より速い回答は、結果の質に影響を与える可能性があります",
 	"Normal": "普通",
 	"Fast": "速い",
-	"Answer speed": "回答速度"
+	"Answer speed": "回答速度",
+	"Show link": "リンクを表示",
+	"or go to the following link": "または、次のリンクに移動します"
 }
