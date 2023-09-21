@@ -59,7 +59,7 @@ impl Agent {
             self.llm_gateway
                 .clone()
                 .model(self.model.model_name)
-                .chat(&messages, None)
+                .chat_stream(&messages, None)
                 .await?
         );
 
