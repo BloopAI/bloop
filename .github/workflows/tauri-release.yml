@@ -51,7 +51,7 @@ jobs:
 
       - if: matrix.target == 'x86_64-pc-windows-msvc'
         name: Connect to Windows Signing Key USB via VPN
-        shell: 'C:\msys64\usr\bin\bash --login -eo pipefail {0}'
+        shell: bash
         env:
           MSYSTEM: UCRT64
           OVPN_AUTH_USER_PASS_BASE64: ${{ secrets.OVPN_AUTH_USER_PASS_BASE64 }}
@@ -61,6 +61,8 @@ jobs:
         run: |
           choco install openvpn base64 safenet-authentication-client
           choco install --ignore-checksums virtualhere-client
+          echo $SHELL
+          echo $PATH
           echo "$OVPN_AUTH_USER_PASS_BASE64" | base64 --decode > aup.txt
           echo "$OVPN_PROFILE_BASE64" | base64 --decode > profile.ovpn
           /c/Program\ Files/OpenVPN/bin/openvpn.exe --config profile.ovpn --auth-user-pass aup.txt &
