@@ -22,14 +22,14 @@ impl Agent {
         .await?;
 
         let mut results = self
-            .semantic_search(query.into(), CODE_SEARCH_LIMIT, 0, 0.0, true)
+            .semantic_search(query.into(), CODE_SEARCH_LIMIT, 0, 0.0, true, None)
             .await?;
 
         let hyde_docs = self.hyde(query).await?;
         if !hyde_docs.is_empty() {
             let hyde_doc = hyde_docs.first().unwrap().into();
             let hyde_results = self
-                .semantic_search(hyde_doc, CODE_SEARCH_LIMIT, 0, 0.3, true)
+                .semantic_search(hyde_doc, CODE_SEARCH_LIMIT, 0, 0.3, true, None)
                 .await?;
             results.extend(hyde_results);
         }

@@ -54,7 +54,7 @@ pub fn functions(add_proc: bool) -> serde_json::Value {
             serde_json::json!(
             {
                 "name": "proc",
-                "description": "Read one or more files and extract the line ranges that are relevant to the search terms",
+                "description": "Read one or more files and extract the snippets of text that are relevant to the search terms",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -66,7 +66,7 @@ pub fn functions(add_proc: bool) -> serde_json::Value {
                             "type": "array",
                             "items": {
                                 "type": "integer",
-                                "description": "The indices of the paths to search. paths.len() <= 5"
+                                "description": "The indices of the paths to search."
                             }
                         }
                     },
@@ -109,7 +109,6 @@ pub fn system<'a>(paths: impl IntoIterator<Item = &'a str>) -> String {
 - Only call functions.proc with path indices that are under the PATHS heading above
 - Call functions.proc with paths that might contain relevant information. Either because of the path name, or to expand on code that's already been returned by functions.code 
 - DO NOT call functions.proc with more than 5 paths
-- DO NOT call functions.proc on the same file more than once
 - ALWAYS call a function. DO NOT answer the question directly"#);
     s
 }

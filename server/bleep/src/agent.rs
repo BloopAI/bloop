@@ -312,11 +312,25 @@ impl Agent {
         offset: u64,
         threshold: f32,
         retrieve_more: bool,
+        paths: Option<Vec<String>>,
     ) -> Result<Vec<semantic::Payload>> {
-        let query = parser::SemanticQuery {
-            target: Some(query),
-            repos: [parser::Literal::Plain(self.repo_ref.display_name().into())].into(),
-            ..self.last_exchange().query.clone()
+        let query = if let Some(paths) = paths.clone() {
+            parser::SemanticQuery {
+                target: Some(query),
+                repos: [parser::Literal::Plain(self.repo_ref.display_name().into())].into(),
+                paths: paths
+                    .clone()
+                    .into_iter()
+                    .map(|p| parser::Literal::Plain(p.into()))
+                    .collect::<std::collections::HashSet<_>>(),
+                ..self.last_exchange().query.clone()
+            }
+        } else {
+            parser::SemanticQuery {
+                target: Some(query),
+                repos: [parser::Literal::Plain(self.repo_ref.display_name().into())].into(),
+                ..self.last_exchange().query.clone()
+            }
         };
 
         debug!(?query, %self.thread_id, "executing semantic query");
