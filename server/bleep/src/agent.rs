@@ -168,6 +168,10 @@ impl Agent {
         match &action {
             Action::Query(s) => {
                 self.track_query(EventData::input_stage("query").with_payload("q", s));
+                if self.exchanges.len() == 1 {
+                    dbg!("Made it here");
+                    self.code_search(s).await?;
+                }
                 s.clone()
             }
 

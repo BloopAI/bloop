@@ -108,7 +108,6 @@ pub fn system<'a>(paths: impl IntoIterator<Item = &'a str>) -> String {
 - If the output of a function is empty, try calling the function again with DIFFERENT arguments OR try calling a different function
 - Only call functions.proc with path indices that are under the PATHS heading above
 - Call functions.proc with paths that might contain relevant information. Either because of the path name, or to expand on code that's already been returned by functions.code 
-- DO NOT call functions.proc with more than 5 paths
 - ALWAYS call a function. DO NOT answer the question directly"#);
     s
 }
