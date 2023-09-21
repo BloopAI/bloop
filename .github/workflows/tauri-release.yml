@@ -63,13 +63,13 @@ jobs:
           choco install --ignore-checksums virtualhere-client
           echo $SHELL
           echo $PATH
-          echo "$OVPN_AUTH_USER_PASS_BASE64" | base64 --decode > aup.txt
-          echo "$OVPN_PROFILE_BASE64" | base64 --decode > profile.ovpn
+          echo "$OVPN_AUTH_USER_PASS_BASE64" | base64 -d > aup.txt
+          echo "$OVPN_PROFILE_BASE64" | base64 -d > profile.ovpn
           /c/Program\ Files/OpenVPN/bin/openvpn.exe --config profile.ovpn --auth-user-pass aup.txt &
           sleep 10
-          echo "$VHUI_INI_BASE64" | base64 --decode > vhui.ini
+          echo "$VHUI_INI_BASE64" | base64 -d > vhui.ini
           vhui64 --config vhui.ini
-          echo "$BLOOP_CER_BASE64" | base64 --decode > bloop.cer
+          echo "$BLOOP_CER_BASE64" | base64 -d > bloop.cer
           /c/Program\ Files/SafeNet/Authentication/SAC/x64/SACMonitor.exe &
       - name: Use Node.js
         uses: actions/setup-node@v3
