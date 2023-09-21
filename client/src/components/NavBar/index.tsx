@@ -130,14 +130,7 @@ const NavBar = ({ isSkeleton, activeTab }: Props) => {
           <AnimatePresence initial={false}>
             {!isSkeleton &&
               tabsWithoutHome.map((t) => (
-                <Tab
-                  item={t}
-                  tabKey={t.key}
-                  name={t.name}
-                  key={t.key}
-                  source={t.type === TabType.REPO ? t.source : undefined}
-                  activeTab={activeTab}
-                />
+                <Tab key={t.key} item={t} activeTab={activeTab} />
               ))}
           </AnimatePresence>
         </Reorder.Group>

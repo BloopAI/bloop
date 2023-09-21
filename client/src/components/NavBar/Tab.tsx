@@ -1,4 +1,4 @@
-import React, { useCallback, useContext } from 'react';
+import React, { memo, useCallback, useContext } from 'react';
 import { Reorder, motion } from 'framer-motion';
 import {
   CloseSign,
@@ -8,12 +8,9 @@ import {
 } from '../../icons';
 import { TabsContext } from '../../context/tabsContext';
 import { RepoSource } from '../../types';
-import { UITabType } from '../../types/general';
+import { TabType, UITabType } from '../../types/general';
 
 type Props = {
-  tabKey: string;
-  name: string;
-  source?: RepoSource;
   activeTab: string;
   item: UITabType;
 };
@@ -21,33 +18,33 @@ type Props = {
 const initialStyle = { backgroundColor: 'rgb(var(--bg-base))' };
 const activeStyle = { backgroundColor: 'rgb(var(--bg-shade))' };
 
-const Tab = ({ tabKey, name, source, activeTab, item }: Props) => {
+const Tab = ({ activeTab, item }: Props) => {
   const { setActiveTab, handleRemoveTab } = useContext(TabsContext);
   const onPointerDown = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
-      setActiveTab(tabKey);
+      setActiveTab(item.key);
     },
-    [tabKey],
+    [item.key],
   );
   const handleClose = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      handleRemoveTab(tabKey);
+      handleRemoveTab(item.key);
     },
-    [tabKey],
+    [item.key],
   );
   return (
     <Reorder.Item
       value={item}
       id={item.key}
       className={`border-r pl-4 pr-3 h-full border-bg-border group flex items-center justify-center gap-2 ${
-        activeTab === tabKey
+        activeTab === item.key
           ? 'bg-bg-shade text-label-title'
           : 'bg-bg-base text-label-base'
       } cursor-pointer max-w-12`}
       onPointerDown={onPointerDown}
-      animate={activeTab === tabKey ? activeStyle : initialStyle}
+      animate={activeTab === item.key ? activeStyle : initialStyle}
     >
       <motion.div
         layout="position"
@@ -55,23 +52,24 @@ const Tab = ({ tabKey, name, source, activeTab, item }: Props) => {
       >
         <div className="flex items-center gap-1 ellipsis">
           <div className="w-4 h-4 flex-shrink-0">
-            {source === undefined ? (
+            {item.type === TabType.STUDIO ? (
               <CodeStudioColored />
-            ) : source === RepoSource.LOCAL ? (
+            ) : item.type === TabType.REPO &&
+              item.source === RepoSource.LOCAL ? (
               <HardDrive raw />
             ) : (
               <GitHubLogo raw />
             )}
           </div>
           <span className="ellipsis body-m">
-            {name.split('/').slice(-1)[0]}
+            {item.name.split('/').slice(-1)[0]}
           </span>
         </div>
         <button
           onClick={handleClose}
           className={`w-5 h-5 flex items-center justify-center text-label-base hover:text-label-title 
           ${
-            activeTab !== tabKey ? 'opacity-0 group-hover:opacity-100' : ''
+            activeTab !== item.key ? 'opacity-0 group-hover:opacity-100' : ''
           } relative top-px`}
         >
           <CloseSign sizeClassName="w-3.5 h-3.5" />
@@ -81,4 +79,4 @@ const Tab = ({ tabKey, name, source, activeTab, item }: Props) => {
   );
 };
 
-export default Tab;
+export default memo(Tab);
