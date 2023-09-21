@@ -51,8 +51,9 @@ jobs:
 
       - if: matrix.target == 'x86_64-pc-windows-msvc'
         name: Connect to Windows Signing Key USB via VPN
-        shell: bash
+        shell: 'C:\msys64\usr\bin\bash --login -eo pipefail {0}'
         env:
+          MSYSTEM: UCRT64
           OVPN_AUTH_USER_PASS_BASE64: ${{ secrets.OVPN_AUTH_USER_PASS_BASE64 }}
           OVPN_PROFILE_BASE64: ${{ secrets.OVPN_PROFILE_BASE64 }}
           VHUI_INI_BASE64: ${{ secrets.VHUI_INI_BASE64 }}
