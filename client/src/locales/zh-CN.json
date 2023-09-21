@@ -371,5 +371,9 @@
 	"Normal": "普通的",
 	"Fast": "快速地",
 	"Show link": "显示链接",
-	"or go to the following link": "或转到以下链接"
+	"or go to the following link": "或转到以下链接",
+	"Email is required": "需要电子邮件",
+	"First name is required": "需要名字",
+	"Last name is required": "需要姓氏",
+	"Connect GitHub account to continue": "连接github帐户继续"
 }

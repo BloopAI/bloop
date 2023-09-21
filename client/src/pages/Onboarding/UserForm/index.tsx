@@ -45,6 +45,7 @@ const UserForm = ({ form, setForm, onContinue }: Props) => {
   const [isBtnClicked, setBtnClicked] = useState(false);
   const [isLinkCopied, setLinkCopied] = useState(false);
   const [isTimedOut, setIsTimedOut] = useState(false);
+  const [showErrors, setShowErrors] = useState(false);
 
   const handleLogout = useCallback(() => {
     gitHubLogout();
@@ -131,6 +132,32 @@ const UserForm = ({ form, setForm, onContinue }: Props) => {
     setTimeout(() => setLinkCopied(false), 2000);
   }, [loginUrl]);
 
+  const handleSubmit = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (
+        !isGithubConnected ||
+        !form.firstName ||
+        !form.lastName ||
+        !form.email ||
+        !!form.emailError ||
+        !EMAIL_REGEX.test(form.email)
+      ) {
+        if (!EMAIL_REGEX.test(form.email)) {
+          setForm((prev) => ({
+            ...prev,
+            emailError: t('Email is not valid'),
+          }));
+        }
+        setShowErrors(true);
+        return;
+      }
+      onContinue();
+    },
+    [form, isGithubConnected, onContinue],
+  );
+
   return (
     <>
       <div className="w-full flex flex-col gap-3 text-center relative">
@@ -170,6 +197,11 @@ const UserForm = ({ form, setForm, onContinue }: Props) => {
             setForm((prev) => ({ ...prev, firstName: e.target.value }))
           }
           autoFocus
+          error={
+            showErrors && !form.firstName
+              ? t('First name is required')
+              : undefined
+          }
         />
         <TextInput
           value={form.lastName}
@@ -178,6 +210,11 @@ const UserForm = ({ form, setForm, onContinue }: Props) => {
           variant="filled"
           onChange={(e) =>
             setForm((prev) => ({ ...prev, lastName: e.target.value }))
+          }
+          error={
+            showErrors && !form.lastName
+              ? t('Last name is required')
+              : undefined
           }
         />
         <TextInput
@@ -198,7 +235,10 @@ const UserForm = ({ form, setForm, onContinue }: Props) => {
               }));
             }
           }}
-          error={form.emailError}
+          error={
+            form.emailError ||
+            (showErrors && !form.email ? t('Email is required') : undefined)
+          }
           name="email"
           placeholder={t('Email address')}
         />
@@ -223,7 +263,13 @@ const UserForm = ({ form, setForm, onContinue }: Props) => {
             }}
           />
         </div>
-        <div className="flex items-center pl-2.5 gap-2.5 border border-bg-border rounded-4">
+        <div
+          className={`flex items-center pl-2.5 gap-2.5 border ${
+            showErrors && !isGithubConnected
+              ? 'border-bg-danger'
+              : 'border-bg-border'
+          } rounded-4`}
+        >
           <GitHubLogo />
           <p className="callout text-label-title flex-1">
             {isGithubConnected ? envConfig.user_login : 'GitHub'}
@@ -244,6 +290,11 @@ const UserForm = ({ form, setForm, onContinue }: Props) => {
             {!isGithubConnected && <ChevronRight />}
           </button>
         </div>
+        {showErrors && !isGithubConnected && (
+          <p className="text-bg-danger caption -mt-3">
+            <Trans>Connect GitHub account to continue</Trans>
+          </p>
+        )}
         {!isGithubConnected && (
           <div className="text-center caption text-label-base">
             {isLinkShown ? (
@@ -275,20 +326,7 @@ const UserForm = ({ form, setForm, onContinue }: Props) => {
             )}
           </div>
         )}
-        <Button
-          disabled={
-            !isGithubConnected ||
-            !form.firstName ||
-            !form.lastName ||
-            !form.email ||
-            !!form.emailError
-          }
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onContinue();
-          }}
-        >
+        <Button onClick={handleSubmit}>
           <Trans>Continue</Trans>
         </Button>
       </form>
