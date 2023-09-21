@@ -34,6 +34,7 @@ use crate::{
 
 pub mod conversations;
 
+const MAX_AGENT_STEPS: usize = 10;
 const TIMEOUT_SECS: u64 = 60;
 
 #[derive(Clone, Debug, serde::Deserialize)]
@@ -270,6 +271,7 @@ async fn try_execute_agent(
 
         let mut exchange_rx = tokio_stream::wrappers::ReceiverStream::new(exchange_rx);
 
+        let mut action_counter = 0;
         let result = 'outer: loop {
             // The main loop. Here, we create two streams that operate simultaneously; the update
             // stream, which sends updates back to the HTTP event stream response, and the action
@@ -283,6 +285,12 @@ async fn try_execute_agent(
                 .step(action)
                 .into_stream()
                 .map(Either::Right);
+
+            action_counter += 1;
+
+            if action_counter > MAX_AGENT_STEPS {
+                break 'outer Err(agent::Error::Timeout(Duration::from_secs(action_counter)));
+            }
 
             let timeout = Duration::from_secs(TIMEOUT_SECS);
 
