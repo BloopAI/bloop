@@ -53,7 +53,7 @@ const Tab = ({ tabKey, name, source, activeTab, item }: Props) => {
         layout="position"
         className="flex items-center justify-center gap-2 ellipsis"
       >
-        <div className="flex items-center gap-1 ellipsis flex-shrink-0">
+        <div className="flex items-center gap-1 ellipsis">
           <div className="w-4 h-4 flex-shrink-0">
             {source === undefined ? (
               <CodeStudioColored />
@@ -63,7 +63,9 @@ const Tab = ({ tabKey, name, source, activeTab, item }: Props) => {
               <GitHubLogo raw />
             )}
           </div>
-          <span className="ellipsis">{name.split('/').slice(-1)[0]}</span>
+          <span className="ellipsis body-m">
+            {name.split('/').slice(-1)[0]}
+          </span>
         </div>
         <button
           onClick={handleClose}

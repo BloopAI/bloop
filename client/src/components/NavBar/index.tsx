@@ -97,6 +97,10 @@ const NavBar = ({ isSkeleton, activeTab }: Props) => {
     isFetchingLink,
   ]);
 
+  const tabsWithoutHome = useMemo(() => {
+    return tabs.slice(1);
+  }, [tabs]);
+
   return (
     <div
       className={`h-8 flex items-stretch px-8 bg-bg-base fixed top-0 left-0 right-0 z-80
@@ -120,23 +124,21 @@ const NavBar = ({ isSkeleton, activeTab }: Props) => {
           axis="x"
           onReorder={handleReorderTabs}
           className="flex-1 flex items-center justify-start h-full overflow-x-auto pr-8 fade-right"
-          values={tabs}
+          values={tabsWithoutHome}
           layoutScroll
         >
           <AnimatePresence initial={false}>
             {!isSkeleton &&
-              tabs
-                .slice(1)
-                .map((t) => (
-                  <Tab
-                    item={t}
-                    tabKey={t.key}
-                    name={t.name}
-                    key={t.key}
-                    source={t.type === TabType.REPO ? t.source : undefined}
-                    activeTab={activeTab}
-                  />
-                ))}
+              tabsWithoutHome.map((t) => (
+                <Tab
+                  item={t}
+                  tabKey={t.key}
+                  name={t.name}
+                  key={t.key}
+                  source={t.type === TabType.REPO ? t.source : undefined}
+                  activeTab={activeTab}
+                />
+              ))}
           </AnimatePresence>
         </Reorder.Group>
       </div>
