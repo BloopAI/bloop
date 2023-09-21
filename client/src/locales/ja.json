@@ -363,5 +363,9 @@
 	"Fast": "速い",
 	"Answer speed": "回答速度",
 	"Show link": "リンクを表示",
-	"or go to the following link": "または、次のリンクに移動します"
+	"or go to the following link": "または、次のリンクに移動します",
+	"Email is required": "メールが必要です",
+	"First name is required": "名が必要です",
+	"Last name is required": "姓が必要です",
+	"Connect GitHub account to continue": "githubアカウントを接続して続行します"
 }

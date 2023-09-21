@@ -366,5 +366,9 @@
 	"Watch": "Watch",
 	"Open in new tab": "Open in new tab",
 	"Show link": "Show link",
-	"or go to the following link": "or go to the following link"
+	"or go to the following link": "or go to the following link",
+	"First name is required": "First name is required",
+	"Last name is required": "Last name is required",
+	"Email is required": "Email is required",
+	"Connect GitHub account to continue": "Connect GitHub account to continue"
 }

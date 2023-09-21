@@ -366,5 +366,9 @@
 	"Code Studio helps hobbyists and engineers working on the largest codebases, alike, to collaborate with AI. We recommend watching the guide to maximise your productivity.": "Estudio de código ayuda a los aficionados e ingenieros que trabajan en las bases de código más grandes, por igual, a colaborar con IA. Recomendamos ver la guía para maximizar su productividad.",
 	"Open in new tab": "Abrir en una pestaña nueva",
 	"Show link": "Mostrar enlace",
-	"or go to the following link": "o ir al siguiente enlace"
+	"or go to the following link": "o ir al siguiente enlace",
+	"Email is required": "Se requiere correo electrónico",
+	"Last name is required": "Se requiere apellido",
+	"First name is required": "Se requiere el primer nombre",
+	"Connect GitHub account to continue": "Conecte la cuenta GitHub para continuar"
 }
