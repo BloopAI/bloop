@@ -1,4 +1,5 @@
-import { useContext } from 'react';
+import React, { useContext } from 'react';
+import { Trans } from 'react-i18next';
 import {
   ChatMessage,
   ChatMessageAuthor,
@@ -33,10 +34,30 @@ const Conversation = ({
 
   return (
     <div
-      className={`w-full flex flex-col gap-3 overflow-auto pb-24`}
+      className={`w-full flex flex-col gap-3 overflow-auto pb-28`}
       ref={messagesRef}
       onScroll={handleScroll}
     >
+      {!isHistory && (
+        <div className="flex items-start gap-3 px-4 py-3 hover:bg-chat-bg-shade">
+          <div className="w-6 h-6 rounded-full bg-chat-bg-border flex-shrink-0 flex items-center justify-center mt-0.5">
+            <img
+              src="/bloopHeadMascot.png"
+              alt="mascot"
+              className="w-4.5 h-4.5"
+            />
+          </div>
+          <p className="body-s text-label-title">
+            <Trans>Hi, I am bloop!</Trans>{' '}
+            <Trans
+              values={{ repoName: repoName.replace(/^github\.com\//, '') }}
+            >
+              I can answer your questions about{' '}
+              <span className="font-bold">#repo</span>.
+            </Trans>
+          </p>
+        </div>
+      )}
       {conversation.map((m, i) => (
         <Message
           key={i}

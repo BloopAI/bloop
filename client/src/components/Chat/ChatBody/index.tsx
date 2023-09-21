@@ -34,11 +34,7 @@ const ChatBody = ({
   useTranslation();
   const { conversation, threadId } = useContext(ChatContext.Values);
   return (
-    <div
-      className={`${
-        isHistoryTab ? '' : 'p-4'
-      } overflow-auto flex-1 relative flex flex-col`}
-    >
+    <div className={`overflow-auto flex-1 relative flex flex-col`}>
       {isHistoryTab ? (
         <AllConversations
           repoRef={repoRef}
@@ -46,25 +42,6 @@ const ChatBody = ({
           openItem={openHistoryItem}
           setOpenItem={setOpenHistoryItem}
         />
-      ) : !conversation.length ? (
-        <div className="flex-1 flex justify-center items-center">
-          <div className="flex flex-col items-center max-w-[18rem] text-center transform -translate-y-1/2">
-            <img
-              src="/bloopHeadMascot.png"
-              alt="mascot"
-              className="w-16 h-16 mb-5"
-            />
-            <p className="body-m-strong text-label-title mb-1">
-              <Trans>Hi, I am bloop!</Trans>
-            </p>
-            <p className="body-s text-label-base">
-              <Trans values={{ repoName: tabName }}>
-                I can answer your questions about{' '}
-                <span className="italic">#repo</span>.
-              </Trans>
-            </p>
-          </div>
-        </div>
       ) : (
         <Conversation
           conversation={

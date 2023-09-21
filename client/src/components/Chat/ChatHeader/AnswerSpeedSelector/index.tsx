@@ -50,12 +50,12 @@ const AnswerSpeedSelector = ({}: Props) => {
           !isVisible ? null : (
             <div
               id="dropdown"
-              className={`rounded-md overflow-hidden bg-chat-bg-base border border-chat-bg-border shadow-high w-[27rem] flex flex-col`}
+              className={`rounded-md overflow-hidden bg-bg-base border border-bg-border shadow-high w-[27rem] flex flex-col select-none`}
             >
-              <div className="bg-chat-bg-shade border-b border-chat-bg-border p-3 caption-strong">
+              <div className="bg-bg-shade border-b border-bg-border p-3 caption-strong">
                 <Trans>Answer speed</Trans>
               </div>
-              <div className="p-2 flex flex-col gap-0.5 bg-chat-bg-sub">
+              <div className="p-2 flex flex-col gap-0.5 bg-bg-sub">
                 <SelectionItem
                   isSelected={preferredAnswerSpeed === 'normal'}
                   description={t(

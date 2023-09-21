@@ -5,6 +5,7 @@ import {
   Checkmark,
   List,
   MagnifyTool,
+  Pen,
   PenUnderline,
   PointClick,
   Sparkles,
@@ -151,9 +152,11 @@ const ConversationMessage = ({
       {message ? (
         <>
           <div
-            className={`relative bg-chat-bg-shade mt-3 flex items-start p-4 gap-3 border border-chat-bg-divider rounded-lg`}
+            className={`relative ${
+              author === ChatMessageAuthor.Server ? 'mt-3' : ''
+            } flex items-start px-4 py-3 gap-3 hover:bg-chat-bg-shade group-summary`}
           >
-            <div className="absolute top-4 left-4">
+            <div className="absolute top-3 left-4">
               <div className="w-6 h-6 rounded-full bg-chat-bg-border overflow-hidden flex items-center justify-center select-none">
                 {author === ChatMessageAuthor.User ? (
                   <img
@@ -161,9 +164,11 @@ const ConversationMessage = ({
                     alt={t('avatar')}
                   />
                 ) : (
-                  <div className="w-3 h-3">
-                    <Sparkles raw />
-                  </div>
+                  <img
+                    src="/bloopHeadMascot.png"
+                    alt="mascot"
+                    className="w-4.5 h-4.5"
+                  />
                 )}
               </div>
             </div>
@@ -181,7 +186,7 @@ const ConversationMessage = ({
                   <>
                     <div className="pl-8">{message}</div>
                     {!isHistory && !!queryId && (
-                      <div className="absolute bottom-1 right-1">
+                      <div className="absolute bottom-1 right-1 opacity-0 group-summary-hover:opacity-100 transition-opacity">
                         <Button
                           size="tiny"
                           variant="tertiary"
@@ -189,7 +194,7 @@ const ConversationMessage = ({
                           title={t('Edit')}
                           onClick={() => onMessageEdit(queryId, i)}
                         >
-                          <PenUnderline />
+                          <Pen raw sizeClassName="w-3.5 h-3.5" />
                         </Button>
                       </div>
                     )}

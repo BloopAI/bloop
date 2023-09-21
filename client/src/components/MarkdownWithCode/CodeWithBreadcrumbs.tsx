@@ -48,15 +48,17 @@ const CodeWithBreadcrumbs = ({
 
   return (
     <div
-      className={`text-sm border border-chat-bg-border rounded-md flex-1 overflow-x-auto cursor-pointer ${
+      className={`text-sm border border-chat-bg-divider rounded-md flex-1 overflow-x-auto cursor-pointer ${
         isSummary ? '' : 'my-4'
       }`}
       onClick={handleResultClick}
     >
       <div
-        className={`flex items-center justify-between gap-2 w-full ${
-          isSummary ? 'bg-chat-bg-sub' : 'bg-chat-bg-base'
-        } h-13 px-3 cursor-pointer overflow-hidden`}
+        className={`flex items-center justify-between gap-2 w-full border-b ${
+          isSummary
+            ? 'bg-chat-bg-sub'
+            : 'bg-chat-bg-shade border-chat-bg-divider'
+        } p-2 cursor-pointer overflow-hidden`}
       >
         <div
           className={`flex items-center gap-2 w-full cursor-pointer ${
@@ -75,7 +77,7 @@ const CodeWithBreadcrumbs = ({
         </div>
       </div>
       <div className="relative">
-        <div className={`relative overflow-x-auto py-4 bg-chat-bg-sub`}>
+        <div className={`relative overflow-x-auto py-4 bg-chat-bg-base`}>
           <Code
             code={code}
             language={language}

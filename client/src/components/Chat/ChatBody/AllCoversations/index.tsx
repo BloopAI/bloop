@@ -88,7 +88,7 @@ const AllConversations = ({
   return (
     <div className={`flex-1 flex flex-col overflow-auto`}>
       {!openItem && (
-        <div className="flex flex-col gap-1 py-4 overflow-auto flex-1 pb-12">
+        <div className="flex flex-col gap-1 overflow-auto flex-1 pb-12">
           {conversations.map((c) => (
             <ConversationListItem
               key={c.thread_id}
@@ -105,7 +105,7 @@ const AllConversations = ({
         </div>
       )}
       {!!openItem && (
-        <div className="flex-1 px-4 py-2 overflow-auto pb-10">
+        <div className="flex-1 overflow-auto pb-10">
           <Conversation
             conversation={openItem.conversation}
             threadId={openItem.threadId}
