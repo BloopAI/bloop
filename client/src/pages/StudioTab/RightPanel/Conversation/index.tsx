@@ -101,7 +101,8 @@ const Conversation = ({
     const mappedConv = mapConversation(messages);
     if (
       mappedConv[mappedConv.length - 1]?.author ===
-      StudioConversationMessageAuthor.USER
+        StudioConversationMessageAuthor.USER &&
+      !isPreviewing
     ) {
       const editedMessage = mappedConv[messages.length - 1];
       setInputValue((prev) =>
@@ -225,7 +226,7 @@ const Conversation = ({
       if (ev.data === '[DONE]') {
         eventSource.close();
         setIsLoading(false);
-        refetchCodeStudio('token_counts');
+        refetchCodeStudio();
         return;
       }
       try {

@@ -129,3 +129,6 @@ export { default as Pen } from './Pen';
 export { default as TemplateAdd } from './TemplateAdd';
 export { default as Card } from './Card';
 export { default as WarningSign } from './WarningSign';
+export { default as NewTab } from './NewTab';
+export { default as Walk } from './Walk';
+export { default as Run } from './Run';

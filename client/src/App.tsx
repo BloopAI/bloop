@@ -47,6 +47,7 @@ import CloudFeaturePopup from './components/CloudFeaturePopup';
 import ErrorFallback from './components/ErrorFallback';
 import { PersonalQuotaContextProvider } from './context/providers/PersonalQuotaContextProvider';
 import UpgradePopup from './components/UpgradePopup';
+import StudioGuidePopup from './components/StudioGuidePopup';
 
 type Props = {
   deviceContextValue: DeviceContextType;
@@ -240,6 +241,22 @@ function App({ deviceContextValue }: Props) {
     [],
   );
 
+  const updateTabName = useCallback((tabKey: string, name: string) => {
+    setTabs((prev) => {
+      const tabIndex = prev.findIndex((t) => t.key === tabKey);
+      if (tabIndex < 0) {
+        return prev;
+      }
+      const newTab = {
+        ...prev[tabIndex],
+        name,
+      };
+      const newTabs = [...prev];
+      newTabs[tabIndex] = newTab;
+      return newTabs;
+    });
+  }, []);
+
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey) {
@@ -268,6 +285,12 @@ function App({ deviceContextValue }: Props) {
     });
   }, []);
 
+  const handleReorderTabs = useCallback((newTabs: UITabType[]) => {
+    setTabs((prev) => {
+      return [prev[0], ...newTabs];
+    });
+  }, []);
+
   const contextValue = useMemo(
     () => ({
       tabs,
@@ -277,6 +300,8 @@ function App({ deviceContextValue }: Props) {
       setActiveTab: handleChangeActiveTab,
       updateTabNavHistory,
       updateTabBranch,
+      updateTabName,
+      handleReorderTabs,
     }),
     [
       tabs,
@@ -285,6 +310,8 @@ function App({ deviceContextValue }: Props) {
       handleRemoveTab,
       updateTabNavHistory,
       updateTabBranch,
+      updateTabName,
+      handleReorderTabs,
     ],
   );
 
@@ -359,6 +386,7 @@ function App({ deviceContextValue }: Props) {
                 <Settings />
                 <ReportBugModal />
                 <PromptGuidePopup />
+                <StudioGuidePopup />
                 <Onboarding activeTab={activeTab} />
                 <StatusBar />
                 <CloudFeaturePopup />

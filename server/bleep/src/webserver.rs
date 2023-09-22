@@ -6,7 +6,7 @@ use axum::{
     routing::{delete, get, post},
     Extension, Json,
 };
-use std::{borrow::Cow, net::SocketAddr};
+use std::{borrow::Cow, fmt, net::SocketAddr};
 use tower::Service;
 use tower_http::services::{ServeDir, ServeFile};
 use tower_http::{catch_panic::CatchPanicLayer, cors::CorsLayer};
@@ -177,6 +177,12 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 pub struct Error {
     status: StatusCode,
     body: EndpointError<'static>,
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.body.message)
+    }
 }
 
 impl Error {

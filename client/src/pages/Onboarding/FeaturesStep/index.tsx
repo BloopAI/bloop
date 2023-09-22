@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import Button from '../../../components/Button';
-import { ChatBubble, PointClick, RegexIcon } from '../../../icons';
+import { ChatBubble, PointClick, CodeStudioIcon } from '../../../icons';
 import DialogText from '../DialogText';
 import GoBackButton from '../GoBackButton';
 import Feature from './Feature';
@@ -25,30 +25,21 @@ const FeaturesStep = ({ handleNext, handleBack }: Props) => {
     <>
       <DialogText
         title={t('Welcome to bloop')}
-        description={t(
-          'bloop enhances your development workflow in three key ways',
-        )}
+        description={t('Unlock the value of your existing code, using AI')}
       />
       <div className="flex flex-col gap-4">
         <Feature
           icon={<ChatBubble />}
-          title={t('Natural language search')}
+          title={t('Search code in natural language')}
           description={t(
-            'Query your codebase in a natural conversation style, just like you’d speak to ChatGPT',
+            'Ask questions about your codebases in natural language, just like you’d speak to ChatGPT. Get started by syncing a repo, then open the repo and start chatting.',
           )}
         />
         <Feature
-          icon={<RegexIcon />}
-          title={t('Regex matching')}
+          icon={<CodeStudioIcon />}
+          title={t('Generate code using AI')}
           description={t(
-            'Match code, identifiers, paths and repos with regex extremely quickly, especially on large codebases',
-          )}
-        />
-        <Feature
-          icon={<PointClick />}
-          title={t('Precise code navigation')}
-          description={t(
-            'Available in 10+ languages to help you find references and definitions',
+            'Code studio helps you write scripts, create unit tests, debug issues or generate anything else you can think of using AI! Sync a repo, then create a code studio project.',
           )}
         />
         <div className="flex flex-col gap-4 mt-4">

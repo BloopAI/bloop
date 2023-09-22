@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Context, Result};
-use futures::{stream, StreamExt, TryStreamExt};
+use futures::{stream, StreamExt};
 use tiktoken_rs::CoreBPE;
 use tracing::{debug, instrument};
 
@@ -89,8 +89,6 @@ impl Agent {
                     // Set low frequency penalty to discourage long outputs.
                     .frequency_penalty(0.2)
                     .chat(&[llm_gateway::api::Message::system(&prompt)], None)
-                    .await?
-                    .try_collect::<String>()
                     .await?;
 
                 #[derive(

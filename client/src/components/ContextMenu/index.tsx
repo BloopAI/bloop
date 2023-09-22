@@ -104,6 +104,8 @@ const ContextMenu = ({
         return (
           <Item
             key={i}
+            i={i}
+            isVisible={visible}
             icon={item.icon}
             onClick={(e) => {
               e.stopPropagation();

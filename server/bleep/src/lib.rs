@@ -20,7 +20,7 @@ use git_version as _;
 #[cfg(all(feature = "debug", not(tokio_unstable)))]
 use console_subscriber as _;
 
-use secrecy::SecretString;
+use secrecy::{ExposeSecret, SecretString};
 use state::PersistedState;
 use std::{fs::canonicalize, sync::RwLock};
 use user::UserProfile;
@@ -349,6 +349,12 @@ impl Application {
         } else {
             None
         })
+    }
+
+    fn llm_gateway_client(&self) -> Result<llm_gateway::Client> {
+        let answer_api_token = self.answer_api_token()?.map(|s| s.expose_secret().clone());
+
+        Ok(llm_gateway::Client::new(&self.config.answer_api_url).bearer(answer_api_token))
     }
 }
 

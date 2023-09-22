@@ -290,8 +290,8 @@ export const getCodeStudioHistory = (
   http(`/studio/${id}/snapshots`).then((r) => r.data);
 export const deleteCodeStudio = (id: string): Promise<CodeStudioType> =>
   http.delete(`/studio/${id}`).then((r) => r.data);
-export const postCodeStudio = (name: string) =>
-  http.post('/studio', { name }).then((r) => r.data);
+export const postCodeStudio = () =>
+  http.post('/studio', {}).then((r) => r.data);
 export const importCodeStudio = (thread_id: string, studio_id?: string) =>
   http
     .post('/studio/import', {}, { params: { thread_id, studio_id } })

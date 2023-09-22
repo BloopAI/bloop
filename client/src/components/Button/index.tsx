@@ -36,9 +36,9 @@ type TextBtnProps = {
 
 const variantStylesMap = {
   primary:
-    'text-label-control bg-bg-main hover:bg-bg-main-hover focus:bg-bg-main-hover active:bg-bg-main active:shadow-rings-blue disabled:bg-bg-base disabled:text-label-muted disabled:hover:border-none disabled:hover:bg-bg-base disabled:active:shadow-none disabled:border-none',
+    'text-label-control bg-bg-main hover:bg-bg-main-hover focus:bg-bg-main-hover active:bg-bg-main active:shadow-rings-blue focus:shadow-rings-blue disabled:bg-bg-base disabled:text-label-muted disabled:hover:border-none disabled:hover:bg-bg-base disabled:active:shadow-none disabled:border-none',
   secondary:
-    'text-label-title bg-bg-base border border-bg-border hover:border-bg-border-hover hover:bg-bg-base-hover focus:border-bg-border-hover active:bg-bg-base disabled:bg-bg-base disabled:border-none disabled:text-label-muted shadow-low hover:shadow-none focus:shadow-none active:shadow-rings-gray disabled:shadow-none',
+    'text-label-title bg-bg-base border border-bg-border hover:border-bg-border-hover focus:border-bg-border-hover hover:bg-bg-base-hover focus:bg-bg-base-hover active:bg-bg-base disabled:bg-bg-base disabled:border-none disabled:text-label-muted shadow-low hover:shadow-none focus:shadow-none active:shadow-rings-gray disabled:shadow-none',
   tertiary:
     'text-label-muted bg-transparent hover:text-label-title focus:text-label-title hover:bg-bg-base-hover focus:bg-bg-base-hover active:text-label-title active:bg-transparent disabled:bg-bg-base disabled:text-label-muted',
   'tertiary-active': 'text-label-title bg-bg-base-hover',
