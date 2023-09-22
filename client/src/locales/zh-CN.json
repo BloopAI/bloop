@@ -375,5 +375,6 @@
 	"Email is required": "需要电子邮件",
 	"First name is required": "需要名字",
 	"Last name is required": "需要姓氏",
-	"Connect GitHub account to continue": "连接github帐户继续"
+	"Connect GitHub account to continue": "连接github帐户继续",
+	"Save context changes before answer generation": "在回答生成之前保存上下文更改"
 }

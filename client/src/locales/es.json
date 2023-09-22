@@ -370,5 +370,6 @@
 	"Email is required": "Se requiere correo electrónico",
 	"Last name is required": "Se requiere apellido",
 	"First name is required": "Se requiere el primer nombre",
-	"Connect GitHub account to continue": "Conecte la cuenta GitHub para continuar"
+	"Connect GitHub account to continue": "Conecte la cuenta GitHub para continuar",
+	"Save context changes before answer generation": "Guardar cambios de contexto antes de la generación de respuesta"
 }

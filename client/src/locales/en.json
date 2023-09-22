@@ -370,5 +370,6 @@
 	"First name is required": "First name is required",
 	"Last name is required": "Last name is required",
 	"Email is required": "Email is required",
-	"Connect GitHub account to continue": "Connect GitHub account to continue"
+	"Connect GitHub account to continue": "Connect GitHub account to continue",
+	"Save context changes before answer generation": "Save context changes before answer generation"
 }
