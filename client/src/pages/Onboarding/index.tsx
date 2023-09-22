@@ -50,7 +50,6 @@ const Onboarding = ({ activeTab }: { activeTab: string }) => {
   const { isGithubConnected } = useContext(UIContext.GitHubConnected);
   const { isSelfServe, os, setEnvConfig, envConfig } =
     useContext(DeviceContext);
-  const [isJustUpdated, setJustUpdated] = useState(false);
 
   const closeOnboarding = useCallback(() => {
     setShouldShowWelcome(false);
@@ -85,7 +84,6 @@ const Onboarding = ({ activeTab }: { activeTab: string }) => {
         .then((d) => {
           setEnvConfig(d);
           if (!d.user_login) {
-            setJustUpdated(d.credentials_upgrade);
             setShouldShowWelcome(true);
           } else {
             closeOnboarding();

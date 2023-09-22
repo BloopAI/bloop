@@ -7,6 +7,7 @@ import React, {
 } from 'react';
 import { Remarkable } from 'remarkable';
 import { Trans } from 'react-i18next';
+import sanitizeHtml from 'sanitize-html';
 import Accordion from '../../../components/Accordion';
 import FileIcon from '../../../components/FileIcon';
 import { FileTreeFileType, Repository } from '../../../types';
@@ -118,7 +119,14 @@ const RepositoryOverview = ({ syncState, repository }: Props) => {
           >
             <div className="py-4 text-xs overflow-x-auto px-4 readme">
               <div
-                dangerouslySetInnerHTML={{ __html: readme.contents }}
+                dangerouslySetInnerHTML={{
+                  __html: sanitizeHtml(readme.contents, {
+                    allowedTags: sanitizeHtml.defaults.allowedTags.concat([
+                      'img',
+                    ]),
+                    allowedAttributes: { img: ['src', 'alt'] },
+                  }),
+                }}
                 onClick={handleClick}
               />
             </div>

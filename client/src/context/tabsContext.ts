@@ -21,6 +21,7 @@ type ContextType = {
   ) => void;
   updateTabBranch: (t: string, branch: string | null) => void;
   updateTabName: (t: string, name: string) => void;
+  handleReorderTabs: (tabs: UITabType[]) => void;
 };
 
 export const TabsContext = createContext<ContextType>({
@@ -38,4 +39,5 @@ export const TabsContext = createContext<ContextType>({
   updateTabNavHistory: () => {},
   updateTabBranch: () => {},
   updateTabName: () => {},
+  handleReorderTabs: () => {},
 });

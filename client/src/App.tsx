@@ -285,6 +285,12 @@ function App({ deviceContextValue }: Props) {
     });
   }, []);
 
+  const handleReorderTabs = useCallback((newTabs: UITabType[]) => {
+    setTabs((prev) => {
+      return [prev[0], ...newTabs];
+    });
+  }, []);
+
   const contextValue = useMemo(
     () => ({
       tabs,
@@ -295,6 +301,7 @@ function App({ deviceContextValue }: Props) {
       updateTabNavHistory,
       updateTabBranch,
       updateTabName,
+      handleReorderTabs,
     }),
     [
       tabs,
@@ -304,6 +311,7 @@ function App({ deviceContextValue }: Props) {
       updateTabNavHistory,
       updateTabBranch,
       updateTabName,
+      handleReorderTabs,
     ],
   );
 
