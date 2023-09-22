@@ -13,7 +13,6 @@ type Props = {
   queryIdToEdit: string;
   repoRef: string;
   repoName: string;
-  tabName: string;
   hideMessagesFrom: null | number;
   openHistoryItem: OpenChatHistoryItem | null;
   setOpenHistoryItem: Dispatch<SetStateAction<OpenChatHistoryItem | null>>;
@@ -26,7 +25,6 @@ const ChatBody = ({
   queryIdToEdit,
   repoRef,
   repoName,
-  tabName,
   hideMessagesFrom,
   openHistoryItem,
   setOpenHistoryItem,

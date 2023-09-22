@@ -6,9 +6,7 @@ import {
   List,
   MagnifyTool,
   Pen,
-  PenUnderline,
   PointClick,
-  Sparkles,
   WrenchAndScrewdriver,
 } from '../../../../icons';
 import { DeviceContext } from '../../../../context/deviceContext';

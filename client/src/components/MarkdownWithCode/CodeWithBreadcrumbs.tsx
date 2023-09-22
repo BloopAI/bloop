@@ -1,11 +1,8 @@
-import React, { useCallback, MouseEvent, useState } from 'react';
+import React, { useCallback, MouseEvent } from 'react';
 import FileIcon from '../FileIcon';
 import BreadcrumbsPath from '../BreadcrumbsPath';
 import { FileTreeFileType } from '../../types';
 import Code from '../CodeBlock/Code';
-import Button from '../Button';
-import { copyToClipboard } from '../../utils';
-import { CheckIcon, Clipboard } from '../../icons';
 import CopyButton from './CopyButton';
 
 type Props = {
@@ -27,8 +24,6 @@ const CodeWithBreadcrumbs = ({
   code,
   isSummary,
 }: Props) => {
-  const [codeCopied, setCodeCopied] = useState(false);
-
   const handleResultClick = useCallback(
     (e: MouseEvent) => {
       if (!document.getSelection()?.toString()) {

@@ -388,7 +388,6 @@ const Chat = () => {
         hideMessagesFrom={hideMessagesFrom}
         repoRef={tab.repoRef}
         queryIdToEdit={queryIdToEdit}
-        tabName={tab.name}
         openHistoryItem={openHistoryItem}
         setOpenHistoryItem={setOpenHistoryItem}
       />
