@@ -167,14 +167,15 @@ impl Application {
 
             semantic.reset_collection_blocking().await?;
             debug!("semantic indexes deleted");
-
             debug!("state reset complete");
         }
 
         config.source.save_index_version()?;
         debug!("index version saved");
 
-        let indexes = Indexes::new(&config)?.into();
+        let indexes = Indexes::new(&config, sql.clone(), semantic.clone())
+            .await?
+            .into();
         debug!("indexes initialized");
 
         // Enforce capabilies and features depending on environment

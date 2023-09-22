@@ -7,7 +7,7 @@ use rayon::prelude::*;
 use thiserror::Error;
 use tracing::info;
 
-const COLLECTION_NAME: &str = "web";
+pub const COLLECTION_NAME: &str = "web";
 
 use crate::{
     db::SqlDb,
@@ -53,11 +53,8 @@ pub enum DocError {
 
 impl Doc {
     /// Initialize docs index
-    pub async fn create(sql: SqlDb, semantic: Option<Semantic>) -> Result<Self, DocError> {
-        let semantic = semantic
-            .ok_or_else(|| DocError::Initialize("semantic client is uninitialized".into()))?;
-
-        if create_indexes(&semantic.qdrant_client()).await? {
+    pub async fn create(sql: SqlDb, semantic: Semantic) -> Result<Self, DocError> {
+        if create_indexes(semantic.qdrant_client()).await? {
             info!(%COLLECTION_NAME, "created doc index");
         } else {
             info!( %COLLECTION_NAME, "using existing doc index");
@@ -191,15 +188,15 @@ impl Doc {
 
         Ok(data
             .into_iter()
-            .filter_map(|s| SearchResult::from_qdrant(s.payload))
+            .filter_map(|s| SearchResult::from_qdrant(s.id.unwrap(), s.payload))
             .collect())
     }
 
     /// Fetch all sections of a single document, in order
-    pub async fn fetch(
+    pub async fn fetch<S: AsRef<str>>(
         &self,
         id: i64,
-        relative_url: String,
+        relative_url: S,
     ) -> Result<Vec<SearchResult>, DocError> {
         let data = self
             .semantic
@@ -210,7 +207,7 @@ impl Doc {
                 filter: Some(Filter {
                     must: vec![
                         make_kv_int_filter("doc_id", id).into(),
-                        make_kv_keyword_filter("relative_url", &relative_url).into(),
+                        make_kv_keyword_filter("relative_url", relative_url.as_ref()).into(),
                     ],
                     ..Default::default()
                 }),
@@ -225,7 +222,7 @@ impl Doc {
 
         let mut data = data
             .into_iter()
-            .filter_map(|s| SearchResult::from_qdrant(s.payload))
+            .filter_map(|s| SearchResult::from_qdrant(s.id.unwrap(), s.payload))
             .collect::<Vec<_>>();
 
         data.sort_by_key(|s| s.section_range.start);
@@ -331,7 +328,7 @@ impl scraper::Document {
                 .collect::<Vec<_>>();
             let average_embedding = embeddings.iter().fold(vec![0.; 384], |acc, e| {
                 acc.into_iter()
-                    .zip(e.into_iter())
+                    .zip(e.iter())
                     .map(|(acc_elem, e_elem)| acc_elem + e_elem)
                     .collect::<Vec<_>>()
             });
@@ -380,18 +377,26 @@ fn make_kv_int_filter(key: &str, value: i64) -> FieldCondition {
 
 #[derive(serde::Serialize)]
 pub struct SearchResult {
-    doc_id: i64,
-    doc_source: url::Url,
-    relative_url: String,
-    header: String,
-    ancestry: Vec<String>,
-    text: String,
-    section_range: std::ops::Range<usize>,
+    pub doc_id: i64,
+    pub point_id: uuid::Uuid,
+    pub doc_source: url::Url,
+    pub relative_url: String,
+    pub header: String,
+    pub ancestry: Vec<String>,
+    pub text: String,
+    pub section_range: std::ops::Range<usize>,
 }
 
 impl SearchResult {
-    fn from_qdrant(payload: HashMap<String, qdrant_client::qdrant::Value>) -> Option<Self> {
+    pub fn from_qdrant(
+        id: PointId,
+        payload: HashMap<String, qdrant_client::qdrant::Value>,
+    ) -> Option<Self> {
         let doc_id = payload["doc_id"].as_integer()?;
+        let point_id = id.point_id_options.and_then(|opts| match opts {
+            PointIdOptions::Uuid(u) => uuid::Uuid::try_parse(&u).ok(),
+            _ => None,
+        })?;
         let doc_source = payload["doc_source"]
             .as_str()
             .and_then(|s| url::Url::parse(s).ok())?;
@@ -412,6 +417,7 @@ impl SearchResult {
         let text = payload["text"].as_str().map(ToOwned::to_owned)?;
         Some(Self {
             doc_id,
+            point_id,
             doc_source,
             relative_url,
             header,

@@ -83,7 +83,7 @@ impl Scraper {
                         let new_urls = scraper_result.new_urls.drain(..).fold(
                             HashMap::new(),
                             |mut map, (depth, url)| {
-                                map.entry(url.clone())
+                                map.entry(url)
                                     .and_modify(|d| {
                                         *d = depth.min(*d);
                                     })
@@ -186,7 +186,7 @@ async fn visit(
     debug!("visited - {}", url);
 
     // calculate the location on disk to store this url
-    let mut doc_path = PathBuf::from(url.path().strip_prefix("/").unwrap()); // infallible
+    let mut doc_path = PathBuf::from(url.path().strip_prefix('/').unwrap()); // infallible
 
     if !doc_path.ends_with("index.html") {
         doc_path.push("index.html");
@@ -203,10 +203,10 @@ async fn visit(
     let new_urls = html
         .find(Name("a"))
         .filter_map(|l| l.attr("href"))
-        .filter_map(|v| {
+        .filter(|v| {
             match Url::parse(v) {
-                Err(url::ParseError::RelativeUrlWithoutBase) => Some(v), // we want only relative links
-                _ => None,
+                Err(url::ParseError::RelativeUrlWithoutBase) => true, // we want only relative links
+                _ => false,
             }
         })
         .filter_map(|new_path| base_url.join(new_path).ok())

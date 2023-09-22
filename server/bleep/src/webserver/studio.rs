@@ -86,9 +86,10 @@ pub async fn create(
     .id;
 
     sqlx::query! {
-        "INSERT INTO studio_snapshots (studio_id, context, messages)
-         VALUES (?, ?, ?)",
+        "INSERT INTO studio_snapshots (studio_id, context, doc_context, messages)
+         VALUES (?, ?, ?, ?)",
         studio_id,
+        "[]",
         "[]",
         "[]",
     }
@@ -106,6 +107,7 @@ pub struct Studio {
     name: String,
     modified_at: NaiveDateTime,
     context: Vec<ContextFile>,
+    doc_context: Vec<DocContextFile>,
     messages: Vec<Message>,
     token_counts: TokenCounts,
 }
@@ -127,6 +129,15 @@ impl ContextFile {
         self.ranges.extend(rhs.ranges);
         self
     }
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
+struct DocContextFile {
+    doc_id: i64,
+    doc_source: url::Url,
+    relative_url: String,
+    hidden: bool,
+    ranges: Vec<Uuid>,
 }
 
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
@@ -163,7 +174,7 @@ pub async fn get(
     };
 
     let row = sqlx::query! {
-        "SELECT s.id, s.name, ss.context, ss.messages, ss.modified_at
+        "SELECT s.id, s.name, ss.context, ss.doc_context, ss.messages, ss.modified_at
         FROM studios s
         INNER JOIN studio_snapshots ss ON ss.id = ?
         WHERE s.id = ? AND s.user_id = ?",
@@ -177,14 +188,17 @@ pub async fn get(
 
     let context: Vec<ContextFile> =
         serde_json::from_str(&row.context).context("failed to deserialize context")?;
+    let doc_context: Vec<DocContextFile> =
+        serde_json::from_str(&row.doc_context).context("failed to deserialize doc context")?;
     let messages: Vec<Message> =
         serde_json::from_str(&row.messages).context("failed to deserialize message list")?;
 
     Ok(Json(Studio {
         modified_at: row.modified_at,
         name: row.name.unwrap_or_else(default_studio_name),
-        token_counts: token_counts((*app).clone(), &messages, &context).await?,
+        token_counts: token_counts((*app).clone(), &messages, &context, &doc_context).await?,
         context,
+        doc_context,
         messages,
     }))
 }
@@ -194,6 +208,7 @@ pub struct Patch {
     name: Option<String>,
     modified_at: Option<NaiveDateTime>,
     context: Option<Vec<ContextFile>>,
+    doc_context: Option<Vec<DocContextFile>>,
     messages: Option<Vec<Message>>,
     snapshot_id: Option<i64>,
 }
@@ -250,6 +265,17 @@ pub async fn patch(
         .await?;
     }
 
+    if let Some(doc_context) = patch.doc_context {
+        let json = serde_json::to_string(&doc_context).unwrap();
+        sqlx::query!(
+            "UPDATE studio_snapshots SET doc_context = ? WHERE id = ?",
+            json,
+            snapshot_id
+        )
+        .execute(&mut transaction)
+        .await?;
+    }
+
     if let Some(messages) = patch.messages {
         let json = serde_json::to_string(&messages).unwrap();
         sqlx::query!(
@@ -270,22 +296,25 @@ pub async fn patch(
 
     // Re-fetch the context and messages in case we didn't change them. If we did, this will now
     // contain the updated values.
-    let (messages_json, context_json) = sqlx::query!(
-        "SELECT messages, context FROM studio_snapshots WHERE id = ?",
+    let (messages_json, context_json, doc_context_json) = sqlx::query!(
+        "SELECT messages, context, doc_context FROM studio_snapshots WHERE id = ?",
         snapshot_id
     )
     .fetch_optional(&mut transaction)
     .await?
-    .map(|r| (r.messages, r.context))
+    .map(|r| (r.messages, r.context, r.doc_context))
     .unwrap_or_default();
 
     let context: Vec<ContextFile> =
         serde_json::from_str(&context_json).context("invalid context JSON")?;
 
+    let doc_context: Vec<DocContextFile> =
+        serde_json::from_str(&doc_context_json).context("invalid context JSON")?;
+
     let messages: Vec<Message> =
         serde_json::from_str(&messages_json).context("invalid messages JSON")?;
 
-    let counts = token_counts((*app).clone(), &messages, &context).await?;
+    let counts = token_counts((*app).clone(), &messages, &context, &doc_context).await?;
 
     transaction.commit().await?;
 
@@ -351,7 +380,7 @@ pub async fn list(
 
         let repos: HashSet<String> = context.iter().map(|file| file.repo.name.clone()).collect();
 
-        let ext_tokens = token_counts((*app).clone(), &[], &context)
+        let ext_tokens = token_counts((*app).clone(), &[], &context, &[])
             .await?
             .per_file
             .iter()
@@ -392,12 +421,14 @@ pub struct TokenCounts {
     messages: usize,
     per_file: Vec<Option<usize>>,
     baseline: usize,
+    per_doc_file: Vec<Option<usize>>,
 }
 
 async fn token_counts(
     app: Application,
     messages: &[Message],
     context: &[ContextFile],
+    doc_context: &[DocContextFile],
 ) -> webserver::Result<TokenCounts> {
     let per_file = stream::iter(context)
         .map(|file| {
@@ -431,6 +462,70 @@ async fn token_counts(
             };
 
             body.map(|b| count_tokens_for_file(&file.path, &b, &file.ranges))
+        })
+        .collect::<Vec<_>>();
+
+    // let semantic = app.semantic.unwrap();
+    // let qdrant = semantic.qdrant_client();
+    let core_bpe = tiktoken_rs::get_bpe_from_model("gpt-4-0613").unwrap();
+    let per_doc_file = stream::iter(doc_context)
+        .map(|file| async {
+            if file.hidden {
+                return Ok::<_, Error>(None);
+            }
+
+            let content = app
+                .indexes
+                .doc
+                .fetch(file.doc_id, &file.relative_url)
+                .await
+                .map_err(Error::internal)?
+                .into_iter()
+                .filter(|search_result| {
+                    if file.ranges.is_empty() {
+                        true
+                    } else {
+                        file.ranges.contains(&search_result.point_id)
+                    }
+                })
+                .map(|sr| sr.text)
+                .collect::<String>();
+
+            // let retreived_points = qdrant
+            //     .get_points(
+            //         doc::COLLECTION_NAME,
+            //         &file
+            //             .ranges
+            //             .iter()
+            //             .map(|uuid| uuid.to_string().into())
+            //             .collect::<Vec<_>>(),
+            //         None::<qdrant_client::qdrant::WithVectorsSelector>,
+            //         Some(qdrant_client::qdrant::WithPayloadSelector {
+            //             selector_options: Some(
+            //                 qdrant_client::qdrant::with_payload_selector::SelectorOptions::Enable(
+            //                     true,
+            //                 ),
+            //             ),
+            //         }),
+            //         None,
+            //     )
+            //     .await?
+            //     .result;
+            // let content = retreived_points
+            //     .into_iter()
+            //     .filter_map(|p| doc::SearchResult::from_qdrant(p.id.unwrap(), p.payload))
+            //     .map(|sr| sr.text)
+            //     .collect::<String>();
+            Ok(Some(content))
+        })
+        .boxed()
+        .buffered(16)
+        .try_collect::<Vec<_>>()
+        .await?
+        .into_par_iter()
+        .map(|data| match data {
+            Some(d) => Some(core_bpe.encode_ordinary(&d).len()),
+            None => Some(0),
         })
         .collect::<Vec<_>>();
 
@@ -480,6 +575,7 @@ async fn token_counts(
         messages,
         per_file,
         baseline,
+        per_doc_file,
     })
 }
 
@@ -581,13 +677,13 @@ pub async fn generate(
         .model(LLM_GATEWAY_MODEL)
         .temperature(0.0);
 
-    let (messages_json, context_json) = sqlx::query!(
-        "SELECT messages, context FROM studio_snapshots WHERE id = ?",
+    let (messages_json, context_json, doc_context_json) = sqlx::query!(
+        "SELECT messages, context, doc_context FROM studio_snapshots WHERE id = ?",
         snapshot_id,
     )
     .fetch_optional(&*app.sql)
     .await?
-    .map(|row| (row.messages, row.context))
+    .map(|row| (row.messages, row.context, row.doc_context))
     .ok_or_else(studio_not_found)?;
 
     let mut messages =
@@ -596,6 +692,9 @@ pub async fn generate(
     let context =
         serde_json::from_str::<Vec<ContextFile>>(&context_json).map_err(Error::internal)?;
 
+    let doc_context =
+        serde_json::from_str::<Vec<DocContextFile>>(&doc_context_json).map_err(Error::internal)?;
+
     app.track_studio(
         &user,
         StudioEvent::new(studio_id, "generate")
@@ -603,7 +702,7 @@ pub async fn generate(
             .with_payload("messages", &messages),
     );
 
-    let llm_context = generate_llm_context((*app).clone(), &context).await?;
+    let llm_context = generate_llm_context((*app).clone(), context, doc_context).await?;
     let system_prompt = prompts::studio_article_prompt(&llm_context);
     let llm_messages = iter::once(llm_gateway::api::Message::system(&system_prompt))
         .chain(messages.iter().map(llm_gateway::api::Message::from))
@@ -668,7 +767,11 @@ pub async fn generate(
 }
 
 #[allow(clippy::single_range_in_vec_init)]
-async fn generate_llm_context(app: Application, context: &[ContextFile]) -> Result<String> {
+async fn generate_llm_context(
+    app: Application,
+    context: Vec<ContextFile>,
+    doc_context: Vec<DocContextFile>,
+) -> Result<String> {
     let mut s = String::new();
 
     s += "##### PATHS #####\n";
@@ -715,6 +818,32 @@ async fn generate_llm_context(app: Application, context: &[ContextFile]) -> Resu
 
             s += &format!("### {} ###\n{snippet}\n", file.path);
         }
+    }
+
+    s += "\n##### DOCUMENTATION #####\n\n";
+
+    for file in doc_context.iter().filter(|f| !f.hidden) {
+        let sections = app
+            .indexes
+            .doc
+            .fetch(file.doc_id, &file.relative_url)
+            .await?
+            .into_iter()
+            .filter(|search_result| {
+                if file.ranges.is_empty() {
+                    true
+                } else {
+                    file.ranges.contains(&search_result.point_id)
+                }
+            })
+            .map(|sr| sr.text)
+            .collect::<Vec<_>>()
+            .join("\n");
+        s += &format!(
+            "### {}{} ###\n{sections}\n",
+            &file.doc_source.as_str(),
+            &file.relative_url
+        );
     }
 
     Ok(s)
@@ -1014,6 +1143,7 @@ pub struct Snapshot {
     id: i64,
     modified_at: NaiveDateTime,
     context: Vec<ContextFile>,
+    doc_context: Vec<DocContextFile>,
     messages: Vec<Message>,
 }
 
@@ -1025,7 +1155,7 @@ pub async fn list_snapshots(
     let user_id = user.username().ok_or_else(no_user_id)?.to_string();
 
     sqlx::query! {
-        "SELECT ss.id as 'id!', ss.modified_at, ss.context, ss.messages
+        "SELECT ss.id as 'id!', ss.modified_at, ss.context, ss.doc_context, ss.messages
         FROM studio_snapshots ss
         JOIN studios s ON s.id = ss.studio_id AND s.user_id = ?
         WHERE ss.studio_id = ?
@@ -1040,6 +1170,8 @@ pub async fn list_snapshots(
             id: r.id,
             modified_at: r.modified_at,
             context: serde_json::from_str(&r.context).context("failed to deserialize context")?,
+            doc_context: serde_json::from_str(&r.doc_context)
+                .context("failed to deserialize doc context")?,
             messages: serde_json::from_str(&r.messages)
                 .context("failed to deserialize messages")?,
         })

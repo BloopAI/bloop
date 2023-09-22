@@ -83,7 +83,11 @@ pub struct Indexes {
 }
 
 impl Indexes {
-    pub fn new(config: &Configuration) -> Result<Self> {
+    pub async fn new(
+        config: &Configuration,
+        sql: crate::SqlDb,
+        semantic: crate::semantic::Semantic,
+    ) -> Result<Self> {
         Ok(Self {
             repo: Indexer::create(
                 Repo::new(),
