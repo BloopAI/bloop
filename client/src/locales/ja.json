@@ -367,5 +367,6 @@
 	"Email is required": "メールが必要です",
 	"First name is required": "名が必要です",
 	"Last name is required": "姓が必要です",
-	"Connect GitHub account to continue": "githubアカウントを接続して続行します"
+	"Connect GitHub account to continue": "githubアカウントを接続して続行します",
+	"Save context changes before answer generation": "回答生成の前にコンテキストの変更を保存します"
 }
