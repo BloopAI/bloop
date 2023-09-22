@@ -38,6 +38,8 @@ jobs:
       - name: Git LFS Pull
         run: git lfs install && git lfs pull
 
+      - uses: Swatinem/rust-cache@v2
+
       - name: Rustfmt
         run: nix develop -c bash -c 'cargo --locked fmt -p bloop -- --check'
 
