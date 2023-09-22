@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 
 use anyhow::{bail, Context, Result};
-use futures::TryStreamExt;
 use gix::{
     bstr::ByteSlice,
     diff::blob::{sink::Counter, Algorithm, UnifiedDiffBuilder},
@@ -352,9 +351,6 @@ Example output: 2",
             None,
         )
         .await
-        .context("llm error")?
-        .try_collect::<String>()
-        .await
         .context("llm error")?;
 
     let result: u8 = response.parse()?;
@@ -394,9 +390,6 @@ If you cannot write a good question, simply reply: 0"#,
             None,
         )
         .await
-        .context("llm error")?
-        .try_collect::<String>()
-        .await
         .context("llm error")
 }
 
@@ -430,9 +423,6 @@ Assistant: initialisation"#,
             ],
             None,
         )
-        .await
-        .context("llm error")?
-        .try_collect::<String>()
         .await
         .context("llm error")
 }
