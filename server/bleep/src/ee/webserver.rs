@@ -15,7 +15,7 @@ use crate::{
 /// Patch a repository with the given payload
 /// This will automatically trigger a sync
 //
-pub(crate) async fn patch_with_branch(
+pub(crate) async fn patch_repository(
     Query(RepoParams { repo }): Query<RepoParams>,
     State(app): State<Application>,
     Json(patch): Json<FilterUpdate>,

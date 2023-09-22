@@ -201,7 +201,7 @@ pub(super) fn router() -> Router {
 
     #[cfg(feature = "ee")]
     {
-        indexed = indexed.patch(crate::ee::webserver::patch_with_branch);
+        indexed = indexed.patch(crate::ee::webserver::patch_repository);
     }
 
     Router::new()
