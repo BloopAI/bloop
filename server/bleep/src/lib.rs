@@ -159,7 +159,9 @@ impl Application {
         }
         config.source.save_index_version()?;
 
-        let indexes = Indexes::new(&config).await?.into();
+        let indexes = Indexes::new(&config, sql.clone(), semantic.clone())
+            .await?
+            .into();
 
         // Enforce capabilies and features depending on environment
         let env = if config.bloop_instance_secret.is_some() {

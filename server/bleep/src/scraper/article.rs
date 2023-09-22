@@ -83,7 +83,7 @@ trait Extractor {
         let mut unknown_lang = None;
 
         if let Some(meta) = self.meta_content(doc, Attr("http-equiv", "Content-Language")) {
-            match Language::from_str(&*meta) {
+            match Language::from_str(&meta) {
                 Ok(lang) => return Some(lang),
                 Err(lang) => {
                     unknown_lang = Some(lang);
@@ -92,7 +92,7 @@ trait Extractor {
         }
 
         if let Some(meta) = self.meta_content(doc, Attr("name", "lang")) {
-            match Language::from_str(&*meta) {
+            match Language::from_str(&meta) {
                 Ok(lang) => return Some(lang),
                 Err(lang) => {
                     unknown_lang = Some(lang);
@@ -185,7 +185,7 @@ trait Extractor {
         }
 
         if let Some(meta) = self.meta_content(doc, Attr("property", "og:url")) {
-            return Url::parse(&*meta).ok();
+            return Url::parse(&meta).ok();
         }
 
         None
