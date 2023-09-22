@@ -17,6 +17,7 @@ type Props = {
   isPreviewing: boolean;
   hasContextError: boolean;
   isActiveTab: boolean;
+  isChangeUnsaved: boolean;
 };
 
 const RightPanel = ({
@@ -30,6 +31,7 @@ const RightPanel = ({
   handleRestore,
   hasContextError,
   isActiveTab,
+  isChangeUnsaved,
 }: Props) => {
   useTranslation();
   return (
@@ -64,6 +66,7 @@ const RightPanel = ({
         isPreviewing={isPreviewing}
         handleRestore={handleRestore}
         isActiveTab={isActiveTab}
+        isChangeUnsaved={isChangeUnsaved}
       />
     </>
   );

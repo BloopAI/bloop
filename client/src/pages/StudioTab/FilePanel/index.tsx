@@ -4,6 +4,7 @@ import React, {
   SetStateAction,
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
@@ -41,6 +42,7 @@ type Props = {
     branch: string | null,
   ) => void;
   isActiveTab: boolean;
+  setIsChangeUnsaved: Dispatch<SetStateAction<boolean>>;
 };
 
 const HEADER_HEIGHT = 32;
@@ -59,6 +61,7 @@ const FilePanel = ({
   onFileRangesChanged,
   isActiveTab,
   isFileInContext,
+  setIsChangeUnsaved,
 }: Props) => {
   useTranslation();
   const [file, setFile] = useState<File | null>(null);
@@ -148,6 +151,17 @@ const FilePanel = ({
     [onSubmit],
   );
   useKeyboardNavigation(handleKeyEvent, !isActiveTab);
+
+  const hasChanges = useMemo(() => {
+    return (
+      !isFileInContext ||
+      JSON.stringify(initialRanges) !== JSON.stringify(selectedLines)
+    );
+  }, [isFileInContext, initialRanges, selectedLines]);
+
+  useEffect(() => {
+    setIsChangeUnsaved(hasChanges);
+  }, [hasChanges]);
 
   return (
     <div className="flex flex-col w-full flex-1 overflow-auto relative">
