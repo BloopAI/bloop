@@ -6,9 +6,11 @@ import React, {
   SetStateAction,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
+  useState,
 } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import {
   ChatMessageAuthor,
   ChatMessageServer,
@@ -16,6 +18,14 @@ import {
 } from '../../../types/general';
 import { ChatContext } from '../../../context/chatContext';
 import { findElementInCurrentTab } from '../../../utils/domUtils';
+import { getTutorialQuestions } from '../../../services/api';
+import OverflowTracker from '../../OverflowTracker';
+import { TutorialQuestionType } from '../../../types/api';
+import {
+  getJsonFromStorage,
+  HIDE_TUTORIALS_KEY,
+  saveJsonToStorage,
+} from '../../../services/storage';
 import NLInput from './NLInput';
 
 type Props = {
@@ -29,6 +39,7 @@ type Props = {
   hideMessagesFrom: number | null;
   stopGenerating: () => void;
   openHistoryItem: OpenChatHistoryItem | null;
+  repoRef: string;
 };
 
 const blurInput = () => {
@@ -46,6 +57,7 @@ const ChatFooter = ({
   openHistoryItem,
   isHistoryOpen,
   setHistoryOpen,
+  repoRef,
 }: Props) => {
   const { t } = useTranslation();
   const { conversation, selectedLines, submittedQuery } = useContext(
@@ -53,6 +65,23 @@ const ChatFooter = ({
   );
   const { setSelectedLines, setSubmittedQuery, setConversation, setThreadId } =
     useContext(ChatContext.Setters);
+  const [tutorials, setTutorials] = useState<TutorialQuestionType[]>([]);
+  const [tutorialsHidden, setTutorialsHidden] = useState(
+    getJsonFromStorage<string[]>(HIDE_TUTORIALS_KEY)?.includes(repoRef),
+  );
+
+  useEffect(() => {
+    getTutorialQuestions(repoRef).then((resp) => setTutorials(resp.questions));
+  }, []);
+
+  const onHideTutorials = useCallback(() => {
+    setTutorialsHidden(true);
+    const prev = getJsonFromStorage<string[]>(HIDE_TUTORIALS_KEY);
+    saveJsonToStorage(
+      HIDE_TUTORIALS_KEY,
+      prev ? [...prev, repoRef] : [repoRef],
+    );
+  }, [repoRef]);
 
   const onSubmit = useCallback(
     (e?: FormEvent) => {
@@ -114,7 +143,31 @@ const ChatFooter = ({
   }, [isHistoryOpen, openHistoryItem, setHistoryOpen]);
 
   return (
-    <div className="flex flex-col w-full absolute bottom-0 left-0 p-4 bg-chat-bg-base/25 backdrop-blur-6 border-t border-chat-bg-border">
+    <div className="flex flex-col gap-3 w-full absolute bottom-0 left-0 p-4 bg-chat-bg-base/25 backdrop-blur-6 border-t border-chat-bg-border">
+      {!isHistoryOpen && !!tutorials.length && !tutorialsHidden && (
+        <div className="w-full overflow-auto">
+          <OverflowTracker className="auto-fade-horizontal">
+            <div className="flex items-center gap-1 flex-nowrap w-max">
+              {tutorials.map((t, i) => (
+                <button
+                  key={i}
+                  className="px-3 py-1 rounded-full border border-chat-bg-divider bg-chat-bg-shade flex-shrink-0 caption text-label-base"
+                  onClick={() => setInputValue(t.question)}
+                >
+                  {t.tag}
+                </button>
+              ))}
+              <button
+                key="hide"
+                className="pl-3 pr-2.5 py-1 flex items-center gap-1 rounded-full border border-chat-bg-divider bg-chat-bg-shade flex-shrink-0 caption text-label-muted"
+                onClick={onHideTutorials}
+              >
+                <Trans>Hide</Trans>
+              </button>
+            </div>
+          </OverflowTracker>
+        </div>
+      )}
       <form onSubmit={onSubmit} className="w-full" onClick={onFormClick}>
         <NLInput
           id="question-input"

@@ -403,6 +403,7 @@ const Chat = () => {
         openHistoryItem={openHistoryItem}
         isHistoryOpen={isHistoryTab}
         setHistoryOpen={setIsHistoryTab}
+        repoRef={tab.repoRef}
       />
       <DeprecatedClientModal
         isOpen={showPopup}
