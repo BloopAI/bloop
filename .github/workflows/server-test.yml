@@ -19,11 +19,22 @@ jobs:
     runs-on: nixos
     steps:
       - name: Checkout code
-        uses: nschloe/action-cached-lfs-checkout@v1
+        uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Git LFS
+      - name: Create LFS file list
+        run: git lfs ls-files --long | cut -d ' ' -f1 | sort > .lfs-assets-id
+
+      - name: LFS Cache
+        uses: actions/cache@v3
+        with:
+          path: .git/lfs/objects
+          key: ${{ runner.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}
+          restore-keys: |
+            ${{ runner.os }}-lfs-
+
+      - name: Git LFS Pull
         run: git lfs install && git lfs pull
 
       - name: Rustfmt
