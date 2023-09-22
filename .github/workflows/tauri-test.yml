@@ -40,6 +40,7 @@ jobs:
 
       - name: Load PATH changes
         run: direnv allow && direnv exec . sh -c 'echo $PATH' > "$GITHUB_PATH"
+
       - name: Load other environment changes
         run: direnv export gha >> "$GITHUB_ENV"        
 

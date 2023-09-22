@@ -39,6 +39,7 @@ jobs:
 
       - name: Load PATH changes
         run: direnv allow && direnv exec . sh -c 'echo $PATH' > "$GITHUB_PATH"
+
       - name: Load other environment changes
         run: direnv export gha >> "$GITHUB_ENV"        
 
@@ -55,36 +56,3 @@ jobs:
 
       - name: Sccache stats
         run: sccache --show-stats
-
-  # benchmark:
-  #   runs-on: [self-hosted, benchmark]
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #       with:
-  #         clean: false
-  #         lfs: true
-
-  #     - name: Setup Rust toolchain
-  #       uses: actions-rs/toolchain@v1
-  #       with:
-  #         profile: minimal
-  #         toolchain: stable
-  #         override: true
-
-  #     - uses: boa-dev/criterion-compare-action@v3.2.4
-  #       env:
-  #         BLOOP_LOG: bleep=debug
-  #       with:
-  #         cwd: ./server
-  #         benchName: "indexes"
-  #         branchName: ${{ github.base_ref }}
-  #         token: ${{ secrets.GITHUB_TOKEN }}
-
-  #     - uses: boa-dev/criterion-compare-action@v3.2.4
-  #       env:
-  #         BLOOP_LOG: bleep=debug
-  #       with:
-  #         cwd: ./server
-  #         benchName: "queries"
-  #         branchName: ${{ github.base_ref }}
-  #         token: ${{ secrets.GITHUB_TOKEN }}
