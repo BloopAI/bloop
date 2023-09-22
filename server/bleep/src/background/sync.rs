@@ -392,13 +392,11 @@ impl SyncHandle {
             ..
         } = self.app;
 
-        if let Some(semantic) = semantic {
-            semantic
-                .delete_points_for_hash(&self.reporef.to_string(), std::iter::empty())
-                .await;
-        }
+        semantic
+            .delete_points_for_hash(&self.reporef.to_string(), std::iter::empty())
+            .await;
 
-        FileCache::for_repo(sql, semantic.as_ref(), &self.reporef)
+        FileCache::for_repo(sql, semantic, &self.reporef)
             .delete()
             .await
             .map_err(SyncError::Sql)?;

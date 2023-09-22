@@ -163,7 +163,7 @@ fn setup_configuration<R: Runtime>(app: &tauri::AppHandle<R>) -> Configuration {
         .expect("failed to resolve resource");
 
     let mut bundled = Configuration::read(path).unwrap();
-    bundled.qdrant_url = Some("http://127.0.0.1:6334".into());
+    bundled.qdrant_url = "http://127.0.0.1:6334".into();
     bundled.max_threads = bleep::default_parallelism() / 2;
     bundled.model_dir = app
         .path_resolver()

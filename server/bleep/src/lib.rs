@@ -96,7 +96,7 @@ pub struct Application {
     sync_queue: SyncQueue,
 
     /// Semantic search subsystem
-    semantic: Option<Semantic>,
+    semantic: Semantic,
 
     /// Tantivy indexes
     indexes: Arc<Indexes>,
@@ -138,20 +138,15 @@ impl Application {
         let sqlite = Arc::new(db::init(&config).await?);
 
         // Initialise Semantic index if `qdrant_url` set in config
-        let semantic = match config.qdrant_url {
-            Some(ref url) => {
-                match Semantic::initialize(&config.model_dir, url, Arc::clone(&config)).await {
-                    Ok(semantic) => Some(semantic),
-                    Err(e) => {
-                        bail!("Qdrant initialization failed: {}", e);
-                    }
+        let semantic =
+            match Semantic::initialize(&config.model_dir, &config.qdrant_url, Arc::clone(&config))
+                .await
+            {
+                Ok(semantic) => semantic,
+                Err(e) => {
+                    bail!("Qdrant initialization failed: {}", e);
                 }
-            }
-            None => {
-                warn!("Semantic search disabled because `qdrant_url` is not provided. Starting without.");
-                None
-            }
-        };
+            };
 
         let env = if config.github_app_id.is_some() {
             info!("Starting bleep in private server mode");

@@ -90,11 +90,7 @@ impl Indexable for File {
         pipes: &SyncPipes,
     ) -> Result<()> {
         let file_filter = FileFilter::compile(&repo.file_filter)?;
-        let file_cache = Arc::new(FileCache::for_repo(
-            &self.sql,
-            self.semantic.as_ref(),
-            reporef,
-        ));
+        let file_cache = Arc::new(FileCache::for_repo(&self.sql, &self.semantic, reporef));
         let cache = file_cache.retrieve().await;
         let repo_name = reporef.indexed_name();
         let processed = &AtomicU64::new(0);
@@ -748,23 +744,21 @@ impl RepoFile {
 
         let lines_avg = self.buffer.len() as f64 / self.buffer.lines().count() as f64;
 
-        if schema.semantic.is_some() {
-            tokio::task::block_in_place(|| {
-                Handle::current().block_on(async {
-                    file_cache
-                        .process_semantic(
-                            cache_keys,
-                            repo_name,
-                            repo_ref,
-                            &relative_path_str,
-                            &self.buffer,
-                            lang_str,
-                            &self.branches,
-                        )
-                        .await;
-                })
-            });
-        }
+        tokio::task::block_in_place(|| {
+            Handle::current().block_on(async {
+                file_cache
+                    .process_semantic(
+                        cache_keys,
+                        repo_name,
+                        repo_ref,
+                        &relative_path_str,
+                        &self.buffer,
+                        lang_str,
+                        &self.branches,
+                    )
+                    .await;
+            })
+        });
 
         Some(doc!(
             schema.raw_content => self.buffer.as_bytes(),

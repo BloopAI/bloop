@@ -92,7 +92,7 @@ impl Indexes {
         repo_pool: RepositoryPool,
         config: Arc<Configuration>,
         sql: SqlDb,
-        semantic: Option<Semantic>,
+        semantic: Semantic,
     ) -> Result<Self> {
         if config.source.index_version_mismatch() {
             // we don't support old schemas, and tantivy will hard
@@ -108,14 +108,12 @@ impl Indexes {
             });
 
             for reporef in refs {
-                FileCache::for_repo(&sql, semantic.as_ref(), &reporef)
+                FileCache::for_repo(&sql, &semantic, &reporef)
                     .delete()
                     .await?;
             }
 
-            if let Some(ref semantic) = semantic {
-                semantic.reset_collection_blocking().await?;
-            }
+            semantic.reset_collection_blocking().await?;
         }
         config.source.save_index_version()?;
 

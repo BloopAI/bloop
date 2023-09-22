@@ -145,16 +145,12 @@ impl<'a> Deref for FileCacheSnapshot<'a> {
 pub(crate) struct FileCache<'a> {
     db: &'a SqlDb,
     reporef: &'a RepoRef,
-    semantic: Option<&'a Semantic>,
+    semantic: &'a Semantic,
     embed_queue: EmbedQueue,
 }
 
 impl<'a> FileCache<'a> {
-    pub(crate) fn for_repo(
-        db: &'a SqlDb,
-        semantic: Option<&'a Semantic>,
-        reporef: &'a RepoRef,
-    ) -> Self {
+    pub(crate) fn for_repo(db: &'a SqlDb, semantic: &'a Semantic, reporef: &'a RepoRef) -> Self {
         Self {
             db,
             reporef,
@@ -259,15 +255,13 @@ impl<'a> FileCache<'a> {
 
         // batch-delete points from qdrant index
         if !qdrant_stale.is_empty() {
-            if let Some(semantic) = self.semantic {
-                let semantic = semantic.clone();
-                let reporef = self.reporef.to_string();
-                tokio::spawn(async move {
-                    semantic
-                        .delete_points_for_hash(reporef.as_str(), qdrant_stale.into_iter())
-                        .await;
-                });
-            }
+            let semantic = self.semantic.clone();
+            let reporef = self.reporef.to_string();
+            tokio::spawn(async move {
+                semantic
+                    .delete_points_for_hash(reporef.as_str(), qdrant_stale.into_iter())
+                    .await;
+            });
         }
 
         // make sure we generate & commit all remaining embeddings
@@ -300,17 +294,13 @@ impl<'a> FileCache<'a> {
     /// the embedder, and commit the results, disregarding the internal
     /// batch sizing.
     async fn batched_embed_or_flush_queue(&self, flush: bool) -> anyhow::Result<()> {
-        let Some(semantic) = self.semantic
-	else {
-	    return Ok(());
-	};
-
-        let new_points = self.embed_queued_points(semantic, flush).await?;
+        let new_points = self.embed_queued_points(flush).await?;
 
         if !new_points.is_empty() {
-            if let Err(err) = semantic
+            if let Err(err) = self
+                .semantic
                 .qdrant_client()
-                .upsert_points(&semantic.collection_name(), new_points, None)
+                .upsert_points(self.semantic.collection_name(), new_points, None)
                 .await
             {
                 error!(?err, "failed to write new points into qdrant");
@@ -321,12 +311,8 @@ impl<'a> FileCache<'a> {
 
     /// Empty the queue in batches, and generate embeddings using the
     /// configured embedder
-    async fn embed_queued_points(
-        &self,
-        semantic: &Semantic,
-        flush: bool,
-    ) -> Result<Vec<PointStruct>, anyhow::Error> {
-        let batch_size = semantic.config.embedding_batch_size.get();
+    async fn embed_queued_points(&self, flush: bool) -> Result<Vec<PointStruct>, anyhow::Error> {
+        let batch_size = self.semantic.config.embedding_batch_size.get();
         let log = &self.embed_queue;
         let mut output = vec![];
 
@@ -349,7 +335,8 @@ impl<'a> FileCache<'a> {
 
             let (elapsed, res) = {
                 let time = Instant::now();
-                let res = semantic
+                let res = self
+                    .semantic
                     .embedder()
                     .batch_embed(batch.iter().map(|c| c.data.as_ref()).collect::<Vec<_>>())
                     .await;
@@ -397,9 +384,7 @@ impl<'a> FileCache<'a> {
         branches: &[String],
     ) {
         let chunk_cache = self.chunks_for_file(cache_keys).await;
-        let semantic = self.semantic.expect("uninitialized semantic db");
-
-        semantic
+        self.semantic
             .chunks_for_buffer(
                 cache_keys.semantic().into(),
                 repo_name,
@@ -460,8 +445,7 @@ impl<'a> FileCache<'a> {
     async fn chunks_for_file(&'a self, key: &'a CacheKeys) -> ChunkCache<'a> {
         ChunkCache::for_file(
             self.db,
-            self.semantic
-                .expect("we shouldn't get here without semantic db configured"),
+            self.semantic,
             self.reporef,
             &self.embed_queue,
             key.semantic(),

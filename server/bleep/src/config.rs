@@ -113,7 +113,7 @@ pub struct Configuration {
     //
     #[clap(long)]
     /// URL for the qdrant server
-    pub qdrant_url: Option<String>,
+    pub qdrant_url: String,
 
     #[clap(long, default_value_os_t = default_model_dir())]
     #[serde(default = "default_model_dir")]
@@ -301,7 +301,7 @@ impl Configuration {
 
             frontend_dist: b.frontend_dist.or(a.frontend_dist),
 
-            qdrant_url: b.qdrant_url.or(a.qdrant_url),
+            qdrant_url: right_if_default!(b.qdrant_url, a.qdrant_url, String::new()),
 
             answer_api_url: right_if_default!(
                 b.answer_api_url,

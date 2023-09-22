@@ -19,7 +19,7 @@ use {
 #[derive(Clone)]
 pub struct File {
     pub(super) schema: Schema,
-    pub(super) semantic: Option<Semantic>,
+    pub(super) semantic: Semantic,
     pub(super) sql: SqlDb,
 
     #[cfg(feature = "debug")]
@@ -72,7 +72,7 @@ pub struct File {
 }
 
 impl File {
-    pub fn new(sql: SqlDb, semantic: Option<Semantic>) -> Self {
+    pub fn new(sql: SqlDb, semantic: Semantic) -> Self {
         let mut builder = tantivy::schema::SchemaBuilder::new();
         let trigram = TextOptions::default().set_stored().set_indexing_options(
             TextFieldIndexing::default()
