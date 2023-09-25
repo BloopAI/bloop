@@ -66,7 +66,8 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
                 .route("/:id/resync", get(docs::resync))
                 .route("/:id/search", get(docs::search))
                 .route("/:id/fetch", get(docs::fetch))
-                .route("/sync", get(docs::sync)),
+                .route("/sync", get(docs::sync))
+                .route("/verify", get(docs::verify)),
         )
         // intelligence
         .route("/tutorial-questions", get(commits::tutorial_questions))

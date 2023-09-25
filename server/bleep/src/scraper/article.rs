@@ -121,6 +121,14 @@ trait Extractor {
         self.meta_content(doc, Attr("property", "og:site_name"))
     }
 
+    /// If the article has meta description set in the source, use that
+    fn meta_description<'a>(&self, doc: &'a Document) -> Option<Cow<'a, str>> {
+        [("property", "description"), ("name", "description")]
+            .iter()
+            .filter_map(|(k, v)| self.meta_content(doc, Attr(k, v)))
+            .next()
+    }
+
     fn text<'a>(&self, doc: &'a Document, lang: Language) -> Option<Cow<'a, str>> {
         self.text_with_cleaner(doc, lang, DefaultDocumentCleaner)
     }
@@ -164,6 +172,10 @@ trait Extractor {
         } else {
             lang.unwrap_or_default()
         };
+
+        if let Some(description) = self.meta_description(doc) {
+            builder = builder.description(description);
+        }
 
         if let Some(txt_node) = self.article_node(doc, lang) {
             builder = builder.text(txt_node.clean_text().into())
@@ -210,6 +222,7 @@ impl Article {
 pub struct ArticleContent<'a> {
     pub title: Option<Cow<'a, str>>,
     pub language: Option<Language>,
+    pub description: Option<Cow<'a, str>>,
     pub text: Option<Cow<'a, str>>,
 }
 
@@ -222,6 +235,7 @@ impl<'a> ArticleContent<'a> {
         ArticleContent {
             title: self.title.map(Cow::into_owned).map(Cow::Owned),
             language: self.language,
+            description: self.description.map(Cow::into_owned).map(Cow::Owned),
             text: self.text.map(Cow::into_owned).map(Cow::Owned),
         }
     }
@@ -231,6 +245,7 @@ struct ArticleContentBuilder<'a> {
     title: Option<Cow<'a, str>>,
     text: Option<Cow<'a, str>>,
     language: Option<Language>,
+    description: Option<Cow<'a, str>>,
 }
 
 impl<'a> ArticleContentBuilder<'a> {
@@ -249,10 +264,16 @@ impl<'a> ArticleContentBuilder<'a> {
         self
     }
 
+    fn description(mut self, description: Cow<'a, str>) -> Self {
+        self.description = Some(description);
+        self
+    }
+
     fn build(self) -> ArticleContent<'a> {
         ArticleContent {
             title: self.title,
             text: self.text,
+            description: self.description,
             language: self.language,
         }
     }

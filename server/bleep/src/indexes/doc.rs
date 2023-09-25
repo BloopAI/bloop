@@ -23,7 +23,7 @@ pub struct Doc {
 }
 
 #[derive(serde::Serialize)]
-pub struct DocRecord {
+pub struct Record {
     pub id: i64,
     pub name: String,
     pub url: String,
@@ -31,15 +31,18 @@ pub struct DocRecord {
 }
 
 #[derive(Error, Debug)]
-pub enum DocError {
+pub enum Error {
     #[error("failed to initialize doc index: {0}")]
     Initialize(String),
 
     #[error("no document with id: {0}")]
     InvalidDocId(i64),
 
+    #[error("not a valid docs url: `{0}`")]
+    InvalidUrl(url::Url),
+
     #[error("failed to parse `{0}` as a url: {1}")]
-    InvalidUrl(String, url::ParseError),
+    UrlParse(String, url::ParseError),
 
     #[error("failed to perform sql transaction: {0}")]
     Sql(#[from] sqlx::Error),
@@ -57,7 +60,7 @@ impl Doc {
         if create_indexes(semantic.qdrant_client()).await? {
             info!(%COLLECTION_NAME, "created doc index");
         } else {
-            info!( %COLLECTION_NAME, "using existing doc index");
+            info!(%COLLECTION_NAME, "using existing doc index");
         };
 
         Ok(Self { sql, semantic })
@@ -66,7 +69,7 @@ impl Doc {
     /// Add a doc source to the index
     ///
     ///TODO: turn this into a background process and stream progress
-    pub async fn sync(&self, url: url::Url) -> Result<i64, DocError> {
+    pub async fn sync(&self, url: url::Url) -> Result<i64, Error> {
         // add entry to sqlite
         let url_string = url.to_string();
         let id = sqlx::query! {
@@ -84,13 +87,13 @@ impl Doc {
     }
 
     /// Update documentation in the index - this will rescrape the entire website
-    pub async fn resync(&self, id: i64) -> Result<i64, DocError> {
+    pub async fn resync(&self, id: i64) -> Result<i64, Error> {
         let url = sqlx::query!("SELECT url FROM docs WHERE id = ?", id)
             .fetch_optional(&*self.sql)
             .await?
-            .ok_or(DocError::InvalidDocId(id))?
+            .ok_or(Error::InvalidDocId(id))?
             .url;
-        let url = url::Url::parse(&url).map_err(|e| DocError::InvalidUrl(url, e))?;
+        let url = url::Url::parse(&url).map_err(|e| Error::UrlParse(url, e))?;
 
         // delete old docs from qdrant
         self.delete_from_qdrant(id).await?;
@@ -109,12 +112,12 @@ impl Doc {
     }
 
     /// Remove this doc source from qdrant and sqlite
-    pub async fn delete(&self, id: i64) -> Result<i64, DocError> {
+    pub async fn delete(&self, id: i64) -> Result<i64, Error> {
         // delete entry from sql
         let id = sqlx::query!("DELETE FROM docs WHERE id = ? RETURNING id", id)
             .fetch_optional(&*self.sql)
             .await?
-            .ok_or(DocError::InvalidDocId(id))?
+            .ok_or(Error::InvalidDocId(id))?
             .id;
 
         self.delete_from_qdrant(id).await?;
@@ -123,12 +126,12 @@ impl Doc {
     }
 
     /// List all synced doc sources
-    pub async fn list(&self) -> Result<Vec<DocRecord>, DocError> {
+    pub async fn list(&self) -> Result<Vec<Record>, Error> {
         Ok(sqlx::query!("SELECT id, name, url, modified_at FROM docs")
             .fetch_all(&*self.sql)
             .await?
             .into_iter()
-            .map(|record| DocRecord {
+            .map(|record| Record {
                 id: record.id,
                 name: record.name,
                 url: record.url,
@@ -138,7 +141,7 @@ impl Doc {
     }
 
     /// List a synced doc source by id
-    pub async fn list_one(&self, id: i64) -> Result<DocRecord, DocError> {
+    pub async fn list_one(&self, id: i64) -> Result<Record, Error> {
         let record = sqlx::query!(
             "SELECT id, name, url, modified_at FROM docs WHERE id = ?",
             id
@@ -146,7 +149,7 @@ impl Doc {
         .fetch_one(&*self.sql)
         .await?;
 
-        Ok(DocRecord {
+        Ok(Record {
             id: record.id,
             name: record.name,
             url: record.url,
@@ -155,17 +158,12 @@ impl Doc {
     }
 
     /// Search all docs
-    pub async fn search(
-        &self,
-        q: String,
-        limit: u64,
-        id: i64,
-    ) -> Result<Vec<SearchResult>, DocError> {
+    pub async fn search(&self, q: String, limit: u64, id: i64) -> Result<Vec<SearchResult>, Error> {
         let term_embedding = self
             .semantic
             .embedder()
             .embed(q.as_str())
-            .map_err(DocError::Embed)?;
+            .map_err(Error::Embed)?;
         let data = self
             .semantic
             .qdrant_client()
@@ -183,7 +181,7 @@ impl Doc {
                 ..Default::default()
             })
             .await
-            .map_err(DocError::Qdrant)?
+            .map_err(Error::Qdrant)?
             .result;
 
         Ok(data
@@ -197,7 +195,7 @@ impl Doc {
         &self,
         id: i64,
         relative_url: S,
-    ) -> Result<Vec<SearchResult>, DocError> {
+    ) -> Result<Vec<SearchResult>, Error> {
         let data = self
             .semantic
             .qdrant_client()
@@ -217,7 +215,7 @@ impl Doc {
                 ..Default::default()
             })
             .await
-            .map_err(DocError::Qdrant)?
+            .map_err(Error::Qdrant)?
             .result;
 
         let mut data = data
@@ -230,23 +228,23 @@ impl Doc {
         Ok(data)
     }
 
-    async fn insert_into_qdrant(&self, id: i64, url: url::Url) -> Result<(), DocError> {
+    async fn insert_into_qdrant(&self, id: i64, url: url::Url) -> Result<(), Error> {
         let docs = Scraper::with_config(Config::new(url.clone()))
             .complete()
             .await;
         let points_to_insert = docs
             .par_iter()
-            .flat_map(|d| d.embed(id, url.clone(), self.semantic.embedder()))
+            .flat_map(|d| d.embed(id, &url, self.semantic.embedder()))
             .collect::<Vec<_>>();
         self.semantic
             .qdrant_client()
             .upsert_points(COLLECTION_NAME, points_to_insert, None)
             .await
-            .map_err(DocError::Qdrant)?;
+            .map_err(Error::Qdrant)?;
         Ok(())
     }
 
-    async fn delete_from_qdrant(&self, id: i64) -> Result<(), DocError> {
+    async fn delete_from_qdrant(&self, id: i64) -> Result<(), Error> {
         let id_filter = make_kv_int_filter("doc_id", id).into();
         let selector = Filter {
             must: vec![id_filter],
@@ -257,12 +255,12 @@ impl Doc {
             .qdrant_client()
             .delete_points(COLLECTION_NAME, &selector, None)
             .await
-            .map_err(DocError::Qdrant)?;
+            .map_err(Error::Qdrant)?;
         Ok(())
     }
 }
 
-async fn create_indexes(qdrant: &qdrant_client::prelude::QdrantClient) -> Result<bool, DocError> {
+async fn create_indexes(qdrant: &qdrant_client::prelude::QdrantClient) -> Result<bool, Error> {
     if !qdrant
         .has_collection(COLLECTION_NAME)
         .await
@@ -281,7 +279,7 @@ async fn create_indexes(qdrant: &qdrant_client::prelude::QdrantClient) -> Result
                 ..Default::default()
             })
             .await
-            .map_err(DocError::Qdrant)?;
+            .map_err(Error::Qdrant)?;
 
         // initialize indexes
         let text_fields = &["text", "relative_path", "ancestry_text"];
@@ -289,7 +287,7 @@ async fn create_indexes(qdrant: &qdrant_client::prelude::QdrantClient) -> Result
             qdrant
                 .create_field_index(COLLECTION_NAME, field, FieldType::Text, None, None)
                 .await
-                .map_err(DocError::Qdrant)?;
+                .map_err(Error::Qdrant)?;
         }
         return Ok(true);
     }
@@ -300,14 +298,14 @@ impl scraper::Document {
     fn embed(
         &self,
         id: i64,
-        url: url::Url,
+        url: &url::Url,
         embedder: &dyn crate::semantic::Embedder,
     ) -> Vec<PointStruct> {
         info!("inserting points for `{}`", self.path.display());
         scraper::chunk::by_section(
-            &self.content,      // section content
-            url.as_str(),       // section url base
-            &self.relative_url, // relative path
+            &self.content,           // section content
+            url.as_str(),            // section url base
+            &self.relative_url(url), // relative path
             embedder.tokenizer(),
         )
         .par_bridge()
@@ -319,7 +317,7 @@ impl scraper::Document {
                         .embed(&format!(
                             "{}\t{}\t{}\n{}",
                             url.as_str(),
-                            &self.relative_url,
+                            &self.relative_url(url),
                             section.ancestry_str(),
                             c.data,
                         ))
@@ -338,7 +336,7 @@ impl scraper::Document {
             let mut payload = HashMap::new();
             payload.insert("doc_id".to_owned(), id.into());
             payload.insert("doc_source".to_owned(), url.to_string().into());
-            payload.insert("relative_url".to_owned(), self.relative_url.as_str().into());
+            payload.insert("relative_url".to_owned(), self.relative_url(url).into());
             payload.insert(
                 "start".to_owned(),
                 (section.section_range.start.byte as i64).into(),
