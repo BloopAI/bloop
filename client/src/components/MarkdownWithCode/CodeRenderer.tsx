@@ -53,6 +53,7 @@ const CodeRenderer = ({
   const matchLang = useMemo(
     () =>
       /lang:(\w+)/.exec(className || '') ||
+      /language:(\w+)/.exec(className || '') ||
       /language-(\w+)/.exec(className || ''),
     [className],
   );
