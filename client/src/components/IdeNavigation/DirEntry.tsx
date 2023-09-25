@@ -120,7 +120,7 @@ const DirEntry = ({
       className="flex flex-col transition-all ease-linear overflow-hidden flex-shrink-0 w-full min-w-fit"
     >
       <a
-        className={`min-w-full w-max text-left h-7 flex items-center gap-1.5 py-2 px-3 cursor-pointer caption 
+        className={`min-w-full w-max text-left h-7 flex items-center gap-1.5 py-2 px-3 cursor-pointer caption group
       ${
         currentPath === fullPath
           ? 'bg-bg-shade'
@@ -151,7 +151,12 @@ const DirEntry = ({
         )}
         {isDirectory ? name.slice(0, -1) : name}
         {!indexed && !indexRequested && isSelfServe && (
-          <Button variant="secondary" size="tiny" onClick={onIndexRequested}>
+          <Button
+            variant="secondary"
+            size="tiny"
+            onClick={onIndexRequested}
+            className="opacity-0 group-hover:opacity-100 transition-opacity ease-in-out duration-150"
+          >
             <Trans>Index</Trans>
           </Button>
         )}
