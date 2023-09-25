@@ -179,9 +179,8 @@ impl FileSource for GitWalker {
     }
 
     fn for_each(self, pipes: &SyncPipes, iterator: impl Fn(RepoDirEntry) + Sync + Send) {
-        use rayon::prelude::*;
         self.entries
-            .into_par_iter()
+            .into_iter()
             .filter_map(|((path, kind, oid), branches)| {
                 trace!(?path, "walking over path");
                 let git = self.git.to_thread_local();
@@ -212,7 +211,7 @@ impl FileSource for GitWalker {
 
                 Some(entry)
             })
-            .take_any_while(|_| !pipes.is_cancelled())
+            .take_while(|_| !pipes.is_cancelled())
             .for_each(iterator)
     }
 }

@@ -42,9 +42,8 @@ impl FileSource for FileWalker {
     }
 
     fn for_each(self, pipes: &SyncPipes, iterator: impl Fn(RepoDirEntry) + Sync + Send) {
-        use rayon::prelude::*;
         self.file_list
-            .into_par_iter()
+            .into_iter()
             .filter_map(|entry_disk_path| {
                 if entry_disk_path.is_file() {
                     let buffer = match std::fs::read_to_string(&entry_disk_path) {
@@ -68,7 +67,7 @@ impl FileSource for FileWalker {
                     Some(RepoDirEntry::Other)
                 }
             })
-            .take_any_while(|_| !pipes.is_cancelled())
+            .take_while(|_| !pipes.is_cancelled())
             .for_each(iterator);
     }
 }
