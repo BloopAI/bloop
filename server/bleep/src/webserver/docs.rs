@@ -1,134 +1,92 @@
-use axum::{
-    extract::{Path, Query, State},
-    response::IntoResponse,
+use axum::extract::{Json, Path, Query, State};
+
+use crate::{
+    indexes::doc,
+    webserver::{Error, Result},
+    Application,
 };
 
-use super::prelude::*;
-use crate::{indexes::doc, Application};
-
-#[derive(serde::Serialize)]
-pub struct ListResponse(Vec<doc::DocRecord>);
-impl super::ApiResponse for ListResponse {}
-pub async fn list(State(app): State<Application>) -> Result<impl IntoResponse> {
-    app.indexes
-        .doc
-        .list()
-        .await
-        .map(ListResponse)
-        .map(json)
-        .map_err(Error::internal)
-}
-
-#[derive(serde::Serialize)]
-pub struct ListOneResponse(doc::DocRecord);
-impl super::ApiResponse for ListOneResponse {}
-pub async fn list_one(
-    State(app): State<Application>,
-    Path(id): Path<i64>,
-) -> Result<impl IntoResponse> {
-    app.indexes
-        .doc
-        .list_one(id)
-        .await
-        .map(ListOneResponse)
-        .map(json)
-        .map_err(Error::internal)
-}
-
-#[derive(serde::Serialize)]
-pub struct DeleteResponse(i64);
-impl super::ApiResponse for DeleteResponse {}
-pub async fn delete(
-    State(app): State<Application>,
-    Path(id): Path<i64>,
-) -> Result<impl IntoResponse> {
-    app.indexes
-        .doc
-        .delete(id)
-        .await
-        .map(DeleteResponse)
-        .map(json)
-        .map_err(Error::internal)
-}
-
-#[derive(serde::Serialize)]
-struct ResyncResponse(i64);
-impl super::ApiResponse for ResyncResponse {}
-pub async fn resync(
-    State(app): State<Application>,
-    Path(id): Path<i64>,
-) -> Result<impl IntoResponse> {
-    app.indexes
-        .doc
-        .resync(id)
-        .await
-        .map(ResyncResponse)
-        .map(json)
-        .map_err(Error::internal)
+// schema
+#[derive(serde::Deserialize)]
+pub struct Sync {
+    url: url::Url,
 }
 
 #[derive(serde::Deserialize)]
 pub struct Search {
-    /// Search terms
     pub q: String,
-    /// Number of points to limit to
     pub limit: u64,
-}
-#[derive(serde::Serialize)]
-struct SearchResponse(Vec<doc::SearchResult>);
-impl super::ApiResponse for SearchResponse {}
-pub async fn search(
-    State(app): State<Application>,
-    Path(id): Path<i64>,
-    Query(Search { q, limit }): Query<Search>,
-) -> Result<impl IntoResponse> {
-    app.indexes
-        .doc
-        .search(q, limit, id)
-        .await
-        .map(SearchResponse)
-        .map(json)
-        .map_err(Error::internal)
 }
 
 #[derive(serde::Deserialize)]
 pub struct Fetch {
-    /// Search terms
     pub relative_url: String,
-}
-#[derive(serde::Serialize)]
-struct FetchResponse(Vec<doc::SearchResult>);
-impl super::ApiResponse for FetchResponse {}
-pub async fn fetch(
-    State(app): State<Application>,
-    Path(id): Path<i64>,
-    Query(Fetch { relative_url }): Query<Fetch>,
-) -> Result<impl IntoResponse> {
-    app.indexes
-        .doc
-        .fetch(id, relative_url)
-        .await
-        .map(SearchResponse)
-        .map(json)
-        .map_err(Error::internal)
 }
 
 #[derive(serde::Deserialize)]
-pub struct SyncRequest {
+pub struct Verify {
     url: url::Url,
 }
-#[derive(serde::Serialize)]
-pub struct SyncResponse(i64);
-impl super::ApiResponse for SyncResponse {}
-pub async fn sync(
+
+// handlers
+pub async fn list(State(app): State<Application>) -> Result<Json<Vec<doc::Record>>> {
+    Ok(Json(app.indexes.doc.list().await?))
+}
+
+pub async fn list_one(
     State(app): State<Application>,
-    Query(SyncRequest { url }): Query<SyncRequest>,
-) -> Result<impl IntoResponse> {
-    app.indexes
-        .doc
-        .sync(url)
+    Path(id): Path<i64>,
+) -> Result<Json<doc::Record>> {
+    Ok(Json(app.indexes.doc.list_one(id).await?))
+}
+
+pub async fn delete(State(app): State<Application>, Path(id): Path<i64>) -> Result<Json<i64>> {
+    Ok(Json(app.indexes.doc.delete(id).await?))
+}
+
+pub async fn resync(State(app): State<Application>, Path(id): Path<i64>) -> Result<Json<i64>> {
+    Ok(Json(app.indexes.doc.resync(id).await?))
+}
+
+pub async fn search(
+    State(app): State<Application>,
+    Path(id): Path<i64>,
+    Query(params): Query<Search>,
+) -> Result<Json<Vec<doc::SearchResult>>> {
+    Ok(Json(
+        app.indexes.doc.search(params.q, params.limit, id).await?,
+    ))
+}
+
+pub async fn fetch(
+    State(app): State<Application>,
+    Path(id): Path<i64>,
+    Query(params): Query<Fetch>,
+) -> Result<Json<Vec<doc::SearchResult>>> {
+    Ok(Json(app.indexes.doc.fetch(id, params.relative_url).await?))
+}
+
+pub async fn sync(State(app): State<Application>, Query(params): Query<Sync>) -> Result<Json<i64>> {
+    Ok(Json(app.indexes.doc.sync(params.url).await?))
+}
+
+pub async fn verify(Query(params): Query<Verify>) -> Result<reqwest::StatusCode> {
+    reqwest::get(params.url)
         .await
-        .map(SyncResponse)
-        .map(json)
-        .map_err(Error::internal)
+        .map(|r| r.status())
+        .map_err(|e| Error::user(e))
+}
+
+impl From<doc::Error> for Error {
+    fn from(value: doc::Error) -> Self {
+        match value {
+            doc::Error::Sql(_)
+            | doc::Error::Embed(_)
+            | doc::Error::Qdrant(_)
+            | doc::Error::UrlParse(..)
+            | doc::Error::Initialize(_) => Self::internal(value),
+            doc::Error::InvalidUrl(..) => Self::user(value),
+            doc::Error::InvalidDocId(_) => Self::not_found(value),
+        }
+    }
 }

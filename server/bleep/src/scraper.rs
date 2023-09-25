@@ -48,10 +48,18 @@ impl Scraper {
         self.handles.iter().filter(|h| !h.is_finished()).count()
     }
 
+    // decides which urls to actually scrape
+    //
+    // - if base url ends with a file - ../foo/bar, we index everything under /foo
+    // - if base url ends with a trailing slash - ../foo/, we index everything under /foo
     fn is_permitted(&self, url: &Url) -> bool {
-        url.as_str()
-            .strip_prefix(self.base_url().as_str())
-            .is_some()
+        let mut allowed_prefix = self.base_url().clone();
+
+        if !allowed_prefix.path().ends_with('/') {
+            allowed_prefix.path_segments_mut().unwrap().pop();
+        }
+
+        url.as_str().strip_prefix(allowed_prefix.as_str()).is_some()
     }
 
     fn finished_tasks(&mut self) -> Vec<task::JoinHandle<Result<ScraperResult>>> {
@@ -65,8 +73,9 @@ impl Scraper {
         let mut documents = vec![];
 
         self.queue_request(ScraperRequest {
-            url: self.config.base_url.clone(),
+            url: self.base_url().clone(),
             depth: 1,
+            include_meta: true,
         })
         .await;
 
@@ -77,32 +86,35 @@ impl Scraper {
                 match h.await {
                     Ok(Ok(mut scraper_result)) => {
                         documents.push(scraper_result.doc);
-                        debug!("{} new urls collected", scraper_result.new_urls.len());
 
                         // there could be dupes among the new urls, collect them into a set first
-                        let new_urls = scraper_result.new_urls.drain(..).fold(
-                            HashMap::new(),
-                            |mut map, (depth, url)| {
+                        let new_urls = scraper_result
+                            .new_urls
+                            .drain(..)
+                            .fold(HashMap::new(), |mut map, (depth, url)| {
                                 map.entry(url)
                                     .and_modify(|d| {
                                         *d = depth.min(*d);
                                     })
                                     .or_insert(depth);
                                 map
-                            },
-                        );
+                            })
+                            .into_iter()
+                            .filter(|(url, depth)| {
+                                *depth <= self.config.max_depth
+                                    && !self.visited_links.contains(&url.to_string())
+                                    && self.is_permitted(url)
+                            })
+                            .map(|(url, depth)| ScraperRequest {
+                                url,
+                                depth,
+                                include_meta: false,
+                            })
+                            .collect::<Vec<_>>();
 
-                        self.queue_requests(
-                            new_urls
-                                .into_iter()
-                                .filter(|(url, depth)| {
-                                    *depth <= self.config.max_depth
-                                        && !self.visited_links.contains(&url.to_string())
-                                        && self.is_permitted(url)
-                                })
-                                .map(|(url, depth)| ScraperRequest { url, depth }),
-                        )
-                        .await;
+                        debug!("{} new urls collected", new_urls.len());
+
+                        self.queue_requests(new_urls.into_iter()).await;
                     }
                     Ok(Err(e)) => error!("task failed successfully: {e}"),
                     Err(e) => error!("task failed: {e}"),
@@ -125,8 +137,7 @@ impl Scraper {
                     if !self.visited_links.contains(&request.url.to_string()) {
                         debug!("{} queued", request.url.as_str());
                         self.visited_links.insert(request.url.to_string());
-                        let base_url = self.base_url().clone();
-                        let handle = task::spawn(async { visit(request, base_url).await });
+                        let handle = task::spawn(async { visit(request).await });
                         self.handles.push(handle);
                     }
                 }
@@ -145,16 +156,17 @@ impl Scraper {
 pub struct ScraperRequest {
     url: Url,
     depth: usize,
+    include_meta: bool,
 }
 
 pub struct ScraperResult {
-    doc: Document,
-    new_urls: Vec<(usize, Url)>,
+    pub doc: Document,
+    pub new_urls: Vec<(usize, Url)>,
 }
 
 pub struct Config {
     max_depth: usize,
-    base_url: Url,
+    pub base_url: Url,
     delay: std::time::Duration,
     max_concurrency: usize,
 }
@@ -174,14 +186,30 @@ impl Config {
 
 pub struct Document {
     pub url: Url,
-    pub relative_url: String,
     pub path: PathBuf,
     pub content: String,
+    pub meta: Option<Meta>,
+}
+
+impl Document {
+    pub fn relative_url(&self, base: &Url) -> String {
+        base.make_relative(&self.url).unwrap()
+    }
+}
+
+#[derive(Default)]
+pub struct Meta {
+    pub title: Option<String>,
+    pub description: Option<String>,
+    pub favicon: Option<String>,
 }
 
 async fn visit(
-    ScraperRequest { url, depth }: ScraperRequest,
-    base_url: Url,
+    ScraperRequest {
+        url,
+        depth,
+        include_meta,
+    }: ScraperRequest,
 ) -> Result<ScraperResult> {
     debug!("visited - {}", url);
 
@@ -200,6 +228,8 @@ async fn visit(
 
     // scrape all relative links from this doc and add onto stack
     let html = article.doc;
+
+    // these new urls must be relative to the current page url
     let new_urls = html
         .find(Name("a"))
         .filter_map(|l| l.attr("href"))
@@ -209,7 +239,7 @@ async fn visit(
                 _ => false,
             }
         })
-        .filter_map(|new_path| base_url.join(new_path).ok())
+        .filter_map(|new_path| url.join(new_path).ok())
         .map(|mut u| {
             u.set_fragment(None);
             (depth + 1, u)
@@ -224,11 +254,16 @@ async fn visit(
         .ok_or_else(|| anyhow!("unable to fetch article content"))?
         .to_string();
 
+    let meta = include_meta.then(|| Meta {
+        title: article.content.title.map(|c| c.to_string()),
+        ..Default::default()
+    });
+
     let doc = Document {
-        relative_url: base_url.make_relative(&url).unwrap(),
         url,
         path: doc_path,
         content,
+        meta,
     };
 
     Ok(ScraperResult { doc, new_urls })
