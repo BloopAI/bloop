@@ -368,5 +368,9 @@
 	"First name is required": "名が必要です",
 	"Last name is required": "姓が必要です",
 	"Connect GitHub account to continue": "githubアカウントを接続して続行します",
-	"Save context changes before answer generation": "回答生成の前にコンテキストの変更を保存します"
+	"Save context changes before answer generation": "回答生成の前にコンテキストの変更を保存します",
+	"Index": "索引",
+	"File not indexed": "ファイルはインデックス化されていません",
+	"Force index": "フォースインデックス",
+	"bloop automatically excludes certain files from indexing. This file might be too big or it might have an excluded file type.": "Bloopは、インデックスから特定のファイルを自動的に除外します。 このファイルが大きすぎるか、除外されたファイルタイプがある場合があります。"
 }

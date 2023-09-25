@@ -371,5 +371,9 @@
 	"Last name is required": "Se requiere apellido",
 	"First name is required": "Se requiere el primer nombre",
 	"Connect GitHub account to continue": "Conecte la cuenta GitHub para continuar",
-	"Save context changes before answer generation": "Guardar cambios de contexto antes de la generación de respuesta"
+	"Save context changes before answer generation": "Guardar cambios de contexto antes de la generación de respuesta",
+	"Index": "Índice",
+	"File not indexed": "Archivo no indexado",
+	"Force index": "Índice de fuerza",
+	"bloop automatically excludes certain files from indexing. This file might be too big or it might have an excluded file type.": "Bloop excluye automáticamente ciertos archivos de la indexación. Este archivo puede ser demasiado grande o podría tener un tipo de archivo excluido."
 }

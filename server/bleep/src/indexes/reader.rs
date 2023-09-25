@@ -26,6 +26,7 @@ pub struct ContentDocument {
     pub line_end_indices: Vec<u32>,
     pub symbol_locations: SymbolLocations,
     pub branches: Option<String>,
+    pub indexed: bool,
 }
 
 impl std::hash::Hash for ContentDocument {
@@ -62,6 +63,7 @@ pub struct FileDocument {
     pub repo_ref: String,
     pub lang: Option<String>,
     pub branches: String,
+    pub indexed: bool,
 }
 
 pub struct RepoDocument {
@@ -119,6 +121,7 @@ impl DocumentRead for ContentReader {
         let content = read_text_field(&doc, schema.content);
         let lang = read_lang_field(&doc, schema.lang);
         let branches = read_lang_field(&doc, schema.branches);
+        let indexed = read_bool_field(&doc, schema.indexed);
 
         let line_end_indices = doc
             .get_first(schema.line_end_indices)
@@ -146,6 +149,7 @@ impl DocumentRead for ContentReader {
             line_end_indices,
             lang,
             branches,
+            indexed,
         }
     }
 }
@@ -201,6 +205,7 @@ impl DocumentRead for FileReader {
         let repo_name = read_text_field(&doc, schema.repo_name);
         let lang = read_lang_field(&doc, schema.lang);
         let branches = read_text_field(&doc, schema.branches);
+        let indexed = read_bool_field(&doc, schema.indexed);
 
         FileDocument {
             relative_path,
@@ -208,6 +213,7 @@ impl DocumentRead for FileReader {
             repo_ref,
             lang,
             branches,
+            indexed,
         }
     }
 }
@@ -269,6 +275,7 @@ pub struct OpenDocument {
     pub lang: Option<String>,
     pub content: String,
     pub line_end_indices: Vec<u32>,
+    pub indexed: bool,
 }
 
 #[async_trait]
@@ -336,6 +343,7 @@ impl DocumentRead for OpenReader {
             .chunks_exact(4)
             .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]))
             .collect();
+        let indexed = read_bool_field(&doc, schema.indexed);
 
         Self::Document {
             relative_path,
@@ -344,6 +352,7 @@ impl DocumentRead for OpenReader {
             lang,
             content,
             line_end_indices,
+            indexed,
         }
     }
 }
@@ -359,8 +368,17 @@ pub fn base_name(path: &str) -> &str {
     path.rfind('/').map(|i| &path[..i + 1]).unwrap_or("")
 }
 
+fn read_bool_field(doc: &tantivy::Document, field: Field) -> bool {
+    doc.get_first(field).unwrap().as_bool().unwrap()
+}
+
 fn read_text_field(doc: &tantivy::Document, field: Field) -> String {
-    doc.get_first(field).unwrap().as_text().unwrap().to_owned()
+    let Some(field) = doc.get_first(field)
+    else {
+	return Default::default();
+    };
+
+    field.as_text().unwrap().into()
 }
 
 fn read_lang_field(doc: &tantivy::Document, lang: Field) -> Option<String> {

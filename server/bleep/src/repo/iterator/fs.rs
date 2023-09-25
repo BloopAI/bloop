@@ -14,7 +14,6 @@ impl FileWalker {
         let walker = ignore::WalkBuilder::new(&dir)
             .standard_filters(true)
             .hidden(false)
-            .filter_entry(should_index_entry)
             .build();
 
         let file_list = walker
