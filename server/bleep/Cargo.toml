@@ -127,7 +127,9 @@ gix = { version="0.47.0", features = ["blocking-http-transport-reqwest-rust-tls"
 thread-priority = "0.13.1"
 # We use the git version here, so that we can pull in recent changes that make footnotes work. The
 # latest crates.io version at the time of writing does not include necessary patches.
-comrak = { default-features = false, git = "https://github.com/kivikakk/comrak" }
+#
+# 25.09.23: we now maintain a fork for stability
+comrak = { default-features = false, git = "https://github.com/rsdy/comrak" }
 lazy-regex = "3.0.0"
 quick-xml = { version = "0.29.0", features = ["serialize"] }
 jsonwebtokens-cognito = "0.1.1"
