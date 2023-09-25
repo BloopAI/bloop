@@ -375,5 +375,5 @@
 	"Index": "Índice",
 	"File not indexed": "Archivo no indexado",
 	"Force index": "Índice de fuerza",
-	"bloop automatically excludes certain files from the indexing. This file might be too big or it might have an excluded file type.": "Bloop excluye automáticamente ciertos archivos de la indexación. Este archivo puede ser demasiado grande o podría tener un tipo de archivo excluido."
+	"bloop automatically excludes certain files from indexing. This file might be too big or it might have an excluded file type.": "Bloop excluye automáticamente ciertos archivos de la indexación. Este archivo puede ser demasiado grande o podría tener un tipo de archivo excluido."
 }

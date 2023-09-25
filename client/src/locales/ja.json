@@ -372,5 +372,5 @@
 	"Index": "索引",
 	"File not indexed": "ファイルはインデックス化されていません",
 	"Force index": "フォースインデックス",
-	"bloop automatically excludes certain files from the indexing. This file might be too big or it might have an excluded file type.": "Bloopは、インデックスから特定のファイルを自動的に除外します。 このファイルが大きすぎるか、除外されたファイルタイプがある場合があります。"
+	"bloop automatically excludes certain files from indexing. This file might be too big or it might have an excluded file type.": "Bloopは、インデックスから特定のファイルを自動的に除外します。 このファイルが大きすぎるか、除外されたファイルタイプがある場合があります。"
 }
