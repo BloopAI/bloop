@@ -2,8 +2,11 @@ use std::{
     fs::{create_dir_all, write},
     path::Path,
     process::{Child, Command},
+    thread,
+    time::Duration,
 };
 
+use sysinfo::{ProcessExt, ProcessRefreshKind, RefreshKind, Signal, System, SystemExt};
 use tauri::{plugin::Plugin, Runtime};
 use tracing::warn;
 
@@ -27,6 +30,8 @@ where
         app: &tauri::AppHandle<R>,
         _config: serde_json::Value,
     ) -> tauri::plugin::Result<()> {
+        close_existing_qdrant_processes();
+
         let data_dir = app.path_resolver().app_data_dir().unwrap();
         let qdrant_dir = data_dir.join("qdrant");
         let qd_config_dir = qdrant_dir.join("config");
@@ -51,9 +56,9 @@ where
         use tauri::RunEvent::{Exit, ExitRequested};
         if matches!(event, Exit | ExitRequested { .. }) {
             let Some(mut child) = self.child.take() else {
-		warn!("qdrant has been killed");
-		return;
-	    };
+                warn!("qdrant has been killed");
+                return;
+            };
 
             if let Err(err) = child.kill() {
                 warn!(?err, "failed to kill qdrant");
@@ -104,4 +109,35 @@ fn run_command(command: &Path, qdrant_dir: &Path) -> Child {
         .creation_flags(0x08000000)
         .spawn()
         .expect("failed to start qdrant")
+}
+
+fn close_existing_qdrant_processes() {
+    // Limit total open files from `sysinfo` crate on Linux.
+    sysinfo::set_open_files_limit(10);
+
+    let mut sys =
+        System::new_with_specifics(RefreshKind::new().with_processes(ProcessRefreshKind::new()));
+
+    for process in sys.processes_by_exact_name("qdrant") {
+        if process.kill_with(Signal::Term).is_none() && !process.kill() {
+            tracing::error!("was not able to close existing qdrant process");
+        }
+    }
+
+    // We now wait for these processes to close.
+
+    let mut qdrant_procs = vec![];
+    for _ in 0..10 {
+        thread::sleep(Duration::from_millis(500));
+        sys.refresh_processes();
+        qdrant_procs = sys.processes_by_exact_name("qdrant").collect();
+        if qdrant_procs.is_empty() {
+            break;
+        }
+    }
+
+    // As a last-ditch resort, kill any remaining processes.
+    for proc in qdrant_procs {
+        proc.kill();
+    }
 }
