@@ -19,54 +19,40 @@ jobs:
     runs-on: nixos
     steps:
       - name: Checkout code
-        uses: nschloe/action-cached-lfs-checkout@v1
+        uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Git LFS
+      - name: Create LFS file list
+        run: git lfs ls-files --long | cut -d ' ' -f1 | sort > .lfs-assets-id
+
+      - name: LFS Cache
+        uses: actions/cache@v3
+        with:
+          path: .git/lfs/objects
+          key: ${{ runner.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}
+          restore-keys: |
+            ${{ runner.os }}-lfs-
+
+      - name: Git LFS Pull
         run: git lfs install && git lfs pull
 
+      - name: Load PATH changes
+        run: direnv allow && direnv exec . sh -c 'echo $PATH' > "$GITHUB_PATH"
+
+      - name: Load other environment changes
+        run: direnv export gha >> "$GITHUB_ENV"        
+
+      - uses: Swatinem/rust-cache@v2
+
       - name: Rustfmt
-        run: nix develop -c bash -c 'cargo --locked fmt -p bleep -- --check'
+        run: cargo --locked fmt -p bleep -- --check
 
       - name: Clippy
-        run: nix develop -c bash -c 'cargo --locked clippy -p bleep --features=ee'
+        run: cargo --locked clippy -p bleep --features=ee
 
       - name: Tests
-        run: nix develop -c bash -c 'cargo --locked test -p bleep --release'
+        run: cargo --locked test -p bleep --release
 
       - name: Sccache stats
-        run: nix develop -c bash -c 'sccache --show-stats'
-
-  # benchmark:
-  #   runs-on: [self-hosted, benchmark]
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #       with:
-  #         clean: false
-  #         lfs: true
-
-  #     - name: Setup Rust toolchain
-  #       uses: actions-rs/toolchain@v1
-  #       with:
-  #         profile: minimal
-  #         toolchain: stable
-  #         override: true
-
-  #     - uses: boa-dev/criterion-compare-action@v3.2.4
-  #       env:
-  #         BLOOP_LOG: bleep=debug
-  #       with:
-  #         cwd: ./server
-  #         benchName: "indexes"
-  #         branchName: ${{ github.base_ref }}
-  #         token: ${{ secrets.GITHUB_TOKEN }}
-
-  #     - uses: boa-dev/criterion-compare-action@v3.2.4
-  #       env:
-  #         BLOOP_LOG: bleep=debug
-  #       with:
-  #         cwd: ./server
-  #         benchName: "queries"
-  #         branchName: ${{ github.base_ref }}
-  #         token: ${{ secrets.GITHUB_TOKEN }}
+        run: sccache --show-stats
