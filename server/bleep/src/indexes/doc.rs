@@ -25,8 +25,10 @@ pub struct Doc {
 #[derive(serde::Serialize)]
 pub struct Record {
     pub id: i64,
-    pub name: String,
     pub url: String,
+    pub name: Option<String>,
+    pub favicon: Option<String>,
+    pub description: Option<String>,
     pub modified_at: chrono::NaiveDateTime,
 }
 
@@ -73,15 +75,44 @@ impl Doc {
         // add entry to sqlite
         let url_string = url.to_string();
         let id = sqlx::query! {
-            "INSERT INTO docs (name, url) VALUES (?, ?)",
-            "placeholder-name", // TODO: this info is parsed from opengraph data, use it here
+            "INSERT INTO docs (url) VALUES (?)",
             url_string,
         }
         .execute(&*self.sql)
         .await?
         .last_insert_rowid();
 
-        self.insert_into_qdrant(id, url).await?;
+        let meta = self.insert_into_qdrant(id, url).await?;
+
+        if let Some(meta) = meta {
+            if let Some(title) = meta.title.clone() {
+                sqlx::query! {
+                    "UPDATE docs SET name = ? WHERE id = ?",
+                    title,
+                    id,
+                }
+                .execute(&*self.sql)
+                .await?;
+            }
+            if let Some(favicon) = meta.favicon.clone() {
+                sqlx::query! {
+                    "UPDATE docs SET favicon = ? WHERE id = ?",
+                    favicon,
+                    id,
+                }
+                .execute(&*self.sql)
+                .await?;
+            }
+            if let Some(description) = meta.description.clone() {
+                sqlx::query! {
+                    "UPDATE docs SET description = ? WHERE id = ?",
+                    description,
+                    id,
+                }
+                .execute(&*self.sql)
+                .await?;
+            }
+        }
 
         Ok(id)
     }
@@ -127,23 +158,27 @@ impl Doc {
 
     /// List all synced doc sources
     pub async fn list(&self) -> Result<Vec<Record>, Error> {
-        Ok(sqlx::query!("SELECT id, name, url, modified_at FROM docs")
-            .fetch_all(&*self.sql)
-            .await?
-            .into_iter()
-            .map(|record| Record {
-                id: record.id,
-                name: record.name,
-                url: record.url,
-                modified_at: record.modified_at,
-            })
-            .collect::<Vec<_>>())
+        Ok(
+            sqlx::query!("SELECT id, name, url, favicon, description, modified_at FROM docs")
+                .fetch_all(&*self.sql)
+                .await?
+                .into_iter()
+                .map(|record| Record {
+                    id: record.id,
+                    name: record.name,
+                    description: record.description,
+                    favicon: record.favicon,
+                    url: record.url,
+                    modified_at: record.modified_at,
+                })
+                .collect::<Vec<_>>(),
+        )
     }
 
     /// List a synced doc source by id
     pub async fn list_one(&self, id: i64) -> Result<Record, Error> {
         let record = sqlx::query!(
-            "SELECT id, name, url, modified_at FROM docs WHERE id = ?",
+            "SELECT id, name, url, favicon, description, modified_at FROM docs WHERE id = ?",
             id
         )
         .fetch_one(&*self.sql)
@@ -152,13 +187,50 @@ impl Doc {
         Ok(Record {
             id: record.id,
             name: record.name,
+            description: record.description,
+            favicon: record.favicon,
             url: record.url,
             modified_at: record.modified_at,
         })
     }
 
-    /// Search all docs
-    pub async fn search(&self, q: String, limit: u64, id: i64) -> Result<Vec<SearchResult>, Error> {
+    /// Search for doc source by title
+    pub async fn search(&self, q: String, limit: u64) -> Result<Vec<Record>, Error> {
+        let limit = limit.to_string();
+        let q = format!("%{q}%");
+        let records = sqlx::query!(
+            "
+            SELECT id, name, url, description, favicon, modified_at
+            FROM docs 
+            WHERE name LIKE ?
+            LIMIT ?
+            ",
+            q,
+            limit,
+        )
+        .fetch_all(&*self.sql)
+        .await?;
+
+        Ok(records
+            .into_iter()
+            .map(|r| Record {
+                id: r.id,
+                name: r.name,
+                favicon: r.favicon,
+                description: r.description,
+                url: r.url,
+                modified_at: r.modified_at,
+            })
+            .collect())
+    }
+
+    /// Search in given doc
+    pub async fn search_with_id(
+        &self,
+        q: String,
+        limit: u64,
+        id: i64,
+    ) -> Result<Vec<SearchResult>, Error> {
         let term_embedding = self
             .semantic
             .embedder()
@@ -228,10 +300,19 @@ impl Doc {
         Ok(data)
     }
 
-    async fn insert_into_qdrant(&self, id: i64, url: url::Url) -> Result<(), Error> {
+    /// Scrape & insert a doc source into qdrant and return doc metadata if available
+    async fn insert_into_qdrant(
+        &self,
+        id: i64,
+        url: url::Url,
+    ) -> Result<Option<scraper::Meta>, Error> {
         let docs = Scraper::with_config(Config::new(url.clone()))
             .complete()
             .await;
+        let meta = docs
+            .iter()
+            .find(|d| d.url == url)
+            .and_then(|d| d.meta.clone());
         let points_to_insert = docs
             .par_iter()
             .flat_map(|d| d.embed(id, &url, self.semantic.embedder()))
@@ -241,7 +322,7 @@ impl Doc {
             .upsert_points(COLLECTION_NAME, points_to_insert, None)
             .await
             .map_err(Error::Qdrant)?;
-        Ok(())
+        Ok(meta)
     }
 
     async fn delete_from_qdrant(&self, id: i64) -> Result<(), Error> {

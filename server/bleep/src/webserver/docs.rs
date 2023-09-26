@@ -50,11 +50,21 @@ pub async fn resync(State(app): State<Application>, Path(id): Path<i64>) -> Resu
 
 pub async fn search(
     State(app): State<Application>,
+    Query(params): Query<Search>,
+) -> Result<Json<Vec<doc::Record>>> {
+    Ok(Json(app.indexes.doc.search(params.q, params.limit).await?))
+}
+
+pub async fn search_with_id(
+    State(app): State<Application>,
     Path(id): Path<i64>,
     Query(params): Query<Search>,
 ) -> Result<Json<Vec<doc::SearchResult>>> {
     Ok(Json(
-        app.indexes.doc.search(params.q, params.limit, id).await?,
+        app.indexes
+            .doc
+            .search_with_id(params.q, params.limit, id)
+            .await?,
     ))
 }
 
