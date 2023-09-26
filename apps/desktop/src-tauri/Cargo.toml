@@ -29,6 +29,7 @@ sentry = "0.27.0"
 qdrant-client = "1.5.0"
 git-version = "0.3.5"
 sentry-anyhow = "0.31.7"
+sysinfo = "0.29.10"
 
 [target.'cfg(unix)'.dependencies]
 nix = { version = "0.26.4", default-features = false, features = [ "resource" ] }
