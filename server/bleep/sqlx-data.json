@@ -178,7 +178,27 @@
     },
     "query": "INSERT INTO conversations (user_id, thread_id, repo_ref, title, exchanges, created_at) VALUES (?, ?, ?, ?, ?, strftime('%s', 'now'))"
   },
-  "23616a632f6a65234b3e5d80bb36f845711ee94372cfe18b1f686f663f5ae8e4": {
+  "259138698b8c842c3caa83532ab61494e0641d69bdf647a8ea4fb04f0387d952": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "INSERT INTO docs (url) VALUES (?)"
+  },
+  "2d33f9119b3b56c55378080c5c95aa91fcb495ceb39caaa4f2541d8b2aa408ae": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "UPDATE docs SET favicon = ? WHERE id = ?"
+  },
+  "2f44ee5065810b720b4a76d1ba64ef18f2cd2ea81f35480af684866c178a7f5e": {
     "describe": {
       "columns": [
         {
@@ -197,22 +217,34 @@
           "type_info": "Text"
         },
         {
-          "name": "modified_at",
+          "name": "description",
           "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "favicon",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "modified_at",
+          "ordinal": 5,
           "type_info": "Datetime"
         }
       ],
       "nullable": [
         false,
+        true,
         false,
-        false,
+        true,
+        true,
         false
       ],
       "parameters": {
-        "Right": 0
+        "Right": 2
       }
     },
-    "query": "SELECT id, name, url, modified_at FROM docs"
+    "query": "\n            SELECT id, name, url, description, favicon, modified_at\n            FROM docs \n            WHERE name LIKE ?\n            LIMIT ?\n            "
   },
   "359b4d0fa1fcb081767303103b23f0650568cf4e79787c7ddcd21af5bad6761b": {
     "describe": {
@@ -311,6 +343,54 @@
       }
     },
     "query": "SELECT ss.id\n        FROM studio_snapshots ss\n        JOIN studios s ON s.id = ss.studio_id AND s.user_id = ?\n        WHERE ss.studio_id = ?\n        ORDER BY ss.modified_at DESC\n        LIMIT 1"
+  },
+  "44f170bc668eb4e9401ce6675db37b39cca5a9cf431ed5f66b3ccc598ce3583e": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "url",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "favicon",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "description",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "modified_at",
+          "ordinal": 5,
+          "type_info": "Datetime"
+        }
+      ],
+      "nullable": [
+        false,
+        true,
+        false,
+        true,
+        true,
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT id, name, url, favicon, description, modified_at FROM docs WHERE id = ?"
   },
   "454d7dfb50480aae5ad9c8372262d55a302e214e1c7ceb8d62b53832f75bd85b": {
     "describe": {
@@ -422,6 +502,54 @@
     },
     "query": "INSERT INTO query_log (raw_query) VALUES (?)"
   },
+  "50894d88ee8534a09d270625061ecb6cd2fc09b663c9057d1b85d7cf339ccb96": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "url",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "favicon",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "description",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "modified_at",
+          "ordinal": 5,
+          "type_info": "Datetime"
+        }
+      ],
+      "nullable": [
+        false,
+        true,
+        false,
+        true,
+        true,
+        false
+      ],
+      "parameters": {
+        "Right": 0
+      }
+    },
+    "query": "SELECT id, name, url, favicon, description, modified_at FROM docs"
+  },
   "5128142bf657cfde043a1b53834d40980caa3e9ae5fd6f4d7f30d89be512f105": {
     "describe": {
       "columns": [],
@@ -452,7 +580,7 @@
     },
     "query": "UPDATE templates SET content = ? WHERE id = ?"
   },
-  "57edfb7d2686a1a5e2ea62bd165ef4baa0cf070a96070c694e7af914be5b3a9a": {
+  "5a12c77f8ee2a83b87cb5d9a79015fcc81d39d1466f853f613cb0fd789ace552": {
     "describe": {
       "columns": [],
       "nullable": [],
@@ -460,7 +588,7 @@
         "Right": 2
       }
     },
-    "query": "INSERT INTO docs (name, url) VALUES (?, ?)"
+    "query": "UPDATE docs SET description = ? WHERE id = ?"
   },
   "5bdd10bd3029a70911749c200c1680224e2fb9f4ce1bf463a6ebfcdf3de10ad6": {
     "describe": {
@@ -1022,41 +1150,15 @@
     },
     "query": "DELETE FROM chunk_cache WHERE repo_ref = ?"
   },
-  "f45d89d1b5ff04b3edeefb6ee7cadef60d520c1bb9bc2db548fa3e2b471fc23a": {
+  "f91f80f8d1a82a5d79ce50131618877a50c0753a1ccb1f4cee714e274f022907": {
     "describe": {
-      "columns": [
-        {
-          "name": "id",
-          "ordinal": 0,
-          "type_info": "Int64"
-        },
-        {
-          "name": "name",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "url",
-          "ordinal": 2,
-          "type_info": "Text"
-        },
-        {
-          "name": "modified_at",
-          "ordinal": 3,
-          "type_info": "Datetime"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false
-      ],
+      "columns": [],
+      "nullable": [],
       "parameters": {
-        "Right": 1
+        "Right": 2
       }
     },
-    "query": "SELECT id, name, url, modified_at FROM docs WHERE id = ?"
+    "query": "UPDATE docs SET name = ? WHERE id = ?"
   },
   "fd74b491f6b06bb58c7d62b461094e5463e397bb649ae338c2b1a0e67e6155c3": {
     "describe": {

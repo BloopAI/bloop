@@ -197,7 +197,7 @@ impl Document {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Meta {
     pub title: Option<String>,
     pub description: Option<String>,
@@ -256,6 +256,7 @@ async fn visit(
 
     let meta = include_meta.then(|| Meta {
         title: article.content.title.map(|c| c.to_string()),
+        description: article.content.description.map(|c| c.to_string()),
         ..Default::default()
     });
 

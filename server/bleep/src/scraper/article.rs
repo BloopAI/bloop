@@ -177,13 +177,14 @@ trait Extractor {
             builder = builder.description(description);
         }
 
-        if let Some(txt_node) = self.article_node(doc, lang) {
-            builder = builder.text(txt_node.clean_text().into())
-        }
-
         if let Some(title) = self.title(doc) {
             builder = builder.title(title);
         }
+
+        if let Some(txt_node) = self.article_node(doc, lang) {
+            builder = builder.text(txt_node.clean_text().into());
+        }
+
         builder.build()
     }
 
