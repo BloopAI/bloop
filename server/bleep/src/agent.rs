@@ -21,6 +21,9 @@ use crate::{
 
 use self::exchange::{Exchange, SearchStep, Update};
 
+/// The maximum number of steps the agent will take before forcing an answer.
+const MAX_STEPS: usize = 10;
+
 pub mod exchange;
 pub mod model;
 pub mod prompts;
@@ -180,6 +183,12 @@ impl Agent {
             Action::Code { query } => self.code_search(query).await?,
             Action::Proc { query, paths } => self.process_files(query, paths).await?,
         };
+
+        if self.exchanges.len() >= MAX_STEPS {
+            return Ok(Some(Action::Answer {
+                paths: self.paths().enumerate().map(|(i, _)| i).collect(),
+            }));
+        }
 
         let functions = serde_json::from_value::<Vec<llm_gateway::api::Function>>(
             prompts::functions(self.paths().next().is_some()), // Only add proc if there are paths in context
