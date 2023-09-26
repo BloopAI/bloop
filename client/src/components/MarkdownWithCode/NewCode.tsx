@@ -31,7 +31,7 @@ const NewCode = ({
     >
       {isCodeStudio && (
         <div className="bg-bg-shade border-b border-bg-border p-2 flex items-center justify-between gap-2 overflow-hidden">
-          <div className="flex items-center gap-2 overflow-hidden">
+          <div className="flex items-center gap-2 overflow-hidden flex-1">
             <FileIcon
               filename={filePath || getFileExtensionForLang(language, true)}
               noMargin
