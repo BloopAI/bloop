@@ -149,18 +149,9 @@ impl Application {
         // Wipe existing dbs & caches if the schema has changed
         if config.source.index_version_mismatch() {
             Indexes::reset_databases(&config).await?;
-            let cache = cache::FileCache::new(sql.clone(), semantic.clone());
-
-            let mut refs = vec![];
-            // knocking out our current file caches will force re-indexing qdrant
-            repo_pool.for_each(|reporef, repo| {
-                refs.push(reporef.to_owned());
-                repo.last_index_unix_secs = 0;
-            });
-
-            for reporef in refs {
-                cache.delete(&reporef).await?;
-            }
+            cache::FileCache::new(sql.clone(), semantic.clone())
+                .reset(&repo_pool)
+                .await?;
 
             semantic.reset_collection_blocking().await?;
         }

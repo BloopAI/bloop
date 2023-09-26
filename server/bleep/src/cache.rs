@@ -18,6 +18,7 @@ use crate::{
         embedder::{EmbedChunk, EmbedQueue},
         Payload, Semantic,
     },
+    state::RepositoryPool,
 };
 
 use super::db::SqlDb;
@@ -156,6 +157,21 @@ impl<'a> FileCache {
             semantic,
             embed_queue: Default::default(),
         }
+    }
+
+    pub(crate) async fn reset(&'a self, repo_pool: &RepositoryPool) -> anyhow::Result<()> {
+        let mut refs = vec![];
+        // knocking out our current file caches will force re-indexing qdrant
+        repo_pool.for_each(|reporef, repo| {
+            refs.push(reporef.to_owned());
+            repo.last_index_unix_secs = 0;
+        });
+
+        for reporef in refs {
+            self.delete(&reporef).await?;
+        }
+
+        Ok(())
     }
 
     /// Retrieve a file-level snapshot of the cache for the repository in scope.

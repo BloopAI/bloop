@@ -111,7 +111,8 @@ pub struct Configuration {
     //
     // Semantic values
     //
-    #[clap(long)]
+    #[clap(long, default_value_t = default_qdrant_url())]
+    #[serde(default = "default_qdrant_url")]
     /// URL for the qdrant server
     pub qdrant_url: String,
 
@@ -410,6 +411,10 @@ const fn default_port() -> u16 {
 
 fn default_host() -> String {
     String::from("127.0.0.1")
+}
+
+fn default_qdrant_url() -> String {
+    String::from("http://127.0.0.1:6334")
 }
 
 fn default_answer_api_url() -> String {
