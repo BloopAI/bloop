@@ -118,12 +118,15 @@ const NavBar = ({ isSkeleton, activeTab }: Props) => {
       >
         <Home sizeClassName="w-4 h-4" />
       </button>
-      <div className={`flex-1 overflow-auto`} data-tauri-drag-region>
+      <div
+        className={`flex flex-1 overflow-auto fade-right`}
+        data-tauri-drag-region
+      >
         <Reorder.Group
           as="ul"
           axis="x"
           onReorder={handleReorderTabs}
-          className="flex-1 flex items-center justify-start h-full overflow-x-auto pr-8 fade-right"
+          className="flex items-center justify-start h-full overflow-x-auto pr-8"
           values={tabsWithoutHome}
           layoutScroll
         >
