@@ -14,10 +14,11 @@ use std::{path::PathBuf, sync::Arc};
 
 use super::control::SyncPipes;
 
-pub(crate) struct SyncHandle {
+pub struct SyncHandle {
     pub(crate) reporef: RepoRef,
     pub(crate) filter_updates: FilterUpdate,
-    pub(super) pipes: SyncPipes,
+    pub(crate) pipes: SyncPipes,
+    pub(crate) file_cache: FileCache,
     app: Application,
     exited: flume::Sender<SyncStatus>,
     exit_signal: flume::Receiver<SyncStatus>,
@@ -135,6 +136,7 @@ impl SyncHandle {
         let sh = Self {
             app: app.clone(),
             reporef: reporef.clone(),
+            file_cache: FileCache::new(app.sql.clone(), app.semantic.clone()),
             pipes,
             filter_updates,
             exited,
@@ -386,18 +388,14 @@ impl SyncHandle {
         repo: &Repository,
         writers: &indexes::GlobalWriteHandleRef<'_>,
     ) -> Result<()> {
-        let Application {
-            ref semantic,
-            ref sql,
-            ..
-        } = self.app;
+        let Application { ref semantic, .. } = self.app;
 
         semantic
             .delete_points_for_hash(&self.reporef.to_string(), std::iter::empty())
             .await;
 
-        FileCache::for_repo(sql, semantic, &self.reporef)
-            .delete()
+        self.file_cache
+            .delete(&self.reporef)
             .await
             .map_err(SyncError::Sql)?;
 
@@ -412,10 +410,6 @@ impl SyncHandle {
         }
 
         Ok(())
-    }
-
-    pub(crate) fn pipes(&self) -> &SyncPipes {
-        &self.pipes
     }
 
     pub(crate) fn set_status(

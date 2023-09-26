@@ -67,7 +67,8 @@ impl<T> From<T> for FreshValue<T> {
 /// representative at a single point in time
 pub struct FileCacheSnapshot<'a> {
     snapshot: Arc<scc::HashMap<CacheKeys, FreshValue<()>>>,
-    parent: &'a FileCache<'a>,
+    parent: &'a FileCache,
+    reporef: &'a RepoRef,
 }
 
 /// CacheKeys unifies the different keys to different databases.
@@ -104,7 +105,7 @@ impl CacheKeys {
 }
 
 impl<'a> FileCacheSnapshot<'a> {
-    pub(crate) fn parent(&'a self) -> &'a FileCache<'a> {
+    pub(crate) fn parent(&'a self) -> &'a FileCache {
         self.parent
     }
 
@@ -142,26 +143,24 @@ impl<'a> Deref for FileCacheSnapshot<'a> {
 /// file entry, as Tantivy can't upsert content.
 ///
 /// NB: consistency with Tantivy state is NOT ensured here.
-pub(crate) struct FileCache<'a> {
-    db: &'a SqlDb,
-    reporef: &'a RepoRef,
-    semantic: &'a Semantic,
+pub struct FileCache {
+    db: SqlDb,
+    semantic: Semantic,
     embed_queue: EmbedQueue,
 }
 
-impl<'a> FileCache<'a> {
-    pub(crate) fn for_repo(db: &'a SqlDb, semantic: &'a Semantic, reporef: &'a RepoRef) -> Self {
+impl<'a> FileCache {
+    pub(crate) fn new(db: SqlDb, semantic: Semantic) -> Self {
         Self {
             db,
-            reporef,
             semantic,
             embed_queue: Default::default(),
         }
     }
 
     /// Retrieve a file-level snapshot of the cache for the repository in scope.
-    pub(crate) async fn retrieve(&'a self) -> FileCacheSnapshot<'a> {
-        let repo_str = self.reporef.to_string();
+    pub(crate) async fn retrieve(&'a self, reporef: &'a RepoRef) -> FileCacheSnapshot<'a> {
+        let repo_str = reporef.to_string();
         let rows = sqlx::query! {
             "SELECT cache_hash FROM file_cache \
              WHERE repo_ref = ?",
@@ -180,6 +179,7 @@ impl<'a> FileCache<'a> {
         }
 
         FileCacheSnapshot {
+            reporef,
             parent: self,
             snapshot: output.into(),
         }
@@ -197,7 +197,9 @@ impl<'a> FileCache<'a> {
         delete_tantivy: impl Fn(&str),
     ) -> anyhow::Result<()> {
         let mut tx = self.db.begin().await?;
-        self.delete_files(&mut tx).await?;
+        self.delete_files(cache.reporef, &mut tx).await?;
+
+        let repo_str = cache.reporef.to_string();
 
         // files that are no longer tracked by the git index are to be removed
         // from the tantivy & qdrant indices
@@ -235,7 +237,6 @@ impl<'a> FileCache<'a> {
             let mut next = cache.first_occupied_entry_async().await;
             while let Some(entry) = next {
                 let key = entry.key();
-                let repo_str = self.reporef.to_string();
                 let hash = format!("{}{}", key.0, key.1);
                 sqlx::query!(
                     "INSERT INTO file_cache \
@@ -256,10 +257,9 @@ impl<'a> FileCache<'a> {
         // batch-delete points from qdrant index
         if !qdrant_stale.is_empty() {
             let semantic = self.semantic.clone();
-            let reporef = self.reporef.to_string();
             tokio::spawn(async move {
                 semantic
-                    .delete_points_for_hash(reporef.as_str(), qdrant_stale.into_iter())
+                    .delete_points_for_hash(&repo_str, qdrant_stale.into_iter())
                     .await;
             });
         }
@@ -271,10 +271,10 @@ impl<'a> FileCache<'a> {
     }
 
     /// Delete all caches for the repository in scope.
-    pub(crate) async fn delete(&self) -> anyhow::Result<()> {
+    pub(crate) async fn delete(&self, reporef: &RepoRef) -> anyhow::Result<()> {
         let mut tx = self.db.begin().await?;
-        self.delete_files(&mut tx).await?;
-        self.delete_chunks(&mut tx).await?;
+        self.delete_files(reporef, &mut tx).await?;
+        self.delete_chunks(reporef, &mut tx).await?;
         tx.commit().await?;
 
         Ok(())
@@ -377,18 +377,18 @@ impl<'a> FileCache<'a> {
         &self,
         cache_keys: &CacheKeys,
         repo_name: &str,
-        repo_ref: &str,
+        repo_ref: &RepoRef,
         relative_path: &str,
         buffer: &str,
         lang_str: &str,
         branches: &[String],
     ) {
-        let chunk_cache = self.chunks_for_file(cache_keys).await;
+        let chunk_cache = self.chunks_for_file(repo_ref, cache_keys).await;
         self.semantic
             .chunks_for_buffer(
                 cache_keys.semantic().into(),
                 repo_name,
-                repo_ref,
+                &repo_ref.to_string(),
                 relative_path,
                 buffer,
                 lang_str,
@@ -415,8 +415,12 @@ impl<'a> FileCache<'a> {
     }
 
     /// Delete all files in the `file_cache` table for the repository in scope.
-    async fn delete_files(&self, tx: &mut sqlx::Transaction<'_, Sqlite>) -> anyhow::Result<()> {
-        let repo_str = self.reporef.to_string();
+    async fn delete_files(
+        &self,
+        reporef: &RepoRef,
+        tx: &mut sqlx::Transaction<'_, Sqlite>,
+    ) -> anyhow::Result<()> {
+        let repo_str = reporef.to_string();
         sqlx::query! {
             "DELETE FROM file_cache \
                  WHERE repo_ref = ?",
@@ -429,8 +433,12 @@ impl<'a> FileCache<'a> {
     }
 
     /// Delete all chunks in the `chunk_cache` table for the repository in scope.
-    async fn delete_chunks(&self, tx: &mut sqlx::Transaction<'_, Sqlite>) -> anyhow::Result<()> {
-        let repo_str = self.reporef.to_string();
+    async fn delete_chunks(
+        &self,
+        reporef: &RepoRef,
+        tx: &mut sqlx::Transaction<'_, Sqlite>,
+    ) -> anyhow::Result<()> {
+        let repo_str = reporef.to_string();
         sqlx::query! {
             "DELETE FROM chunk_cache \
                  WHERE repo_ref = ?",
@@ -442,11 +450,11 @@ impl<'a> FileCache<'a> {
         Ok(())
     }
 
-    async fn chunks_for_file(&'a self, key: &'a CacheKeys) -> ChunkCache<'a> {
+    async fn chunks_for_file(&'a self, reporef: &'a RepoRef, key: &'a CacheKeys) -> ChunkCache<'a> {
         ChunkCache::for_file(
-            self.db,
-            self.semantic,
-            self.reporef,
+            &self.db,
+            &self.semantic,
+            reporef,
             &self.embed_queue,
             key.semantic(),
         )
