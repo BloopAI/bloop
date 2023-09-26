@@ -210,8 +210,23 @@ impl Embedder for GgmlEmbedder {
     }
 
     async fn batch_embed(&self, log: Vec<&str>) -> anyhow::Result<Vec<Embedding>> {
-        log.into_iter()
-            .map(|entry| tokio::task::block_in_place(|| self.embed(entry)))
-            .collect::<anyhow::Result<Vec<Embedding>>>()
+        let mut output_request = llm::OutputRequest {
+            all_logits: None,
+            embeddings: Some(Vec::new()),
+        };
+        let vocab = self.model.tokenizer();
+        let beginning_of_sentence = true;
+        let query_token_ids = log.iter().map( |&sequence| vocab
+            .tokenize(&sequence, beginning_of_sentence)
+            .unwrap()
+            .iter()
+            .map(|(_, tok)| *tok)
+            .collect::<Vec<_>>()).collect::<Vec<_>>();
+        let query_token_ids: Vec<_> = query_token_ids.iter().map(AsRef::as_ref).collect()
+        let mut session = self.session.lock().unwrap();
+        self.model
+            .batch_evaluate(&mut session, &query_token_ids, &mut output_request);
+        let embedding = output_request.embeddings.unwrap().chunks(384).map(|chunk| chunk.to_vec()).collect(); 
+        Ok(embedding)
     }
 }
