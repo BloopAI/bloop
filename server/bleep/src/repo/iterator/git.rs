@@ -1,4 +1,4 @@
-use crate::repo::RepoRef;
+use crate::{background, repo::RepoRef};
 
 use super::*;
 
@@ -179,39 +179,42 @@ impl FileSource for GitWalker {
     }
 
     fn for_each(self, pipes: &SyncPipes, iterator: impl Fn(RepoDirEntry) + Sync + Send) {
-        self.entries
-            .into_iter()
-            .filter_map(|((path, kind, oid), branches)| {
-                trace!(?path, "walking over path");
-                let git = self.git.to_thread_local();
-                let Ok(Some(object)) = git.try_find_object(oid) else {
-                    error!(?path, ?branches, "can't find object for file");
-                    return None;
-                };
+        use rayon::prelude::*;
+        background::rayon_pool().install(|| {
+            self.entries
+                .into_par_iter()
+                .filter_map(|((path, kind, oid), branches)| {
+                    trace!(?path, "walking over path");
+                    let git = self.git.to_thread_local();
+                    let Ok(Some(object)) = git.try_find_object(oid) else {
+                        error!(?path, ?branches, "can't find object for file");
+                        return None;
+                    };
 
-                if object.data.len() as u64 > MAX_FILE_LEN {
-                    return None;
-                }
+                    if object.data.len() as u64 > MAX_FILE_LEN {
+                        return None;
+                    }
 
-                let entry = match kind {
-                    FileType::File => {
-                        let buffer = String::from_utf8_lossy(&object.data).to_string();
-                        RepoDirEntry::File(RepoFile {
+                    let entry = match kind {
+                        FileType::File => {
+                            let buffer = String::from_utf8_lossy(&object.data).to_string();
+                            RepoDirEntry::File(RepoFile {
+                                path,
+                                branches: branches.into_iter().collect(),
+                                buffer,
+                            })
+                        }
+                        FileType::Dir => RepoDirEntry::Dir(RepoDir {
                             path,
                             branches: branches.into_iter().collect(),
-                            buffer,
-                        })
-                    }
-                    FileType::Dir => RepoDirEntry::Dir(RepoDir {
-                        path,
-                        branches: branches.into_iter().collect(),
-                    }),
-                    FileType::Other => return None,
-                };
+                        }),
+                        FileType::Other => return None,
+                    };
 
-                Some(entry)
-            })
-            .take_while(|_| !pipes.is_cancelled())
-            .for_each(iterator)
+                    Some(entry)
+                })
+                .take_any_while(|_| !pipes.is_cancelled())
+                .for_each(iterator)
+        })
     }
 }

@@ -1,3 +1,5 @@
+use once_cell::sync::OnceCell;
+use rayon::ThreadPool;
 use thread_priority::ThreadBuilderExt;
 use tokio::sync::Semaphore;
 use tracing::{debug, info};
@@ -19,6 +21,15 @@ mod notifyqueue;
 use notifyqueue::NotifyQueue;
 
 type ProgressStream = tokio::sync::broadcast::Sender<Progress>;
+
+static RAYON_POOL: OnceCell<ThreadPool> = OnceCell::new();
+
+/// Get a handle to a `tokio`-enabled `rayon` thread pool.
+pub fn rayon_pool() -> &'static ThreadPool {
+    RAYON_POOL
+        .get()
+        .expect("rayon thread pool was not yet initialized!")
+}
 
 #[derive(serde::Serialize, Clone)]
 pub struct Progress {
@@ -70,8 +81,9 @@ impl BackgroundExecutor {
             .into();
 
         let tokio_ref = tokio.clone();
+
         // test can re-initialize the app, and we shouldn't fail
-        _ = rayon::ThreadPoolBuilder::new()
+        let rayon_pool = rayon::ThreadPoolBuilder::new()
             .spawn_handler(move |thread| {
                 let tokio_ref = tokio_ref.clone();
 
@@ -93,7 +105,12 @@ impl BackgroundExecutor {
                     .map(|_| ())
             })
             .num_threads(config.max_threads)
-            .build_global();
+            .build()
+            .unwrap();
+
+        if RAYON_POOL.set(rayon_pool).is_err() {
+            panic!("rayon pool was already initialized!");
+        }
 
         thread::spawn(move || {
             while let Ok(task) = receiver.recv() {

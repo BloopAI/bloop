@@ -1,3 +1,5 @@
+use crate::background;
+
 use super::*;
 
 use tracing::warn;
@@ -42,32 +44,35 @@ impl FileSource for FileWalker {
     }
 
     fn for_each(self, pipes: &SyncPipes, iterator: impl Fn(RepoDirEntry) + Sync + Send) {
-        self.file_list
-            .into_iter()
-            .filter_map(|entry_disk_path| {
-                if entry_disk_path.is_file() {
-                    let buffer = match std::fs::read_to_string(&entry_disk_path) {
-                        Err(err) => {
-                            warn!(%err, ?entry_disk_path, "read failed; skipping");
-                            return None;
-                        }
-                        Ok(buffer) => buffer,
-                    };
-                    Some(RepoDirEntry::File(RepoFile {
-                        buffer,
-                        path: entry_disk_path.to_string_lossy().to_string(),
-                        branches: vec![HEAD.into()],
-                    }))
-                } else if entry_disk_path.is_dir() {
-                    Some(RepoDirEntry::Dir(RepoDir {
-                        path: entry_disk_path.to_string_lossy().to_string(),
-                        branches: vec![HEAD.into()],
-                    }))
-                } else {
-                    Some(RepoDirEntry::Other)
-                }
-            })
-            .take_while(|_| !pipes.is_cancelled())
-            .for_each(iterator);
+        use rayon::prelude::*;
+        background::rayon_pool().install(|| {
+            self.file_list
+                .into_par_iter()
+                .filter_map(|entry_disk_path| {
+                    if entry_disk_path.is_file() {
+                        let buffer = match std::fs::read_to_string(&entry_disk_path) {
+                            Err(err) => {
+                                warn!(%err, ?entry_disk_path, "read failed; skipping");
+                                return None;
+                            }
+                            Ok(buffer) => buffer,
+                        };
+                        Some(RepoDirEntry::File(RepoFile {
+                            buffer,
+                            path: entry_disk_path.to_string_lossy().to_string(),
+                            branches: vec![HEAD.into()],
+                        }))
+                    } else if entry_disk_path.is_dir() {
+                        Some(RepoDirEntry::Dir(RepoDir {
+                            path: entry_disk_path.to_string_lossy().to_string(),
+                            branches: vec![HEAD.into()],
+                        }))
+                    } else {
+                        Some(RepoDirEntry::Other)
+                    }
+                })
+                .take_any_while(|_| !pipes.is_cancelled())
+                .for_each(iterator);
+        })
     }
 }
