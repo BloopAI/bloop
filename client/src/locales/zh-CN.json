@@ -402,5 +402,9 @@
 	"Token limit reached, this answer may be incomplete. To generate a full answer, please reduce the number of tokens used and regenerate.": "达到令牌限制，此答案可能不完整。 要产生完整的答案，请减少使用和再生的代币数量。",
 	"<0></0><1></1> to navigate.": "<0> </0> <1> </1>导航。",
 	"Below are a few questions you can ask me to get started:": "以下是您可以要求我开始的几个问题：",
-	"Check context files for any errors": "检查上下文文件是否有任何错误"
+	"Check context files for any errors": "检查上下文文件是否有任何错误",
+	"Add docs": "添加文档",
+	"We couldn't find any docs at that link. Try again or make sure the link is correct!": "我们找不到该链接的任何文档。 重试或确保链接正确！",
+	"Indexing <1>#</1>. This process takes about 1 minute.": "索引<1>{{url}}</1>。 这个过程大约需要1分钟。",
+	"Verifying link...": "验证链接..."
 }

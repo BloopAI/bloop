@@ -394,5 +394,9 @@
 	"Token limit reached, this answer may be incomplete. To generate a full answer, please reduce the number of tokens used and regenerate.": "到達したトークン制限は、この答えが不完全になる可能性があります。 完全な回答を生成するには、使用して再生するトークンの数を減らしてください。",
 	"<0></0><1></1> to navigate.": "<0> </0> <1> </1>ナビゲートします。",
 	"Below are a few questions you can ask me to get started:": "以下は、あなたが私に始めるように頼むことができるいくつかの質問です：",
-	"Check context files for any errors": "エラーがない場合は、コンテキストファイルを確認してください"
+	"Check context files for any errors": "エラーがない場合は、コンテキストファイルを確認してください",
+	"Add docs": "ドキュメントを追加します",
+	"We couldn't find any docs at that link. Try again or make sure the link is correct!": "そのリンクにドキュメントが見つかりませんでした。 もう一度やり直すか、リンクが正しいことを確認してください！",
+	"Indexing <1>#</1>. This process takes about 1 minute.": "インデックス作成<1>{{url}}</1>。 このプロセスには約1分かかります。",
+	"Verifying link...": "リンクの検証..."
 }

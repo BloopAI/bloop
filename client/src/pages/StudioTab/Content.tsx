@@ -31,6 +31,7 @@ import TemplatesPanel from './TemplatesPanel';
 import AddContextModal from './AddContextModal';
 import RightPanel from './RightPanel';
 import FilePanel from './FilePanel';
+import AddDocsModal from './AddDocsModal';
 
 type Props = {
   tab: StudioTabType;
@@ -59,6 +60,7 @@ const ContentContainer = ({
   // });
   const { setStudioGuideOpen } = useContext(UIContext.StudioGuide);
   const [isAddContextOpen, setAddContextOpen] = useState(false);
+  const [isAddDocsOpen, setAddDocsOpen] = useState(false);
   const [previewingState, setPreviewingState] = useState<null | CodeStudioType>(
     null,
   );
@@ -74,6 +76,7 @@ const ContentContainer = ({
   }, []);
 
   const handleAddContextClose = useCallback(() => setAddContextOpen(false), []);
+  const handleAddDocsClose = useCallback(() => setAddDocsOpen(false), []);
   const onFileAdded = useCallback(
     (
       repoRef: string,
@@ -286,6 +289,7 @@ const ContentContainer = ({
                 <ContextPanel
                   setLeftPanel={setLeftPanel}
                   setAddContextOpen={setAddContextOpen}
+                  setAddDocsOpen={setAddDocsOpen}
                   studioId={tab.key}
                   contextFiles={stateToShow.context}
                   tokensPerFile={stateToShow.token_counts?.per_file || []}
@@ -311,6 +315,11 @@ const ContentContainer = ({
                 onClose={handleAddContextClose}
                 onSubmit={onFileSelected}
                 contextFiles={stateToShow.context}
+              />
+              <AddDocsModal
+                isVisible={isAddDocsOpen}
+                onClose={handleAddDocsClose}
+                onSubmit={() => {}}
               />
             </div>
             <div

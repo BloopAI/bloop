@@ -9,7 +9,7 @@ import React, {
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import Button from '../../../components/Button';
-import { CodeStudioColored, PlusSignInCircle } from '../../../icons';
+import { CodeStudioColored, Magazine, PlusSignInCircle } from '../../../icons';
 import KeyboardChip from '../KeyboardChip';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
 import {
@@ -22,6 +22,7 @@ import ContextFileRow from './ContextFileRow';
 type Props = {
   setLeftPanel: Dispatch<SetStateAction<StudioLeftPanelDataType>>;
   setAddContextOpen: Dispatch<SetStateAction<boolean>>;
+  setAddDocsOpen: Dispatch<SetStateAction<boolean>>;
   studioId: string;
   contextFiles: StudioContextFile[];
   tokensPerFile: (number | null)[];
@@ -62,6 +63,7 @@ const ContextPanel = ({
   onFileAdded,
   isPreviewing,
   isActiveTab,
+  setAddDocsOpen,
 }: Props) => {
   useTranslation();
   const { repositories } = useContext(RepositoriesContext);
@@ -72,12 +74,17 @@ const ContextPanel = ({
         e.preventDefault();
         setAddContextOpen(true);
       }
+      if (e.key === 'd' && (e.ctrlKey || e.metaKey) && !isPreviewing) {
+        e.preventDefault();
+        setAddDocsOpen(true);
+      }
     },
     [isPreviewing],
   );
   useKeyboardNavigation(handleKeyEvent, !isActiveTab);
 
   const handlePopupOpen = useCallback(() => setAddContextOpen(true), []);
+  const handleDocsPopupOpen = useCallback(() => setAddDocsOpen(true), []);
 
   const fileList = useMemo(
     () =>
@@ -122,20 +129,45 @@ const ContextPanel = ({
             <Trans>Context files</Trans>
           </p>
         </div>
-        <Button size="small" onClick={handlePopupOpen} disabled={isPreviewing}>
-          <PlusSignInCircle />
-          <Trans>Add file</Trans>
-          <div className="flex items-center gap-1 flex-shrink-0">
-            <KeyboardChip
-              type="cmd"
-              variant={isPreviewing ? 'secondary' : 'primary'}
-            />
-            <KeyboardChip
-              type="K"
-              variant={isPreviewing ? 'secondary' : 'primary'}
-            />
-          </div>
-        </Button>
+        <div className="flex gap-3">
+          <Button
+            size="small"
+            variant="secondary"
+            onClick={handleDocsPopupOpen}
+            disabled={isPreviewing}
+          >
+            <Magazine />
+            <Trans>Add docs</Trans>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <KeyboardChip
+                type="cmd"
+                variant={isPreviewing ? 'tertiary' : 'secondary'}
+              />
+              <KeyboardChip
+                type="D"
+                variant={isPreviewing ? 'tertiary' : 'secondary'}
+              />
+            </div>
+          </Button>
+          <Button
+            size="small"
+            onClick={handlePopupOpen}
+            disabled={isPreviewing}
+          >
+            <PlusSignInCircle />
+            <Trans>Add file</Trans>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <KeyboardChip
+                type="cmd"
+                variant={isPreviewing ? 'secondary' : 'primary'}
+              />
+              <KeyboardChip
+                type="K"
+                variant={isPreviewing ? 'secondary' : 'primary'}
+              />
+            </div>
+          </Button>
+        </div>
       </div>
       {!contextFiles.length ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-3">

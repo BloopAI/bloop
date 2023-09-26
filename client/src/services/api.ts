@@ -396,3 +396,9 @@ export const refreshToken = (refresh_token: string) =>
   http('/auth/refresh_token', { params: { refresh_token } }).then(
     (r) => r.data,
   );
+
+export const indexDocsUrl = (url: string) =>
+  http('/docs/sync', { params: { url } }).then((r) => r.data);
+export const verifyDocsUrl = (url: string) =>
+  http('/docs/verify', { params: { url } }).then((r) => r.data);
+export const getIndexedDocs = () => http('/docs').then((r) => r.data);

@@ -396,5 +396,9 @@
 	"Token limit reached, this answer may be incomplete. To generate a full answer, please reduce the number of tokens used and regenerate.": "Token limit reached, this answer may be incomplete. To generate a full answer, please reduce the number of tokens used and regenerate.",
 	"<0></0><1></1> to navigate.": "<0></0><1></1> to navigate.",
 	"Below are a few questions you can ask me to get started:": "Below are a few questions you can ask me to get started:",
-	"Check context files for any errors": "Check context files for any errors"
+	"Check context files for any errors": "Check context files for any errors",
+	"Add docs": "Add docs",
+	"Verifying link...": "Verifying link...",
+	"We couldn't find any docs at that link. Try again or make sure the link is correct!": "We couldn't find any docs at that link. Try again or make sure the link is correct!",
+	"Indexing <1>#</1>. This process takes about 1 minute.": "Indexing <1>{{url}}</1>. This process takes about 1 minute."
 }

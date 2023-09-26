@@ -66,6 +66,9 @@ module.exports = {
         "rings-gray": "var(--shadow-rings-gray",
         "rings-blue": "var(--shadow-rings-blue)",
       },
+      dropShadow: {
+        float: "0px 16px 34px rgba(0, 0, 0, 0.75)",
+      },
       spacing: {
         "4.5": "1.125rem",
         "11.5": "2.875rem",
