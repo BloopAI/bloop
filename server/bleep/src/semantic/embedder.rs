@@ -191,6 +191,7 @@ impl Embedder for GgmlEmbedder {
             all_logits: None,
             embeddings: Some(Vec::new()),
         };
+        dbg!("embed");
         let vocab = self.model.tokenizer();
         let beginning_of_sentence = true;
         let query_token_ids = vocab
@@ -214,6 +215,7 @@ impl Embedder for GgmlEmbedder {
             all_logits: None,
             embeddings: Some(Vec::new()),
         };
+        dbg!("batch_embed");
         let vocab = self.model.tokenizer();
         let beginning_of_sentence = true;
         let query_token_ids = log.iter().map( |&sequence| vocab
@@ -222,11 +224,12 @@ impl Embedder for GgmlEmbedder {
             .iter()
             .map(|(_, tok)| *tok)
             .collect::<Vec<_>>()).collect::<Vec<_>>();
-        let query_token_ids: Vec<_> = query_token_ids.iter().map(AsRef::as_ref).collect()
+        let query_token_ids: Vec<_> = query_token_ids.iter().map(AsRef::as_ref).collect();
         let mut session = self.session.lock().unwrap();
         self.model
             .batch_evaluate(&mut session, &query_token_ids, &mut output_request);
-        let embedding = output_request.embeddings.unwrap().chunks(384).map(|chunk| chunk.to_vec()).collect(); 
+        let embedding: Vec<Vec<f32>> = output_request.embeddings.unwrap().chunks(384).map(|chunk| chunk.to_vec()).collect(); 
+        dbg!("{}", embedding.clone());
         Ok(embedding)
     }
 }
