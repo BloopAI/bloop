@@ -188,6 +188,9 @@ name = "anyhow"
 version = "1.0.75"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a4668cab20f66d8d020e1fbc0ebe47217433c1b6c8f2040faf858554e394ace6"
+dependencies = [
+ "backtrace",
+]
 
 [[package]]
 name = "arc-swap"
@@ -600,6 +603,7 @@ dependencies = [
  "once_cell",
  "qdrant-client",
  "sentry 0.27.0",
+ "sentry-anyhow",
  "serde",
  "serde_json",
  "tauri",
@@ -5969,6 +5973,17 @@ dependencies = [
  "tokio",
  "ureq",
  "webpki-roots 0.25.2",
+]
+
+[[package]]
+name = "sentry-anyhow"
+version = "0.31.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c4fd76cd5c14676228996a31aa214adb049920b103bbc5b5a4114d05323995c5"
+dependencies = [
+ "anyhow",
+ "sentry-backtrace 0.31.7",
+ "sentry-core 0.31.7",
 ]
 
 [[package]]
