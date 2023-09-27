@@ -406,5 +406,6 @@
 	"Add docs": "添加文档",
 	"We couldn't find any docs at that link. Try again or make sure the link is correct!": "我们找不到该链接的任何文档。 重试或确保链接正确！",
 	"Indexing <1>#</1>. This process takes about 1 minute.": "索引<1>{{url}}</1>。 这个过程大约需要1分钟。",
-	"Verifying link...": "验证链接..."
+	"Verifying link...": "验证链接...",
+	"Only the selected sections will be used as context.": "仅选定的部分将用作上下文。"
 }

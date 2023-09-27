@@ -19,12 +19,13 @@ import {
 import Button from '../../../components/Button';
 import LiteLoaderContainer from '../../../components/Loaders/LiteLoader';
 import { WarningSign } from '../../../icons';
+import { DocShortType } from '../../../types/api';
 import IndexedDocRow from './IndexedDocRow';
 
 type Props = {
   isVisible: boolean;
   onClose: () => void;
-  onSubmit: () => void;
+  onSubmit: (id: string, name: string, url: string) => void;
 };
 
 const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
@@ -33,7 +34,7 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
   const [isVerifying, setVerifying] = useState(false);
   const [verifyError, setVerifyError] = useState(false);
   const [docsUrl, setDocsUrl] = useState('');
-  const [indexedDocs, setIndexedDocs] = useState([]);
+  const [indexedDocs, setIndexedDocs] = useState<DocShortType[]>([]);
   const containerRef = useArrowKeyNavigation();
 
   const handleKeyEvent = useCallback((e: KeyboardEvent) => {
@@ -46,7 +47,6 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
 
   const refreshIndexedDocs = useCallback(() => {
     getIndexedDocs().then((resp) => {
-      console.log(resp);
       setIndexedDocs(resp);
     });
   }, []);
@@ -61,7 +61,7 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
     setDocsUrl(e.target.value);
   }, []);
 
-  const handleDocSubmit = useCallback(
+  const handleUrlSubmit = useCallback(
     (e: FormEvent) => {
       e.preventDefault();
       setVerifying(true);
@@ -81,7 +81,15 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
           setVerifyError(true);
         });
     },
-    [onClose, onSubmit, docsUrl, refreshIndexedDocs],
+    [docsUrl, refreshIndexedDocs],
+  );
+
+  const handleDocSubmit = useCallback(
+    (id: string, name: string, url: string) => {
+      onSubmit(id, name, url);
+      onClose();
+    },
+    [onClose, onSubmit],
   );
 
   return (
@@ -129,7 +137,7 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
         className="flex flex-col w-[38.75rem] relative flex-1 bg-bg-shade rounded-md border border-bg-border overflow-auto "
       >
         <form
-          onSubmit={handleDocSubmit}
+          onSubmit={handleUrlSubmit}
           className="flex gap-3 items-center w-full border-b border-bg-border-hover h-13 px-4"
         >
           <input
@@ -165,7 +173,9 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
         </form>
         <div className="flex max-h-72 overflow-auto px-1 py-3 flex-col items-start gap-1">
           {indexedDocs.map((d) => {
-            return <IndexedDocRow key={d.id} doc={d} onSubmit={() => {}} />;
+            return (
+              <IndexedDocRow key={d.id} doc={d} onSubmit={handleDocSubmit} />
+            );
           })}
         </div>
         <div className="flex justify-between items-center gap-1 py-3 px-4 border-t border-bg-border bg-bg-base">

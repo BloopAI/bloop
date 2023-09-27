@@ -398,5 +398,6 @@
 	"Add docs": "ドキュメントを追加します",
 	"We couldn't find any docs at that link. Try again or make sure the link is correct!": "そのリンクにドキュメントが見つかりませんでした。 もう一度やり直すか、リンクが正しいことを確認してください！",
 	"Indexing <1>#</1>. This process takes about 1 minute.": "インデックス作成<1>{{url}}</1>。 このプロセスには約1分かかります。",
-	"Verifying link...": "リンクの検証..."
+	"Verifying link...": "リンクの検証...",
+	"Only the selected sections will be used as context.": "選択したセクションのみがコンテキストとして使用されます。"
 }

@@ -15,7 +15,6 @@ import {
   StudioContextFile,
   StudioLeftPanelDataType,
   StudioLeftPanelType,
-  StudioRightPanelType,
   StudioTabType,
 } from '../../types/general';
 import { patchCodeStudio } from '../../services/api';
@@ -32,6 +31,7 @@ import AddContextModal from './AddContextModal';
 import RightPanel from './RightPanel';
 import FilePanel from './FilePanel';
 import AddDocsModal from './AddDocsModal';
+import DocPanel from './DocPanel';
 
 type Props = {
   tab: StudioTabType;
@@ -105,12 +105,19 @@ const ContentContainer = ({
   const onFileSelected = useCallback(
     (repo: RepoType, branch: string | null, filePath: string) => {
       setLeftPanel({
-        type: StudioRightPanelType.FILE,
+        type: StudioLeftPanelType.FILE,
         data: { repo, branch, filePath, isFileInContext: false },
       });
     },
     [],
   );
+
+  const onDocSelected = useCallback((id: string, name: string, url: string) => {
+    setLeftPanel({
+      type: StudioLeftPanelType.DOCS,
+      data: { id, name, url, isDocInContext: false },
+    });
+  }, []);
 
   const onFileRangesChanged = useCallback(
     (
@@ -146,6 +153,10 @@ const ContentContainer = ({
     },
     [tab.key, currentContext],
   );
+
+  const onSectionsChanged = useCallback(() => {
+    console.log('onSectionsChanged');
+  }, [tab.key, currentState.context]);
 
   const onFileHide = useCallback(
     (
@@ -301,13 +312,20 @@ const ContentContainer = ({
                 />
               ) : leftPanel.type === StudioLeftPanelType.TEMPLATES ? (
                 <TemplatesPanel setLeftPanel={setLeftPanel} />
-              ) : leftPanel.type === StudioRightPanelType.FILE ? (
+              ) : leftPanel.type === StudioLeftPanelType.FILE ? (
                 <FilePanel
                   {...leftPanel.data}
                   setLeftPanel={setLeftPanel}
                   onFileRangesChanged={onFileRangesChanged}
                   isActiveTab={isActive}
                   setIsChangeUnsaved={setIsChangeUnsaved}
+                />
+              ) : leftPanel.type === StudioLeftPanelType.DOCS ? (
+                <DocPanel
+                  {...leftPanel.data}
+                  setLeftPanel={setLeftPanel}
+                  isActiveTab={isActive}
+                  onSectionsChanged={onSectionsChanged}
                 />
               ) : null}
               <AddContextModal
@@ -319,7 +337,7 @@ const ContentContainer = ({
               <AddDocsModal
                 isVisible={isAddDocsOpen}
                 onClose={handleAddDocsClose}
-                onSubmit={() => {}}
+                onSubmit={onDocSelected}
               />
             </div>
             <div

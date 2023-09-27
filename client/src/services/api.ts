@@ -3,6 +3,8 @@ import {
   AllConversationsResponse,
   CodeStudioType,
   ConversationType,
+  DocSection,
+  DocShortType,
   FileResponse,
   HistoryConversationTurn,
   HoverablesResponse,
@@ -401,4 +403,12 @@ export const indexDocsUrl = (url: string) =>
   http('/docs/sync', { params: { url } }).then((r) => r.data);
 export const verifyDocsUrl = (url: string) =>
   http('/docs/verify', { params: { url } }).then((r) => r.data);
-export const getIndexedDocs = () => http('/docs').then((r) => r.data);
+export const getIndexedDocs = (): Promise<DocShortType[]> =>
+  http('/docs').then((r) => r.data);
+export const getDocSections = (
+  id: string,
+  url: string,
+): Promise<DocSection[]> =>
+  http(`/docs/${id}/fetch`, {
+    params: { relative_url: '?activeTab=dependents' },
+  }).then((r) => r.data);
