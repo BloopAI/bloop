@@ -140,6 +140,7 @@ export interface File {
   size: number;
   loc: number;
   sloc: number;
+  indexed: boolean;
 }
 
 export interface FileResponse {

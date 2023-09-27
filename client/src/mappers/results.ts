@@ -153,6 +153,7 @@ export const mapFileResult = (fileItem: FileItem) => {
     repoName: fileItem.data.repo_name,
     size: fileItem.data.size,
     loc: fileItem.data.sloc,
+    indexed: fileItem.data.indexed,
   };
 };
 

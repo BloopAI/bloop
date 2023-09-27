@@ -272,7 +272,7 @@ const ResultFull = ({
                 </div>
               ) : result.language === 'jupyter notebook' ? (
                 <IpynbRenderer data={result.code} />
-              ) : data?.data?.[0]?.data?.indexed ? (
+              ) : result?.indexed ? (
                 <CodeFull
                   code={result.code}
                   language={result.language}
