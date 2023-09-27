@@ -6,9 +6,10 @@ import { CheckIcon, Clipboard, CopyMD } from '../../icons';
 type Props = {
   isInHeader?: boolean;
   code: string;
+  className?: string;
 };
 
-const CopyButton = ({ isInHeader, code }: Props) => {
+const CopyButton = ({ isInHeader, code, className }: Props) => {
   const [codeCopied, setCodeCopied] = useState(false);
 
   const onClick = useCallback(() => {
@@ -25,7 +26,7 @@ const CopyButton = ({ isInHeader, code }: Props) => {
           : code.split('\n').length > 1
           ? 'absolute top-4 right-4 opacity-0 group-code-hover:opacity-100 transition-opacity'
           : 'absolute top-2.5 right-2.5 opacity-0 group-code-hover:opacity-100 transition-opacity'
-      } `}
+      } ${className}`}
     >
       <Button
         variant="secondary"
