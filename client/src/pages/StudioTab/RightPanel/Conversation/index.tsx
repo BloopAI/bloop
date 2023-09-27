@@ -38,6 +38,7 @@ type Props = {
   isTokenLimitExceeded: boolean;
   isPreviewing: boolean;
   isActiveTab: boolean;
+  isChangeUnsaved: boolean;
   handleRestore: () => void;
 };
 
@@ -70,6 +71,7 @@ const Conversation = ({
   handleRestore,
   isActiveTab,
   refetchCodeStudio,
+  isChangeUnsaved,
 }: Props) => {
   const { t } = useTranslation();
   const { inputValue } = useContext(StudioContext.Input);
@@ -339,7 +341,12 @@ const Conversation = ({
         if (isPreviewing) {
           handleRestore();
         } else {
-          if (inputValue && !isTokenLimitExceeded && requestsLeft) {
+          if (
+            inputValue &&
+            !isTokenLimitExceeded &&
+            requestsLeft &&
+            !isChangeUnsaved
+          ) {
             onSubmit();
           } else if (!requestsLeft) {
             setUpgradePopupOpen(true);
@@ -352,7 +359,7 @@ const Conversation = ({
         handleCancel();
       }
     },
-    [onSubmit, isLoading, setLeftPanel, isPreviewing],
+    [onSubmit, isLoading, setLeftPanel, isPreviewing, isChangeUnsaved],
   );
   useKeyboardNavigation(handleKeyEvent, !isActiveTab);
 
@@ -434,7 +441,16 @@ const Conversation = ({
               ) : (
                 <Button
                   size="small"
-                  disabled={!inputValue || isTokenLimitExceeded}
+                  disabled={
+                    !inputValue || isTokenLimitExceeded || isChangeUnsaved
+                  }
+                  title={
+                    isChangeUnsaved
+                      ? t('Save context changes before answer generation')
+                      : isTokenLimitExceeded
+                      ? t('Token limit exceeded')
+                      : undefined
+                  }
                   onClick={onSubmit}
                 >
                   <Trans>Generate</Trans>
@@ -442,7 +458,7 @@ const Conversation = ({
                     <KeyboardChip
                       type="cmd"
                       variant={
-                        !inputValue || isTokenLimitExceeded
+                        !inputValue || isTokenLimitExceeded || isChangeUnsaved
                           ? 'secondary'
                           : 'primary'
                       }
@@ -450,7 +466,7 @@ const Conversation = ({
                     <KeyboardChip
                       type="entr"
                       variant={
-                        !inputValue || isTokenLimitExceeded
+                        !inputValue || isTokenLimitExceeded || isChangeUnsaved
                           ? 'secondary'
                           : 'primary'
                       }

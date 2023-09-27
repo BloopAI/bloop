@@ -23,6 +23,7 @@ export interface RepositoryFile {
   // children: RepositoryFile[];
   // commit: Commit;
   lang?: string;
+  indexed: boolean;
 }
 
 export interface RepositoryBranch {

@@ -1,38 +1,15 @@
-use crate::repo::RepoRef;
+use crate::{background, repo::RepoRef};
 
-use super::*;
+use super::{filters::BranchFilter, *};
 
 use anyhow::Result;
 use gix::ThreadSafeRepository;
-use regex::RegexSet;
 use tracing::{error, trace};
 
 use std::{
     collections::{BTreeSet, HashMap},
     path::Path,
 };
-
-pub enum BranchFilter {
-    All,
-    Head,
-    Select(RegexSet),
-}
-
-impl BranchFilter {
-    fn filter(&self, is_head: bool, branch: &str) -> bool {
-        match self {
-            BranchFilter::All => true,
-            BranchFilter::Select(patterns) => is_head || patterns.is_match(branch),
-            BranchFilter::Head => is_head,
-        }
-    }
-}
-
-impl Default for BranchFilter {
-    fn default() -> Self {
-        Self::Head
-    }
-}
 
 fn human_readable_branch_name(r: &gix::Reference<'_>) -> String {
     use gix::bstr::ByteSlice;
@@ -48,10 +25,11 @@ impl GitWalker {
     pub fn open_repository(
         reporef: &RepoRef,
         dir: impl AsRef<Path>,
-        filter: impl Into<Option<BranchFilter>>,
+        branch_filter: impl Into<Option<BranchFilter>>,
     ) -> Result<Self> {
         let root_dir = dir.as_ref();
-        let branches = filter.into().unwrap_or_default();
+
+        let branches = branch_filter.into().unwrap_or_default();
         let git = gix::open::Options::isolated()
             .filter_config_section(|_| false)
             .open(dir.as_ref())?;
@@ -133,20 +111,18 @@ impl GitWalker {
             .flat_map(|(is_head, branch, tree)| {
                 let files = tree.traverse().breadthfirst.files().unwrap().into_iter();
 
-                files
-                    .map(move |entry| {
-                        let strpath = String::from_utf8_lossy(entry.filepath.as_ref());
-                        let full_path = root_dir.join(strpath.as_ref());
-                        trace!(?strpath, ?full_path, "got path from gix");
-                        (
-                            is_head,
-                            branch.clone(),
-                            full_path.to_string_lossy().to_string(),
-                            entry.mode,
-                            entry.oid,
-                        )
-                    })
-                    .filter(|(_, _, path, _, _)| should_index(path))
+                files.map(move |entry| {
+                    let strpath = String::from_utf8_lossy(entry.filepath.as_ref());
+                    let full_path = root_dir.join(strpath.as_ref());
+                    trace!(?strpath, ?full_path, "got path from gix");
+                    (
+                        is_head,
+                        branch.clone(),
+                        full_path.to_string_lossy().to_string(),
+                        entry.mode,
+                        entry.oid,
+                    )
+                })
             })
             .fold(
                 HashMap::new(),
@@ -180,39 +156,41 @@ impl FileSource for GitWalker {
 
     fn for_each(self, pipes: &SyncPipes, iterator: impl Fn(RepoDirEntry) + Sync + Send) {
         use rayon::prelude::*;
-        self.entries
-            .into_par_iter()
-            .filter_map(|((path, kind, oid), branches)| {
-                trace!(?path, "walking over path");
-                let git = self.git.to_thread_local();
-                let Ok(Some(object)) = git.try_find_object(oid) else {
-                    error!(?path, ?branches, "can't find object for file");
-                    return None;
-                };
+        background::rayon_pool().install(|| {
+            self.entries
+                .into_par_iter()
+                .filter_map(|((path, kind, oid), branches)| {
+                    trace!(?path, "walking over path");
+                    let git = self.git.to_thread_local();
+                    let Ok(Some(object)) = git.try_find_object(oid) else {
+                        error!(?path, ?branches, "can't find object for file");
+                        return None;
+                    };
 
-                if object.data.len() as u64 > MAX_FILE_LEN {
-                    return None;
-                }
+                    if object.data.len() as u64 > MAX_FILE_LEN {
+                        return None;
+                    }
 
-                let entry = match kind {
-                    FileType::File => {
-                        let buffer = String::from_utf8_lossy(&object.data).to_string();
-                        RepoDirEntry::File(RepoFile {
+                    let entry = match kind {
+                        FileType::File => {
+                            let buffer = String::from_utf8_lossy(&object.data).to_string();
+                            RepoDirEntry::File(RepoFile {
+                                path,
+                                branches: branches.into_iter().collect(),
+                                buffer,
+                            })
+                        }
+                        FileType::Dir => RepoDirEntry::Dir(RepoDir {
                             path,
                             branches: branches.into_iter().collect(),
-                            buffer,
-                        })
-                    }
-                    FileType::Dir => RepoDirEntry::Dir(RepoDir {
-                        path,
-                        branches: branches.into_iter().collect(),
-                    }),
-                    FileType::Other => return None,
-                };
+                        }),
+                        FileType::Other => return None,
+                    };
 
-                Some(entry)
-            })
-            .take_any_while(|_| !pipes.is_cancelled())
-            .for_each(iterator)
+                    Some(entry)
+                })
+                .take_any_while(|_| !pipes.is_cancelled())
+                .for_each(iterator)
+        })
     }
 }

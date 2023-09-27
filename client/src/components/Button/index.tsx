@@ -32,6 +32,7 @@ type OnlyIconProps = {
 type TextBtnProps = {
   onlyIcon?: false;
   tooltipPlacement?: never;
+  title?: string;
 };
 
 const variantStylesMap = {
@@ -105,7 +106,7 @@ const Button = forwardRef<
         } transition-all duration-300 ease-in-bounce select-none`,
       [variant, className, size, onlyIcon],
     );
-    return onlyIcon && !rest.disabled ? (
+    return (onlyIcon && !rest.disabled) || title ? (
       <Tooltip text={title} placement={tooltipPlacement}>
         <button {...rest} type={type} ref={ref} className={buttonClassName}>
           {children}

@@ -167,7 +167,18 @@ const ContentContainer = ({ tab }: { tab: RepoTabType }) => {
         );
       case 'repo':
         return (
-          <RepositoryPage repositoryData={data as DirectorySearchResponse} />
+          <RepositoryPage
+            repositoryData={data as DirectorySearchResponse}
+            refetchRepo={() =>
+              searchQuery(
+                buildRepoQuery(
+                  navigatedItem?.repo,
+                  navigatedItem?.path,
+                  selectedBranch,
+                ),
+              )
+            }
+          />
         );
       case 'full-result':
         return (
@@ -178,6 +189,16 @@ const ContentContainer = ({ tab }: { tab: RepoTabType }) => {
             selectedBranch={selectedBranch}
             recordId={navigatedItem?.recordId!}
             threadId={navigatedItem?.threadId!}
+            path={navigatedItem?.path}
+            refetchFile={() =>
+              searchQuery(
+                buildRepoQuery(
+                  navigatedItem?.repo,
+                  navigatedItem?.path,
+                  selectedBranch,
+                ),
+              )
+            }
           />
         );
       default:
@@ -189,6 +210,8 @@ const ContentContainer = ({ tab }: { tab: RepoTabType }) => {
     navigatedItem,
     query,
     navigatedItem?.threadId,
+    navigatedItem?.repo,
+    navigatedItem?.path,
     renderPage,
     tab.repoName,
     selectedBranch,

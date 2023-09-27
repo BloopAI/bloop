@@ -1,16 +1,24 @@
 import Code from '../CodeBlock/Code';
 import { getFileExtensionForLang, getPrettyLangName } from '../../utils';
 import FileIcon from '../FileIcon';
+import BreadcrumbsPath from '../BreadcrumbsPath';
 import CopyButton from './CopyButton';
 
 type Props = {
   code: string;
   language: string;
+  filePath: string;
   isSummary?: boolean;
   isCodeStudio?: boolean;
 };
 
-const NewCode = ({ code, language, isSummary, isCodeStudio }: Props) => {
+const NewCode = ({
+  code,
+  language,
+  isSummary,
+  isCodeStudio,
+  filePath,
+}: Props) => {
   return (
     <div
       className={`${
@@ -28,16 +36,20 @@ const NewCode = ({ code, language, isSummary, isCodeStudio }: Props) => {
             : 'bg-chat-bg-shade border-chat-bg-divider'
         } border-b rounded-t-md p-2 flex items-center justify-between gap-2`}
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 overflow-hidden flex-1">
           <FileIcon
-            filename={getFileExtensionForLang(language, true)}
+            filename={filePath || getFileExtensionForLang(language, true)}
             noMargin
           />
-          {getPrettyLangName(language)}
+          {filePath ? (
+            <BreadcrumbsPath path={filePath} repo={''} nonInteractive />
+          ) : (
+            getPrettyLangName(language)
+          )}
         </div>
         <CopyButton isInHeader code={code} />
       </div>
-      <div className={`overflow-auto p-2`}>
+      <div className={`overflow-auto ${isCodeStudio ? 'p-2' : ''}`}>
         <Code showLines={false} code={code} language={language} canWrap />
       </div>
     </div>

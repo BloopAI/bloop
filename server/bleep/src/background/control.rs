@@ -1,6 +1,6 @@
 use std::sync::RwLock;
 
-use crate::repo::{RepoRef, SyncStatus};
+use crate::repo::{FilterUpdate, RepoRef, SyncStatus};
 
 use super::{Progress, ProgressEvent};
 
@@ -16,19 +16,19 @@ pub struct SyncPipes {
     reporef: RepoRef,
     progress: super::ProgressStream,
     event: RwLock<Option<ControlEvent>>,
-    new_branch_filters: Option<crate::repo::BranchFilter>,
+    filter_updates: FilterUpdate,
 }
 
 impl SyncPipes {
     pub(super) fn new(
         reporef: RepoRef,
-        new_branch_filters: Option<crate::repo::BranchFilter>,
+        filter_updates: FilterUpdate,
         progress: super::ProgressStream,
     ) -> Self {
         Self {
             reporef,
             progress,
-            new_branch_filters,
+            filter_updates,
             event: Default::default(),
         }
     }
@@ -36,7 +36,7 @@ impl SyncPipes {
     pub(crate) fn index_percent(&self, current: u8) {
         _ = self.progress.send(Progress {
             reporef: self.reporef.clone(),
-            branch_filter: self.new_branch_filters.clone(),
+            branch_filter: self.filter_updates.branch_filter.clone(),
             event: ProgressEvent::IndexPercent(current),
         });
     }
@@ -44,7 +44,7 @@ impl SyncPipes {
     pub(crate) fn status(&self, new: SyncStatus) {
         _ = self.progress.send(Progress {
             reporef: self.reporef.clone(),
-            branch_filter: self.new_branch_filters.clone(),
+            branch_filter: self.filter_updates.branch_filter.clone(),
             event: ProgressEvent::StatusChange(new),
         });
     }

@@ -4,6 +4,7 @@ import DirEntry from '../IdeNavigation/DirEntry';
 import { search } from '../../services/api';
 import { buildRepoQuery } from '../../utils';
 import { Directory } from '../../types/api';
+import { SyncStatus } from '../../types/general';
 import { AppNavigationContext } from '../../context/appNavigationContext';
 
 type Props = {
@@ -67,6 +68,10 @@ const FolderChip = ({ onClick, path, repoName, selectedBranch }: Props) => {
           fullPath={path}
           navigateToPath={navigateToPath}
           defaultOpen
+          indexed
+          repoRef={''}
+          repoStatus={SyncStatus.Done}
+          refetchParentFolder={() => {}}
         />
       </div>
     </>
