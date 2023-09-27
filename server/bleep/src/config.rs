@@ -8,6 +8,7 @@ use std::{
     num::NonZeroUsize,
     path::{Path, PathBuf},
 };
+use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Parser, Debug, Clone)]
 #[clap(author, version, about, long_about = None)]
@@ -146,10 +147,10 @@ pub struct Configuration {
     pub cognito_client_id: Option<String>,
 
     /// Entry point to the Cognito authentication flow
-    pub cognito_auth_url: Option<String>,
+    pub cognito_auth_url: Option<reqwest::Url>,
 
     /// Auth management base URL
-    pub cognito_mgmt_url: Option<String>,
+    pub cognito_mgmt_url: Option<reqwest::Url>,
 
     //
     // Installation-specific values
@@ -164,17 +165,13 @@ pub struct Configuration {
     #[serde(serialize_with = "serialize_secret_opt_str", default)]
     pub github_client_secret: Option<SecretString>,
 
+    /// Instance-specific shared secret between bloop c&c & instance
     #[clap(long)]
-    /// GitHub App ID
-    pub github_app_id: Option<u64>,
+    pub bloop_instance_secret: Option<Uuid>,
 
+    /// Instance-specific shared secret between bloop c&c & instance
     #[clap(long)]
-    /// GitHub App installation ID
-    pub github_app_install_id: Option<u64>,
-
-    #[clap(long)]
-    /// Path to a GitHub private key file, for signing access token requests
-    pub github_app_private_key: Option<PathBuf>,
+    pub bloop_instance_org: Option<Uuid>,
 
     #[clap(long)]
     #[serde(serialize_with = "serialize_secret_opt_str", default)]
@@ -322,11 +319,9 @@ impl Configuration {
 
             github_client_secret: b.github_client_secret.or(a.github_client_secret),
 
-            github_app_id: b.github_app_id.or(a.github_app_id),
+            bloop_instance_secret: b.bloop_instance_secret.or(a.bloop_instance_secret),
 
-            github_app_install_id: b.github_app_install_id.or(a.github_app_install_id),
-
-            github_app_private_key: b.github_app_private_key.or(a.github_app_private_key),
+            bloop_instance_org: b.bloop_instance_org.or(a.bloop_instance_org),
 
             instance_domain: b.instance_domain.or(a.instance_domain),
 

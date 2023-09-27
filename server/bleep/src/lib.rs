@@ -161,7 +161,7 @@ impl Application {
         let indexes = Indexes::new(&config).await?.into();
 
         // Enforce capabilies and features depending on environment
-        let env = if config.github_app_id.is_some() {
+        let env = if config.bloop_instance_secret.is_some() {
             info!("Starting bleep in private server mode");
             Environment::private_server()
         } else {

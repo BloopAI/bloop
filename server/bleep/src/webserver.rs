@@ -126,7 +126,7 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
     // Note: all routes above this point must be authenticated.
     // These middlewares MUST provide the `middleware::User` extension.
     if app.env.allow(Feature::AuthorizationRequired) {
-        api = aaa::router(middleware::sentry_layer(api), app.clone());
+        api = aaa::router(middleware::sentry_layer(api), app.clone()).await;
     } else {
         api = middleware::local_user(middleware::sentry_layer(api), app.clone());
     }

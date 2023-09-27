@@ -500,6 +500,7 @@ dependencies = [
  "async-trait",
  "axum",
  "axum-extra",
+ "base64 0.21.4",
  "bincode",
  "blake3",
  "chrono",
@@ -518,11 +519,13 @@ dependencies = [
  "fuzzy-matcher",
  "git-version",
  "gix",
+ "hex",
  "histogram",
  "hyperpolyglot",
  "ignore",
  "jsonwebtoken",
  "jsonwebtokens-cognito",
+ "jwt-authorizer",
  "lazy-regex",
  "ndarray",
  "notify-debouncer-mini",
@@ -545,6 +548,7 @@ dependencies = [
  "relative-path",
  "reqwest",
  "reqwest-eventsource",
+ "ring",
  "rudderanalytics",
  "scc",
  "secrecy",
@@ -3862,6 +3866,31 @@ checksum = "2735847566356cd2179a2a38264839308f7079fa96e6bd5a42d740460e003c56"
 dependencies = [
  "crossbeam",
  "rayon",
+]
+
+[[package]]
+name = "jwt-authorizer"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bf83a0849ccb18d1aad2ffcd99397a3ef1ae0a7f95e37a63ef12c4744f25cfa0"
+dependencies = [
+ "axum",
+ "futures-core",
+ "futures-util",
+ "headers",
+ "http",
+ "jsonwebtoken",
+ "pin-project",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tower-http",
+ "tower-layer",
+ "tower-service",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -7395,6 +7424,7 @@ dependencies = [
  "libc",
  "mio",
  "num_cpus",
+ "parking_lot 0.12.1",
  "pin-project-lite",
  "signal-hook-registry",
  "socket2 0.5.4",

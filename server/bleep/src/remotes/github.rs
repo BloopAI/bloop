@@ -1,12 +1,13 @@
+use base64::Engine;
 use chrono::{DateTime, Utc};
-use jsonwebtoken::EncodingKey;
 use octocrab::{
     models::{Installation, InstallationToken},
     Octocrab,
 };
-
+use rand::RngCore;
 use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 
 use crate::repo::{GitRemote, RepoRemote, Repository};
 
@@ -229,40 +230,10 @@ impl Auth {
 }
 
 pub(crate) async fn refresh_github_installation_token(app: &Application) -> Result<()> {
-    let privkey = std::fs::read(
-        app.config
-            .github_app_private_key
-            .as_ref()
-            .ok_or(RemoteError::Configuration("github_app_private_key"))?,
-    )?;
+    todo!()
 
-    let install_id = app
-        .config
-        .github_app_install_id
-        .ok_or(RemoteError::Configuration("github_app_install_id"))?;
+    // let auth = remotes::github::Auth::from_installation(installation, install_id, octocrab).await?;
 
-    let octocrab = Octocrab::builder()
-        .app(
-            app.config
-                .github_app_id
-                .ok_or(RemoteError::Configuration("github_app_id"))?
-                .into(),
-            EncodingKey::from_rsa_pem(&privkey)?,
-        )
-        .build()?;
-
-    let installation: Installation = octocrab
-        .get(format!("/app/installations/{install_id}"), None::<&()>)
-        .await?;
-
-    if !matches!(installation.target_type.as_deref(), Some("Organization")) {
-        return Err(RemoteError::NotSupported(
-            "installation target must be an organization",
-        ));
-    };
-
-    let auth = remotes::github::Auth::from_installation(installation, install_id, octocrab).await?;
-
-    app.credentials.set_github(State::with_auth(auth));
-    Ok(())
+    // app.credentials.set_github(State::with_auth(auth));
+    // Ok(())
 }

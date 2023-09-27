@@ -33,40 +33,34 @@ pub(super) async fn login(Extension(app): Extension<Application>) -> impl IntoRe
 
     tokio::spawn(poll_for_oauth_token(state.clone(), app.clone()));
 
-    let url_base = app
+    let mut url_base = app
         .config
         .cognito_auth_url
-        .as_ref()
+        .clone()
         .expect("auth not configured");
     let client_id = app
         .config
         .cognito_client_id
         .as_ref()
         .expect("auth not configured");
-    let redirect_url = reqwest::Url::parse(
-        app.config
-            .cognito_mgmt_url
-            .as_ref()
-            .expect("auth not configured"),
-    )
-    .unwrap()
-    .join("complete")
-    .unwrap()
-    .to_string();
+    let redirect_url = app
+        .config
+        .cognito_mgmt_url
+        .as_ref()
+        .expect("auth not configured")
+        .join("complete")
+        .unwrap()
+        .to_string();
 
-    let url = reqwest::Url::parse_with_params(
-        url_base,
-        &[
-            ("response_type", "code"),
-            ("scope", "email openid profile"),
-            ("redirect_url", &redirect_url),
-            ("client_id", client_id),
-            ("state", &state),
-        ],
-    )
-    .unwrap()
-    .to_string();
+    url_base.query_pairs_mut().extend_pairs(&[
+        ("response_type", "code"),
+        ("scope", "email openid profile"),
+        ("redirect_url", &redirect_url),
+        ("client_id", client_id),
+        ("state", &state),
+    ]);
 
+    let url = url_base.to_string();
     json(GithubResponse::AuthenticationNeeded { url })
 }
 
@@ -99,10 +93,7 @@ pub(super) async fn logout(
             .as_ref()
             .expect("auth not configured");
 
-        let url = reqwest::Url::parse(url_base)
-            .unwrap()
-            .join("revoke")
-            .unwrap();
+        let url = url_base.join("revoke").unwrap();
 
         reqwest::Client::new()
             .post(url)
@@ -129,15 +120,13 @@ async fn poll_for_oauth_token(code: String, app: Application) {
     let start = Instant::now();
 
     let query_url = {
-        let mut url = reqwest::Url::parse(
-            app.config
-                .cognito_mgmt_url
-                .as_ref()
-                .expect("auth not configured"),
-        )
-        .unwrap()
-        .join("access_token")
-        .unwrap();
+        let mut url = app
+            .config
+            .cognito_mgmt_url
+            .as_ref()
+            .expect("auth not configured")
+            .join("access_token")
+            .unwrap();
 
         url.set_query(Some(&format!("state={code}")));
         url.to_string()

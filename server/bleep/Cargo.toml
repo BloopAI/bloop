@@ -135,6 +135,10 @@ comrak = { default-features = false, git = "https://github.com/rsdy/comrak" }
 lazy-regex = "3.0.2"
 quick-xml = { version = "0.29.0", features = ["serialize"] }
 jsonwebtokens-cognito = "0.1.1"
+ring = "0.16.20"
+hex = "0.4.3"
+base64 = "0.21.4"
+jwt-authorizer = { version = "0.11.0", default-features = false, features = ["rustls-tls-webpki-roots"] }
 
 [dev-dependencies]
 criterion = { version = "0.5.1", features = ["async_tokio"] }
