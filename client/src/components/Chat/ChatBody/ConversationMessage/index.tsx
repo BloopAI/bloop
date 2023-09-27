@@ -113,7 +113,7 @@ const ConversationMessage = ({
           ))}
         </div>
       )}
-      {author === ChatMessageAuthor.Server && (
+      {author === ChatMessageAuthor.Server && !error && (
         <div className="flex gap-2 px-4 items-center">
           {!isLoading ? (
             <div className="text-bg-success-hover h-5">
@@ -126,15 +126,19 @@ const ConversationMessage = ({
           )}
           <div className="caption text-label-base flex-1 flex gap-2 items-center">
             <p>{isLoading ? t('Generating response...') : t('Answer Ready')}</p>
-            <Button
-              size="tiny"
-              variant={isLoadingStepsShown ? 'tertiary-active' : 'tertiary'}
-              onlyIcon
-              title={t(`${isLoadingStepsShown ? 'Hide' : 'Show'} search steps`)}
-              onClick={() => setLoadingStepsShown((prev) => !prev)}
-            >
-              <List />
-            </Button>
+            {!!loadingSteps?.length && (
+              <Button
+                size="tiny"
+                variant={isLoadingStepsShown ? 'tertiary-active' : 'tertiary'}
+                onlyIcon
+                title={t(
+                  `${isLoadingStepsShown ? 'Hide' : 'Show'} search steps`,
+                )}
+                onClick={() => setLoadingStepsShown((prev) => !prev)}
+              >
+                <List />
+              </Button>
+            )}
           </div>
           {!isLoading && !!responseTimestamp && (
             <div className="justify-self-end caption text-label-muted">
@@ -212,7 +216,7 @@ const ConversationMessage = ({
           />
         </>
       ) : error ? (
-        <div className="flex items-start gap-3 text-bg-danger p-4 mt-3 rounded-lg bg-[linear-gradient(90deg,rgba(251,113,133,0.08)_0%,rgba(231,139,152,0.08)_33.18%,rgba(191,191,191,0.08)_100%)]">
+        <div className="flex items-start gap-3 text-bg-danger p-4 rounded-lg bg-[linear-gradient(90deg,rgba(251,113,133,0.08)_0%,rgba(231,139,152,0.08)_33.18%,rgba(191,191,191,0.08)_100%)]">
           <WrenchAndScrewdriver />
           <div className="flex flex-col gap-1">
             <p className="body-s text-label-title">

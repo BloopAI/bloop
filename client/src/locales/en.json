@@ -380,5 +380,6 @@
 	"GPT-3.5 based, no code blocks, includes code links": "GPT-3.5 based, no code blocks, includes code links",
 	"I can answer your questions about <2>#repo</2>.": "I can answer your questions about <2>{{repoName}}</2>.",
 	"Hi, I am bloop!": "Hi, I am bloop!",
-	"Token limit exceeded": "Token limit exceeded"
+	"Token limit exceeded": "Token limit exceeded",
+	"bloop automatically excludes certain files from the indexing. This file might be too big or it might have an excluded file type.": "bloop automatically excludes certain files from the indexing. This file might be too big or it might have an excluded file type."
 }
