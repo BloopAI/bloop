@@ -35,7 +35,7 @@ const CopyButton = ({ isInHeader, code }: Props) => {
         {codeCopied ? (
           <CheckIcon />
         ) : isInHeader ? (
-          <CopyMD raw sizeClassName="w-3.5 h-3.5" />
+          <CopyMD raw sizeClassName="w-3 h-3" />
         ) : (
           <Clipboard />
         )}

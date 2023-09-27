@@ -1409,7 +1409,7 @@ h5, .h5 {
   display: unset;
 }
 
-.article-response code, .summary-card code, .code-studio-md code {
+.article-response code, .summary-card code, .code-studio-md code, .green-code {
   color: #14B8A6;
   font-family: Menlo, sans-serif;
   font-size: 0.95em;

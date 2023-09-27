@@ -44,12 +44,14 @@ const NewCode = ({
           {filePath ? (
             <BreadcrumbsPath path={filePath} repo={''} nonInteractive />
           ) : (
-            getPrettyLangName(language)
+            <span className="caption-strong">
+              {getPrettyLangName(language) || language}
+            </span>
           )}
         </div>
         <CopyButton isInHeader code={code} />
       </div>
-      <div className={`overflow-auto ${isCodeStudio ? 'p-2' : ''}`}>
+      <div className={`overflow-auto ${isCodeStudio ? 'p-2' : 'py-2 code-s'}`}>
         <Code showLines={false} code={code} language={language} canWrap />
       </div>
     </div>

@@ -62,7 +62,7 @@ const CodeRenderer = ({
     [className],
   );
   const matchPath = useMemo(
-    () => /path:(.+?)(,|$)/.exec(className || ''),
+    () => /path:(.*?)(,|$)/.exec(className || ''),
     [className],
   );
   const matchLines = useMemo(

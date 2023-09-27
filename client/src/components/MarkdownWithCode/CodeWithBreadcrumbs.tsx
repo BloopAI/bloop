@@ -72,7 +72,7 @@ const CodeWithBreadcrumbs = ({
         </div>
       </div>
       <div className="relative">
-        <div className={`relative overflow-x-auto py-4 bg-chat-bg-base`}>
+        <div className={`relative overflow-x-auto py-4 bg-chat-bg-base code-s`}>
           <Code
             code={code}
             language={language}

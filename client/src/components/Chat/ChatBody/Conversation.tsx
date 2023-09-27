@@ -55,7 +55,7 @@ const Conversation = ({
               values={{ repoName: repoName.replace(/^github\.com\//, '') }}
             >
               I can answer your questions about{' '}
-              <span className="font-bold">#repo</span>.
+              <span className="green-code">#repo</span>.
             </Trans>
           </p>
         </div>
