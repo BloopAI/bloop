@@ -41,6 +41,7 @@ color-eyre = "0.6.2"
 sqlx = { version = "0.6.3", features = ["sqlite", "migrate", "offline", "runtime-tokio-rustls", "chrono", "uuid"] }
 fuzzy-matcher = "0.3.7"
 
+
 # for debugging
 console-subscriber = { version = "0.1.10", optional = true }
 histogram = { version = "0.7.3", optional = true }
@@ -114,6 +115,7 @@ uuid = { version = "1.4.0", features = ["v4", "fast-rng", "serde"] }
 jsonwebtoken = { version = "8.3.0", features = ["use_pem"] }
 tiktoken-rs = "0.4.5"
 semver = { version = "1", features = ["serde"] }
+rake = "0.1"
 
 # telemetry
 sentry = { version = "0.31.5", default-features = false, features = ["tracing", "contexts", "debug-images", "panic", "rustls", "reqwest"] }

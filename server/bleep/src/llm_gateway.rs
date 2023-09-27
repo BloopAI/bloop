@@ -238,6 +238,7 @@ impl Client {
         self
     }
 
+    #[allow(unused)]
     pub fn frequency_penalty(mut self, frequency: impl Into<Option<f32>>) -> Self {
         self.frequency_penalty = frequency.into();
         self

@@ -2,6 +2,7 @@ use std::{sync::Arc, time::Duration};
 
 use anyhow::{anyhow, Context, Result};
 use futures::{Future, TryStreamExt};
+use rake::*;
 use tokio::sync::mpsc::Sender;
 use tracing::{debug, error, info, instrument};
 
@@ -168,6 +169,24 @@ impl Agent {
         match &action {
             Action::Query(s) => {
                 self.track_query(EventData::input_stage("query").with_payload("q", s));
+
+                // Always make a code search for the user query on the first exchange
+                if self.exchanges.len() == 1 {
+                    // Extract keywords from the query
+                    let keywords = {
+                        let sw = rake::StopWords::from_file("./src/stopwords.txt").unwrap();
+                        let r = Rake::new(sw);
+                        let keywords = r.run(s);
+
+                        keywords
+                            .iter()
+                            .map(|k| k.keyword.clone())
+                            .collect::<Vec<_>>()
+                            .join(" ")
+                    };
+
+                    self.code_search(&keywords).await?;
+                }
                 s.clone()
             }
 
@@ -308,6 +327,7 @@ impl Agent {
     async fn semantic_search(
         &self,
         query: parser::Literal<'_>,
+        paths: Vec<String>,
         limit: u64,
         offset: u64,
         threshold: f32,
@@ -316,6 +336,10 @@ impl Agent {
         let query = parser::SemanticQuery {
             target: Some(query),
             repos: [parser::Literal::Plain(self.repo_ref.display_name().into())].into(),
+            paths: paths
+                .iter()
+                .map(|p| parser::Literal::Plain(p.into()))
+                .collect(),
             ..self.last_exchange().query.clone()
         };
 

@@ -15,6 +15,7 @@ impl Agent {
     #[instrument(skip(self))]
     pub async fn code_search(&mut self, query: &String) -> Result<String> {
         const CODE_SEARCH_LIMIT: u64 = 10;
+
         self.update(Update::StartStep(SearchStep::Code {
             query: query.clone(),
             response: String::new(),
@@ -22,17 +23,24 @@ impl Agent {
         .await?;
 
         let mut results = self
-            .semantic_search(query.into(), CODE_SEARCH_LIMIT, 0, 0.0, true)
+            .semantic_search(query.into(), vec![], CODE_SEARCH_LIMIT, 0, 0.2, true)
             .await?;
 
-        let hyde_docs = self.hyde(query).await?;
-        if !hyde_docs.is_empty() {
-            let hyde_doc = hyde_docs.first().unwrap().into();
-            let hyde_results = self
-                .semantic_search(hyde_doc, CODE_SEARCH_LIMIT, 0, 0.3, true)
-                .await?;
-            results.extend(hyde_results);
-        }
+        let hyde_docs = if results.is_empty() {
+            tracing::info!("No results returned, running HyDE");
+
+            let hyde_docs = self.hyde(query).await?;
+            if !hyde_docs.is_empty() {
+                let hyde_doc = hyde_docs.first().unwrap().into();
+                let hyde_results = self
+                    .semantic_search(hyde_doc, vec![], CODE_SEARCH_LIMIT, 0, 0.3, true)
+                    .await?;
+                results.extend(hyde_results);
+            }
+            hyde_docs
+        } else {
+            vec![]
+        };
 
         let mut chunks = results
             .into_iter()
