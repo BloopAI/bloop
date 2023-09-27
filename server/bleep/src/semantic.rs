@@ -688,7 +688,7 @@ fn mean_pool(embeddings: Vec<Vec<f32>>) -> Vec<f32> {
 //    - "novelty" or, the measure of how minimal the similarity is
 //      to existing documents in the selection
 //      The value of lambda skews the weightage in favor of either relevance or novelty.
-//    - we add a language diversity factor to the score to encourage a range of langauges in the results
+//    - we add a language diversity factor to the score to encourage a range of languages in the results
 //    - we also add a path diversity factor to the score to encourage a range of paths in the results
 //  k: the number of embeddings to select
 pub fn deduplicate_with_mmr(
