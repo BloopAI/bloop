@@ -324,7 +324,7 @@ export type DocShortType = {
   favicon: string;
 };
 
-export type DocSection = {
+export type DocSectionType = {
   ancestry: string[];
   doc_id: number;
   doc_source: string;

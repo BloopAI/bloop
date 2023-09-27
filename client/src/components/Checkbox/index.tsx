@@ -9,6 +9,8 @@ type Props = {
   label: string | ReactNode;
   description?: string;
   labelClassName?: string;
+  boxClassName?: string;
+  isBoxAtTop?: boolean;
   onChange: (b: boolean) => void;
 };
 
@@ -21,13 +23,15 @@ const Checkbox = ({
   description,
   intermediary,
   labelClassName,
+  boxClassName,
+  isBoxAtTop,
 }: Props) => {
   return (
     <label
       className={`${
         disabled ? 'text-label-muted' : 'text-label-title cursor-pointer'
       } flex gap-2 ${
-        description ? 'items-start' : 'items-center'
+        description || isBoxAtTop ? 'items-start' : 'items-center'
       } group-custom w-full focus:outline-none focus:outline-0 outline-none`}
       onClick={() => {
         if (!disabled) {
@@ -52,7 +56,7 @@ const Checkbox = ({
         } w-4 h-4 flex flex-shrink-0 items-center justify-center rounded-sm relative ${
           description ? 'top-[2px]' : ''
         } transition-all duration-150 ease-in-bounce
-         focus:outline-none focus:outline-0 outline-none`}
+         focus:outline-none focus:outline-0 outline-none ${boxClassName}`}
         aria-checked={checked}
       >
         {intermediary ? (

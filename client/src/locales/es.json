@@ -402,5 +402,9 @@
 	"We couldn't find any docs at that link. Try again or make sure the link is correct!": "No pudimos encontrar ningún documento en ese enlace. ¡Inténtelo de nuevo o asegúrese de que el enlace sea correcto!",
 	"Indexing <1>#</1>. This process takes about 1 minute.": "Indexación <1>{{url}}</1>. Este proceso toma aproximadamente 1 minuto.",
 	"Verifying link...": "Verificación del enlace ...",
-	"Only the selected sections will be used as context.": "Solo las secciones seleccionadas se utilizarán como contexto."
+	"Only the selected sections will be used as context.": "Solo las secciones seleccionadas se utilizarán como contexto.",
+	"All sections": "Todas las secciones",
+	"Clear sections": "Secciones claras",
+	"# sections_one": "{{count}} sección",
+	"# sections_other": "{{count}} secciones"
 }

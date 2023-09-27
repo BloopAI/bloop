@@ -6,18 +6,19 @@ import React, {
   useEffect,
   useState,
 } from 'react';
-import { Trans } from 'react-i18next';
-import ReactMarkdown from 'react-markdown';
+import { Trans, useTranslation } from 'react-i18next';
 import {
   StudioLeftPanelDataType,
   StudioLeftPanelType,
 } from '../../../types/general';
 import Button from '../../../components/Button';
 import KeyboardChip from '../KeyboardChip';
-import { DocsSection } from '../../../icons';
+import { DocsSection, Magazine } from '../../../icons';
 import TokensUsageBadge from '../TokensUsageBadge';
 import { getDocSections } from '../../../services/api';
-import { DocSection } from '../../../types/api';
+import { DocSectionType } from '../../../types/api';
+import SectionsBadge from './SectionsBadge';
+import DocSection from './DocSection';
 
 type Props = {
   isActiveTab: boolean;
@@ -44,11 +45,12 @@ const DocPanel = ({
   initialSections,
   onSectionsChanged,
 }: Props) => {
+  useTranslation();
   const [selectedSections, setSelectedSections] = useState(
     initialSections || [],
   );
   const [tokenCount, setTokenCount] = useState(0);
-  const [sections, setSections] = useState<DocSection[]>([]);
+  const [sections, setSections] = useState<DocSectionType[]>([]);
 
   useEffect(() => {
     if (isActiveTab) {
@@ -71,8 +73,11 @@ const DocPanel = ({
     <div className="flex flex-col w-full flex-1 overflow-auto relative">
       <div className="flex gap-1 px-8 justify-between items-center border-b border-bg-border bg-bg-shade shadow-low h-11.5 flex-shrink-0">
         <div className="flex items-center gap-3 overflow-auto">
-          <div className="flex items-center p-1 rounded border border-bg-border bg-bg-base"></div>
+          <div className="flex items-center p-1 rounded border border-bg-border bg-bg-base">
+            <Magazine raw sizeClassName="w-4 h-4" />
+          </div>
           <p className="body-s-strong text-label-title">{name}</p>
+          <SectionsBadge sections={selectedSections} />
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
           <Button size="small" variant="secondary" onClick={onCancel}>
@@ -97,20 +102,30 @@ const DocPanel = ({
           )}
         </div>
       </div>
-      <div className="flex px-8 py-2 items-center gap-2 border-b border-bg-border bg-bg-sub text-label-base overflow-x-auto flex-shrink-0">
-        <div className="flex items-center gap-1.5 overflow-x-auto overflow-y-hidden">
+      <div className="flex px-8 py-2 items-center justify-between gap-2 border-b border-bg-border bg-bg-sub text-label-base overflow-x-auto flex-shrink-0">
+        <div className="flex items-center gap-1.5 caption text-label-link ellipsis">
           <p>{url}</p>
         </div>
         <div className="flex items-center gap-2">
           <TokensUsageBadge tokens={tokenCount} />
         </div>
       </div>
-      <div className={`py-4 px-4 overflow-auto flex flex-col gap-3`}>
+      <div className={`overflow-auto flex flex-col`}>
         {sections.map((s) => {
           return (
-            <div key={s.point_id} className={'code-studio-md body-s'}>
-              <ReactMarkdown>{s.text}</ReactMarkdown>
-            </div>
+            <DocSection
+              key={s.point_id}
+              {...s}
+              isSelected={selectedSections.includes(s.point_id)}
+              setSelected={(b) =>
+                setSelectedSections((prev) => {
+                  if (b) {
+                    return [...prev, s.point_id];
+                  }
+                  return prev.filter((r) => r !== s.point_id);
+                })
+              }
+            />
           );
         })}
       </div>

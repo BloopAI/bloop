@@ -3,7 +3,7 @@ import {
   AllConversationsResponse,
   CodeStudioType,
   ConversationType,
-  DocSection,
+  DocSectionType,
   DocShortType,
   FileResponse,
   HistoryConversationTurn,
@@ -408,7 +408,7 @@ export const getIndexedDocs = (): Promise<DocShortType[]> =>
 export const getDocSections = (
   id: string,
   url: string,
-): Promise<DocSection[]> =>
+): Promise<DocSectionType[]> =>
   http(`/docs/${id}/fetch`, {
     params: { relative_url: '?activeTab=dependents' },
   }).then((r) => r.data);

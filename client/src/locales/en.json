@@ -401,5 +401,9 @@
 	"Verifying link...": "Verifying link...",
 	"We couldn't find any docs at that link. Try again or make sure the link is correct!": "We couldn't find any docs at that link. Try again or make sure the link is correct!",
 	"Indexing <1>#</1>. This process takes about 1 minute.": "Indexing <1>{{url}}</1>. This process takes about 1 minute.",
-	"Only the selected sections will be used as context.": "Only the selected sections will be used as context."
+	"Only the selected sections will be used as context.": "Only the selected sections will be used as context.",
+	"All sections": "All sections",
+	"# sections_one": "{{count}} section",
+	"# sections_other": "{{count}} sections",
+	"Clear sections": "Clear sections"
 }
