@@ -379,5 +379,6 @@
 	"GPT-4 based, code blocks, includes code links": "GPT-4 based, code blocks, includes code links",
 	"GPT-3.5 based, no code blocks, includes code links": "GPT-3.5 based, no code blocks, includes code links",
 	"I can answer your questions about <2>#repo</2>.": "I can answer your questions about <2>{{repoName}}</2>.",
-	"Hi, I am bloop!": "Hi, I am bloop!"
+	"Hi, I am bloop!": "Hi, I am bloop!",
+	"Token limit exceeded": "Token limit exceeded"
 }
