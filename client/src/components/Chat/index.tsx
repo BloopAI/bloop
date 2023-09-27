@@ -172,6 +172,7 @@ const Chat = () => {
             };
             return [...newConversation, lastMessage];
           });
+          setTimeout(() => focusInput(), 100);
           return;
         }
         try {
