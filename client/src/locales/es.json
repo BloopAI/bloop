@@ -406,5 +406,7 @@
 	"All sections": "Todas las secciones",
 	"Clear sections": "Secciones claras",
 	"# sections_one": "{{count}} sección",
-	"# sections_other": "{{count}} secciones"
+	"# sections_other": "{{count}} secciones",
+	"Select library": "Seleccionar biblioteca",
+	"Select page": "Página de selección"
 }

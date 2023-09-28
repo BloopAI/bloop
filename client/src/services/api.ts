@@ -405,6 +405,11 @@ export const verifyDocsUrl = (url: string) =>
   http('/docs/verify', { params: { url } }).then((r) => r.data);
 export const getIndexedDocs = (): Promise<DocShortType[]> =>
   http('/docs').then((r) => r.data);
+export const searchIndexedDocs = (
+  id: string,
+  q: string,
+): Promise<DocShortType[]> =>
+  http(`/docs/${id}/search`, { params: { q, limit: 20 } }).then((r) => r.data);
 export const getDocSections = (
   id: string,
   url: string,

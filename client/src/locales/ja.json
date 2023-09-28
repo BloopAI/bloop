@@ -403,5 +403,7 @@
 	"All sections": "すべてのセクション",
 	"# sections_one": "{{count}}セクション",
 	"# sections_other": "{{count}}セクション",
-	"Clear sections": "クリアセクション"
+	"Clear sections": "クリアセクション",
+	"Select library": "ライブラリを選択します",
+	"Select page": "[ページ]を選択します"
 }

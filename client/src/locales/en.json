@@ -405,5 +405,7 @@
 	"All sections": "All sections",
 	"# sections_one": "{{count}} section",
 	"# sections_other": "{{count}} sections",
-	"Clear sections": "Clear sections"
+	"Clear sections": "Clear sections",
+	"Select library": "Select library",
+	"Select page": "Select page"
 }

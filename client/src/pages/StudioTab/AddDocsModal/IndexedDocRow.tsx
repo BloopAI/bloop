@@ -5,14 +5,14 @@ import { DocShortType } from '../../../types/api';
 
 type Props = {
   doc: DocShortType;
-  onSubmit: (id: string, name: string, url: string) => void;
+  onSubmit: (doc: DocShortType) => void;
 };
 
 const IndexedDocRow = ({ onSubmit, doc }: Props) => {
   return (
     <button
       type="button"
-      onClick={() => onSubmit(doc.id, doc.name, doc.url)}
+      onClick={() => onSubmit(doc)}
       className="flex h-9 px-3 gap-3 items-center justify-between group rounded-6 bg-bg-shade hover:bg-bg-base-hover focus:bg-bg-base-hover focus:outline-0 focus:outline-none w-full cursor-pointer body-s ellipsis flex-shrink-0"
     >
       <div className="body-s text-label-base group-hover:text-label-title group-focus:text-label-title ellipsis flex gap-2 items-center">
