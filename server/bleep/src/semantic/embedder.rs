@@ -176,7 +176,7 @@ impl LocalEmbedder {
         )?;
 
         let session_count = if cfg!(macos) {
-            8
+            12
         } else {
             std::thread::available_parallelism()
                 .map(|t| t.get())
@@ -195,7 +195,7 @@ impl LocalEmbedder {
             model,
             sessions,
             tokenizer,
-            permits: Arc::new(tokio::sync::Semaphore::new(8)),
+            permits: Arc::new(tokio::sync::Semaphore::new(session_count)),
         })
     }
 }
@@ -218,10 +218,11 @@ impl Embedder for LocalEmbedder {
 
         if let Ok(_permit) = self.permits.acquire().await {
             for s in &self.sessions {
-                let mut session = s.lock().await;
-                self.model
-                    .evaluate(&mut session, &query_token_ids, &mut output_request);
-                return Ok(output_request.embeddings.unwrap());
+                if let Ok(mut session) = s.try_lock() {
+                    self.model
+                        .evaluate(&mut session, &query_token_ids, &mut output_request);
+                    return Ok(output_request.embeddings.unwrap());
+                }
             }
         }
 
@@ -255,16 +256,17 @@ impl Embedder for LocalEmbedder {
         if let Ok(_permit) = self.permits.acquire().await {
             println!("accquired lock");
             for s in &self.sessions {
-                let mut session = s.lock().await;
-                self.model
-                    .batch_evaluate(&mut session, &query_token_ids, &mut output_request);
-                let embedding: Vec<Vec<f32>> = output_request
-                    .embeddings
-                    .unwrap()
-                    .chunks(384)
-                    .map(|chunk| chunk.to_vec())
-                    .collect();
-                return Ok(embedding);
+                if let Ok(mut session) = s.try_lock() {
+                    self.model
+                        .batch_evaluate(&mut session, &query_token_ids, &mut output_request);
+                    let embedding: Vec<Vec<f32>> = output_request
+                        .embeddings
+                        .unwrap()
+                        .chunks(384)
+                        .map(|chunk| chunk.to_vec())
+                        .collect();
+                    return Ok(embedding);
+                }
             }
         }
         unreachable!()
