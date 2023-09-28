@@ -382,5 +382,7 @@
 	"Done": "Hecho",
 	"Send a message": "Envía un mensaje",
 	"Token limit exceeded": "Límite de token excedido",
-	"bloop automatically excludes certain files from the indexing. This file might be too big or it might have an excluded file type.": "Bloop excluye automáticamente ciertos archivos de la indexación. Este archivo puede ser demasiado grande o podría tener un tipo de archivo excluido."
+	"bloop automatically excludes certain files from the indexing. This file might be too big or it might have an excluded file type.": "Bloop excluye automáticamente ciertos archivos de la indexación. Este archivo puede ser demasiado grande o podría tener un tipo de archivo excluido.",
+	"We use analytics to improve your experience. Please refresh the page after changing the value.": "Utilizamos análisis para mejorar su experiencia. Actualice la página después de cambiar el valor.",
+	"Allow analytics": "Permitir análisis"
 }

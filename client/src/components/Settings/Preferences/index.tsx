@@ -7,8 +7,9 @@ import Dropdown from '../../Dropdown/Normal';
 import { MenuItemType } from '../../../types/general';
 import { Theme } from '../../../types';
 import { previewTheme } from '../../../utils';
-import { ChatContext } from '../../../context/chatContext';
-import { Run, Walk } from '../../../icons';
+import { DeviceContext } from '../../../context/deviceContext';
+import Checkbox from '../../Checkbox';
+import { getConfig, putConfig } from '../../../services/api';
 
 export const themesMap = {
   system: 'System Preference',
@@ -37,9 +38,7 @@ export const themesMap = {
 const Preferences = () => {
   const { t } = useTranslation();
   const { theme, setTheme } = useContext(UIContext.Theme);
-  const { preferredAnswerSpeed, setPreferredAnswerSpeed } = useContext(
-    UIContext.AnswerSpeed,
-  );
+  const { isSelfServe, envConfig, setEnvConfig } = useContext(DeviceContext);
 
   return (
     <div className="w-full relative">
@@ -68,37 +67,34 @@ const Preferences = () => {
             }}
           />
         </SettingsRow>
-        <SettingsRow>
-          <SettingsText
-            title={t('Answer speed')}
-            subtitle={t('Faster answers may impact the quality of results')}
-          />
-          <Dropdown
-            items={[
-              {
-                type: MenuItemType.DEFAULT,
-                text: t('Fast'),
-                onClick: () => setPreferredAnswerSpeed('fast'),
-                icon: <Run />,
-              },
-              {
-                type: MenuItemType.DEFAULT,
-                text: t('Normal'),
-                onClick: () => {
-                  setPreferredAnswerSpeed('normal');
-                },
-                icon: <Walk />,
-              },
-            ]}
-            selected={{
-              type: MenuItemType.DEFAULT,
-              text: t(
-                preferredAnswerSpeed.slice(0, 1)[0].toUpperCase() +
-                  preferredAnswerSpeed.slice(1),
-              ),
-            }}
-          />
-        </SettingsRow>
+        {isSelfServe && (
+          <SettingsRow>
+            <SettingsText
+              title={t('Allow analytics')}
+              subtitle={t(
+                'We use analytics to improve your experience. Please refresh the page after changing the value.',
+              )}
+            />
+            <div>
+              <Checkbox
+                checked={
+                  !!envConfig.bloop_user_profile?.allow_session_recordings
+                }
+                label={''}
+                onChange={(b) => {
+                  putConfig({
+                    bloop_user_profile: {
+                      ...(envConfig?.bloop_user_profile || {}),
+                      allow_session_recordings: b,
+                    },
+                  }).then(() => {
+                    getConfig().then(setEnvConfig);
+                  });
+                }}
+              />
+            </div>
+          </SettingsRow>
+        )}
       </div>
     </div>
   );

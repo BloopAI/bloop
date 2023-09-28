@@ -15,6 +15,9 @@ export const initializeSentry = (envConfig: EnvConfig, release: string) => {
   if (!envConfig.sentry_dsn_fe || isInitialized) {
     return;
   }
+  const isCloud = !!envConfig.org_name;
+  const isUserAgreed = envConfig.bloop_user_profile?.allow_session_recordings;
+  const recordingsAllowed = isCloud && isUserAgreed;
   const integrations: Integration[] = [
     new Sentry.BrowserTracing({
       routingInstrumentation: Sentry.reactRouterV6Instrumentation(
@@ -27,8 +30,7 @@ export const initializeSentry = (envConfig: EnvConfig, release: string) => {
     }),
     new ExtraErrorData(),
   ];
-  // if is on cloud
-  if (envConfig.org_name) {
+  if (recordingsAllowed) {
     integrations.push(
       new Sentry.Replay({
         maskAllText: false,
@@ -40,7 +42,7 @@ export const initializeSentry = (envConfig: EnvConfig, release: string) => {
     Sentry.init({
       dsn: envConfig.sentry_dsn_fe,
       integrations,
-      ...(envConfig.org_name
+      ...(recordingsAllowed
         ? {
             replaysSessionSampleRate: 1.0,
             replaysOnErrorSampleRate: 1.0,
