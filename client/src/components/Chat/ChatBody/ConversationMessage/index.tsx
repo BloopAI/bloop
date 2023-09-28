@@ -64,7 +64,9 @@ const ConversationMessage = ({
 }: Props) => {
   const { t } = useTranslation();
   const [isLoadingStepsShown, setLoadingStepsShown] = useState(
-    !!Number(getPlainFromStorage(LOADING_STEPS_SHOWN_KEY)) || true,
+    getPlainFromStorage(LOADING_STEPS_SHOWN_KEY)
+      ? !!Number(getPlainFromStorage(LOADING_STEPS_SHOWN_KEY))
+      : true,
   );
   const { envConfig } = useContext(DeviceContext);
   const { setChatOpen } = useContext(ChatContext.Setters);
