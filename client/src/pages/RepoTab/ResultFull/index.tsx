@@ -203,6 +203,14 @@ const ResultFull = ({
     };
   }, [result?.hoverableRanges]);
 
+  const displayName = useMemo(() => {
+    if (!result) {
+      return '';
+    }
+    const split = splitPath(result.relativePath);
+    return split.length > 1 ? split.slice(-2).join('/') : result.relativePath;
+  }, [result?.relativePath]);
+
   return (
     <>
       <div className="flex-1 overflow-auto w-full box-content flex flex-col">
@@ -214,7 +222,7 @@ const ResultFull = ({
               <FileIcon filename={result?.relativePath?.slice(-5) || ''} />
               {!!result && !!breadcrumbs.length ? (
                 <div className="flex-1 body-s-strong ellipsis">
-                  {splitPath(result.relativePath || '')?.pop()}
+                  {displayName}
                 </div>
               ) : (
                 <div className="w-48 h-4">
