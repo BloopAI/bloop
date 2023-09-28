@@ -643,12 +643,16 @@ impl ExecuteQuery for OpenReader {
             .map(|d| d.relative_path.to_owned())
             .collect::<Vec<_>>();
 
+        tracing::trace!(?relative_paths, "creating collector");
+
         let collector = BytesFilterCollector::new(
             indexer.source.raw_relative_path,
             move |b| {
                 let Ok(relative_path) = std::str::from_utf8(b) else {
                     return false;
                 };
+
+                tracing::trace!(?relative_path, "filtering relative path");
 
                 // Check if *any* of the relative paths match. We can't compare repositories here
                 // because the `BytesFilterCollector` operates on one field. So we sort through this

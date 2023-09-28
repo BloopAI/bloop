@@ -78,13 +78,13 @@ pub(crate) async fn sync_github_status(app: Application) {
         let Some(github) = app.credentials.github() else {
             timeout().await;
             continue;
-	};
+        };
         debug!("credentials exist");
 
         let Ok(repos) = github.current_repo_list().await else {
             timeout().await;
             continue;
-	};
+        };
         debug!("repo list updated");
 
         let updated = app.credentials.github_updated().unwrap();
@@ -130,9 +130,9 @@ async fn update_credentials(app: &Application) {
             auth: github::Auth::OAuth(ref creds),
             ..
         }) = app.credentials.github()
-	else {
-	    return;
-	};
+        else {
+            return;
+        };
 
         let cognito_pool_id = app.config.cognito_userpool_id.as_ref().unwrap();
         let (region, _pool_id) = cognito_pool_id.split_once('_').unwrap();
@@ -145,9 +145,9 @@ async fn update_credentials(app: &Application) {
         let rotate_access_key = match keyset.verify(&creds.access_token, &verifier).await {
             Ok(serde_json::Value::Object(claims)) => {
                 let Some(exp) = claims.get("exp").and_then(serde_json::Value::as_u64)
-		else {
-		    return;
-		};
+                else {
+                    return;
+                };
 
                 let expiry_time = UNIX_EPOCH + Duration::from_secs(exp);
                 expiry_time - Duration::from_secs(600) < SystemTime::now()
@@ -360,23 +360,21 @@ impl Poller {
         let (tx, rx) = flume::bounded(10);
 
         let mut _debouncer = None;
-        if app.config.disable_fsevents.not() && reporef.backend() == Backend::Local {
-            let git_path = app
-                .repo_pool
-                .read(reporef, |_, v| v.disk_path.join(".git"))?;
+        if !app.config.disable_fsevents && reporef.backend() == Backend::Local {
+            let disk_path = app.repo_pool.read(reporef, |_, v| v.disk_path.clone())?;
 
             let mut debouncer = debounced_events(tx);
             debouncer
                 .watcher()
-                .watch(&git_path, RecursiveMode::Recursive)
+                .watch(&disk_path, RecursiveMode::Recursive)
                 .map_err(|e| {
-                    let d = git_path.display();
+                    let d = disk_path.display();
                     error!(error = %e, path = %d, "path does not exist anymore");
                 })
                 .ok()?;
             _debouncer = Some(debouncer);
 
-            info!(?reporef, ?git_path, "will reindex repo on git changes");
+            info!(?reporef, ?disk_path, "will reindex repo on file changes");
 
             poll_interval_index = POLL_INTERVAL_MINUTE.len() - 1;
             minimum_interval_index = POLL_INTERVAL_MINUTE.len() - 1;

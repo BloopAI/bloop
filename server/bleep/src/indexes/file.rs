@@ -135,9 +135,7 @@ impl Indexable for File {
 
         let start = std::time::Instant::now();
 
-        // If we could determine the time of the last commit, proceed
-        // with a Git Walker, otherwise use a FS walker
-        if repo_metadata.last_commit_unix_secs.is_some() {
+        if reporef.is_remote() {
             let walker = GitWalker::open_repository(
                 reporef,
                 &repo.disk_path,
@@ -146,7 +144,22 @@ impl Indexable for File {
             let count = walker.len();
             walker.for_each(pipes, file_worker(count));
         } else {
-            let walker = FileWalker::index_directory(&repo.disk_path);
+            let branch = gix::open::Options::isolated()
+                .filter_config_section(|_| false)
+                .open(&repo.disk_path)
+                .ok()
+                .and_then(|r| {
+                    r.to_thread_local()
+                        .head()
+                        .ok()?
+                        .try_into_referent()
+                        .map(|r| {
+                            use gix::bstr::ByteSlice;
+                            r.name().shorten().to_str_lossy().into_owned()
+                        })
+                });
+
+            let walker = FileWalker::index_directory(&repo.disk_path, branch);
             let count = walker.len();
             walker.for_each(pipes, file_worker(count));
         };

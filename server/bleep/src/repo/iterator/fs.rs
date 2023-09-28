@@ -8,10 +8,13 @@ use std::path::{Path, PathBuf};
 
 pub struct FileWalker {
     file_list: Vec<PathBuf>,
+
+    /// Branch to index files as part of.
+    branch: Option<String>,
 }
 
 impl FileWalker {
-    pub fn index_directory(dir: impl AsRef<Path>) -> impl FileSource {
+    pub fn index_directory(dir: impl AsRef<Path>, branch: Option<String>) -> impl FileSource {
         // note: this WILL observe .gitignore files for the respective repos.
         let walker = ignore::WalkBuilder::new(&dir)
             .standard_filters(true)
@@ -31,11 +34,9 @@ impl FileWalker {
             .filter_map(|de| crate::canonicalize(de.into_path()).ok())
             .collect();
 
-        Self { file_list }
+        Self { file_list, branch }
     }
 }
-
-static HEAD: &str = "HEAD";
 
 impl FileSource for FileWalker {
     fn len(&self) -> usize {
@@ -59,12 +60,12 @@ impl FileSource for FileWalker {
                         Some(RepoDirEntry::File(RepoFile {
                             buffer,
                             path: entry_disk_path.to_string_lossy().to_string(),
-                            branches: vec![HEAD.into()],
+                            branches: self.branch.clone().into_iter().collect(),
                         }))
                     } else if entry_disk_path.is_dir() {
                         Some(RepoDirEntry::Dir(RepoDir {
                             path: entry_disk_path.to_string_lossy().to_string(),
-                            branches: vec![HEAD.into()],
+                            branches: self.branch.clone().into_iter().collect(),
                         }))
                     } else {
                         Some(RepoDirEntry::Other)
