@@ -50,12 +50,12 @@ const Conversation = ({
             />
           </div>
           <p className="body-s text-label-title">
-            <Trans>Hi, I am bloop!</Trans>{' '}
+            <Trans>Hi, I&apos;m bloop.</Trans>{' '}
             <Trans
               values={{ repoName: repoName.replace(/^github\.com\//, '') }}
             >
-              I can answer your questions about{' '}
-              <span className="green-code">#repo</span>.
+              What would you like to know about{' '}
+              <span className="font-bold">#repo</span>?
             </Trans>
           </p>
         </div>

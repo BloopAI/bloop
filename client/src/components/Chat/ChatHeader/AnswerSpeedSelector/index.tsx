@@ -58,18 +58,14 @@ const AnswerSpeedSelector = ({}: Props) => {
               <div className="p-2 flex flex-col gap-0.5 bg-bg-sub">
                 <SelectionItem
                   isSelected={preferredAnswerSpeed === 'normal'}
-                  description={t(
-                    'GPT-4 based, code blocks, includes code links',
-                  )}
+                  description={t('Recommended: The classic response type')}
                   title={t('Normal')}
                   icon={<Walk />}
                   onClick={onChangeToNormal}
                 />
                 <SelectionItem
                   isSelected={preferredAnswerSpeed === 'fast'}
-                  description={t(
-                    'GPT-3.5 based, no code blocks, includes code links',
-                  )}
+                  description={t('Experimental: Faster but less accurate')}
                   title={t('Fast')}
                   icon={<Run />}
                   onClick={onChangeToFast}
