@@ -32,6 +32,7 @@ export const initializeSentry = (envConfig: EnvConfig, release: string) => {
     integrations.push(
       new Sentry.Replay({
         maskAllText: false,
+        networkDetailAllowUrls: [window.location.origin],
       }),
     );
   }
