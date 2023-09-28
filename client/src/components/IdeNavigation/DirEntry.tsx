@@ -3,6 +3,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from 'react';
 import { Trans } from 'react-i18next';
@@ -45,12 +46,13 @@ const DirEntry = ({
   refetchParentFolder,
 }: Props) => {
   const [isOpen, setOpen] = useState(
-    defaultOpen || (currentPath && name.includes(currentPath)),
+    defaultOpen || (currentPath && currentPath.startsWith(fullPath)),
   );
   const { isSelfServe } = useContext(DeviceContext);
   const [indexRequested, setIndexRequested] = useState(false);
   const [isIndexing, setIsIndexing] = useState(false);
   const [subItems, setSubItems] = useState<DirectoryEntry[] | null>(null);
+  const ref = useRef<HTMLAnchorElement>(null);
 
   useEffect(() => {
     if (
@@ -80,10 +82,13 @@ const DirEntry = ({
   }, [repoStatus, isIndexing, refetchParentFolder, subItems, isOpen]);
 
   useEffect(() => {
-    if (currentPath && currentPath.includes(name)) {
+    if (currentPath && currentPath.startsWith(fullPath)) {
       setOpen(true);
     }
-  }, [currentPath, name]);
+    if (currentPath === fullPath) {
+      ref.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [currentPath, fullPath]);
 
   const refetchFolderFiles = useCallback(() => {
     fetchFiles(fullPath).then(setSubItems);
@@ -123,7 +128,7 @@ const DirEntry = ({
         className={`min-w-full w-max text-left h-7 flex items-center gap-1.5 py-2 px-3 cursor-pointer caption group
       ${
         currentPath === fullPath
-          ? 'bg-bg-shade'
+          ? 'bg-bg-main/15 text-label-title'
           : 'hover:bg-bg-base-hover hover:text-label-title active:bg-transparent'
       } ${
         isOpen && isDirectory
@@ -134,6 +139,7 @@ const DirEntry = ({
       }`}
         style={{ paddingLeft: level * 26 }}
         onClick={handleClick}
+        ref={ref}
       >
         {isDirectory ? (
           <ChevronRightFilled
