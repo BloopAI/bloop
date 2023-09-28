@@ -155,9 +155,9 @@
     --default-light-label-title: 21, 21, 21;
     --default-light-label-link: 78, 128, 238;
     --default-light-chat-bg-base: 226, 227, 243;
-    --default-light-chat-bg-base-hover: 194, 196, 233;
+    --default-light-chat-bg-base-hover: 217, 218, 251;
     --default-light-chat-bg-shade: 248, 248, 255;
-    --default-light-chat-bg-sub: 211, 212, 236;
+    --default-light-chat-bg-sub: 237, 237, 250;
     --default-light-chat-bg-border: 195, 197, 225;
     --default-light-chat-bg-border-hover: 184, 187, 225;
     --default-light-chat-bg-divider: 216, 217, 234;
@@ -1141,6 +1141,15 @@ h5, .h5 {
   letter-spacing: -0.02em;
 }
 
+.body-m-strong {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 600;
+  font-size: 1rem;
+  line-height: 160%;
+  letter-spacing: -0.02em;
+}
+
 .body-s {
   font-family: 'Inter', sans-serif;
   font-style: normal;
@@ -1400,7 +1409,7 @@ h5, .h5 {
   display: unset;
 }
 
-.article-response code, .summary-card code, .code-studio-md code {
+.article-response code, .summary-card code, .code-studio-md code, .green-code {
   color: #14B8A6;
   font-family: Menlo, sans-serif;
   font-size: 0.95em;
@@ -1454,4 +1463,8 @@ h5, .h5 {
 
 .file-icon-lg span[class*="-icon"]:before {
   transform: scale(125%);
+}
+
+.padding-start > *:first-child {
+  padding-left: 32px;
 }

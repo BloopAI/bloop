@@ -1,9 +1,9 @@
 import { useContext } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import Button from '../Button';
-import SeparateOnboardingStep from '../SeparateOnboardingStep';
-import { CloseSign } from '../../icons';
-import { DeviceContext } from '../../context/deviceContext';
+import Button from '../../Button';
+import SeparateOnboardingStep from '../../SeparateOnboardingStep';
+import { CloseSign } from '../../../icons';
+import { DeviceContext } from '../../../context/deviceContext';
 
 type Props = {
   isOpen: boolean;

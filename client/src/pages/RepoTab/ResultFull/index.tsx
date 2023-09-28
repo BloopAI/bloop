@@ -6,17 +6,17 @@ import React, {
   useState,
 } from 'react';
 import * as Sentry from '@sentry/react';
-import { Trans } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import FileIcon from '../../../components/FileIcon';
-import Breadcrumbs from '../../../components/Breadcrumbs';
 import CodeFull from '../../../components/CodeBlock/CodeFull';
-import { getHoverables } from '../../../services/api';
+import { forceFileToBeIndexed, getHoverables } from '../../../services/api';
 import { mapFileResult, mapRanges } from '../../../mappers/results';
 import { FullResult } from '../../../types/results';
 import {
   breadcrumbsItemPath,
   humanFileSize,
   isWindowsPath,
+  splitPath,
   splitPathForBreadcrumbs,
 } from '../../../utils';
 import ErrorFallback from '../../../components/ErrorFallback';
@@ -24,13 +24,15 @@ import useAppNavigation from '../../../hooks/useAppNavigation';
 import FileMenu from '../../../components/FileMenu';
 import SkeletonItem from '../../../components/SkeletonItem';
 import IpynbRenderer from '../../../components/IpynbRenderer';
-import useConversation from '../../../hooks/useConversation';
 import Button from '../../../components/Button';
 import { Sparkles } from '../../../icons';
 import { ChatContext } from '../../../context/chatContext';
 import { UIContext } from '../../../context/uiContext';
 import AddStudioContext from '../../../components/AddStudioContext';
-import FileExplanation from './FileExplanation';
+import { SyncStatus } from '../../../types/general';
+import { RepositoriesContext } from '../../../context/repositoriesContext';
+import LiteLoaderContainer from '../../../components/Loaders/LiteLoader';
+import { DeviceContext } from '../../../context/deviceContext';
 
 type Props = {
   data: any;
@@ -39,6 +41,8 @@ type Props = {
   selectedBranch: string | null;
   recordId: number;
   threadId: string;
+  path?: string;
+  refetchFile: () => void;
 };
 
 const SIDEBAR_WIDTH = 324;
@@ -52,20 +56,69 @@ const ResultFull = ({
   data,
   isLoading,
   selectedBranch,
-  recordId,
-  threadId,
+  refetchFile,
+  path,
 }: Props) => {
+  useTranslation();
   const { navigateFullResult, navigateRepoPath } = useAppNavigation();
   const [result, setResult] = useState<FullResult | null>(null);
-  const { data: answer } = useConversation(threadId, recordId);
   const {
     setSubmittedQuery,
     setChatOpen,
-    setSelectedLines,
     setConversation,
     setThreadId,
+    setIsHistoryTab,
   } = useContext(ChatContext.Setters);
-  const { setRightPanelOpen } = useContext(UIContext.RightPanel);
+  const { repositories } = useContext(RepositoriesContext);
+  const { tab } = useContext(UIContext.Tab);
+  const { isSelfServe } = useContext(DeviceContext);
+  const [indexRequested, setIndexRequested] = useState(false);
+  const [isIndexing, setIsIndexing] = useState(false);
+
+  const repoStatus = useMemo(() => {
+    return (
+      repositories?.find((r) => r.ref === tab.repoRef)?.sync_status ||
+      SyncStatus.Done
+    );
+  }, [repositories, tab.repoRef]);
+
+  useEffect(() => {
+    if (
+      [
+        SyncStatus.Indexing,
+        SyncStatus.Queued,
+        SyncStatus.Syncing,
+        SyncStatus.Indexing,
+      ].includes(repoStatus) &&
+      indexRequested
+    ) {
+      setIsIndexing(true);
+    } else {
+      if (isIndexing) {
+        setTimeout(() => {
+          refetchFile();
+          setIsIndexing(false);
+          setIndexRequested(false);
+        }, 500);
+      }
+    }
+  }, [repoStatus, isIndexing, refetchFile]);
+
+  const onIndexRequested = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (data?.data?.[0]?.data?.relative_path) {
+        forceFileToBeIndexed(tab.repoRef, data?.data?.[0]?.data?.relative_path);
+        setIndexRequested(true);
+        setTimeout(() => refetchFile(), 1000);
+      }
+    },
+    [tab.repoRef, data?.data?.[0]?.data?.relative_path],
+  );
+
+  useEffect(() => {
+    setIndexRequested(false);
+  }, [path]);
 
   useEffect(() => {
     if (!data || data?.data?.[0]?.kind !== 'file') {
@@ -135,7 +188,7 @@ const ResultFull = ({
       setConversation([]);
       setThreadId('');
       const endLine = result.code.split(/\n(?!$)/g).length - 1;
-      setRightPanelOpen(false);
+      setIsHistoryTab(false);
       setSubmittedQuery(
         `#explain_${result.relativePath}:0-${endLine}-${Date.now()}`,
       );
@@ -150,6 +203,14 @@ const ResultFull = ({
     };
   }, [result?.hoverableRanges]);
 
+  const displayName = useMemo(() => {
+    if (!result) {
+      return '';
+    }
+    const split = splitPath(result.relativePath);
+    return split.length > 1 ? split.slice(-2).join('/') : result.relativePath;
+  }, [result?.relativePath]);
+
   return (
     <>
       <div className="flex-1 overflow-auto w-full box-content flex flex-col">
@@ -160,12 +221,8 @@ const ResultFull = ({
             <div className="flex items-center gap-1 overflow-hidden w-full">
               <FileIcon filename={result?.relativePath?.slice(-5) || ''} />
               {!!result && !!breadcrumbs.length ? (
-                <div className="flex-1">
-                  <Breadcrumbs
-                    pathParts={breadcrumbs}
-                    activeStyle="secondary"
-                    path={result.relativePath || ''}
-                  />
+                <div className="flex-1 body-s-strong ellipsis">
+                  {displayName}
                 </div>
               ) : (
                 <div className="w-48 h-4">
@@ -223,7 +280,7 @@ const ResultFull = ({
                 </div>
               ) : result.language === 'jupyter notebook' ? (
                 <IpynbRenderer data={result.code} />
-              ) : (
+              ) : result?.indexed ? (
                 <CodeFull
                   code={result.code}
                   language={result.language}
@@ -242,20 +299,39 @@ const ResultFull = ({
                   }
                   repoName={result.repoName}
                 />
+              ) : (
+                <div className="flex flex-1 items-center justify-center">
+                  <div className="flex flex-col gap-3 max-w-sm items-center">
+                    <p className="text-label-title body-m-strong">
+                      <Trans>File not indexed</Trans>
+                    </p>
+                    <p className="text-label-base text-center body-s">
+                      <Trans>
+                        bloop automatically excludes certain files from the
+                        indexing. This file might be too big or it might have an
+                        excluded file type.
+                      </Trans>
+                    </p>
+                    {!indexRequested && isSelfServe ? (
+                      <Button
+                        variant="secondary"
+                        className="mt-6"
+                        onClick={onIndexRequested}
+                      >
+                        <Trans>Force index</Trans>
+                      </Button>
+                    ) : indexRequested ? (
+                      <div className="text-bg-main mt-6">
+                        <LiteLoaderContainer sizeClassName="w-8 h-8" />
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
               )}
             </div>
           </div>
         </div>
       </div>
-      {!!answer && (
-        <FileExplanation
-          markdown={answer.results}
-          isSingleFileExplanation={!!answer.explainedFile}
-          repoName={result?.repoName || ''}
-          recordId={recordId}
-          threadId={threadId}
-        />
-      )}
     </>
   );
 };

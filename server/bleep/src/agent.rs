@@ -218,7 +218,7 @@ impl Agent {
 
         let raw_response = self
             .llm_gateway
-            .chat(
+            .chat_stream(
                 &trim_history(history.clone(), self.model)?,
                 Some(&functions),
             )
@@ -350,8 +350,6 @@ impl Agent {
         debug!(?query, %self.thread_id, "executing semantic query");
         self.app
             .semantic
-            .as_ref()
-            .unwrap()
             .search(&query, limit, offset, threshold, retrieve_more)
             .await
     }
@@ -379,8 +377,6 @@ impl Agent {
         debug!(?queries, %self.thread_id, "executing semantic query");
         self.app
             .semantic
-            .as_ref()
-            .unwrap()
             .batch_search(queries.as_slice(), limit, offset, threshold, retrieve_more)
             .await
     }

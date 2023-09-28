@@ -1,7 +1,7 @@
 import React from 'react';
 import { Trans } from 'react-i18next';
-import { QuillIcon } from '../../../icons';
-import Button from '../../Button';
+import { QuillIcon } from '../../../../icons';
+import Button from '../../../Button';
 
 type Props = {
   onClick: () => void;

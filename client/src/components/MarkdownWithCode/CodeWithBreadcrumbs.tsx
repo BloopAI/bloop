@@ -1,11 +1,9 @@
-import React, { useCallback, MouseEvent, useState } from 'react';
-import FileIcon from '../../../components/FileIcon';
-import BreadcrumbsPath from '../../../components/BreadcrumbsPath';
-import { FileTreeFileType } from '../../../types';
-import Code from '../../../components/CodeBlock/Code';
-import Button from '../../../components/Button';
-import { copyToClipboard } from '../../../utils';
-import { CheckIcon, Clipboard } from '../../../icons';
+import React, { useCallback, MouseEvent } from 'react';
+import FileIcon from '../FileIcon';
+import BreadcrumbsPath from '../BreadcrumbsPath';
+import { FileTreeFileType } from '../../types';
+import Code from '../CodeBlock/Code';
+import CopyButton from './CopyButton';
 
 type Props = {
   filePath: string;
@@ -26,8 +24,6 @@ const CodeWithBreadcrumbs = ({
   code,
   isSummary,
 }: Props) => {
-  const [codeCopied, setCodeCopied] = useState(false);
-
   const handleResultClick = useCallback(
     (e: MouseEvent) => {
       if (!document.getSelection()?.toString()) {
@@ -47,15 +43,17 @@ const CodeWithBreadcrumbs = ({
 
   return (
     <div
-      className={`text-sm border border-bg-border rounded-md flex-1 overflow-x-auto cursor-pointer ${
+      className={`text-sm border border-chat-bg-divider rounded-md flex-1 overflow-x-auto cursor-pointer ${
         isSummary ? '' : 'my-4'
       }`}
       onClick={handleResultClick}
     >
       <div
-        className={`flex items-center justify-between gap-2 w-full ${
-          isSummary ? 'bg-chat-bg-sub' : 'bg-bg-shade'
-        } h-13 px-3 cursor-pointer overflow-hidden`}
+        className={`flex items-center justify-between gap-2 w-full border-b ${
+          isSummary
+            ? 'bg-chat-bg-sub'
+            : 'bg-chat-bg-shade border-chat-bg-divider'
+        } p-2 cursor-pointer overflow-hidden`}
       >
         <div
           className={`flex items-center gap-2 w-full cursor-pointer ${
@@ -70,34 +68,17 @@ const CodeWithBreadcrumbs = ({
               type === FileTreeFileType.FILE ? onResultClick(path) : {}
             }
           />
+          <CopyButton code={code} isInHeader />
         </div>
       </div>
       <div className="relative">
-        <div className={`relative overflow-x-auto py-4`}>
+        <div className={`relative overflow-x-auto py-4 bg-chat-bg-base code-s`}>
           <Code
             code={code}
             language={language}
             showLines={startLine !== null}
             lineStart={startLine || 0}
           />
-        </div>
-        <div
-          className={`absolute ${
-            code.split('\n').length > 1 ? 'top-4 right-4' : 'top-2.5 right-2.5'
-          }`}
-        >
-          <Button
-            variant="tertiary"
-            size="small"
-            onClick={() => {
-              copyToClipboard(code);
-              setCodeCopied(true);
-              setTimeout(() => setCodeCopied(false), 2000);
-            }}
-          >
-            {codeCopied ? <CheckIcon /> : <Clipboard />}
-            {codeCopied ? 'Copied' : 'Copy'}
-          </Button>
         </div>
       </div>
     </div>

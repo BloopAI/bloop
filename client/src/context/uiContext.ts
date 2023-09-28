@@ -29,10 +29,6 @@ export const UIContext = {
     setGithubConnected: (b: boolean) => {},
     isGithubChecked: false,
   }),
-  RightPanel: createContext({
-    isRightPanelOpen: false,
-    setRightPanelOpen: (b: boolean) => {},
-  }),
   Filters: createContext<{
     isFiltersOpen: boolean;
     setFiltersOpen: React.Dispatch<React.SetStateAction<boolean>>;

@@ -69,6 +69,7 @@ pub(super) async fn fuzzy_path(
                 c.repo_ref,
                 c.lang,
                 c.branches,
+                c.indexed,
             ))
         })
         .collect::<Vec<QueryResult>>();

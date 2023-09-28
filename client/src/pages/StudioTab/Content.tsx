@@ -65,6 +65,7 @@ const ContentContainer = ({
     null,
   );
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isChangeUnsaved, setIsChangeUnsaved] = useState(false);
   const { leftPanelRef, rightPanelRef, dividerRef, containerRef } =
     useResizeableSplitPanel();
   const { updateTabName } = useContext(TabsContext);
@@ -259,6 +260,12 @@ const ContentContainer = ({
     return isHistoryOpen && previewingState ? previewingState : currentState;
   }, [isHistoryOpen, previewingState, currentState]);
 
+  useEffect(() => {
+    if (leftPanel.type !== StudioRightPanelType.FILE) {
+      setIsChangeUnsaved(false);
+    }
+  }, [leftPanel.type]);
+
   return (
     <PageTemplate renderPage="studio">
       <div className="w-screen flex flex-col overflow-auto">
@@ -312,6 +319,7 @@ const ContentContainer = ({
                   setLeftPanel={setLeftPanel}
                   onFileRangesChanged={onFileRangesChanged}
                   isActiveTab={isActive}
+                  setIsChangeUnsaved={setIsChangeUnsaved}
                 />
               ) : null}
               <AddContextModal
@@ -344,6 +352,7 @@ const ContentContainer = ({
                   null,
                 )}
                 isActiveTab={isActive}
+                isChangeUnsaved={isChangeUnsaved}
               />
             </div>
           </div>

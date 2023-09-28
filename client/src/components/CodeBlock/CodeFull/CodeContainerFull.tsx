@@ -135,7 +135,7 @@ const CodeContainerFull = ({
   }, []);
 
   return (
-    <div ref={ref} className="relative pb-60">
+    <div ref={ref} className="relative pb-14">
       {tokens.map((line, index) => {
         let highlightForLine = highlights
           ?.sort((a, b) =>

@@ -4,6 +4,7 @@ import Chat from '../Chat';
 import ErrorFallback from '../ErrorFallback';
 import { RenderPage } from '../../pages/RepoTab/Content';
 import LeftSidebar from '../LeftSidebar';
+import Filters from '../Filters';
 import Subheader from './Subheader';
 import HomeSubheader from './HomeSubheader';
 
@@ -27,10 +28,10 @@ const PageTemplate = ({ children, renderPage }: PropsWithChildren<Props>) => {
         className="flex mb-16 w-screen overflow-hidden relative"
         style={mainContainerStyle}
       >
-        {renderPage !== 'article-response' &&
-          renderPage !== 'repo' &&
-          renderPage !== 'studio' &&
-          renderPage !== 'home' && <LeftSidebar renderPage={renderPage} />}
+        {renderPage === 'full-result' && (
+          <LeftSidebar renderPage={renderPage} />
+        )}
+        {renderPage === 'results' && <Filters />}
         {children}
         {renderPage !== 'home' && renderPage !== 'studio' && <Chat />}
       </div>

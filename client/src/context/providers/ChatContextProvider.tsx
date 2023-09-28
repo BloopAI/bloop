@@ -10,7 +10,6 @@ export const ChatContextProvider = memo(
   ({ children }: PropsWithChildren<Props>) => {
     const [conversation, setConversation] = useState<ChatMessage[]>([]);
     const [isChatOpen, setChatOpen] = useState(false);
-    const [showTooltip, setShowTooltip] = useState(false);
     const [tooltipText, setTooltipText] = useState('');
     const [submittedQuery, setSubmittedQuery] = useState('');
     const [selectedLines, setSelectedLines] = useState<[number, number] | null>(
@@ -18,27 +17,28 @@ export const ChatContextProvider = memo(
     );
     const [threadId, setThreadId] = useState('');
     const [queryId, setQueryId] = useState('');
+    const [isHistoryTab, setIsHistoryTab] = useState(false);
 
     const valuesContextValue = useMemo(
       () => ({
         conversation,
         isChatOpen,
-        showTooltip,
         tooltipText,
         submittedQuery,
         selectedLines,
         threadId,
         queryId,
+        isHistoryTab,
       }),
       [
         conversation,
         isChatOpen,
-        showTooltip,
         tooltipText,
         submittedQuery,
         selectedLines,
         threadId,
         queryId,
+        isHistoryTab,
       ],
     );
 
@@ -46,12 +46,12 @@ export const ChatContextProvider = memo(
       () => ({
         setConversation,
         setChatOpen,
-        setShowTooltip,
         setTooltipText,
         setSubmittedQuery,
         setSelectedLines,
         setThreadId,
         setQueryId,
+        setIsHistoryTab,
       }),
       [],
     );

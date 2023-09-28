@@ -41,7 +41,7 @@ impl Agent {
         }
 
         let context = self.answer_context(aliases).await?;
-        let system_prompt = prompts::answer_article_prompt(aliases.len() != 1, &context);
+        let system_prompt = prompts::answer_article_prompt(&context);
         let system_message = llm_gateway::api::Message::system(&system_prompt);
         let history = {
             let h = self.utter_history().collect::<Vec<_>>();
@@ -61,7 +61,7 @@ impl Agent {
             self.llm_gateway
                 .clone()
                 .model(self.model.model_name)
-                .chat(&messages, None)
+                .chat_stream(&messages, None)
                 .await?
         );
 

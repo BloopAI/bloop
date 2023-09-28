@@ -5,7 +5,6 @@ import { Clipboard, Feather, Info, Sparkle } from '../../../icons';
 import { findElementInCurrentTab } from '../../../utils/domUtils';
 import PortalContainer from '../../PortalContainer';
 import { ChatContext } from '../../../context/chatContext';
-import { UIContext } from '../../../context/uiContext';
 import { DeviceContext } from '../../../context/deviceContext';
 import { copyToClipboard } from '../../../utils';
 
@@ -38,8 +37,8 @@ const ExplainButton = ({
     setSelectedLines,
     setConversation,
     setThreadId,
+    setIsHistoryTab,
   } = useContext(ChatContext.Setters);
-  const { setRightPanelOpen } = useContext(UIContext.RightPanel);
   const { isSelfServe } = useContext(DeviceContext);
 
   return (
@@ -92,7 +91,7 @@ const ExplainButton = ({
                       e.stopPropagation();
                       setChatOpen(true);
                       setPopupPosition(null);
-                      setRightPanelOpen(false);
+                      setIsHistoryTab(false);
                       setThreadId('');
                       setConversation([]);
                       setSelectedLines([
@@ -122,7 +121,7 @@ const ExplainButton = ({
                         currentSelection[0][0],
                         currentSelection[1][0],
                       ]);
-                      setRightPanelOpen(false);
+                      setIsHistoryTab(false);
                       setSubmittedQuery(
                         `#explain_${relativePath}:${currentSelection[0][0]}-${
                           currentSelection[1][0]

@@ -7,9 +7,9 @@ import {
   useCallback,
   useMemo,
 } from 'react';
-import FileChip from '../Chat/ConversationMessage/FileChip';
-import CodeWithBreadcrumbs from '../../pages/RepoTab/ArticleResponse/CodeWithBreadcrumbs';
+import FileChip from '../Chat/ChatBody/ConversationMessage/FileChip';
 import { FileHighlightsType } from '../../types/general';
+import CodeWithBreadcrumbs from './CodeWithBreadcrumbs';
 import NewCode from './NewCode';
 
 type Props = {
@@ -53,6 +53,7 @@ const CodeRenderer = ({
   const matchLang = useMemo(
     () =>
       /lang:(\w+)/.exec(className || '') ||
+      /language:(\w+)/.exec(className || '') ||
       /language-(\w+)/.exec(className || ''),
     [className],
   );
@@ -61,7 +62,7 @@ const CodeRenderer = ({
     [className],
   );
   const matchPath = useMemo(
-    () => /path:(.+),/.exec(className || ''),
+    () => /path:(.*?)(,|$)/.exec(className || ''),
     [className],
   );
   const matchLines = useMemo(
@@ -138,6 +139,7 @@ const CodeRenderer = ({
           <NewCode
             code={code}
             language={matchLang?.[1] || ''}
+            filePath={matchPath?.[1] || ''}
             isCodeStudio={isCodeStudio}
           />
         )

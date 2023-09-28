@@ -130,15 +130,6 @@ const Subheader = () => {
         } else {
           resultsInList = false;
         }
-        if (i?.navType !== 'results' && i?.navType !== 'search') {
-          // is part of path to file and not ref/def and not before ref/def
-          if (pathToFileInList && !i?.navType && !array[index - 1]?.navType) {
-            return false; // remove clusters of navigation items
-          }
-          pathToFileInList = true;
-        } else {
-          pathToFileInList = false;
-        }
         return !!i;
       })
       .reverse()

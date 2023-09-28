@@ -108,36 +108,13 @@ pub fn system<'a>(paths: impl IntoIterator<Item = &'a str>) -> String {
 - When calling functions.path your query should be a single term (no whitespace). E.g. if the user says 'Where is the query parser?', your query should be 'parser'. If the users says 'What's in the auth dir?', your query should be 'auth'
 - If the output of a function is empty, try calling the function again with DIFFERENT arguments OR try calling a different function
 - Only call functions.proc with path indices that are under the PATHS heading above
-- Call functions.proc with paths that might contain relevant information. Either because of the path name, or to expand on code that's been returned by another function
+- Call functions.proc with paths that might contain relevant information. Either because of the path name, or to expand on code that's been returned by functions.code
 - ALWAYS call a function. DO NOT answer the question directly"#);
     s
 }
 
-/// Generate an answer article prompt.
-///
-/// The `multi` argument determines whether to use the "multiple file" variant of this prompt.
-pub fn answer_article_prompt(multi: bool, context: &str) -> String {
-    // Return different prompts depending on whether there is one or many aliases
-    let one_prompt = format!(
-        r#"{context}#####
-
-A user is looking at the code above, your job is to answer their query.
-
-Your output will be interpreted as bloop-markdown which renders with the following rules:
-- Inline code must be expressed as a link to the correct line of code using the URL format: `[bar](src/foo.rs#L50)` or `[bar](src/foo.rs#L50-L54)`
-- Do NOT output bare symbols. ALL symbols must include a link
-  - E.g. Do not simply write `Bar`, write [`Bar`](src/bar.rs#L100-L105).
-  - E.g. Do not simply write "Foos are functions that create `Foo` values out of thin air." Instead, write: "Foos are functions that create [`Foo`](src/foo.rs#L80-L120) values out of thin air."
-- Only internal links to the current file work
-- Basic markdown text formatting rules are allowed
-
-Here is an example response:
-
-A function [`openCanOfBeans`](src/beans/open.py#L7-L19) is defined. This function is used to handle the opening of beans. It includes the variable [`openCanOfBeans`](src/beans/open.py#L9) which is used to store the value of the tin opener.
-"#
-    );
-
-    let many_prompt = format!(
+pub fn answer_article_prompt(context: &str) -> String {
+    format!(
         r#"{context}####
 
 Your job is to answer a query about a codebase using the information above.
@@ -192,13 +169,7 @@ println!("hello world!");
   - Note: the line range is inclusive
 - When writing example code blocks, use `<GeneratedCode>`, and when quoting existing code, use `<QuotedCode>`.
 - You MUST use XML code blocks instead of markdown."#
-    );
-
-    if multi {
-        many_prompt
-    } else {
-        one_prompt
-    }
+    )
 }
 
 pub fn studio_article_prompt(context: &str) -> String {
@@ -210,14 +181,25 @@ You must use the following formatting rules at all times:
 - If you do not have enough information needed to answer the query, do not make up an answer
 - When referring to code, you must provide an example in a code block
 - Keep number of quoted lines of code to a minimum when possible
-- Basic markdown is allowed"#
+- When quoting code in a code block, use the following info string format: language:LANG,path:PATH
+  - For example, to quote `src/main.c`:
+    ```language:c,path:src/main.c
+    int main() {{
+      printf("hello world!");
+    }}
+    ```
+  - For example, to quote `index.js`:
+  ```language:javascript,path:index.js
+  console.log("hello world!")
+  ```
+- Basic markdown is otherwise allowed"#
     )
 }
 
 pub fn studio_name_prompt(context_json: &str, messages_json: &str) -> String {
     format!(
         r#"Your job is to generate a name for a conversation about software source code, given source code context and conversation history.
-        
+
 Follow these rules strictly:
     - You MUST only return the new title, and NO additional text
     - Be brief, only return a few words, 3-5 is ideal

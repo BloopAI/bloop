@@ -2,7 +2,7 @@ use std::{collections::HashSet, hash::Hash, time::Duration};
 
 use crate::{
     background::QueuedRepoStatus,
-    repo::{Backend, BranchFilter, RepoRef, Repository, SyncStatus},
+    repo::{Backend, BranchFilterConfig, FileFilterConfig, RepoRef, Repository, SyncStatus},
     state::RepositoryPool,
     Application,
 };
@@ -34,13 +34,13 @@ pub(crate) struct Repo {
     pub(super) last_update: DateTime<Utc>,
     pub(super) last_index: Option<DateTime<Utc>>,
     pub(super) most_common_lang: Option<String>,
-    pub(super) branch_filter: BranchFilter,
+    pub(super) branch_filter: BranchFilterConfig,
+    pub(super) file_filter: FileFilterConfig,
     pub(super) branches: Vec<Branch>,
 }
 
 impl From<(&RepoRef, &Repository)> for Repo {
     fn from((key, repo): (&RepoRef, &Repository)) -> Self {
-        use crate::repo::BranchFilter::*;
         let (head, branches) = 'branch_list: {
             let default = ("HEAD".to_string(), vec![]);
             let Ok(git) = gix::open(&repo.disk_path)
@@ -99,17 +99,20 @@ impl From<(&RepoRef, &Repository)> for Repo {
             (head, branches)
         };
 
-        let branch_filter = match repo.branch_filter.clone() {
-            Some(All) => Select(vec![".*".to_string()]),
-            Some(Head) => Select(vec![head]),
-            Some(Select(mut list)) => {
-                if let Some(pos) = list.iter().position(|i| i == &head) {
-                    list.remove(pos);
+        let branch_filter = {
+            use BranchFilterConfig::*;
+            match repo.branch_filter.clone() {
+                Some(All) => Select(vec![".*".to_string()]),
+                Some(Head) => Select(vec![head]),
+                Some(Select(mut list)) => {
+                    if let Some(pos) = list.iter().position(|i| i == &head) {
+                        list.remove(pos);
+                    }
+                    list.insert(0, head);
+                    Select(list)
                 }
-                list.insert(0, head);
-                Select(list)
+                None => Select(vec![head]),
             }
-            None => Select(vec![head]),
         };
 
         Repo {
@@ -132,6 +135,7 @@ impl From<(&RepoRef, &Repository)> for Repo {
                 ),
             },
             most_common_lang: repo.most_common_lang.clone(),
+            file_filter: repo.file_filter.clone(),
             branch_filter,
             branches,
         }
@@ -153,7 +157,8 @@ impl Repo {
             last_update: origin.pushed_at.unwrap(),
             last_index: None,
             most_common_lang: None,
-            branch_filter: crate::repo::BranchFilter::Select(vec![]),
+            branch_filter: crate::repo::BranchFilterConfig::Select(vec![]),
+            file_filter: Default::default(),
             branches: vec![],
         }
     }
@@ -171,6 +176,9 @@ impl PartialEq for Repo {
     }
 }
 
+// since it's an output type, there's no downside to having
+// excessively large variants
+#[allow(clippy::large_enum_variant)]
 #[derive(Serialize)]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum ReposResponse {
@@ -178,6 +186,8 @@ pub(crate) enum ReposResponse {
     Item(Repo),
     SyncQueue(Vec<QueuedRepoStatus>),
     SyncQueued,
+    #[cfg(feature = "ee")]
+    Unchanged,
     Deleted,
 }
 
@@ -191,7 +201,7 @@ pub(super) fn router() -> Router {
 
     #[cfg(feature = "ee")]
     {
-        indexed = indexed.patch(crate::ee::webserver::patch_with_branch);
+        indexed = indexed.patch(crate::ee::webserver::patch_repository);
     }
 
     Router::new()
@@ -473,6 +483,7 @@ mod test {
                     last_index_unix_secs: 123456,
                     most_common_lang: None,
                     branch_filter: Default::default(),
+                    file_filter: Default::default(),
                 },
             )
             .unwrap();
@@ -491,6 +502,7 @@ mod test {
                     last_index_unix_secs: 123456,
                     most_common_lang: None,
                     branch_filter: Default::default(),
+                    file_filter: Default::default(),
                 },
             )
             .unwrap();
@@ -511,6 +523,7 @@ mod test {
                     last_index_unix_secs: 0,
                     most_common_lang: None,
                     branch_filter: Default::default(),
+                    file_filter: Default::default(),
                 },
             )
                 .into(),
@@ -530,6 +543,7 @@ mod test {
                 last_index_unix_secs: 0,
                 most_common_lang: None,
                 branch_filter: Default::default(),
+                file_filter: Default::default(),
             },
         )
             .into();

@@ -6,8 +6,6 @@ use tantivy::schema::{
     FAST, STORED, STRING,
 };
 
-use crate::{db::SqlDb, semantic::Semantic};
-
 #[cfg(feature = "debug")]
 use {
     histogram::Histogram,
@@ -19,8 +17,6 @@ use {
 #[derive(Clone)]
 pub struct File {
     pub(super) schema: Schema,
-    pub(super) semantic: Option<Semantic>,
-    pub(super) sql: SqlDb,
 
     #[cfg(feature = "debug")]
     pub histogram: Arc<RwLock<Histogram>>,
@@ -64,12 +60,15 @@ pub struct File {
     /// list of branches in which this file can be found
     pub branches: Field,
 
+    /// list of branches in which this file can be found
+    pub indexed: Field,
+
     /// Whether this entry is a file or a directory
     pub is_directory: Field,
 }
 
 impl File {
-    pub fn new(sql: SqlDb, semantic: Option<Semantic>) -> Self {
+    pub fn new() -> Self {
         let mut builder = tantivy::schema::SchemaBuilder::new();
         let trigram = TextOptions::default().set_stored().set_indexing_options(
             TextFieldIndexing::default()
@@ -106,8 +105,10 @@ impl File {
         let raw_relative_path = builder.add_bytes_field("raw_relative_path", FAST);
 
         let is_directory = builder.add_bool_field("is_directory", FAST);
+        let indexed = builder.add_bool_field("indexed", STORED);
 
         Self {
+            schema: builder.build(),
             repo_disk_path,
             relative_path,
             unique_hash,
@@ -120,18 +121,22 @@ impl File {
             lang,
             avg_line_length,
             last_commit_unix_seconds,
-            schema: builder.build(),
-            semantic,
             raw_content,
             raw_repo_name,
             raw_relative_path,
             branches,
             is_directory,
-            sql,
+            indexed,
 
             #[cfg(feature = "debug")]
             histogram: Arc::new(Histogram::builder().build().unwrap().into()),
         }
+    }
+}
+
+impl Default for File {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

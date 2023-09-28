@@ -174,7 +174,6 @@
 	"Wait for the repository to finish syncing and try again": "Wait for the repository to finish syncing and try again",
 	"Create new": "Create new",
 	"Show": "Show",
-	"Anything I can help you with?": "Anything I can help you with?",
 	"Hide": "Hide",
 	"Conversations": "Conversations",
 	"Delete": "Delete",
@@ -370,5 +369,18 @@
 	"First name is required": "First name is required",
 	"Last name is required": "Last name is required",
 	"Email is required": "Email is required",
-	"Connect GitHub account to continue": "Connect GitHub account to continue"
+	"Connect GitHub account to continue": "Connect GitHub account to continue",
+	"Save context changes before answer generation": "Save context changes before answer generation",
+	"Index": "Index",
+	"File not indexed": "File not indexed",
+	"Force index": "Force index",
+	"bloop automatically excludes certain files from indexing. This file might be too big or it might have an excluded file type.": "bloop automatically excludes certain files from indexing. This file might be too big or it might have an excluded file type.",
+	"Recommended: The classic response type": "Recommended: The classic response type",
+	"Experimental: Faster but less accurate": "Experimental: Faster but less accurate",
+	"What would you like to know about <2>#repo</2>?": "What would you like to know about <2>{{repoName}}</2>?",
+	"Hi, I'm bloop.": "Hi, I'm bloop.",
+	"Done": "Done",
+	"Send a message": "Send a message",
+	"Token limit exceeded": "Token limit exceeded",
+	"bloop automatically excludes certain files from the indexing. This file might be too big or it might have an excluded file type.": "bloop automatically excludes certain files from the indexing. This file might be too big or it might have an excluded file type."
 }

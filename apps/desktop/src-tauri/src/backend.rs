@@ -61,6 +61,7 @@ pub fn initialize<R: Runtime>(app: &mut tauri::App<R>) -> tauri::plugin::Result<
     Application::install_logging(&configuration);
 
     if let Some(dsn) = &configuration.sentry_dsn {
+        tracing::info!("initializing sentry");
         initialize_sentry(dsn);
     }
 
@@ -88,6 +89,8 @@ async fn wait_for_qdrant() {
 }
 
 async fn start_backend<R: Runtime>(configuration: Configuration, app: tauri::AppHandle<R>) {
+    tracing::info!("booting bleep back-end");
+
     wait_for_qdrant().await;
 
     let initialized = Application::initialize(
@@ -129,6 +132,7 @@ async fn start_backend<R: Runtime>(configuration: Configuration, app: tauri::App
 
             if let Err(err) = backend.run().await {
                 error!(?err, "server crashed error");
+                sentry_anyhow::capture_anyhow(&err);
                 app.emit_all(
                     "server-crashed",
                     Payload {
@@ -140,6 +144,7 @@ async fn start_backend<R: Runtime>(configuration: Configuration, app: tauri::App
         }
         Err(err) => {
             error!(?err, "server failed to start");
+            sentry_anyhow::capture_anyhow(&err);
             app.emit_all(
                 "server-crashed",
                 Payload {
@@ -158,7 +163,7 @@ fn setup_configuration<R: Runtime>(app: &tauri::AppHandle<R>) -> Configuration {
         .expect("failed to resolve resource");
 
     let mut bundled = Configuration::read(path).unwrap();
-    bundled.qdrant_url = Some("http://127.0.0.1:6334".into());
+    bundled.qdrant_url = "http://127.0.0.1:6334".into();
     bundled.max_threads = bleep::default_parallelism() / 2;
     bundled.model_dir = app
         .path_resolver()

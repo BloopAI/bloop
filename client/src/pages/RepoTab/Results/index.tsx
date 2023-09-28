@@ -88,7 +88,7 @@ const ResultsPage = ({ resultsData, loading }: Props) => {
 
   return (
     <div
-      className="p-8 flex-1 overflow-x-auto mx-auto max-w-6.5xl box-content pb-60"
+      className="p-8 flex-1 overflow-x-auto mx-auto max-w-6.5xl box-content pb-14"
       ref={ref}
     >
       <PageHeader

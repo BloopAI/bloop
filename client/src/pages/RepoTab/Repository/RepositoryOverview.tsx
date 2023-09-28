@@ -20,6 +20,7 @@ import useAppNavigation from '../../../hooks/useAppNavigation';
 import { DeviceContext } from '../../../context/deviceContext';
 import { buildRepoQuery } from '../../../utils';
 import { SearchContext } from '../../../context/searchContext';
+import { SyncStatus } from '../../../types/general';
 
 const md = new Remarkable({
   html: true,
@@ -36,10 +37,10 @@ const md = new Remarkable({
 
 type Props = {
   repository: Repository;
-  syncState?: boolean;
+  repoStatus: SyncStatus;
 };
 
-const RepositoryOverview = ({ syncState, repository }: Props) => {
+const RepositoryOverview = ({ repository, repoStatus }: Props) => {
   const [sortedFiles, setSortedFiles] = useState(repository.files);
   const { openLink } = useContext(DeviceContext);
   const { selectedBranch } = useContext(SearchContext.SelectedBranch);
@@ -109,6 +110,7 @@ const RepositoryOverview = ({ syncState, repository }: Props) => {
           onClick={fileClick}
           repositoryName={cleanRepoName(repository.name)}
           currentPath={repository.currentPath.slice(0, -1)}
+          repoStatus={repoStatus}
         />
       </div>
       {readme ? (

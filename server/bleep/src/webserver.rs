@@ -1,6 +1,7 @@
 use crate::{env::Feature, Application};
 
 use axum::{
+    extract::State,
     http::StatusCode,
     response::IntoResponse,
     routing::{delete, get, post},
@@ -15,6 +16,7 @@ use tracing::info;
 mod aaa;
 pub mod answer;
 mod autocomplete;
+mod commits;
 mod config;
 mod file;
 mod github;
@@ -54,6 +56,7 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         // repo management
         .nest("/repos", repos::router())
         // intelligence
+        .route("/tutorial-questions", get(commits::tutorial_questions))
         .route("/hoverable", get(hoverable::handle))
         .route("/token-info", get(intelligence::handle))
         .route("/related-files", get(intelligence::related_files))
@@ -325,10 +328,8 @@ impl<'a> From<EndpointError<'a>> for Response<'a> {
     }
 }
 
-async fn health(Extension(app): Extension<Application>) {
-    if let Some(ref semantic) = app.semantic {
-        // panic is fine here, we don't need exact reporting of
-        // subsystem checks at this stage
-        semantic.health_check().await.unwrap()
-    }
+async fn health(State(app): State<Application>) {
+    // panic is fine here, we don't need exact reporting of
+    // subsystem checks at this stage
+    app.semantic.health_check().await.unwrap()
 }

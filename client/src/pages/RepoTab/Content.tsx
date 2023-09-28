@@ -24,7 +24,6 @@ import RepositoryPage from './Repository';
 import ResultsPage from './Results';
 import ViewResult from './ResultFull';
 import NoResults from './Results/NoResults';
-import ArticleResponse from './ArticleResponse';
 
 const mockQuerySuggestions = [
   'repo:cobra-ats  error:“no apples”',
@@ -39,8 +38,7 @@ export type RenderPage =
   | 'repo'
   | 'full-result'
   | 'no-results'
-  | 'home'
-  | 'article-response';
+  | 'home';
 
 let prevRenderPage: RenderPage;
 
@@ -113,11 +111,8 @@ const ContentContainer = ({ tab }: { tab: RepoTabType }) => {
     if (tab.key === 'initial') {
       return 'home';
     }
-    if (
-      navigatedItem?.type &&
-      ['full-result', 'article-response'].includes(navigatedItem.type)
-    ) {
-      return navigatedItem.type as 'full-result' | 'article-response';
+    if (navigatedItem?.type && navigatedItem.type === 'full-result') {
+      return navigatedItem.type as 'full-result';
     }
     if (!data?.data?.[0] && !loading) {
       return 'no-results';
@@ -172,7 +167,18 @@ const ContentContainer = ({ tab }: { tab: RepoTabType }) => {
         );
       case 'repo':
         return (
-          <RepositoryPage repositoryData={data as DirectorySearchResponse} />
+          <RepositoryPage
+            repositoryData={data as DirectorySearchResponse}
+            refetchRepo={() =>
+              searchQuery(
+                buildRepoQuery(
+                  navigatedItem?.repo,
+                  navigatedItem?.path,
+                  selectedBranch,
+                ),
+              )
+            }
+          />
         );
       case 'full-result':
         return (
@@ -183,13 +189,16 @@ const ContentContainer = ({ tab }: { tab: RepoTabType }) => {
             selectedBranch={selectedBranch}
             recordId={navigatedItem?.recordId!}
             threadId={navigatedItem?.threadId!}
-          />
-        );
-      case 'article-response':
-        return (
-          <ArticleResponse
-            recordId={navigatedItem?.recordId!}
-            threadId={navigatedItem?.threadId!}
+            path={navigatedItem?.path}
+            refetchFile={() =>
+              searchQuery(
+                buildRepoQuery(
+                  navigatedItem?.repo,
+                  navigatedItem?.path,
+                  selectedBranch,
+                ),
+              )
+            }
           />
         );
       default:
@@ -201,6 +210,8 @@ const ContentContainer = ({ tab }: { tab: RepoTabType }) => {
     navigatedItem,
     query,
     navigatedItem?.threadId,
+    navigatedItem?.repo,
+    navigatedItem?.path,
     renderPage,
     tab.repoName,
     selectedBranch,

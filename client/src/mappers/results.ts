@@ -137,6 +137,8 @@ const mapFileTree = (siblings: DirectoryEntry[], relativePath: string) => {
       lang:
         item.entry_data !== 'Directory' ? item.entry_data.File.lang : undefined,
       children: [],
+      indexed:
+        item.entry_data !== 'Directory' ? item.entry_data.File.indexed : true,
     }))
     .sort(sortFiles);
 };
@@ -151,6 +153,7 @@ export const mapFileResult = (fileItem: FileItem) => {
     repoName: fileItem.data.repo_name,
     size: fileItem.data.size,
     loc: fileItem.data.sloc,
+    indexed: fileItem.data.indexed,
   };
 };
 
