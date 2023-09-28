@@ -8,11 +8,11 @@ use std::{
 };
 
 use async_trait::async_trait;
-use ndarray::Axis;
-use ort::{
-    tensor::{FromArray, InputTensor, OrtOwnedTensor},
-    Environment, ExecutionProvider, GraphOptimizationLevel, LoggingLevel, SessionBuilder,
-};
+// use ndarray::Axis;
+// use ort::{
+//     tensor::{FromArray, InputTensor, OrtOwnedTensor},
+//     Environment, ExecutionProvider, GraphOptimizationLevel, LoggingLevel, SessionBuilder,
+// };
 use tokenizers::Tokenizer;
 use tracing::trace;
 
@@ -65,104 +65,105 @@ pub struct EmbedChunk {
 
 #[async_trait]
 pub trait Embedder: Send + Sync {
-    fn embed(&self, data: &str) -> anyhow::Result<Embedding>;
+    async fn embed(&self, data: &str) -> anyhow::Result<Embedding>;
     fn tokenizer(&self) -> &Tokenizer;
     async fn batch_embed(&self, log: Vec<&str>) -> anyhow::Result<Vec<Embedding>>;
 }
 
+// pub struct LocalEmbedder {
+//     session: ort::Session,
+//     tokenizer: Tokenizer,
+// }
+//
+// impl LocalEmbedder {
+//     pub fn new(model_dir: &Path) -> anyhow::Result<Self> {
+//         let environment = Arc::new(
+//             Environment::builder()
+//                 .with_name("Encode")
+//                 .with_log_level(LoggingLevel::Warning)
+//                 .with_execution_providers([ExecutionProvider::cpu()])
+//                 .with_telemetry(false)
+//                 .build()?,
+//         );
+//
+//         let threads = if let Ok(v) = std::env::var("NUM_OMP_THREADS") {
+//             str::parse(&v).unwrap_or(1)
+//         } else {
+//             1
+//         };
+//
+//         let session = SessionBuilder::new(&environment)?
+//             .with_optimization_level(GraphOptimizationLevel::Level3)?
+//             .with_intra_threads(threads)?
+//             .with_model_from_file(model_dir.join("model.onnx"))?;
+//
+//         let tokenizer = Tokenizer::from_file(model_dir.join("tokenizer.json")).unwrap();
+//
+//         Ok(Self { session, tokenizer })
+//     }
+// }
+//
+// #[async_trait]
+// impl Embedder for LocalEmbedder {
+//     fn embed(&self, sequence: &str) -> anyhow::Result<Embedding> {
+//         let tokenizer_output = self.tokenizer.encode(sequence, true).unwrap();
+//
+//         let input_ids = tokenizer_output.get_ids();
+//         let attention_mask = tokenizer_output.get_attention_mask();
+//         let token_type_ids = tokenizer_output.get_type_ids();
+//         let length = input_ids.len();
+//         trace!("embedding {} tokens {:?}", length, sequence);
+//
+//         let inputs_ids_array = ndarray::Array::from_shape_vec(
+//             (1, length),
+//             input_ids.iter().map(|&x| x as i64).collect(),
+//         )?;
+//
+//         let attention_mask_array = ndarray::Array::from_shape_vec(
+//             (1, length),
+//             attention_mask.iter().map(|&x| x as i64).collect(),
+//         )?;
+//
+//         let token_type_ids_array = ndarray::Array::from_shape_vec(
+//             (1, length),
+//             token_type_ids.iter().map(|&x| x as i64).collect(),
+//         )?;
+//
+//         let outputs = self.session.run([
+//             InputTensor::from_array(inputs_ids_array.into_dyn()),
+//             InputTensor::from_array(attention_mask_array.into_dyn()),
+//             InputTensor::from_array(token_type_ids_array.into_dyn()),
+//         ])?;
+//
+//         let output_tensor: OrtOwnedTensor<f32, _> = outputs[0].try_extract().unwrap();
+//         let sequence_embedding = &*output_tensor.view();
+//         let pooled = sequence_embedding.mean_axis(Axis(1)).unwrap();
+//         Ok(pooled.to_owned().as_slice().unwrap().to_vec())
+//     }
+//
+//     fn tokenizer(&self) -> &Tokenizer {
+//         &self.tokenizer
+//     }
+//
+//     async fn batch_embed(&self, log: Vec<&str>) -> anyhow::Result<Vec<Embedding>> {
+//         log.into_iter()
+//             .map(|entry| tokio::task::block_in_place(|| self.embed(entry)))
+//             .collect::<anyhow::Result<Vec<Embedding>>>()
+//     }
+// }
+
 pub struct LocalEmbedder {
-    session: ort::Session,
-    tokenizer: Tokenizer,
-}
-
-impl LocalEmbedder {
-    pub fn new(model_dir: &Path) -> anyhow::Result<Self> {
-        let environment = Arc::new(
-            Environment::builder()
-                .with_name("Encode")
-                .with_log_level(LoggingLevel::Warning)
-                .with_execution_providers([ExecutionProvider::cpu()])
-                .with_telemetry(false)
-                .build()?,
-        );
-
-        let threads = if let Ok(v) = std::env::var("NUM_OMP_THREADS") {
-            str::parse(&v).unwrap_or(1)
-        } else {
-            1
-        };
-
-        let session = SessionBuilder::new(&environment)?
-            .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_intra_threads(threads)?
-            .with_model_from_file(model_dir.join("model.onnx"))?;
-
-        let tokenizer = Tokenizer::from_file(model_dir.join("tokenizer.json")).unwrap();
-
-        Ok(Self { session, tokenizer })
-    }
-}
-
-#[async_trait]
-impl Embedder for LocalEmbedder {
-    fn embed(&self, sequence: &str) -> anyhow::Result<Embedding> {
-        let tokenizer_output = self.tokenizer.encode(sequence, true).unwrap();
-
-        let input_ids = tokenizer_output.get_ids();
-        let attention_mask = tokenizer_output.get_attention_mask();
-        let token_type_ids = tokenizer_output.get_type_ids();
-        let length = input_ids.len();
-        trace!("embedding {} tokens {:?}", length, sequence);
-
-        let inputs_ids_array = ndarray::Array::from_shape_vec(
-            (1, length),
-            input_ids.iter().map(|&x| x as i64).collect(),
-        )?;
-
-        let attention_mask_array = ndarray::Array::from_shape_vec(
-            (1, length),
-            attention_mask.iter().map(|&x| x as i64).collect(),
-        )?;
-
-        let token_type_ids_array = ndarray::Array::from_shape_vec(
-            (1, length),
-            token_type_ids.iter().map(|&x| x as i64).collect(),
-        )?;
-
-        let outputs = self.session.run([
-            InputTensor::from_array(inputs_ids_array.into_dyn()),
-            InputTensor::from_array(attention_mask_array.into_dyn()),
-            InputTensor::from_array(token_type_ids_array.into_dyn()),
-        ])?;
-
-        let output_tensor: OrtOwnedTensor<f32, _> = outputs[0].try_extract().unwrap();
-        let sequence_embedding = &*output_tensor.view();
-        let pooled = sequence_embedding.mean_axis(Axis(1)).unwrap();
-        Ok(pooled.to_owned().as_slice().unwrap().to_vec())
-    }
-
-    fn tokenizer(&self) -> &Tokenizer {
-        &self.tokenizer
-    }
-
-    async fn batch_embed(&self, log: Vec<&str>) -> anyhow::Result<Vec<Embedding>> {
-        log.into_iter()
-            .map(|entry| tokio::task::block_in_place(|| self.embed(entry)))
-            .collect::<anyhow::Result<Vec<Embedding>>>()
-    }
-}
-
-pub struct GgmlEmbedder {
     model: Box<dyn llm::Model>,
-    session: Arc<Mutex<llm::InferenceSession>>,
+    sessions: Vec<Arc<tokio::sync::Mutex<llm::InferenceSession>>>,
     tokenizer: Tokenizer,
+    permits: Arc<tokio::sync::Semaphore>,
 }
 
 // InferenceSession is explicitly not Sync because it uses ggml::Tensor internally,
 // Bert does not make use of these tensors however
-unsafe impl Sync for GgmlEmbedder {}
+unsafe impl Sync for LocalEmbedder {}
 
-impl GgmlEmbedder {
+impl LocalEmbedder {
     pub fn new(model_dir: &Path) -> anyhow::Result<Self> {
         let mut model_params = llm::ModelParameters::default();
         model_params.use_gpu = true; // TODO: make configurable
@@ -173,25 +174,39 @@ impl GgmlEmbedder {
             model_params,
             llm::load_progress_callback_stdout,
         )?;
-        let session = Arc::new(Mutex::new(model.start_session(Default::default())));
-        let tokenizer = Tokenizer::from_file(model_dir.join("tokenizer.json")).unwrap();
 
+        let session_count = if cfg!(macos) {
+            8
+        } else {
+            std::thread::available_parallelism()
+                .map(|t| t.get())
+                .unwrap_or(4)
+        };
+
+        let sessions = (0..session_count)
+            .map(|_| model.start_session(Default::default()))
+            .map(tokio::sync::Mutex::new)
+            .map(Arc::new)
+            .collect();
+
+        let mut tokenizer = Tokenizer::from_file(model_dir.join("tokenizer.json")).unwrap();
+        tokenizer.with_padding(None).with_truncation(None);
         Ok(Self {
             model,
-            session,
+            sessions,
             tokenizer,
+            permits: Arc::new(tokio::sync::Semaphore::new(8)),
         })
     }
 }
 
 #[async_trait]
-impl Embedder for GgmlEmbedder {
-    fn embed(&self, sequence: &str) -> anyhow::Result<Embedding> {
+impl Embedder for LocalEmbedder {
+    async fn embed(&self, sequence: &str) -> anyhow::Result<Embedding> {
         let mut output_request = llm::OutputRequest {
             all_logits: None,
             embeddings: Some(Vec::new()),
         };
-        dbg!("embed");
         let vocab = self.model.tokenizer();
         let beginning_of_sentence = true;
         let query_token_ids = vocab
@@ -200,10 +215,17 @@ impl Embedder for GgmlEmbedder {
             .iter()
             .map(|(_, tok)| *tok)
             .collect::<Vec<_>>();
-        let mut session = self.session.lock().unwrap();
-        self.model
-            .evaluate(&mut session, &query_token_ids, &mut output_request);
-        Ok(output_request.embeddings.unwrap())
+
+        if let Ok(_permit) = self.permits.acquire().await {
+            for s in &self.sessions {
+                let mut session = s.lock().await;
+                self.model
+                    .evaluate(&mut session, &query_token_ids, &mut output_request);
+                return Ok(output_request.embeddings.unwrap());
+            }
+        }
+
+        unreachable!();
     }
 
     fn tokenizer(&self) -> &Tokenizer {
@@ -215,21 +237,36 @@ impl Embedder for GgmlEmbedder {
             all_logits: None,
             embeddings: Some(Vec::new()),
         };
-        dbg!("batch_embed");
         let vocab = self.model.tokenizer();
         let beginning_of_sentence = true;
-        let query_token_ids = log.iter().map( |&sequence| vocab
-            .tokenize(&sequence, beginning_of_sentence)
-            .unwrap()
+        let query_token_ids = log
             .iter()
-            .map(|(_, tok)| *tok)
-            .collect::<Vec<_>>()).collect::<Vec<_>>();
+            .map(|&sequence| {
+                vocab
+                    .tokenize(&sequence, beginning_of_sentence)
+                    .unwrap()
+                    .iter()
+                    .map(|(_, tok)| *tok)
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
         let query_token_ids: Vec<_> = query_token_ids.iter().map(AsRef::as_ref).collect();
-        let mut session = self.session.lock().unwrap();
-        self.model
-            .batch_evaluate(&mut session, &query_token_ids, &mut output_request);
-        let embedding: Vec<Vec<f32>> = output_request.embeddings.unwrap().chunks(384).map(|chunk| chunk.to_vec()).collect(); 
-        dbg!("{}", embedding.clone());
-        Ok(embedding)
+
+        if let Ok(_permit) = self.permits.acquire().await {
+            println!("accquired lock");
+            for s in &self.sessions {
+                let mut session = s.lock().await;
+                self.model
+                    .batch_evaluate(&mut session, &query_token_ids, &mut output_request);
+                let embedding: Vec<Vec<f32>> = output_request
+                    .embeddings
+                    .unwrap()
+                    .chunks(384)
+                    .map(|chunk| chunk.to_vec())
+                    .collect();
+                return Ok(embedding);
+            }
+        }
+        unreachable!()
     }
 }

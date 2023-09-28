@@ -525,11 +525,9 @@ dependencies = [
  "jsonwebtokens-cognito",
  "lazy-regex",
  "llm",
- "ndarray",
  "notify-debouncer-mini",
  "octocrab",
  "once_cell",
- "ort",
  "pest",
  "pest_derive",
  "petgraph",
@@ -2348,7 +2346,6 @@ dependencies = [
 [[package]]
 name = "ggml"
 version = "0.2.0-dev"
-source = "git+https://github.com/rmuller-ml/llm?branch=batch_embedding#0987103270b2af9ec6518de116cf101f1ac5905b"
 dependencies = [
  "ggml-sys",
  "memmap2 0.5.10",
@@ -2358,7 +2355,6 @@ dependencies = [
 [[package]]
 name = "ggml-sys"
 version = "0.2.0-dev"
-source = "git+https://github.com/rmuller-ml/llm?branch=batch_embedding#0987103270b2af9ec6518de116cf101f1ac5905b"
 dependencies = [
  "cc",
 ]
@@ -4059,16 +4055,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9cdc71e17332e86d2e1d38c1f99edcb6288ee11b815fb1a4b049eaa2114d369b"
 
 [[package]]
-name = "libloading"
-version = "0.7.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b67380fd3b2fbe7527a606e18729d21c6f3951633d0500574c4dc22d2d638b9f"
-dependencies = [
- "cfg-if",
- "winapi",
-]
-
-[[package]]
 name = "libsqlite3-sys"
 version = "0.24.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4103,7 +4089,6 @@ checksum = "1a9bad9f94746442c783ca431b22403b519cd7fbeed0533fdd6328b2f2212128"
 [[package]]
 name = "llm"
 version = "0.2.0-dev"
-source = "git+https://github.com/rmuller-ml/llm?branch=batch_embedding#0987103270b2af9ec6518de116cf101f1ac5905b"
 dependencies = [
  "llm-base",
  "llm-bert",
@@ -4115,7 +4100,6 @@ dependencies = [
 [[package]]
 name = "llm-base"
 version = "0.2.0-dev"
-source = "git+https://github.com/rmuller-ml/llm?branch=batch_embedding#0987103270b2af9ec6518de116cf101f1ac5905b"
 dependencies = [
  "bytemuck",
  "ggml",
@@ -4135,7 +4119,6 @@ dependencies = [
 [[package]]
 name = "llm-bert"
 version = "0.2.0-dev"
-source = "git+https://github.com/rmuller-ml/llm?branch=batch_embedding#0987103270b2af9ec6518de116cf101f1ac5905b"
 dependencies = [
  "bytemuck",
  "llm-base",
@@ -4889,26 +4872,6 @@ name = "option-ext"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
-
-[[package]]
-name = "ort"
-version = "1.14.8"
-source = "git+https://github.com/bloopai/ort?branch=env-builder-telemetry#dfd92ae5cf2dff3318c99de1a8b1a801cb5a3c9e"
-dependencies = [
- "flate2",
- "half 2.2.1",
- "lazy_static",
- "libc",
- "libloading",
- "ndarray",
- "tar",
- "thiserror",
- "tracing",
- "ureq",
- "vswhom",
- "winapi",
- "zip",
-]
 
 [[package]]
 name = "os_info"
@@ -8998,5 +8961,4 @@ dependencies = [
  "byteorder",
  "crc32fast",
  "crossbeam-utils",
- "flate2",
 ]

@@ -426,5 +426,5 @@ fn default_max_chunk_tokens() -> usize {
 }
 
 fn interactive_batch_size() -> NonZeroUsize {
-    NonZeroUsize::new(1).unwrap()
+    NonZeroUsize::new(5).unwrap()
 }
