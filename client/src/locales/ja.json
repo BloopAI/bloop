@@ -379,5 +379,7 @@
 	"Done": "終わり",
 	"Send a message": "メッセージを送る",
 	"Token limit exceeded": "トークンの制限が超えました",
-	"bloop automatically excludes certain files from the indexing. This file might be too big or it might have an excluded file type.": "Bloopは、インデックスから特定のファイルを自動的に除外します。 このファイルが大きすぎるか、除外されたファイルタイプがある場合があります。"
+	"bloop automatically excludes certain files from the indexing. This file might be too big or it might have an excluded file type.": "Bloopは、インデックスから特定のファイルを自動的に除外します。 このファイルが大きすぎるか、除外されたファイルタイプがある場合があります。",
+	"Allow analytics": "分析を許可します",
+	"We use analytics to improve your experience. Please refresh the page after changing the value.": "分析を使用して体験を向上させます。 値を変更した後、ページを更新してください。"
 }
