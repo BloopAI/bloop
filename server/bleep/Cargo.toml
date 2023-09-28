@@ -6,9 +6,12 @@ default-run = "bleep"
 build = "build.rs"
 
 [features]
-default = ["dynamic-ort"]
+# default = ["dynamic-ort"]
+default = []
 debug = ["console-subscriber", "histogram"]
-dynamic-ort = ["ort/load-dynamic"]
+# dynamic-ort = ["ort/load-dynamic"]
+metal = ["llm/metal"]
+cublas = ["llm/cublas"]
 ee = []
 
 [[bin]]
@@ -108,8 +111,8 @@ relative-path = "1.9.0"
 qdrant-client = { version = "1.5.0", default-features = false }
 tokenizers = { version = "^0.11", default-features = false, features = ["progressbar"] }
 tokio-stream = "0.1.14"
-ort = { git = "https://github.com/bloopai/ort", branch = "env-builder-telemetry" }
-ndarray = "0.15"
+# ort = { git = "https://github.com/bloopai/ort", branch = "env-builder-telemetry" }
+# ndarray = "0.15"
 uuid = { version = "1.4.1", features = ["v4", "fast-rng", "serde"] }
 jsonwebtoken = { version = "8.3.0", features = ["use_pem"] }
 tiktoken-rs = "0.4.5"
@@ -138,14 +141,7 @@ hex = "0.4.3"
 base64 = "0.21.4"
 jwt-authorizer = { version = "0.11.0", default-features = false, features = ["rustls-tls-webpki-roots", "chrono"] }
 
-[target.'cfg(target_os = "macos")'.dependencies]
-#)llm = { path = "/home/np/bloop/ggml/llm/crates/llm", default-features = false, features = ["bert", "metal"] }
-llm = { git = "https://github.com/rmuller-ml/llm", branch = "batch_embedding", default-features = false, features = ["bert", "metal"] }
-
-# TODO: make cublas a feature flag
-# [target.'cfg(not(target_os = "macos"))'.dependencies]
-# llm = { path = "/home/np/bloop/ggml/llm/crates/llm", default-features = false, features = ["bert", "cublas"] }
-# llm = { git = "https://github.com/nerdypepper/llm", branch = "metal-experiments", default-features = false, features = ["bert", "cublas"] }
+llm = { path = "/home/np/bloop/experimental/llm/crates/llm", default-features = false, features = ["bert"] }
 
 [dev-dependencies]
 criterion = { version = "0.5.1", features = ["async_tokio"] }
