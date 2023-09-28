@@ -7,11 +7,14 @@ mod backend;
 mod qdrant;
 
 use once_cell::sync::Lazy;
+use sysinfo::{ProcessExt, ProcessRefreshKind, RefreshKind, Signal, System, SystemExt};
 pub use tauri::{plugin, App, Manager, Runtime};
 
 use std::{
     path::PathBuf,
     sync::{Arc, RwLock},
+    thread,
+    time::Duration,
 };
 
 pub static TELEMETRY: Lazy<Arc<RwLock<bool>>> = Lazy::new(|| Arc::new(RwLock::new(false)));
@@ -38,6 +41,8 @@ fn relative_command_path(command: impl AsRef<str>) -> Option<PathBuf> {
 
 #[tokio::main]
 async fn main() {
+    cleanup_old_processes();
+
     tauri::Builder::default()
         .plugin(qdrant::QdrantSupervisor::default())
         .setup(backend::initialize)
@@ -88,5 +93,44 @@ fn show_folder_in_finder(path: String) {
             .arg(path)
             .spawn()
             .unwrap();
+    }
+}
+
+fn cleanup_old_processes() {
+    const PROCESS_BLACKLIST: &[&str] = &["qdrant", "bleep"];
+
+    // Limit total open files from `sysinfo` crate on Linux.
+    sysinfo::set_open_files_limit(10);
+
+    let mut sys =
+        System::new_with_specifics(RefreshKind::new().with_processes(ProcessRefreshKind::new()));
+
+    for name in PROCESS_BLACKLIST {
+        for process in sys.processes_by_exact_name(name) {
+            if process.kill_with(Signal::Term).is_none() && !process.kill() {
+                tracing::error!(?name, "was not able to close existing process");
+            }
+        }
+    }
+
+    // We now wait for these processes to close.
+
+    let mut remaining_procs = vec![];
+    for _ in 0..10 {
+        thread::sleep(Duration::from_millis(500));
+        sys.refresh_processes();
+        remaining_procs = PROCESS_BLACKLIST
+            .iter()
+            .flat_map(|name| sys.processes_by_exact_name(name))
+            .collect();
+
+        if remaining_procs.is_empty() {
+            break;
+        }
+    }
+
+    // As a last-ditch resort, kill any remaining processes.
+    for proc in remaining_procs {
+        proc.kill();
     }
 }
