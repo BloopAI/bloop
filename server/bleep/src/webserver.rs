@@ -1,6 +1,7 @@
 use crate::{env::Feature, Application};
 
 use axum::{
+    extract::State,
     http::StatusCode,
     response::IntoResponse,
     routing::{delete, get, post},
@@ -327,10 +328,8 @@ impl<'a> From<EndpointError<'a>> for Response<'a> {
     }
 }
 
-async fn health(Extension(app): Extension<Application>) {
-    if let Some(ref semantic) = app.semantic {
-        // panic is fine here, we don't need exact reporting of
-        // subsystem checks at this stage
-        semantic.health_check().await.unwrap()
-    }
+async fn health(State(app): State<Application>) {
+    // panic is fine here, we don't need exact reporting of
+    // subsystem checks at this stage
+    app.semantic.health_check().await.unwrap()
 }

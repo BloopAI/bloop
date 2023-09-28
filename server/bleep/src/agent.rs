@@ -322,8 +322,6 @@ impl Agent {
         debug!(?query, %self.thread_id, "executing semantic query");
         self.app
             .semantic
-            .as_ref()
-            .unwrap()
             .search(&query, limit, offset, threshold, retrieve_more)
             .await
     }
@@ -351,8 +349,6 @@ impl Agent {
         debug!(?queries, %self.thread_id, "executing semantic query");
         self.app
             .semantic
-            .as_ref()
-            .unwrap()
             .batch_search(queries.as_slice(), limit, offset, threshold, retrieve_more)
             .await
     }

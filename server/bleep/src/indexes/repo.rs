@@ -6,8 +6,8 @@ use tracing::info;
 pub use super::schema::Repo;
 use super::Indexable;
 use crate::{
-    background::SyncPipes,
-    repo::{RepoMetadata, RepoRef, Repository},
+    background::SyncHandle,
+    repo::{RepoMetadata, Repository},
 };
 
 impl Default for Repo {
@@ -20,11 +20,10 @@ impl Default for Repo {
 impl Indexable for Repo {
     async fn index_repository(
         &self,
-        repo_ref: &RepoRef,
+        SyncHandle { ref reporef, .. }: &SyncHandle,
         repo: &Repository,
         _metadata: &RepoMetadata,
         writer: &IndexWriter,
-        _pipes: &SyncPipes,
     ) -> Result<()> {
         // Make sure we delete any stale references to this repository when indexing.
         self.delete_by_repo(writer, repo);
@@ -33,9 +32,9 @@ impl Indexable for Repo {
             // We don't have organization support for now.
             self.org => "",
             self.disk_path => repo.disk_path.to_string_lossy().into_owned(),
-            self.name => repo_ref.indexed_name(),
-            self.raw_name => repo_ref.indexed_name().as_bytes(),
-            self.repo_ref => repo_ref.to_string(),
+            self.name => reporef.indexed_name(),
+            self.raw_name => reporef.indexed_name().as_bytes(),
+            self.repo_ref => reporef.to_string(),
         ))?;
 
         info!(

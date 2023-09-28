@@ -21,13 +21,9 @@ pub use repo::Repo;
 use tracing::debug;
 
 use crate::{
-    background::{SyncHandle, SyncPipes},
-    cache::FileCache,
-    db::SqlDb,
+    background::SyncHandle,
     query::parser::Query,
-    repo::{RepoError, RepoMetadata, RepoRef, Repository},
-    semantic::Semantic,
-    state::RepositoryPool,
+    repo::{RepoError, RepoMetadata, Repository},
     Configuration,
 };
 
@@ -70,9 +66,11 @@ impl<'a> GlobalWriteHandle<'a> {
     ) -> Result<Arc<RepoMetadata>, RepoError> {
         let metadata = repo.get_repo_metadata().await;
 
-        futures::future::join_all(self.handles.iter().map(|handle| {
-            handle.index(&sync_handle.reporef, repo, &metadata, sync_handle.pipes())
-        }))
+        futures::future::join_all(
+            self.handles
+                .iter()
+                .map(|handle| handle.index(sync_handle, repo, &metadata)),
+        )
         .await
         .into_iter()
         .collect::<Result<Vec<_>, _>>()?;
@@ -88,37 +86,7 @@ pub struct Indexes {
 }
 
 impl Indexes {
-    pub async fn new(
-        repo_pool: RepositoryPool,
-        config: Arc<Configuration>,
-        sql: SqlDb,
-        semantic: Option<Semantic>,
-    ) -> Result<Self> {
-        if config.source.index_version_mismatch() {
-            // we don't support old schemas, and tantivy will hard
-            // error if we try to open a db with a different schema.
-            std::fs::remove_dir_all(config.index_path("repo"))?;
-            std::fs::remove_dir_all(config.index_path("content"))?;
-
-            let mut refs = vec![];
-            // knocking out our current file caches will force re-indexing qdrant
-            repo_pool.for_each(|reporef, repo| {
-                refs.push(reporef.to_owned());
-                repo.last_index_unix_secs = 0;
-            });
-
-            for reporef in refs {
-                FileCache::for_repo(&sql, semantic.as_ref(), &reporef)
-                    .delete()
-                    .await?;
-            }
-
-            if let Some(ref semantic) = semantic {
-                semantic.reset_collection_blocking().await?;
-            }
-        }
-        config.source.save_index_version()?;
-
+    pub async fn new(config: &Configuration) -> Result<Self> {
         Ok(Self {
             repo: Indexer::create(
                 Repo::new(),
@@ -127,13 +95,21 @@ impl Indexes {
                 config.max_threads,
             )?,
             file: Indexer::create(
-                File::new(sql, semantic),
+                File::new(),
                 config.index_path("content").as_ref(),
                 config.buffer_size,
                 config.max_threads,
             )?,
             write_mutex: Default::default(),
         })
+    }
+
+    pub async fn reset_databases(config: &Configuration) -> Result<()> {
+        // we don't support old schemas, and tantivy will hard
+        // error if we try to open a db with a different schema.
+        tokio::fs::remove_dir_all(config.index_path("repo")).await?;
+        tokio::fs::remove_dir_all(config.index_path("content")).await?;
+        Ok(())
     }
 
     pub async fn writers(&self) -> Result<GlobalWriteHandle<'_>> {
@@ -154,11 +130,10 @@ pub trait Indexable: Send + Sync {
     /// This is where files are scanned and indexed.
     async fn index_repository(
         &self,
-        reporef: &RepoRef,
+        handle: &SyncHandle,
         repo: &Repository,
         metadata: &RepoMetadata,
         writer: &IndexWriter,
-        pipes: &SyncPipes,
     ) -> Result<()>;
 
     fn delete_by_repo(&self, writer: &IndexWriter, repo: &Repository);
@@ -208,13 +183,12 @@ impl<'a> IndexWriteHandle<'a> {
 
     pub async fn index(
         &self,
-        reporef: &RepoRef,
+        handle: &SyncHandle,
         repo: &Repository,
         metadata: &RepoMetadata,
-        progress: &SyncPipes,
     ) -> Result<()> {
         self.source
-            .index_repository(reporef, repo, metadata, &self.writer, progress)
+            .index_repository(handle, repo, metadata, &self.writer)
             .await
     }
 

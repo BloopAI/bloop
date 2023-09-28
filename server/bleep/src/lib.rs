@@ -29,7 +29,7 @@ use crate::{
     background::SyncQueue, indexes::Indexes, remotes::CognitoGithubTokenBundle, semantic::Semantic,
     state::RepositoryPool,
 };
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use axum::extract::FromRef;
 
 use once_cell::sync::OnceCell;
@@ -97,7 +97,7 @@ pub struct Application {
     sync_queue: SyncQueue,
 
     /// Semantic search subsystem
-    semantic: Option<Semantic>,
+    semantic: Semantic,
 
     /// Tantivy indexes
     indexes: Arc<Indexes>,
@@ -133,27 +133,34 @@ impl Application {
         config.repo_buffer_size = config.repo_buffer_size.max(threads * 3_000_000);
         config.source.set_default_dir(&config.index_dir);
 
+        // Finalize config
         let config = Arc::new(config);
         debug!(?config, "effective configuration");
 
-        let sqlite = Arc::new(db::init(&config).await?);
+        // Load repositories
+        let repo_pool = config.source.initialize_pool()?;
 
-        // Initialise Semantic index if `qdrant_url` set in config
-        let semantic = match config.qdrant_url {
-            Some(ref url) => {
-                match Semantic::initialize(&config.model_dir, url, Arc::clone(&config)).await {
-                    Ok(semantic) => Some(semantic),
-                    Err(e) => {
-                        bail!("Qdrant initialization failed: {}", e);
-                    }
-                }
-            }
-            None => {
-                warn!("Semantic search disabled because `qdrant_url` is not provided. Starting without.");
-                None
-            }
-        };
+        // Databases & indexes
+        let sql = Arc::new(db::init(&config).await?);
+        let semantic =
+            Semantic::initialize(&config.model_dir, &config.qdrant_url, Arc::clone(&config))
+                .await
+                .context("qdrant initialization failed")?;
 
+        // Wipe existing dbs & caches if the schema has changed
+        if config.source.index_version_mismatch() {
+            Indexes::reset_databases(&config).await?;
+            cache::FileCache::new(sql.clone(), semantic.clone())
+                .reset(&repo_pool)
+                .await?;
+
+            semantic.reset_collection_blocking().await?;
+        }
+        config.source.save_index_version()?;
+
+        let indexes = Indexes::new(&config).await?.into();
+
+        // Enforce capabilies and features depending on environment
         let env = if config.github_app_id.is_some() {
             info!("Starting bleep in private server mode");
             Environment::private_server()
@@ -161,6 +168,7 @@ impl Application {
             env
         };
 
+        // Analytics backend
         let analytics = match initialize_analytics(&config, tracking_seed, analytics_options) {
             Ok(analytics) => Some(analytics),
             Err(err) => {
@@ -169,24 +177,15 @@ impl Application {
             }
         };
 
-        let repo_pool = config.source.initialize_pool()?;
-
         Ok(Self {
-            indexes: Indexes::new(
-                repo_pool.clone(),
-                config.clone(),
-                sqlite.clone(),
-                semantic.clone(),
-            )
-            .await?
-            .into(),
             sync_queue: SyncQueue::start(config.clone()),
             cookie_key: config.source.initialize_cookie_key()?,
             credentials: config
                 .source
                 .load_state_or("credentials", remotes::Backends::default())?,
             user_profiles: config.source.load_or_default("user_profiles")?,
-            sql: sqlite,
+            sql,
+            indexes,
             repo_pool,
             analytics,
             semantic,
