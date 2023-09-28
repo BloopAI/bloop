@@ -43,7 +43,6 @@ struct Workload<'a> {
     repo_disk_path: &'a Path,
     repo_name: &'a str,
     repo_metadata: &'a RepoMetadata,
-    repo_ref_str: String,
     relative_path: PathBuf,
     normalized_path: PathBuf,
 }
@@ -54,7 +53,7 @@ impl<'a> Workload<'a> {
             let mut hash = blake3::Hasher::new();
             hash.update(crate::state::SCHEMA_VERSION.as_bytes());
             hash.update(self.relative_path.to_string_lossy().as_ref().as_ref());
-            hash.update(self.repo_ref_str.as_bytes());
+            hash.update(self.repo_ref.to_string().as_bytes());
             hash.update(dir_entry.buffer().unwrap_or_default().as_bytes());
             hash.update(
                 self.file_filter
@@ -114,7 +113,6 @@ impl Indexable for File {
 
                 let workload = Workload {
                     repo_disk_path: &repo.disk_path,
-                    repo_ref_str: reporef.to_string(),
                     repo_name: &repo_name,
                     file_filter: &file_filter,
                     repo_ref: reporef,
@@ -523,7 +521,7 @@ impl Indexer<File> {
 }
 
 impl File {
-    #[tracing::instrument(fields(repo=%workload.repo_ref_str, entry_disk_path=?dir_entry.path()), skip_all)]
+    #[tracing::instrument(fields(repo=%workload.repo_ref, entry_disk_path=?dir_entry.path()), skip_all)]
     fn worker(
         &self,
         dir_entry: RepoDirEntry,
@@ -606,7 +604,7 @@ impl RepoDir {
             relative_path,
             repo_name,
             repo_disk_path,
-            repo_ref_str,
+            repo_ref,
             ..
         } = workload;
 
@@ -621,7 +619,7 @@ impl RepoDir {
             schema.raw_relative_path => relative_path_str.as_bytes(),
             schema.repo_disk_path => repo_disk_path.to_string_lossy().as_ref(),
             schema.relative_path => relative_path_str,
-            schema.repo_ref => repo_ref_str.as_str(),
+            schema.repo_ref => repo_ref.to_string(),
             schema.repo_name => *repo_name,
             schema.last_commit_unix_seconds => last_commit,
             schema.branches => branches,
@@ -657,7 +655,6 @@ impl RepoFile {
             relative_path,
             repo_name,
             repo_disk_path,
-            repo_ref_str,
             repo_ref,
             repo_metadata,
             normalized_path,
@@ -695,7 +692,7 @@ impl RepoFile {
                 schema.unique_hash => cache_keys.tantivy(),
                 schema.repo_disk_path => repo_disk_path.to_string_lossy().as_ref(),
                 schema.relative_path => relative_path_str,
-                schema.repo_ref => repo_ref_str.as_str(),
+                schema.repo_ref => repo_ref.to_string(),
                 schema.repo_name => *repo_name,
                 schema.lang => lang_str.to_ascii_lowercase().as_bytes(),
                 schema.last_commit_unix_seconds => last_commit,
@@ -770,7 +767,7 @@ impl RepoFile {
             schema.unique_hash => cache_keys.tantivy(),
             schema.repo_disk_path => repo_disk_path.to_string_lossy().as_ref(),
             schema.relative_path => relative_path_str,
-            schema.repo_ref => repo_ref_str.as_str(),
+            schema.repo_ref => repo_ref.to_string(),
             schema.repo_name => *repo_name,
             schema.content => self.buffer,
             schema.line_end_indices => line_end_indices,

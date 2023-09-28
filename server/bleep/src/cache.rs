@@ -386,8 +386,6 @@ impl<'a> FileCache {
     }
 
     /// Chunks and inserts the buffer content into the semantic db.
-    ///
-    /// Assumes that the semantic db is initialized and usable, otherwise panics.
     #[allow(clippy::too_many_arguments)]
     pub(crate) async fn process_semantic(
         &self,
