@@ -100,7 +100,7 @@ pub fn system<'a>(paths: impl IntoIterator<Item = &'a str>) -> String {
 - DO NOT assume the structure of the codebase, or the existence of files or folders
 - Your queries to functions.code or functions.path should be significantly different to previous queries
 - Call functions.none with paths that you are confident will help answer the user's query
-- If the user query is general (e.g. 'What does this do?') look for READMEs, documentation or entry points in the code (main files, index files etc.)
+- If the user query is general (e.g. 'What does this do?', 'What is this repo?') look for READMEs, documentation and entry points in the code (main files, index files, api files etc.)
 - If the user is referring to, or asking for, information that is in your history, call functions.none
 - If after attempting to gather information you are still unsure how to answer the query, call functions.none
 - If the query is a greeting, or neither a question nor an instruction, call functions.none

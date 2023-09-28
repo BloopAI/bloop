@@ -27,7 +27,7 @@ impl Agent {
             .await?;
 
         let hyde_docs = if results.is_empty() {
-            tracing::info!("No results returned, running HyDE");
+            info!("No results returned, running HyDE");
 
             let hyde_docs = self.hyde(query).await?;
             if !hyde_docs.is_empty() {

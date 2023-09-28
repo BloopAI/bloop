@@ -1,5 +1,0 @@
-macOS 11+ (Apple Silicon) - [bloop_VERSION_aarch64.dmg](https://github.com/BloopAI/bloop/releases/download/vVERSION/bloop_VERSION_aarch64.dmg)
-macOS 11+ (Intel) - [bloop_VERSION_x64.dmg](https://github.com/BloopAI/bloop/releases/download/vVERSION/bloop_VERSION_x64.dmg)
-Ubuntu Linux - [bloop_VERSION_amd64.deb](https://github.com/BloopAI/bloop/releases/download/vVERSION/bloop_VERSION_amd64.deb)
-Linux AppImage (Works on most distributions) - [bloop_VERSION_amd64.AppImage](https://github.com/BloopAI/bloop/releases/download/vVERSION/bloop_VERSION_amd64.AppImage)
-Windows - [bloop_VERSION_x64_en-US.msi](https://github.com/BloopAI/bloop/releases/download/vVERSION/bloop_VERSION_x64_en-US.msi)

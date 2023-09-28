@@ -174,15 +174,19 @@ impl Agent {
                 if self.exchanges.len() == 1 {
                     // Extract keywords from the query
                     let keywords = {
-                        let sw = rake::StopWords::from_file("./src/stopwords.txt").unwrap();
+                        let sw = rake::StopWords::from_file("./stopwords.txt").unwrap();
                         let r = Rake::new(sw);
                         let keywords = r.run(s);
 
-                        keywords
-                            .iter()
-                            .map(|k| k.keyword.clone())
-                            .collect::<Vec<_>>()
-                            .join(" ")
+                        if keywords.is_empty() {
+                            s.clone()
+                        } else {
+                            keywords
+                                .iter()
+                                .map(|k| k.keyword.clone())
+                                .collect::<Vec<_>>()
+                                .join(" ")
+                        }
                     };
 
                     self.code_search(&keywords).await?;
