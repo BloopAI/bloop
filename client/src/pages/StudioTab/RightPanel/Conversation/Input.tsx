@@ -29,6 +29,7 @@ import {
 import MarkdownWithCode from '../../../../components/MarkdownWithCode';
 import { StudioContext } from '../../../../context/studioContext';
 import KeyboardChip from '../../KeyboardChip';
+import CopyButton from '../../../../components/MarkdownWithCode/CopyButton';
 
 type Props = {
   author: StudioConversationMessageAuthor;
@@ -173,6 +174,13 @@ const ConversationInput = ({
           </div>
         ) : (
           <>
+            {author === StudioConversationMessageAuthor.ASSISTANT && (
+              <CopyButton
+                code={message}
+                isInHeader
+                className="opacity-50 hover:opacity-100 mr-2"
+              />
+            )}
             <Button
               variant="secondary"
               size="tiny"
@@ -183,7 +191,7 @@ const ConversationInput = ({
             >
               <PenUnderline raw sizeClassName="w-3.5 h-3.5" />
             </Button>
-            {author === 'User' && (
+            {author === StudioConversationMessageAuthor.USER && (
               <Button
                 variant="secondary"
                 size="tiny"

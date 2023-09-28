@@ -185,6 +185,25 @@ impl SyncHandle {
             return Err(SyncError::Cancelled);
         }
 
+        // Can we unwrap here?
+        let repository = repo_pool
+            .read_async(&self.reporef, |_k, v| v.clone())
+            .await
+            .unwrap();
+
+        let tutorial_questions = if repository.last_index_unix_secs == 0 {
+            let db = self.app.sql.clone();
+            let llm_gateway = self.app.llm_gateway_client();
+            let repo_pool = self.app.repo_pool.clone();
+            let reporef = self.reporef.clone();
+
+            Some(tokio::task::spawn(
+                crate::commits::generate_tutorial_questions(db, llm_gateway, repo_pool, reporef),
+            ))
+        } else {
+            None
+        };
+
         let indexed = self.index().await;
         let status = match indexed {
             Ok(Either::Left(status)) => Some(status),
@@ -193,6 +212,12 @@ impl SyncHandle {
                 self.app.repo_pool.update(&self.reporef, |_k, repo| {
                     repo.sync_done_with(&self.filter_updates, state)
                 });
+
+                if let Some(tutorial_questions) = tutorial_questions {
+                    if let Err(err) = tutorial_questions.await {
+                        error!(?err, "failed to generate tutorial questions");
+                    }
+                }
 
                 // technically `sync_done_with` does this, but we want to send notifications
                 self.set_status(|_| SyncStatus::Done)

@@ -9,14 +9,14 @@ import React, {
   useState,
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { FeatherSelected, QuillIcon, SendIcon, Sparkles } from '../../icons';
-import ClearButton from '../ClearButton';
-import Tooltip from '../Tooltip';
-import { ChatLoadingStep } from '../../types/general';
-import LiteLoader from '../Loaders/LiteLoader';
-import { UIContext } from '../../context/uiContext';
-import { DeviceContext } from '../../context/deviceContext';
-import Button from '../Button';
+import { FeatherSelected, QuillIcon, SendIcon, Sparkles } from '../../../icons';
+import ClearButton from '../../ClearButton';
+import Tooltip from '../../Tooltip';
+import { ChatLoadingStep } from '../../../types/general';
+import LiteLoader from '../../Loaders/LiteLoader';
+import { UIContext } from '../../../context/uiContext';
+import { DeviceContext } from '../../../context/deviceContext';
+import Button from '../../Button';
 import InputLoader from './InputLoader';
 
 type Props = {
@@ -36,7 +36,7 @@ type Props = {
   onMessageEditCancel?: () => void;
 };
 
-const defaultPlaceholder = 'Anything I can help you with?';
+const defaultPlaceholder = 'Send a message';
 
 const NLInput = ({
   id,

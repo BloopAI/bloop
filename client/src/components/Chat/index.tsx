@@ -1,22 +1,12 @@
-import React, {
-  ChangeEvent,
-  FormEvent,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import { Trans, useTranslation } from 'react-i18next';
-import { useOnClickOutside } from '../../hooks/useOnClickOutsideHook';
-import { Info, List } from '../../icons';
+import React, { useCallback, useContext, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { UIContext } from '../../context/uiContext';
 import { DeviceContext } from '../../context/deviceContext';
 import {
   ChatMessage,
   ChatMessageAuthor,
   ChatMessageServer,
+  OpenChatHistoryItem,
 } from '../../types/general';
 import { AppNavigationContext } from '../../context/appNavigationContext';
 import { ChatContext } from '../../context/chatContext';
@@ -24,12 +14,11 @@ import { SearchContext } from '../../context/searchContext';
 import { mapLoadingSteps } from '../../mappers/conversation';
 import { findElementInCurrentTab } from '../../utils/domUtils';
 import { conversationsCache } from '../../services/cache';
-import AddStudioContext from '../AddStudioContext';
-import NLInput from './NLInput';
-import ChipButton from './ChipButton';
-import AllConversations from './AllCoversations';
-import Conversation from './Conversation';
-import DeprecatedClientModal from './DeprecatedClientModal';
+import useResizeableWidth from '../../hooks/useResizeableWidth';
+import DeprecatedClientModal from './ChatFooter/DeprecatedClientModal';
+import ChatHeader from './ChatHeader';
+import ChatBody from './ChatBody';
+import ChatFooter from './ChatFooter';
 
 let prevEventSource: EventSource | undefined;
 
@@ -37,48 +26,37 @@ const focusInput = () => {
   findElementInCurrentTab('#question-input')?.focus();
 };
 
-const blurInput = () => {
-  findElementInCurrentTab('#question-input')?.blur();
-};
-
 const Chat = () => {
   const { t } = useTranslation();
-  const { isRightPanelOpen, setRightPanelOpen } = useContext(
-    UIContext.RightPanel,
-  );
   const { tab } = useContext(UIContext.Tab);
   const { preferredAnswerSpeed } = useContext(UIContext.AnswerSpeed);
   const { apiUrl } = useContext(DeviceContext);
   const { selectedBranch } = useContext(SearchContext.SelectedBranch);
-  const { conversation, isChatOpen, submittedQuery, selectedLines, threadId } =
-    useContext(ChatContext.Values);
+  const { conversation, submittedQuery, threadId, isHistoryTab } = useContext(
+    ChatContext.Values,
+  );
   const {
     setThreadId,
     setSelectedLines,
     setSubmittedQuery,
+    setIsHistoryTab,
     setConversation,
-    setChatOpen,
-    setShowTooltip,
   } = useContext(ChatContext.Setters);
-  const {
-    navigateRepoPath,
-    navigatedItem,
-    navigateArticleResponse,
-    navigateFullResult,
-  } = useContext(AppNavigationContext);
+  const { navigateRepoPath, navigatedItem, navigateFullResult } =
+    useContext(AppNavigationContext);
   const [isLoading, setLoading] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
-  const chatRef = useRef(null);
   const [inputValue, setInputValue] = useState('');
   const [queryIdToEdit, setQueryIdToEdit] = useState('');
   const [hideMessagesFrom, setHideMessagesFrom] = useState<null | number>(null);
-  useOnClickOutside(chatRef, () => setChatOpen(false));
-
-  useEffect(() => {
-    if (isChatOpen) {
-      focusInput();
-    }
-  }, [isChatOpen]);
+  const [openHistoryItem, setOpenHistoryItem] =
+    useState<OpenChatHistoryItem | null>(null);
+  const { dividerRef, panelRef } = useResizeableWidth(
+    false,
+    'chat_width',
+    30,
+    55,
+  );
 
   const makeSearch = useCallback(
     (
@@ -116,7 +94,6 @@ const Chat = () => {
       prevEventSource = eventSource;
       setSelectedLines(null);
       let firstResultCame: boolean;
-      let conclusionCame: boolean;
       let i = -1;
       eventSource.onerror = (err) => {
         console.log('SSE error', err);
@@ -195,16 +172,13 @@ const Chat = () => {
             };
             return [...newConversation, lastMessage];
           });
+          setTimeout(() => focusInput(), 100);
           return;
         }
         try {
           const data = JSON.parse(ev.data);
           if (data.Ok) {
             const newMessage = data.Ok;
-            if (newMessage.conclusion && !conclusionCame) {
-              setChatOpen(true);
-              conclusionCame = true;
-            }
             conversationsCache[thread_id] = undefined; // clear cache on new answer
             setConversation((prev) => {
               const newConversation = prev?.slice(0, -1) || [];
@@ -213,8 +187,8 @@ const Chat = () => {
                 author: ChatMessageAuthor.Server,
                 isLoading: true,
                 loadingSteps: mapLoadingSteps(newMessage.search_steps, t),
-                text: newMessage.conclusion,
-                results: newMessage.answer,
+                text: newMessage.answer,
+                conclusion: newMessage.conclusion,
                 queryId: newMessage.id,
                 responseTimestamp: newMessage.response_timestamp,
                 explainedFile: newMessage.focused_chunk?.file_path,
@@ -229,16 +203,12 @@ const Chat = () => {
             if (newMessage.answer?.length > 11 && !firstResultCame) {
               setConversation((prev) => {
                 if (newMessage.focused_chunk?.file_path) {
-                  setChatOpen(false);
                   navigateFullResult(
                     newMessage.focused_chunk?.file_path,
                     undefined,
                     prev.length - 1,
                     thread_id,
                   );
-                } else {
-                  setChatOpen(false);
-                  navigateArticleResponse(prev.length - 1, thread_id);
                 }
                 return prev;
               });
@@ -350,28 +320,11 @@ const Chat = () => {
     focusInput();
   }, []);
 
-  const onSubmit = useCallback(
-    (e?: FormEvent) => {
-      if (e?.preventDefault) {
-        e.preventDefault();
-      }
-      if (
-        (conversation[conversation.length - 1] as ChatMessageServer)
-          ?.isLoading ||
-        !inputValue.trim()
-      ) {
-        return;
-      }
-      if (hideMessagesFrom !== null) {
-        setConversation((prev) => prev.slice(0, hideMessagesFrom));
-      }
-      blurInput();
-      setSubmittedQuery(
-        submittedQuery === inputValue ? `${inputValue} ` : inputValue, // to trigger new search if query hasn't changed
-      );
-    },
-    [inputValue, conversation, submittedQuery, hideMessagesFrom],
-  );
+  useEffect(() => {
+    if (!isHistoryTab) {
+      setOpenHistoryItem(null);
+    }
+  }, [isHistoryTab]);
 
   const handleNewConversation = useCallback(() => {
     stopGenerating();
@@ -380,6 +333,7 @@ const Chat = () => {
     setThreadId('');
     setSubmittedQuery('');
     setSelectedLines(null);
+    setIsHistoryTab(false);
     if (
       navigatedItem?.type === 'conversation-result' ||
       navigatedItem?.type === 'article-response'
@@ -407,139 +361,55 @@ const Chat = () => {
     setHideMessagesFrom(null);
   }, []);
 
-  const loadingSteps = useMemo(() => {
-    return conversation[conversation.length - 1]?.author ===
-      ChatMessageAuthor.Server
-      ? [
-          ...(conversation[conversation.length - 1] as ChatMessageServer)
-            .loadingSteps,
-          ...((conversation[conversation.length - 1] as ChatMessageServer)
-            ?.results?.length
-            ? [
-                {
-                  displayText: t('Responding...'),
-                  content: { query: '' },
-                  path: '',
-                  type: 'code' as const,
-                },
-              ]
-            : []),
-        ]
-      : undefined;
-  }, [JSON.stringify(conversation[conversation.length - 1])]);
-
-  const handleInputChange = useCallback(
-    (e: ChangeEvent<HTMLTextAreaElement>) => setInputValue(e.target.value),
-    [],
-  );
-
   return (
-    <>
+    <div
+      ref={panelRef}
+      className={`group flex flex-col bg-chat-bg-sub relative min-w-[24rem]`}
+    >
       <div
-        ref={chatRef}
-        className={`fixed z-50 bottom-20 rounded-xl group w-97 max-h-[30rem] flex flex-col justify-end ${
-          isRightPanelOpen ? '-right-full' : 'right-8'
-        } backdrop-blur-6 shadow-float bg-chat-bg-base/75 border border-chat-bg-border transition-all duration-300 ease-out-slow`}
-        onClick={() => {
-          setShowTooltip(false);
-          setChatOpen(true);
-        }}
+        ref={dividerRef}
+        className="absolute top-0 left-0 transform group-custom -translate-x-1/2 w-2.5 h-full cursor-col-resize flex-shrink-0 z-10"
       >
-        <div className="w-full">
-          <div className="px-4 pt-4 flex flex-col">
-            <div className="flex justify-between gap-1 items-center">
-              <ChipButton
-                onClick={() => {
-                  setRightPanelOpen(true);
-                }}
-              >
-                <List /> <Trans>All conversations</Trans>
-              </ChipButton>
-              <div className="flex items-center gap-1">
-                <ChipButton onClick={handleNewConversation}>
-                  <Trans>Create new</Trans>
-                </ChipButton>
-                {!!threadId && !isLoading && (
-                  <AddStudioContext
-                    threadId={threadId}
-                    name={conversation?.[0]?.text || 'New Studio'}
-                  />
-                )}
-                <ChipButton
-                  variant="filled"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setChatOpen((prev) => !prev);
-                  }}
-                >
-                  <Trans>{isChatOpen ? 'Hide' : 'Show'}</Trans>
-                </ChipButton>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="p-4 overflow-auto">
-          {!!conversation.length && isChatOpen && (
-            <Conversation
-              conversation={
-                hideMessagesFrom === null
-                  ? conversation
-                  : conversation.slice(0, hideMessagesFrom + 1)
-              }
-              threadId={threadId}
-              repoRef={tab.repoRef}
-              isLoading={isLoading}
-              repoName={tab.repoName}
-              onMessageEdit={onMessageEdit}
-            />
-          )}
-          {!!queryIdToEdit && (
-            <div className="mx-4 mb-3 flex gap-1.5 caption text-label-base select-none">
-              <Info raw sizeClassName="w-3.5 h-3.5" />
-              <p>
-                <Trans>
-                  Editing a previously submitted question will discard all
-                  answers and questions following it.
-                </Trans>
-              </p>
-            </div>
-          )}
-          <form onSubmit={onSubmit} className="flex flex-col w-95">
-            <NLInput
-              id="question-input"
-              value={inputValue}
-              onSubmit={onSubmit}
-              onChange={handleInputChange}
-              isStoppable={isLoading}
-              loadingSteps={loadingSteps}
-              generationInProgress={
-                (conversation[conversation.length - 1] as ChatMessageServer)
-                  ?.isLoading
-              }
-              onStop={stopGenerating}
-              selectedLines={selectedLines}
-              setSelectedLines={setSelectedLines}
-              queryIdToEdit={queryIdToEdit}
-              onMessageEditCancel={onMessageEditCancel}
-            />
-          </form>
-        </div>
+        <div className="mx-auto w-0.5 h-full bg-chat-bg-border group-custom-hover:bg-bg-main" />
       </div>
-      <AllConversations
-        setHistoryOpen={setRightPanelOpen}
-        isHistoryOpen={isRightPanelOpen}
-        setActive={setChatOpen}
-        setConversation={setConversation}
-        setThreadId={setThreadId}
-        repoRef={tab.repoRef}
-        repoName={tab.repoName}
+      <ChatHeader
+        setIsHistoryTab={setIsHistoryTab}
+        isHistoryTab={isHistoryTab}
+        isLoading={isLoading}
+        conversationName={conversation?.[0]?.text}
         handleNewConversation={handleNewConversation}
+        openHistoryItem={openHistoryItem}
+        setOpenHistoryItem={setOpenHistoryItem}
+      />
+      <ChatBody
+        isLoading={isLoading}
+        repoName={tab.repoName}
+        onMessageEdit={onMessageEdit}
+        isHistoryTab={isHistoryTab}
+        hideMessagesFrom={hideMessagesFrom}
+        repoRef={tab.repoRef}
+        queryIdToEdit={queryIdToEdit}
+        openHistoryItem={openHistoryItem}
+        setOpenHistoryItem={setOpenHistoryItem}
+      />
+      <ChatFooter
+        isLoading={isLoading}
+        queryIdToEdit={queryIdToEdit}
+        onMessageEditCancel={onMessageEditCancel}
+        hideMessagesFrom={hideMessagesFrom}
+        setInputValue={setInputValue}
+        inputValue={inputValue}
+        stopGenerating={stopGenerating}
+        openHistoryItem={openHistoryItem}
+        isHistoryOpen={isHistoryTab}
+        setHistoryOpen={setIsHistoryTab}
+        repoRef={tab.repoRef}
       />
       <DeprecatedClientModal
         isOpen={showPopup}
         onClose={() => setShowPopup(false)}
       />
-    </>
+    </div>
   );
 };
 

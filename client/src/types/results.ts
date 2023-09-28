@@ -133,6 +133,7 @@ export type FullResult = {
   repoName: string;
   size: number;
   loc: number;
+  indexed: boolean;
 };
 
 export type DirectoryResult = {

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { ChatMessageAuthor } from '../types/general';
 
 const useScrollToBottom = (contentArray: any) => {
   const messagesRef = useRef<HTMLDivElement>(null);
@@ -25,7 +26,10 @@ const useScrollToBottom = (contentArray: any) => {
   }, []);
 
   useEffect(() => {
-    if (!userScrolledUp) {
+    if (
+      !userScrolledUp ||
+      contentArray[contentArray.length - 1]?.author === ChatMessageAuthor.User
+    ) {
       scrollToBottom();
     }
   }, [contentArray, scrollToBottom, userScrolledUp]);

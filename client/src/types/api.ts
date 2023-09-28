@@ -140,6 +140,7 @@ export interface File {
   size: number;
   loc: number;
   sloc: number;
+  indexed: boolean;
 }
 
 export interface FileResponse {
@@ -309,4 +310,9 @@ export type StudioTemplateType = {
 export type HistoryConversationTurn = CodeStudioType & {
   id: number;
   modified_at: string;
+};
+
+export type TutorialQuestionType = {
+  tag: string;
+  question: string;
 };

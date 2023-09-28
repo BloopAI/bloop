@@ -1,27 +1,29 @@
 import React, { useContext, useEffect, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
 import { Trans, useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
 import {
   Checkmark,
   List,
   MagnifyTool,
-  PenUnderline,
+  Pen,
   PointClick,
-  QuillIcon,
-  Sparkles,
   WrenchAndScrewdriver,
-} from '../../../icons';
-import { DeviceContext } from '../../../context/deviceContext';
-import { ChatLoadingStep, ChatMessageAuthor } from '../../../types/general';
-import { ChatContext } from '../../../context/chatContext';
-import Button from '../../Button';
-import { FileModalContext } from '../../../context/fileModalContext';
-import { LocaleContext } from '../../../context/localeContext';
-import { getDateFnsLocale } from '../../../utils';
+} from '../../../../icons';
+import { DeviceContext } from '../../../../context/deviceContext';
+import { ChatLoadingStep, ChatMessageAuthor } from '../../../../types/general';
+import { ChatContext } from '../../../../context/chatContext';
+import Button from '../../../Button';
+import { LocaleContext } from '../../../../context/localeContext';
+import { getDateFnsLocale } from '../../../../utils';
+import MarkdownWithCode from '../../../MarkdownWithCode';
+import { AppNavigationContext } from '../../../../context/appNavigationContext';
+import {
+  getPlainFromStorage,
+  LOADING_STEPS_SHOWN_KEY,
+  savePlainToStorage,
+} from '../../../../services/storage';
 import MessageFeedback from './MessageFeedback';
 import FileChip from './FileChip';
-import SummaryCardsArticle from './SummaryCards/SummaryCardsArticle';
 
 type Props = {
   author: ChatMessageAuthor;
@@ -37,10 +39,9 @@ type Props = {
   scrollToBottom?: () => void;
   isLoading?: boolean;
   loadingSteps?: ChatLoadingStep[];
-  results?: string;
   i: number;
   onMessageEdit: (queryId: string, i: number) => void;
-  explainedFile?: string;
+  singleFileExplanation?: boolean;
 };
 
 const ConversationMessage = ({
@@ -55,19 +56,29 @@ const ConversationMessage = ({
   scrollToBottom,
   isLoading,
   loadingSteps,
-  results,
   i,
   repoName,
   onMessageEdit,
   responseTimestamp,
-  explainedFile,
+  singleFileExplanation,
 }: Props) => {
   const { t } = useTranslation();
-  const [isLoadingStepsShown, setLoadingStepsShown] = useState(false);
+  const [isLoadingStepsShown, setLoadingStepsShown] = useState(
+    getPlainFromStorage(LOADING_STEPS_SHOWN_KEY)
+      ? !!Number(getPlainFromStorage(LOADING_STEPS_SHOWN_KEY))
+      : true,
+  );
   const { envConfig } = useContext(DeviceContext);
   const { setChatOpen } = useContext(ChatContext.Setters);
-  const { openFileModal } = useContext(FileModalContext);
+  const { navigateFullResult } = useContext(AppNavigationContext);
   const { locale } = useContext(LocaleContext);
+
+  useEffect(() => {
+    savePlainToStorage(
+      LOADING_STEPS_SHOWN_KEY,
+      isLoadingStepsShown ? '1' : '0',
+    );
+  }, [isLoadingStepsShown]);
 
   useEffect(() => {
     setChatOpen(true);
@@ -93,7 +104,9 @@ const ConversationMessage = ({
               <span>{s.type === 'proc' ? t('Reading ') : s.displayText}</span>
               {s.type === 'proc' ? (
                 <FileChip
-                  onClick={() => openFileModal(s.path)}
+                  onClick={() =>
+                    navigateFullResult(s.path, undefined, i, threadId)
+                  }
                   fileName={s.path.split('/').pop() || ''}
                   filePath={s.path || ''}
                 />
@@ -102,7 +115,7 @@ const ConversationMessage = ({
           ))}
         </div>
       )}
-      {author === ChatMessageAuthor.Server && (
+      {author === ChatMessageAuthor.Server && !error && (
         <div className="flex gap-2 px-4 items-center">
           {!isLoading ? (
             <div className="text-bg-success-hover h-5">
@@ -114,7 +127,7 @@ const ConversationMessage = ({
             </div>
           )}
           <div className="caption text-label-base flex-1 flex gap-2 items-center">
-            <p>{isLoading ? t('Generating response...') : t('Answer Ready')}</p>
+            <p>{isLoading ? t('Searching...') : t('Done')}</p>
             <Button
               size="tiny"
               variant={isLoadingStepsShown ? 'tertiary-active' : 'tertiary'}
@@ -138,22 +151,12 @@ const ConversationMessage = ({
       )}
       {message ? (
         <>
-          {!isLoading && !!results?.length ? (
-            <div className="mt-3 select-none cursor-default group-summary">
-              {!!results ? (
-                <SummaryCardsArticle
-                  article={results}
-                  threadId={threadId}
-                  i={i}
-                  explainedFile={explainedFile}
-                />
-              ) : null}
-            </div>
-          ) : null}
           <div
-            className={`relative bg-chat-bg-shade mt-3 flex items-start p-4 gap-3 border border-chat-bg-divider rounded-lg`}
+            className={`relative ${
+              author === ChatMessageAuthor.Server ? 'mt-3' : ''
+            } flex items-start px-4 py-3 gap-3 hover:bg-chat-bg-shade group-summary`}
           >
-            <div className="relative">
+            <div className="absolute top-3 left-4">
               <div className="w-6 h-6 rounded-full bg-chat-bg-border overflow-hidden flex items-center justify-center select-none">
                 {author === ChatMessageAuthor.User ? (
                   <img
@@ -161,28 +164,29 @@ const ConversationMessage = ({
                     alt={t('avatar')}
                   />
                 ) : (
-                  <div className="w-3 h-3">
-                    <Sparkles raw />
-                  </div>
+                  <img
+                    src="/bloopHeadMascot.png"
+                    alt="mascot"
+                    className="w-4.5 h-4.5"
+                  />
                 )}
               </div>
-              {author === ChatMessageAuthor.User && (
-                <div className="absolute -bottom-1 -right-1 w-4 h-3 bg-chat-bg-border box-content border-2 border-chat-bg-shade text-label-title rounded-full flex items-center justify-center">
-                  <div className="w-1.5 h-2">
-                    <QuillIcon raw />
-                  </div>
-                </div>
-              )}
             </div>
             {message && (
-              <pre className="body-s text-label-title whitespace-pre-wrap break-word markdown w-full">
+              <div className="body-s text-label-title code-studio-md padding-start w-full break-word overflow-auto">
                 {author === ChatMessageAuthor.Server ? (
-                  <ReactMarkdown>{message}</ReactMarkdown>
+                  <MarkdownWithCode
+                    markdown={message}
+                    threadId={threadId}
+                    recordId={i}
+                    repoName={repoName}
+                    hideCode={singleFileExplanation}
+                  />
                 ) : (
                   <>
-                    <span>{message}</span>
+                    <div className="pl-8">{message}</div>
                     {!isHistory && !!queryId && (
-                      <div className="absolute bottom-1 right-1">
+                      <div className="absolute bottom-1 right-1 opacity-0 group-summary-hover:opacity-100 transition-opacity">
                         <Button
                           size="tiny"
                           variant="tertiary"
@@ -190,13 +194,13 @@ const ConversationMessage = ({
                           title={t('Edit')}
                           onClick={() => onMessageEdit(queryId, i)}
                         >
-                          <PenUnderline />
+                          <Pen raw sizeClassName="w-3.5 h-3.5" />
                         </Button>
                       </div>
                     )}
                   </>
                 )}
-              </pre>
+              </div>
             )}
           </div>
           <MessageFeedback
@@ -210,7 +214,7 @@ const ConversationMessage = ({
           />
         </>
       ) : error ? (
-        <div className="flex items-start gap-3 text-bg-danger p-4 mt-3 rounded-lg bg-[linear-gradient(90deg,rgba(251,113,133,0.08)_0%,rgba(231,139,152,0.08)_33.18%,rgba(191,191,191,0.08)_100%)]">
+        <div className="flex items-start gap-3 text-bg-danger p-4 rounded-lg bg-[linear-gradient(90deg,rgba(251,113,133,0.08)_0%,rgba(231,139,152,0.08)_33.18%,rgba(191,191,191,0.08)_100%)]">
           <WrenchAndScrewdriver />
           <div className="flex flex-col gap-1">
             <p className="body-s text-label-title">

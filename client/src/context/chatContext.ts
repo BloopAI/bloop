@@ -4,7 +4,7 @@ import { ChatMessage } from '../types/general';
 type ValuesContextType = {
   conversation: ChatMessage[];
   isChatOpen: boolean;
-  showTooltip: boolean;
+  isHistoryTab: boolean;
   tooltipText: string;
   threadId: string;
   submittedQuery: string;
@@ -14,7 +14,7 @@ type ValuesContextType = {
 type SettersContextType = {
   setConversation: Dispatch<SetStateAction<ChatMessage[]>>;
   setChatOpen: Dispatch<SetStateAction<boolean>>;
-  setShowTooltip: Dispatch<SetStateAction<boolean>>;
+  setIsHistoryTab: Dispatch<SetStateAction<boolean>>;
   setTooltipText: Dispatch<SetStateAction<string>>;
   setThreadId: Dispatch<SetStateAction<string>>;
   setSubmittedQuery: Dispatch<SetStateAction<string>>;
@@ -25,7 +25,7 @@ export const ChatContext = {
   Values: createContext<ValuesContextType>({
     conversation: [],
     isChatOpen: false,
-    showTooltip: false,
+    isHistoryTab: false,
     tooltipText: '',
     submittedQuery: '',
     threadId: '',
@@ -34,10 +34,10 @@ export const ChatContext = {
   Setters: createContext<SettersContextType>({
     setConversation: () => {},
     setChatOpen: () => {},
-    setShowTooltip: () => {},
     setTooltipText: () => {},
     setSubmittedQuery: () => {},
     setThreadId: () => {},
     setSelectedLines: () => {},
+    setIsHistoryTab: () => {},
   }),
 };

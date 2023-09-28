@@ -1,9 +1,12 @@
+import React, { useContext } from 'react';
+import { Trans } from 'react-i18next';
 import {
   ChatMessage,
   ChatMessageAuthor,
   ChatMessageServer,
-} from '../../types/general';
-import useScrollToBottom from '../../hooks/useScrollToBottom';
+} from '../../../types/general';
+import useScrollToBottom from '../../../hooks/useScrollToBottom';
+import { AppNavigationContext } from '../../../context/appNavigationContext';
 import Message from './ConversationMessage';
 
 type Props = {
@@ -27,15 +30,36 @@ const Conversation = ({
 }: Props) => {
   const { messagesRef, handleScroll, scrollToBottom } =
     useScrollToBottom(conversation);
+  const { navigatedItem } = useContext(AppNavigationContext);
 
   return (
     <div
-      className={`w-full flex flex-col gap-3 pb-3 overflow-auto ${
-        !isHistory ? 'max-h-60' : ''
+      className={`w-full flex flex-col gap-3 overflow-auto ${
+        isHistory ? 'pb-24' : 'pb-36'
       }`}
       ref={messagesRef}
       onScroll={handleScroll}
     >
+      {!isHistory && (
+        <div className="flex items-start gap-3 px-4 py-3 hover:bg-chat-bg-shade">
+          <div className="w-6 h-6 rounded-full bg-chat-bg-border flex-shrink-0 flex items-center justify-center mt-0.5">
+            <img
+              src="/bloopHeadMascot.png"
+              alt="mascot"
+              className="w-4.5 h-4.5"
+            />
+          </div>
+          <p className="body-s text-label-title">
+            <Trans>Hi, I&apos;m bloop.</Trans>{' '}
+            <Trans
+              values={{ repoName: repoName.replace(/^github\.com\//, '') }}
+            >
+              What would you like to know about{' '}
+              <span className="font-bold">#repo</span>?
+            </Trans>
+          </p>
+        </div>
+      )}
       {conversation.map((m, i) => (
         <Message
           key={i}
@@ -43,9 +67,6 @@ const Conversation = ({
           isLoading={m.author === ChatMessageAuthor.Server && m.isLoading}
           loadingSteps={
             m.author === ChatMessageAuthor.Server ? m.loadingSteps : []
-          }
-          results={
-            m.author === ChatMessageAuthor.Server ? m.results : undefined
           }
           isHistory={isHistory}
           author={m.author}
@@ -72,8 +93,10 @@ const Conversation = ({
           responseTimestamp={
             m.author === ChatMessageAuthor.Server ? m.responseTimestamp : null
           }
-          explainedFile={
-            m.author === ChatMessageAuthor.Server ? m.explainedFile : undefined
+          singleFileExplanation={
+            m.author === ChatMessageAuthor.Server &&
+            !!m.explainedFile &&
+            m.explainedFile === navigatedItem?.path
           }
         />
       ))}

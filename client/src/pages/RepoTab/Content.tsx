@@ -24,7 +24,6 @@ import RepositoryPage from './Repository';
 import ResultsPage from './Results';
 import ViewResult from './ResultFull';
 import NoResults from './Results/NoResults';
-import ArticleResponse from './ArticleResponse';
 
 const mockQuerySuggestions = [
   'repo:cobra-ats  error:“no apples”',
@@ -39,8 +38,7 @@ export type RenderPage =
   | 'repo'
   | 'full-result'
   | 'no-results'
-  | 'home'
-  | 'article-response';
+  | 'home';
 
 let prevRenderPage: RenderPage;
 
@@ -113,11 +111,8 @@ const ContentContainer = ({ tab }: { tab: RepoTabType }) => {
     if (tab.key === 'initial') {
       return 'home';
     }
-    if (
-      navigatedItem?.type &&
-      ['full-result', 'article-response'].includes(navigatedItem.type)
-    ) {
-      return navigatedItem.type as 'full-result' | 'article-response';
+    if (navigatedItem?.type && navigatedItem.type === 'full-result') {
+      return navigatedItem.type as 'full-result';
     }
     if (!data?.data?.[0] && !loading) {
       return 'no-results';
@@ -204,13 +199,6 @@ const ContentContainer = ({ tab }: { tab: RepoTabType }) => {
                 ),
               )
             }
-          />
-        );
-      case 'article-response':
-        return (
-          <ArticleResponse
-            recordId={navigatedItem?.recordId!}
-            threadId={navigatedItem?.threadId!}
           />
         );
       default:

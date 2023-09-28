@@ -11,6 +11,7 @@ import {
   StudioTemplateType,
   SuggestionsResponse,
   TokenInfoResponse,
+  TutorialQuestionType,
 } from '../types/api';
 import {
   CodeStudioShortType,
@@ -356,3 +357,8 @@ export const forceFileToBeIndexed = (repoRef: string, filePath: string) => {
     { params: { repo: repoRef } },
   );
 };
+
+export const getTutorialQuestions = (
+  repo_ref: string,
+): Promise<{ questions: TutorialQuestionType[] }> =>
+  http('/tutorial-questions', { params: { repo_ref } }).then((r) => r.data);

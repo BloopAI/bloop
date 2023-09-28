@@ -48,6 +48,7 @@ mod agent;
 mod background;
 mod cache;
 mod collector;
+mod commits;
 mod config;
 mod db;
 mod env;

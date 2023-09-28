@@ -6,9 +6,8 @@ import React, {
   useState,
 } from 'react';
 import * as Sentry from '@sentry/react';
-import { Trans } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import FileIcon from '../../../components/FileIcon';
-import Breadcrumbs from '../../../components/Breadcrumbs';
 import CodeFull from '../../../components/CodeBlock/CodeFull';
 import { forceFileToBeIndexed, getHoverables } from '../../../services/api';
 import { mapFileResult, mapRanges } from '../../../mappers/results';
@@ -17,6 +16,7 @@ import {
   breadcrumbsItemPath,
   humanFileSize,
   isWindowsPath,
+  splitPath,
   splitPathForBreadcrumbs,
 } from '../../../utils';
 import ErrorFallback from '../../../components/ErrorFallback';
@@ -24,7 +24,6 @@ import useAppNavigation from '../../../hooks/useAppNavigation';
 import FileMenu from '../../../components/FileMenu';
 import SkeletonItem from '../../../components/SkeletonItem';
 import IpynbRenderer from '../../../components/IpynbRenderer';
-import useConversation from '../../../hooks/useConversation';
 import Button from '../../../components/Button';
 import { Sparkles } from '../../../icons';
 import { ChatContext } from '../../../context/chatContext';
@@ -34,7 +33,6 @@ import { SyncStatus } from '../../../types/general';
 import { RepositoriesContext } from '../../../context/repositoriesContext';
 import LiteLoaderContainer from '../../../components/Loaders/LiteLoader';
 import { DeviceContext } from '../../../context/deviceContext';
-import FileExplanation from './FileExplanation';
 
 type Props = {
   data: any;
@@ -58,17 +56,19 @@ const ResultFull = ({
   data,
   isLoading,
   selectedBranch,
-  recordId,
-  threadId,
   refetchFile,
   path,
 }: Props) => {
+  useTranslation();
   const { navigateFullResult, navigateRepoPath } = useAppNavigation();
   const [result, setResult] = useState<FullResult | null>(null);
-  const { data: answer } = useConversation(threadId, recordId);
-  const { setSubmittedQuery, setChatOpen, setConversation, setThreadId } =
-    useContext(ChatContext.Setters);
-  const { setRightPanelOpen } = useContext(UIContext.RightPanel);
+  const {
+    setSubmittedQuery,
+    setChatOpen,
+    setConversation,
+    setThreadId,
+    setIsHistoryTab,
+  } = useContext(ChatContext.Setters);
   const { repositories } = useContext(RepositoriesContext);
   const { tab } = useContext(UIContext.Tab);
   const { isSelfServe } = useContext(DeviceContext);
@@ -188,7 +188,7 @@ const ResultFull = ({
       setConversation([]);
       setThreadId('');
       const endLine = result.code.split(/\n(?!$)/g).length - 1;
-      setRightPanelOpen(false);
+      setIsHistoryTab(false);
       setSubmittedQuery(
         `#explain_${result.relativePath}:0-${endLine}-${Date.now()}`,
       );
@@ -213,12 +213,8 @@ const ResultFull = ({
             <div className="flex items-center gap-1 overflow-hidden w-full">
               <FileIcon filename={result?.relativePath?.slice(-5) || ''} />
               {!!result && !!breadcrumbs.length ? (
-                <div className="flex-1">
-                  <Breadcrumbs
-                    pathParts={breadcrumbs}
-                    activeStyle="secondary"
-                    path={result.relativePath || ''}
-                  />
+                <div className="flex-1 body-s-strong ellipsis">
+                  {splitPath(result.relativePath || '')?.pop()}
                 </div>
               ) : (
                 <div className="w-48 h-4">
@@ -276,7 +272,7 @@ const ResultFull = ({
                 </div>
               ) : result.language === 'jupyter notebook' ? (
                 <IpynbRenderer data={result.code} />
-              ) : data?.data?.[0]?.data?.indexed ? (
+              ) : result?.indexed ? (
                 <CodeFull
                   code={result.code}
                   language={result.language}
@@ -328,15 +324,6 @@ const ResultFull = ({
           </div>
         </div>
       </div>
-      {!!answer && (
-        <FileExplanation
-          markdown={answer.results}
-          isSingleFileExplanation={!!answer.explainedFile}
-          repoName={result?.repoName || ''}
-          recordId={recordId}
-          threadId={threadId}
-        />
-      )}
     </>
   );
 };
