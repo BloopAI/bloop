@@ -64,7 +64,7 @@ const ConversationMessage = ({
 }: Props) => {
   const { t } = useTranslation();
   const [isLoadingStepsShown, setLoadingStepsShown] = useState(
-    !!Number(getPlainFromStorage(LOADING_STEPS_SHOWN_KEY)) || false,
+    !!Number(getPlainFromStorage(LOADING_STEPS_SHOWN_KEY)) || true,
   );
   const { envConfig } = useContext(DeviceContext);
   const { setChatOpen } = useContext(ChatContext.Setters);
@@ -125,20 +125,16 @@ const ConversationMessage = ({
             </div>
           )}
           <div className="caption text-label-base flex-1 flex gap-2 items-center">
-            <p>{isLoading ? t('Generating response...') : t('Answer Ready')}</p>
-            {!!loadingSteps?.length && (
-              <Button
-                size="tiny"
-                variant={isLoadingStepsShown ? 'tertiary-active' : 'tertiary'}
-                onlyIcon
-                title={t(
-                  `${isLoadingStepsShown ? 'Hide' : 'Show'} search steps`,
-                )}
-                onClick={() => setLoadingStepsShown((prev) => !prev)}
-              >
-                <List />
-              </Button>
-            )}
+            <p>{isLoading ? t('Searching...') : t('Done')}</p>
+            <Button
+              size="tiny"
+              variant={isLoadingStepsShown ? 'tertiary-active' : 'tertiary'}
+              onlyIcon
+              title={t(`${isLoadingStepsShown ? 'Hide' : 'Show'} search steps`)}
+              onClick={() => setLoadingStepsShown((prev) => !prev)}
+            >
+              <List />
+            </Button>
           </div>
           {!isLoading && !!responseTimestamp && (
             <div className="justify-self-end caption text-label-muted">

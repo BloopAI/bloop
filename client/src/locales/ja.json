@@ -174,7 +174,6 @@
 	"Wait for the repository to finish syncing and try again": "リポジトリの同期が終了するのを待ち、再試行してください",
 	"Create new": "新しく作る",
 	"Show": "表示",
-	"Anything I can help you with?": "何かお手伝いできることはありますか？",
 	"Hide": "非表示",
 	"Conversations": "会話",
 	"Delete": "消去",
@@ -375,8 +374,10 @@
 	"Force index": "フォースインデックス",
 	"bloop automatically excludes certain files from indexing. This file might be too big or it might have an excluded file type.": "Bloopは、インデックスから特定のファイルを自動的に除外します。 このファイルが大きすぎるか、除外されたファイルタイプがある場合があります。",
 	"GPT-4 based, code blocks, includes code links": "GPT-4ベースのコードブロックには、コードリンクが含まれています",
-	"I can answer your questions about <2>#repo</2>.": "<2>{{repoName}}</2>についてのあなたの質問に答えることができます。",
-	"Hi, I am bloop!": "こんにちは、bloop です！",
+	"What would you like to know about <2>#repo</2>?": "<2>{{repoName}}</2>について何を知りたいですか?",
+	"Hi, I'm bloop.": "こんにちは、私の名前はbloopです。",
+	"Done": "終わり",
+	"Send a message": "メッセージを送る",
 	"Token limit exceeded": "トークンの制限が超えました",
 	"bloop automatically excludes certain files from the indexing. This file might be too big or it might have an excluded file type.": "Bloopは、インデックスから特定のファイルを自動的に除外します。 このファイルが大きすぎるか、除外されたファイルタイプがある場合があります。"
 }

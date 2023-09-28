@@ -36,7 +36,7 @@ type Props = {
   onMessageEditCancel?: () => void;
 };
 
-const defaultPlaceholder = 'Anything I can help you with?';
+const defaultPlaceholder = 'Send a message';
 
 const NLInput = ({
   id,
