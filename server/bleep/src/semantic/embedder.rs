@@ -263,6 +263,11 @@ impl Embedder for LocalEmbedder {
                         .embeddings
                         .unwrap()
                         .chunks(384)
+                        .inspect(|chunk| {
+                            if chunk.iter().any(|f| f.is_nan()) {
+                                tracing::error!("found nan in sequence");
+                            }
+                        })
                         .map(|chunk| chunk.to_vec())
                         .collect();
                     return Ok(embedding);
