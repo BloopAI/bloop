@@ -302,11 +302,14 @@ impl Agent {
                         ),
                     };
 
+                    let function_call_str = serde_json::to_string(&FunctionCall {
+                        name: Some(name.clone()),
+                        arguments,
+                    })
+                    .unwrap();
+
                     vec![
-                        llm_gateway::api::Message::function_call(&FunctionCall {
-                            name: Some(name.clone()),
-                            arguments,
-                        }),
+                        llm_gateway::api::Message::assistant(&function_call_str),
                         llm_gateway::api::Message::function_return(&name, &s.get_response()),
                         llm_gateway::api::Message::user(FUNCTION_CALL_INSTRUCTION),
                     ]
