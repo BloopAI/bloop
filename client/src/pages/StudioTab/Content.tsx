@@ -18,12 +18,11 @@ import {
   StudioRightPanelType,
   StudioTabType,
 } from '../../types/general';
-import { getCodeStudio, patchCodeStudio } from '../../services/api';
+import { patchCodeStudio } from '../../services/api';
 import { CodeStudioType, HistoryConversationTurn } from '../../types/api';
 import useResizeableSplitPanel from '../../hooks/useResizeableSplitPanel';
 import { TOKEN_LIMIT } from '../../consts/codeStudio';
 import { Info } from '../../icons';
-import { TabsContext } from '../../context/tabsContext';
 import { getPlainFromStorage, STUDIO_GUIDE_DONE } from '../../services/storage';
 import { UIContext } from '../../context/uiContext';
 import ContextPanel from './ContextPanel';
@@ -33,22 +32,23 @@ import AddContextModal from './AddContextModal';
 import RightPanel from './RightPanel';
 import FilePanel from './FilePanel';
 
-const emptyCodeStudio: CodeStudioType = {
-  messages: [],
-  context: [],
-  token_counts: { total: 0, per_file: [], messages: 0 },
-  name: '',
-  id: '',
-  modified_at: '',
+type Props = {
+  tab: StudioTabType;
+  isActive: boolean;
+  currentContext: CodeStudioType['context'];
+  currentMessages: CodeStudioType['messages'];
+  currentTokenCounts: CodeStudioType['token_counts'];
+  refetchCodeStudio: (keyToUpdate?: keyof CodeStudioType) => Promise<void>;
 };
 
 const ContentContainer = ({
   tab,
   isActive,
-}: {
-  tab: StudioTabType;
-  isActive: boolean;
-}) => {
+  currentContext,
+  currentMessages,
+  currentTokenCounts,
+  refetchCodeStudio,
+}: Props) => {
   const [leftPanel, setLeftPanel] = useState<StudioLeftPanelDataType>({
     type: StudioLeftPanelType.CONTEXT,
     data: null,
@@ -59,15 +59,6 @@ const ContentContainer = ({
   // });
   const { setStudioGuideOpen } = useContext(UIContext.StudioGuide);
   const [isAddContextOpen, setAddContextOpen] = useState(false);
-  const [currentContext, setCurrentContext] = useState<
-    CodeStudioType['context']
-  >([]);
-  const [currentMessages, setCurrentMessages] = useState<
-    CodeStudioType['messages']
-  >([]);
-  const [currentTokenCounts, setCurrentTokenCounts] = useState<
-    CodeStudioType['token_counts']
-  >(emptyCodeStudio.token_counts);
   const [previewingState, setPreviewingState] = useState<null | CodeStudioType>(
     null,
   );
@@ -75,66 +66,12 @@ const ContentContainer = ({
   const [isChangeUnsaved, setIsChangeUnsaved] = useState(false);
   const { leftPanelRef, rightPanelRef, dividerRef, containerRef } =
     useResizeableSplitPanel();
-  const { updateTabName } = useContext(TabsContext);
-
-  const refetchCodeStudio = useCallback(
-    async (keyToUpdate?: keyof CodeStudioType) => {
-      if (tab.key) {
-        const resp = await getCodeStudio(tab.key);
-        updateTabName(tab.key, resp.name);
-        if (keyToUpdate) {
-          if (keyToUpdate === 'token_counts') {
-            setCurrentTokenCounts((prev) => {
-              if (JSON.stringify(resp) === JSON.stringify(prev)) {
-                return prev;
-              }
-              return resp.token_counts;
-            });
-          }
-        } else {
-          setCurrentTokenCounts((prev) => {
-            if (JSON.stringify(resp) === JSON.stringify(prev)) {
-              return prev;
-            }
-            return resp.token_counts;
-          });
-          setCurrentContext((prev) => {
-            if (JSON.stringify(resp) === JSON.stringify(prev)) {
-              return prev;
-            }
-            return resp.context;
-          });
-          setCurrentMessages((prev) => {
-            if (JSON.stringify(resp) === JSON.stringify(prev)) {
-              return prev;
-            }
-            return resp.messages;
-          });
-        }
-      }
-    },
-    [tab.key],
-  );
 
   useEffect(() => {
     if (!getPlainFromStorage(STUDIO_GUIDE_DONE)) {
       setStudioGuideOpen(true);
     }
   }, []);
-
-  useEffect(() => {
-    let intervalId: number;
-    if (isActive) {
-      refetchCodeStudio();
-      intervalId = window.setInterval(
-        () => refetchCodeStudio('token_counts'),
-        5000,
-      );
-    }
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, [refetchCodeStudio, isActive]);
 
   const handleAddContextClose = useCallback(() => setAddContextOpen(false), []);
   const onFileAdded = useCallback(
