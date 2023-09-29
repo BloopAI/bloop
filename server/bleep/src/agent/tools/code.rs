@@ -1,5 +1,5 @@
 use anyhow::Result;
-use tracing::{info, instrument};
+use tracing::{debug, info, instrument, trace};
 
 use crate::{
     agent::{
@@ -14,6 +14,7 @@ impl Agent {
     #[instrument(skip(self))]
     pub async fn code_search(&mut self, query: &String) -> Result<String> {
         const CODE_SEARCH_LIMIT: u64 = 10;
+        const MINIMUM_RESULTS: usize = CODE_SEARCH_LIMIT as usize / 2;
 
         self.update(Update::StartStep(SearchStep::Code {
             query: query.clone(),
@@ -22,11 +23,13 @@ impl Agent {
         .await?;
 
         let mut results = self
-            .semantic_search(query.into(), vec![], CODE_SEARCH_LIMIT, 0, 0.2, true)
+            .semantic_search(query.into(), vec![], CODE_SEARCH_LIMIT, 0, 0.3, true)
             .await?;
 
-        let hyde_docs = if results.is_empty() {
-            info!("No results returned, running HyDE");
+        debug!("returned {} results", results.len());
+
+        let hyde_docs = if results.len() < MINIMUM_RESULTS {
+            info!("too few results returned, running HyDE");
 
             let hyde_docs = self.hyde(query).await?;
             if !hyde_docs.is_empty() {
@@ -34,6 +37,8 @@ impl Agent {
                 let hyde_results = self
                     .semantic_search(hyde_doc, vec![], CODE_SEARCH_LIMIT, 0, 0.3, true)
                     .await?;
+
+                debug!("returned {} HyDE results", results.len());
                 results.extend(hyde_results);
             }
             hyde_docs
@@ -99,7 +104,7 @@ impl Agent {
             &prompts::hypothetical_document_prompt(query),
         )];
 
-        tracing::trace!(?query, "generating hyde docs");
+        trace!(?query, "generating hyde docs");
 
         let response = self
             .llm_gateway
@@ -108,7 +113,7 @@ impl Agent {
             .chat(&prompt, None)
             .await?;
 
-        tracing::trace!("parsing hyde response");
+        trace!("parsing hyde response");
 
         let documents = prompts::try_parse_hypothetical_documents(&response);
 
