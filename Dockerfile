@@ -37,6 +37,7 @@ FROM debian:bookworm-slim
 VOLUME ["/repos", "/data"]
 RUN apt-get update && apt-get -y install openssl ca-certificates libprotobuf-lite32 && apt-get clean
 COPY model /model
+COPY stopwords.txt /stopwords.txt
 COPY --from=builder /bleep /
 COPY --from=builder /dylib /dylib
 COPY --from=frontend /build/client/dist /frontend

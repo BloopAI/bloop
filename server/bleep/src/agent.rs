@@ -2,6 +2,8 @@ use std::{sync::Arc, time::Duration};
 
 use anyhow::{anyhow, Context, Result};
 use futures::{Future, TryStreamExt};
+use once_cell::sync::OnceCell;
+use rake::*;
 use tokio::sync::mpsc::Sender;
 use tracing::{debug, error, info, instrument};
 
@@ -40,6 +42,8 @@ mod tools {
     pub mod path;
     pub mod proc;
 }
+
+static STOPWORDS: OnceCell<StopWords> = OnceCell::new();
 
 pub enum Error {
     Timeout(Duration),
@@ -171,6 +175,29 @@ impl Agent {
         match &action {
             Action::Query(s) => {
                 self.track_query(EventData::input_stage("query").with_payload("q", s));
+
+                // Always make a code search for the user query on the first exchange
+                if self.exchanges.len() == 1 {
+                    // Extract keywords from the query
+                    let keywords = {
+                        let sw = STOPWORDS
+                            .get_or_init(|| StopWords::from_file("./stopwords.txt").unwrap());
+                        let r = Rake::new(sw.clone());
+                        let keywords = r.run(s);
+
+                        if keywords.is_empty() {
+                            s.clone()
+                        } else {
+                            keywords
+                                .iter()
+                                .map(|k| k.keyword.clone())
+                                .collect::<Vec<_>>()
+                                .join(" ")
+                        }
+                    };
+
+                    self.code_search(&keywords).await?;
+                }
                 s.clone()
             }
 
@@ -317,6 +344,7 @@ impl Agent {
     async fn semantic_search(
         &self,
         query: parser::Literal<'_>,
+        paths: Vec<String>,
         limit: u64,
         offset: u64,
         threshold: f32,
@@ -325,6 +353,10 @@ impl Agent {
         let query = parser::SemanticQuery {
             target: Some(query),
             repos: [parser::Literal::Plain(self.repo_ref.display_name().into())].into(),
+            paths: paths
+                .iter()
+                .map(|p| parser::Literal::Plain(p.into()))
+                .collect(),
             ..self.last_exchange().query.clone()
         };
 

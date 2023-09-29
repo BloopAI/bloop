@@ -1,0 +1,1 @@
+apps/desktop/src-tauri/stopwords.txt

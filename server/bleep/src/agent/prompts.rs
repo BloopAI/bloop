@@ -9,7 +9,7 @@ pub fn functions(add_proc: bool) -> serde_json::Value {
                     "properties": {
                         "query": {
                             "type": "string",
-                            "description": "The query with which to search. This should consist of keywords that might match something in the codebase, e.g. 'react functional components', 'contextmanager', 'bearer token'. It should NOT contain redundant words like 'usage' or 'example'."
+                            "description": "A search query consisting of keywords. For example: 'react functional components', 'contextmanager', 'bearer token'"
                         }
                     },
                     "required": ["query"]
@@ -23,7 +23,7 @@ pub fn functions(add_proc: bool) -> serde_json::Value {
                     "properties": {
                         "query": {
                             "type": "string",
-                            "description": "The query with which to search. This should consist of keywords that might match a path, e.g. 'server/src'."
+                            "description": "A search query. This should not contain whitespace. For example: 'server/src', 'test', 'index.js'"
                         }
                     },
                     "required": ["query"]
@@ -54,19 +54,19 @@ pub fn functions(add_proc: bool) -> serde_json::Value {
             serde_json::json!(
             {
                 "name": "proc",
-                "description": "Read one or more files and extract the line ranges that are relevant to the search terms",
+                "description": "Read one or more files and extract the snippets of text that are relevant to the search terms.",
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "query": {
                             "type": "string",
-                            "description": "The query with which to search the files."
+                            "description": "A search query consisting of keywords."
                         },
                         "paths": {
                             "type": "array",
                             "items": {
                                 "type": "integer",
-                                "description": "The indices of the paths to search. paths.len() <= 5"
+                                "description": "The indices of the paths to search."
                             }
                         }
                     },
@@ -98,55 +98,19 @@ pub fn system<'a>(paths: impl IntoIterator<Item = &'a str>) -> String {
 - ALWAYS call a function, DO NOT answer the question directly, even if the query is not in English
 - DO NOT call a function that you've used before with the same arguments
 - DO NOT assume the structure of the codebase, or the existence of files or folders
+- Your queries to functions.code or functions.path should be significantly different to previous queries
 - Call functions.none with paths that you are confident will help answer the user's query
-- In most cases call functions.code or functions.path functions before calling functions.none
+- If the user query is general (e.g. 'What does this do?', 'What is this repo?') look for READMEs, documentation and entry points in the code (main files, index files, api files etc.)
 - If the user is referring to, or asking for, information that is in your history, call functions.none
 - If after attempting to gather information you are still unsure how to answer the query, call functions.none
-- If the query is a greeting, or not a question or an instruction call functions.none
-- When calling functions.code or functions.path, your query should consist of keywords. E.g. if the user says 'What does contextmanager do?', your query should be 'contextmanager'. If the user says 'How is contextmanager used in app', your query should be 'contextmanager app'. If the user says 'What is in the src directory', your query should be 'src'
-- If functions.code or functions.path did not return any relevant information, call them again with a SIGNIFICANTLY different query. The terms in the new query should not overlap with terms in your old one
+- If the query is a greeting, or neither a question nor an instruction, call functions.none
+- When calling functions.code your query should consist of keywords. E.g. if the user says 'What does contextmanager do?', your query should be 'contextmanager'. If the user says 'How is contextmanager used in app', your query should be 'contextmanager app'. If the user says 'What is in the src directory', your query should be 'src'
+- When calling functions.path your query should be a single term (no whitespace). E.g. if the user says 'Where is the query parser?', your query should be 'parser'. If the users says 'What's in the auth dir?', your query should be 'auth'
 - If the output of a function is empty, try calling the function again with DIFFERENT arguments OR try calling a different function
 - Only call functions.proc with path indices that are under the PATHS heading above
-- Call functions.proc with paths that might contain relevant information. Either because of the path name, or to expand on code that's already been returned by functions.code
-- DO NOT call functions.proc with more than 5 paths
-- DO NOT call functions.proc on the same file more than once
+- Call functions.proc with paths that might contain relevant information. Either because of the path name, or to expand on code that's been returned by functions.code
 - ALWAYS call a function. DO NOT answer the question directly"#);
     s
-}
-
-pub fn file_explanation(question: &str, path: &str, code: &str) -> String {
-    format!(
-        r#"Below are some lines from the file /{path}. Each line is numbered.
-
-#####
-
-{code}
-
-#####
-
-Your job is to perform the following tasks:
-1. Find all the relevant line ranges of code.
-2. DO NOT cite line ranges that you are not given above
-3. You MUST answer with only line ranges. DO NOT answer the question
-
-Q: find Kafka auth keys
-A: [[12,15]]
-
-Q: find where we submit payment requests
-A: [[37,50]]
-
-Q: auth code expiration
-A: [[486,501],[520,560],[590,631]]
-
-Q: library matrix multiplication
-A: [[68,74],[82,85],[103,107],[187,193]]
-
-Q: how combine result streams
-A: []
-
-Q: {question}
-A: "#
-    )
 }
 
 pub fn answer_article_prompt(context: &str) -> String {

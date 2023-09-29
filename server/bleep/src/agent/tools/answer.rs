@@ -14,6 +14,8 @@ use crate::{
     llm_gateway,
 };
 
+const CHUNK_MERGE_DISTANCE: usize = 20;
+
 impl Agent {
     #[instrument(skip(self))]
     pub async fn answer(&mut self, aliases: &[usize]) -> Result<()> {
@@ -395,12 +397,12 @@ fn trim_utter_history(
     Ok(history)
 }
 
-/// Merge line ranges if they overlap.
+/// Merge line ranges if they overlap or are nearby.
 ///
 /// This function assumes that the first parameter is a line range which starts *before* the line
 /// range given by the second parameter.
 fn merge_overlapping(a: &mut Range<usize>, b: Range<usize>) -> Option<Range<usize>> {
-    if a.end >= b.start {
+    if a.end + CHUNK_MERGE_DISTANCE >= b.start {
         // `b` might be contained in `a`, which allows us to discard it.
         if a.end < b.end {
             a.end = b.end;
