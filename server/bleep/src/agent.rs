@@ -2,6 +2,7 @@ use std::{sync::Arc, time::Duration};
 
 use anyhow::{anyhow, Context, Result};
 use futures::{Future, TryStreamExt};
+use once_cell::sync::OnceCell;
 use rake::*;
 use tokio::sync::mpsc::Sender;
 use tracing::{debug, error, info, instrument};
@@ -38,6 +39,8 @@ mod tools {
     pub mod path;
     pub mod proc;
 }
+
+static STOPWORDS: OnceCell<StopWords> = OnceCell::new();
 
 pub enum Error {
     Timeout(Duration),
@@ -174,8 +177,9 @@ impl Agent {
                 if self.exchanges.len() == 1 {
                     // Extract keywords from the query
                     let keywords = {
-                        let sw = rake::StopWords::from_file("./stopwords.txt").unwrap();
-                        let r = Rake::new(sw);
+                        let sw = STOPWORDS
+                            .get_or_init(|| StopWords::from_file("./stopwords.txt").unwrap());
+                        let r = Rake::new(sw.clone());
                         let keywords = r.run(s);
 
                         if keywords.is_empty() {
