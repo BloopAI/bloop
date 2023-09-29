@@ -59,8 +59,15 @@ const ContentContainer = ({
   // });
   const { setStudioGuideOpen } = useContext(UIContext.StudioGuide);
   const [isAddContextOpen, setAddContextOpen] = useState(false);
-  const [currentState, setCurrentState] =
-    useState<CodeStudioType>(emptyCodeStudio);
+  const [currentContext, setCurrentContext] = useState<
+    CodeStudioType['context']
+  >([]);
+  const [currentMessages, setCurrentMessages] = useState<
+    CodeStudioType['messages']
+  >([]);
+  const [currentTokenCounts, setCurrentTokenCounts] = useState<
+    CodeStudioType['token_counts']
+  >(emptyCodeStudio.token_counts);
   const [previewingState, setPreviewingState] = useState<null | CodeStudioType>(
     null,
   );
@@ -75,15 +82,35 @@ const ContentContainer = ({
       if (tab.key) {
         const resp = await getCodeStudio(tab.key);
         updateTabName(tab.key, resp.name);
-        setCurrentState((prev) => {
-          if (JSON.stringify(resp) === JSON.stringify(prev)) {
-            return prev;
+        if (keyToUpdate) {
+          if (keyToUpdate === 'token_counts') {
+            setCurrentTokenCounts((prev) => {
+              if (JSON.stringify(resp) === JSON.stringify(prev)) {
+                return prev;
+              }
+              return resp.token_counts;
+            });
           }
-          if (keyToUpdate) {
-            return { ...prev, [keyToUpdate]: resp[keyToUpdate] };
-          }
-          return resp;
-        });
+        } else {
+          setCurrentTokenCounts((prev) => {
+            if (JSON.stringify(resp) === JSON.stringify(prev)) {
+              return prev;
+            }
+            return resp.token_counts;
+          });
+          setCurrentContext((prev) => {
+            if (JSON.stringify(resp) === JSON.stringify(prev)) {
+              return prev;
+            }
+            return resp.context;
+          });
+          setCurrentMessages((prev) => {
+            if (JSON.stringify(resp) === JSON.stringify(prev)) {
+              return prev;
+            }
+            return resp.messages;
+          });
+        }
       }
     },
     [tab.key],
@@ -96,9 +123,17 @@ const ContentContainer = ({
   }, []);
 
   useEffect(() => {
+    let intervalId: number;
     if (isActive) {
       refetchCodeStudio();
+      intervalId = window.setInterval(
+        () => refetchCodeStudio('token_counts'),
+        5000,
+      );
     }
+    return () => {
+      clearInterval(intervalId);
+    };
   }, [refetchCodeStudio, isActive]);
 
   const handleAddContextClose = useCallback(() => setAddContextOpen(false), []);
@@ -112,7 +147,7 @@ const ContentContainer = ({
       if (tab.key) {
         patchCodeStudio(tab.key, {
           context: [
-            ...currentState.context,
+            ...currentContext,
             {
               path: filePath,
               branch,
@@ -124,7 +159,7 @@ const ContentContainer = ({
         }).then(() => refetchCodeStudio());
       }
     },
-    [tab.key, currentState.context],
+    [tab.key, currentContext],
   );
 
   const onFileSelected = useCallback(
@@ -144,7 +179,7 @@ const ContentContainer = ({
       repo_ref: string,
       branch: string | null,
     ) => {
-      const patchedFile = currentState.context.find(
+      const patchedFile = currentContext.find(
         (f) =>
           f.path === filePath && f.repo === repo_ref && f.branch === branch,
       );
@@ -158,7 +193,7 @@ const ContentContainer = ({
       }
       if (tab.key && patchedFile) {
         patchedFile.ranges = mappedRanges;
-        const newContext = currentState.context
+        const newContext = currentContext
           .filter(
             (f) =>
               f.path !== filePath || f.repo !== repo_ref || f.branch !== branch,
@@ -169,7 +204,7 @@ const ContentContainer = ({
         }).then(() => refetchCodeStudio());
       }
     },
-    [tab.key, currentState.context],
+    [tab.key, currentContext],
   );
 
   const onFileHide = useCallback(
@@ -179,13 +214,13 @@ const ContentContainer = ({
       branch: string | null,
       hide: boolean,
     ) => {
-      const patchedFile = currentState.context.find(
+      const patchedFile = currentContext.find(
         (f) =>
           f.path === filePath && f.repo === repo_ref && f.branch === branch,
       );
       if (tab.key && patchedFile) {
         patchedFile.hidden = hide;
-        const newContext = currentState.context
+        const newContext = currentContext
           .filter(
             (f) =>
               f.path !== filePath || f.repo !== repo_ref || f.branch !== branch,
@@ -196,7 +231,7 @@ const ContentContainer = ({
         }).then(() => refetchCodeStudio());
       }
     },
-    [tab.key, currentState.context],
+    [tab.key, currentContext],
   );
 
   const onFileRemove = useCallback(
@@ -207,7 +242,7 @@ const ContentContainer = ({
     ) => {
       const files = Array.isArray(f) ? f : [f];
       let newContext: StudioContextFile[] = JSON.parse(
-        JSON.stringify(currentState.context),
+        JSON.stringify(currentContext),
       );
       files.forEach(({ path, repo, branch }) => {
         const patchedFile = newContext.findIndex(
@@ -221,7 +256,7 @@ const ContentContainer = ({
         context: newContext,
       }).then(() => refetchCodeStudio());
     },
-    [tab.key, currentState.context],
+    [tab.key, currentContext],
   );
 
   const handlePreview = useCallback(
@@ -257,8 +292,20 @@ const ContentContainer = ({
   }, [isHistoryOpen]);
 
   const stateToShow = useMemo(() => {
-    return isHistoryOpen && previewingState ? previewingState : currentState;
-  }, [isHistoryOpen, previewingState, currentState]);
+    return isHistoryOpen && previewingState
+      ? previewingState
+      : {
+          context: currentContext,
+          messages: currentMessages,
+          token_counts: currentTokenCounts,
+        };
+  }, [
+    isHistoryOpen,
+    previewingState,
+    currentContext,
+    currentMessages,
+    currentTokenCounts,
+  ]);
 
   useEffect(() => {
     if (leftPanel.type !== StudioRightPanelType.FILE) {
