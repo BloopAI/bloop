@@ -1,4 +1,6 @@
 use anyhow::{anyhow, Result};
+use async_stream::stream;
+use futures::stream::{Stream, StreamExt};
 use select::predicate::Name;
 use tokio::{sync::RwLock, task};
 use tracing::{debug, error};
@@ -69,42 +71,41 @@ impl Scraper {
     }
 
     // maybe replace this with async-stream
-    pub async fn complete(&mut self) -> Vec<Document> {
-        let mut documents = vec![];
+    pub fn complete(&mut self) -> impl Stream<Item = Document> + '_ {
+        stream! {
+            self.queue_request(ScraperRequest {
+                url: self.base_url().clone(),
+                depth: 1,
+                include_meta: true,
+            })
+            .await;
 
-        self.queue_request(ScraperRequest {
-            url: self.base_url().clone(),
-            depth: 1,
-            include_meta: true,
-        })
-        .await;
+            loop {
+                // extract results from finished tasks
+                for h in self.finished_tasks().into_iter() {
+                    debug!("task finished");
+                    match h.await {
+                        Ok(Ok(mut scraper_result)) => {
+                            yield scraper_result.doc;
 
-        loop {
-            // extract results from finished tasks
-            for h in self.finished_tasks().into_iter() {
-                debug!("task finished");
-                match h.await {
-                    Ok(Ok(mut scraper_result)) => {
-                        documents.push(scraper_result.doc);
-
-                        // there could be dupes among the new urls, collect them into a set first
-                        let new_urls = scraper_result
-                            .new_urls
-                            .drain(..)
-                            .fold(HashMap::new(), |mut map, (depth, url)| {
-                                map.entry(url)
-                                    .and_modify(|d| {
-                                        *d = depth.min(*d);
-                                    })
+                            // there could be dupes among the new urls, collect them into a set first
+                            let new_urls = scraper_result
+                                .new_urls
+                                .drain(..)
+                                .fold(HashMap::new(), |mut map, (depth, url)| {
+                                    map.entry(url)
+                                        .and_modify(|d| {
+                                            *d = depth.min(*d);
+                                        })
                                     .or_insert(depth);
-                                map
-                            })
+                                    map
+                                })
                             .into_iter()
-                            .filter(|(url, depth)| {
-                                *depth <= self.config.max_depth
-                                    && !self.visited_links.contains(&url.to_string())
-                                    && self.is_permitted(url)
-                            })
+                                .filter(|(url, depth)| {
+                                    *depth <= self.config.max_depth
+                                        && !self.visited_links.contains(&url.to_string())
+                                        && self.is_permitted(url)
+                                })
                             .map(|(url, depth)| ScraperRequest {
                                 url,
                                 depth,
@@ -112,44 +113,43 @@ impl Scraper {
                             })
                             .collect::<Vec<_>>();
 
-                        debug!("{} new urls collected", new_urls.len());
+                            debug!("{} new urls collected", new_urls.len());
 
-                        self.queue_requests(new_urls.into_iter()).await;
-                    }
-                    Ok(Err(e)) => error!("task failed successfully: {e}"),
-                    Err(e) => error!("task failed: {e}"),
-                }
-            }
-
-            // add new tasks to queue if possible
-            let active_tasks = self.active_tasks();
-            if active_tasks <= self.config.max_concurrency {
-                let new_task_count = (self.config.max_concurrency - active_tasks)
-                    .min(self.queued_requests.read().await.len());
-                let new_requests = self
-                    .queued_requests
-                    .write()
-                    .await
-                    .drain(..new_task_count)
-                    .collect::<Vec<_>>(); // we collect here to drop the lock over the request queue
-
-                for request in new_requests.into_iter() {
-                    if !self.visited_links.contains(&request.url.to_string()) {
-                        debug!("{} queued", request.url.as_str());
-                        self.visited_links.insert(request.url.to_string());
-                        let handle = task::spawn(async { visit(request).await });
-                        self.handles.push(handle);
+                            self.queue_requests(new_urls.into_iter()).await;
+                        }
+                        Ok(Err(e)) => error!("task failed successfully: {e}"),
+                        Err(e) => error!("task failed: {e}"),
                     }
                 }
-            }
 
-            if self.queued_requests.read().await.is_empty() && self.handles.is_empty() {
-                debug!("no more tasks");
-                break;
+                // add new tasks to queue if possible
+                let active_tasks = self.active_tasks();
+                if active_tasks <= self.config.max_concurrency {
+                    let new_task_count = (self.config.max_concurrency - active_tasks)
+                        .min(self.queued_requests.read().await.len());
+                    let new_requests = self
+                        .queued_requests
+                        .write()
+                        .await
+                        .drain(..new_task_count)
+                        .collect::<Vec<_>>(); // we collect here to drop the lock over the request queue
+
+                    for request in new_requests.into_iter() {
+                        if !self.visited_links.contains(&request.url.to_string()) {
+                            debug!("{} queued", request.url.as_str());
+                            self.visited_links.insert(request.url.to_string());
+                            let handle = task::spawn(async { visit(request).await });
+                            self.handles.push(handle);
+                        }
+                    }
+                }
+
+                if self.queued_requests.read().await.is_empty() && self.handles.is_empty() {
+                    debug!("no more tasks");
+                    break;
+                }
             }
         }
-
-        documents
     }
 }
 
