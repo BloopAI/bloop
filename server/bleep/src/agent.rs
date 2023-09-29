@@ -232,20 +232,11 @@ impl Agent {
         let raw_response = self
             .llm_gateway
             .chat_stream(
-                &trim_history(history.clone(), self.model)?,
-                Some(&functions),
+                &trim_history(history.clone(), model::GPT_3_5_TURBO_FINETUNED_AGENT)?,
+                None,
             )
             .await?
-            .try_fold(
-                llm_gateway::api::FunctionCall::default(),
-                |acc, e| async move {
-                    let e: FunctionCall = serde_json::from_str(&e)?;
-                    Ok(FunctionCall {
-                        name: acc.name.or(e.name),
-                        arguments: acc.arguments + &e.arguments,
-                    })
-                },
-            )
+            .try_fold(String::new(), |acc, e| async move { Ok(acc + &e) })
             .await
             .context("failed to fold LLM function call output")?;
 
@@ -258,8 +249,11 @@ impl Agent {
                 .with_payload("raw_response", &raw_response),
         );
 
+        let function_call: FunctionCall = serde_json::from_str(&raw_response)
+            .context("failed to parse LLM output into FunctionCall")?;
+
         let action =
-            Action::deserialize_gpt(&raw_response).context("failed to deserialize LLM output")?;
+            Action::deserialize_gpt(&function_call).context("failed to deserialize LLM output")?;
 
         Ok(Some(action))
     }

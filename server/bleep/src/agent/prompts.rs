@@ -82,10 +82,12 @@ pub fn functions(add_proc: bool) -> serde_json::Value {
 pub fn system<'a>(paths: impl IntoIterator<Item = &'a str>) -> String {
     let mut s = "".to_string();
 
+    s.push_str("### FUNCTIONS ###\n\n[{\"name\":\"code\",\"description\":\"Search the contents of files in a codebase semantically. Results will not necessarily match search terms exactly, but should be related.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"string\",\"description\":\"The query with which to search. This should consist of keywords that might match something in the codebase, e.g. 'react functional components', 'contextmanager', 'bearer token'. It should NOT contain redundant words like 'usage' or 'example'.\"}},\"required\":[\"query\"]}},{\"name\":\"path\",\"description\":\"Search the pathnames in a codebase. Use when you want to find a specific file or directory. Results may not be exact matches, but will be similar by some edit-distance.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"string\",\"description\":\"The query with which to search. This should consist of keywords that might match a path, e.g. 'server/src'.\"}},\"required\":[\"query\"]}},{\"name\":\"none\",\"description\":\"Call this to answer the user. Call this only when you have enough information to answer the user's query.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"paths\":{\"type\":\"array\",\"items\":{\"type\":\"integer\",\"description\":\"The indices of the paths to answer with respect to. Can be empty if the answer is not related to a specific path.\"}}},\"required\":[\"paths\"]}}]\n");
+
     let mut paths = paths.into_iter().peekable();
 
     if paths.peek().is_some() {
-        s.push_str("## PATHS ##\nindex, path\n");
+        s.push_str("\n## PATHS ##\nindex, path\n");
         for (i, path) in paths.enumerate() {
             s.push_str(&format!("{}, {}\n", i, path));
         }
@@ -109,7 +111,9 @@ pub fn system<'a>(paths: impl IntoIterator<Item = &'a str>) -> String {
 - If the output of a function is empty, try calling the function again with DIFFERENT arguments OR try calling a different function
 - Only call functions.proc with path indices that are under the PATHS heading above
 - Call functions.proc with paths that might contain relevant information. Either because of the path name, or to expand on code that's been returned by functions.code
-- ALWAYS call a function. DO NOT answer the question directly"#);
+- ALWAYS call a function. DO NOT answer the question directly
+- Your output should be in the JSON format {"name":"NAME OF FUNCTION","arguments":"{\"KEY\":\"VALUE\"}"}
+  - For example {"name":"code","arguments":"{\"query\":\"navigation 3D\"}"}"#);
     s
 }
 
