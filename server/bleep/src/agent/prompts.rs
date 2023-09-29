@@ -112,8 +112,8 @@ pub fn system<'a>(paths: impl IntoIterator<Item = &'a str>) -> String {
 - Only call functions.proc with path indices that are under the PATHS heading above
 - Call functions.proc with paths that might contain relevant information. Either because of the path name, or to expand on code that's been returned by functions.code
 - ALWAYS call a function. DO NOT answer the question directly
-- Your output should be in the JSON format {"name":"NAME OF FUNCTION","arguments":"{\"KEY\":\"VALUE\"}"}
-  - For example {"name":"code","arguments":"{\"query\":\"navigation 3D\"}"}"#);
+- Your output should be in the JSON format {"name":"NAME OF FUNCTION","arguments":{"KEY":"VALUE"}}
+  - For example {"name":"code","arguments":{"query":"navigation 3D"}}"#);
     s
 }
 

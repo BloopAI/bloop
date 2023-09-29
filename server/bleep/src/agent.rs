@@ -302,11 +302,14 @@ impl Agent {
                         ),
                     };
 
-                    let function_call_str = serde_json::to_string(&FunctionCall {
-                        name: Some(name.clone()),
-                        arguments,
-                    })
-                    .unwrap();
+
+                    let function_call = FunctionCall {
+                        name: Some("code".to_owned()),
+                        arguments: serde_json::json!({
+                            "query": "single file focus exchange"
+                        }),
+                    };
+                    let function_call_str = serde_json::to_string(&function_call).unwrap();
 
                     vec![
                         llm_gateway::api::Message::assistant(&function_call_str),
@@ -536,9 +539,9 @@ impl Action {
         let mut map = serde_json::Map::new();
         map.insert(
             call.name.clone().unwrap(),
-            serde_json::from_str(&call.arguments)?,
+            call.arguments.clone(),
         );
-
+    
         Ok(serde_json::from_value(serde_json::Value::Object(map))?)
     }
 }

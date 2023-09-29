@@ -13,10 +13,11 @@ use self::api::FunctionCall;
 pub mod api {
     use std::collections::HashMap;
 
+
     #[derive(Debug, Default, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
     pub struct FunctionCall {
         pub name: Option<String>,
-        pub arguments: String,
+        pub arguments: serde_json::Value,
     }
 
     #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
