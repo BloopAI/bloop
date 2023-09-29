@@ -92,12 +92,20 @@ impl From<(&RepoRef, &Repository)> for Repo {
                         last_commit_unix_secs,
                     })
                 })
-                .filter(|b| b.name != "origin/HEAD" && b.name.starts_with("origin/"))
+                .filter(|b| {
+                    if key.is_remote() {
+                        b.name != "origin/HEAD" && b.name.starts_with("origin/")
+                    } else {
+                        b.name != "HEAD" && !b.name.starts_with("origin/")
+                    }
+                })
                 .collect::<Vec<_>>();
 
             branches.sort_by_key(|b| b.last_commit_unix_secs);
             (head, branches)
         };
+
+        tracing::trace!(?branches, "branches");
 
         let branch_filter = {
             use BranchFilterConfig::*;
