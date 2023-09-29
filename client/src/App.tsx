@@ -121,7 +121,7 @@ function App({ deviceContextValue }: Props) {
 
   const handleAddStudioTab = useCallback((name: string, id: string) => {
     const newTab: StudioTabType = {
-      key: id,
+      key: id.toString(),
       name,
       type: TabType.STUDIO,
     };
