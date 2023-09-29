@@ -1,3 +1,4 @@
+use futures::stream::StreamExt;
 use qdrant_client::qdrant::{
     point_id::PointIdOptions, r#match::MatchValue, vectors_config, with_payload_selector,
     CreateCollection, Distance, FieldCondition, FieldType, Filter, Match, PointId, PointStruct,
@@ -306,22 +307,26 @@ impl Doc {
         id: i64,
         url: url::Url,
     ) -> Result<Option<scraper::Meta>, Error> {
-        let docs = Scraper::with_config(Config::new(url.clone()))
-            .complete()
-            .await;
-        let meta = docs
-            .iter()
-            .find(|d| d.url == url)
-            .and_then(|d| d.meta.clone());
-        let points_to_insert = docs
-            .par_iter()
-            .flat_map(|d| d.embed(id, &url, self.semantic.embedder()))
-            .collect::<Vec<_>>();
-        self.semantic
-            .qdrant_client()
-            .upsert_points(COLLECTION_NAME, points_to_insert, None)
-            .await
-            .map_err(Error::Qdrant)?;
+        let mut scraper = Scraper::with_config(Config::new(url.clone()));
+        let mut stream = Box::pin(scraper.complete());
+        let mut meta = None;
+        let mut handles = Vec::new();
+        while let Some(doc) = stream.next().await {
+            if let Some(m) = doc.meta.clone() {
+                meta = Some(m);
+            }
+            let semantic = self.semantic.clone();
+            let u = url.clone();
+            handles.push(tokio::task::spawn(async move {
+                let embedder = semantic.embedder();
+                let points_to_insert = doc.embed(id, &u, embedder);
+                let _ = semantic
+                    .qdrant_client()
+                    .upsert_points(COLLECTION_NAME, points_to_insert, None)
+                    .await;
+            }));
+        }
+
         Ok(meta)
     }
 
