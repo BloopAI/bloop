@@ -31,6 +31,7 @@ impl FileWalker {
             })
             // Preliminarily ignore files that are very large, without reading the contents.
             .filter(|de| matches!(de.metadata(), Ok(meta) if meta.len() < MAX_FILE_LEN))
+            .filter(|de| !de.path().strip_prefix(&dir).unwrap().starts_with(".git"))
             .filter_map(|de| crate::canonicalize(de.into_path()).ok())
             .collect();
 
