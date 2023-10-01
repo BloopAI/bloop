@@ -33,7 +33,9 @@ export const PersonalQuotaContextProvider = memo(
             }
             return newState;
           });
-          setRequestsLeft(Math.max(resp.allowed - resp.used, 0));
+          setRequestsLeft(
+            resp.upgraded ? 99999 : Math.max(resp.allowed - resp.used, 0),
+          );
           setHasCheckedQuota(true);
           setResetAt(resp.reset_at);
         });
