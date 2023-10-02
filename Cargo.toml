@@ -8,8 +8,7 @@ members = [
 opt-level = 3
 
 [profile.release]
-debug = false
-strip = "debuginfo"
+debug = 1
 lto = true
 
 [profile.profiler]
