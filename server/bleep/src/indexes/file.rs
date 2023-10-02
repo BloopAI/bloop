@@ -157,7 +157,8 @@ impl Indexable for File {
                             use gix::bstr::ByteSlice;
                             r.name().shorten().to_str_lossy().into_owned()
                         })
-                });
+                })
+                .unwrap_or_else(|| "HEAD".to_owned());
 
             let walker = FileWalker::index_directory(&repo.disk_path, branch);
             let count = walker.len();
