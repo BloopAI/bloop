@@ -1,4 +1,4 @@
-import React, { MouseEvent, PropsWithChildren } from 'react';
+import React, { memo, MouseEvent, PropsWithChildren } from 'react';
 import Tippy, { TippyProps } from '@tippyjs/react/headless';
 import { useOnClickOutside } from '../../hooks/useOnClickOutsideHook';
 import { ExtendedMenuItemType, MenuItemType } from '../../types/general';
@@ -207,4 +207,4 @@ const ContextMenu = ({
     </Tippy>
   );
 };
-export default ContextMenu;
+export default memo(ContextMenu);
