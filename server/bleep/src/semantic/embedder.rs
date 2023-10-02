@@ -166,28 +166,32 @@ unsafe impl Sync for LocalEmbedder {}
 impl LocalEmbedder {
     pub fn new(model_dir: &Path) -> anyhow::Result<Self> {
         let mut model_params = llm::ModelParameters::default();
-        model_params.use_gpu = true; // TODO: make configurable
+
+        if cfg!(feature = "metal") {
+            model_params.use_gpu = true; // TODO: make configurable
+        }
+
         let model = llm::load_dynamic(
             Some(llm::ModelArchitecture::Bert),
             &model_dir.join("ggml-model-q4_0.bin"),
             // this tokenizer is used for embedding
-            llm::TokenizerSource::HuggingFaceTokenizerFile(model_dir.join("tokenizer.json")),
+            llm::TokenizerSource::HuggingFaceTokenizerFile(
+                model_dir.join("updated_tokenizers.json"),
+            ),
             model_params,
             llm::load_progress_callback_stdout,
         )?;
 
-        let session_count = if cfg!(feature = "metal") {
-            3
-        } else {
-            std::thread::available_parallelism()
-                .map(|t| t.get())
-                .unwrap_or(4)
-        };
+        let session_count = if cfg!(feature = "metal") { 3 } else { 25 };
 
-        info!(%session_count, "spawned inference sessions");
+        tracing::info!(%session_count, "spawned inference sessions");
 
         let sessions = (0..session_count)
-            .map(|_| model.start_session(Default::default()))
+            .map(|_| {
+                model.start_session(llm::InferenceSessionConfig {
+                    ..Default::default()
+                })
+            })
             .map(tokio::sync::Mutex::new)
             .map(Arc::new)
             .collect();
@@ -222,6 +226,7 @@ impl Embedder for LocalEmbedder {
             .collect::<Vec<_>>();
 
         if let Ok(_permit) = self.permits.acquire().await {
+            println!("available permits: {}", self.permits.available_permits());
             for s in &self.sessions {
                 if let Ok(mut session) = s.try_lock() {
                     self.model
@@ -239,6 +244,35 @@ impl Embedder for LocalEmbedder {
     }
 
     async fn batch_embed(&self, log: Vec<&str>) -> anyhow::Result<Vec<Embedding>> {
+        let log = vec![
+            r#"answer-api      helm/answer-api/templates/ingress.yaml
+}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if and .Values.ingress.className (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion) }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  {{- if .Values.ingress.tls }}
+  tls:
+    {{- range .Values.ingress.tls }}
+    - hosts:
+        {{- range .hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      secretName: {{ .secretName }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}"#,
+        ];
         let mut output_request = llm::OutputRequest {
             all_logits: None,
             embeddings: Some(Vec::new()),
@@ -247,7 +281,7 @@ impl Embedder for LocalEmbedder {
         let beginning_of_sentence = true;
         let query_token_ids = log
             .iter()
-            .map(|&sequence| {
+            .map(|sequence| {
                 vocab
                     .tokenize(&sequence, beginning_of_sentence)
                     .unwrap()
@@ -256,25 +290,34 @@ impl Embedder for LocalEmbedder {
                     .collect::<Vec<_>>()
             })
             .collect::<Vec<_>>();
+        println!("sequences size: {}", query_token_ids[0].len());
         let query_token_ids: Vec<_> = query_token_ids.iter().map(AsRef::as_ref).collect();
 
+        let n = tokio::time::Instant::now();
         if let Ok(_permit) = self.permits.acquire().await {
-            println!("accquired lock");
+            println!("accquired lock in {}ms", n.elapsed().as_millis());
+            println!("available permits: {}", self.permits.available_permits());
+            let n = tokio::time::Instant::now();
             for s in &self.sessions {
                 if let Ok(mut session) = s.try_lock() {
+                    println!("found free session in {}ms", n.elapsed().as_millis());
+                    let n = tokio::time::Instant::now();
                     self.model
                         .batch_evaluate(&mut session, &query_token_ids, &mut output_request);
+                    println!("finished embedding in {}ms", n.elapsed().as_millis());
+                    let n = tokio::time::Instant::now();
                     let embedding: Vec<Vec<f32>> = output_request
                         .embeddings
                         .unwrap()
                         .chunks(384)
-                        .inspect(|chunk| {
-                            if chunk.iter().any(|f| f.is_nan()) {
-                                tracing::error!("found nan in sequence");
-                            }
-                        })
+                        // .inspect(|chunk| {
+                        //     if chunk.iter().any(|f| f.is_nan()) {
+                        //         tracing::error!("found nan in sequence");
+                        //     }
+                        // })
                         .map(|chunk| chunk.to_vec())
                         .collect();
+                    println!("finished chunking in {}ms", n.elapsed().as_millis());
                     return Ok(embedding);
                 }
             }

@@ -141,8 +141,8 @@ hex = "0.4.3"
 base64 = "0.21.4"
 jwt-authorizer = { version = "0.11.0", default-features = false, features = ["rustls-tls-webpki-roots", "chrono"] }
 
-# llm = { path = "/home/np/bloop/experimental/llm/crates/llm", default-features = false, features = ["bert"] }
-llm = { git = "https://github.com/nerdypepper/llm", branch = "batch-metal-kernels", default-features = false, features = ["bert", "metal"] }
+llm = { path = "/home/np/bloop/experimental/llm/crates/llm", default-features = false, features = ["bert"] }
+# llm = { git = "https://github.com/nerdypepper/llm", branch = "batch-metal-kernels", default-features = false, features = ["bert"] }
 
 [dev-dependencies]
 criterion = { version = "0.5.1", features = ["async_tokio"] }
