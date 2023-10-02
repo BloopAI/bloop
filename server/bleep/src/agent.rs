@@ -44,6 +44,17 @@ mod tools {
 }
 
 static STOPWORDS: OnceCell<StopWords> = OnceCell::new();
+static STOP_WORDS_LIST: &str = include_str!("stopwords.txt");
+
+fn stop_words() -> &'static StopWords {
+    STOPWORDS.get_or_init(|| {
+        let mut sw = StopWords::new();
+        for w in STOP_WORDS_LIST.lines() {
+            sw.insert(w.to_string());
+        }
+        sw
+    })
+}
 
 pub enum Error {
     Timeout(Duration),
@@ -180,8 +191,7 @@ impl Agent {
                 if self.exchanges.len() == 1 {
                     // Extract keywords from the query
                     let keywords = {
-                        let sw = STOPWORDS
-                            .get_or_init(|| StopWords::from_file("./stopwords.txt").unwrap());
+                        let sw = stop_words();
                         let r = Rake::new(sw.clone());
                         let keywords = r.run(s);
 
