@@ -405,5 +405,10 @@ fn default_max_chunk_tokens() -> usize {
 }
 
 fn interactive_batch_size() -> NonZeroUsize {
+    let batch_size = if cfg!(feature = "metal") {
+        5
+    } else {
+        1
+    };
     NonZeroUsize::new(5).unwrap()
 }
