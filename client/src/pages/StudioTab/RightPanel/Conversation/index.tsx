@@ -13,8 +13,8 @@ import throttle from 'lodash.throttle';
 import {
   StudioConversationMessage,
   StudioConversationMessageAuthor,
-  StudioLeftPanelType,
   StudioLeftPanelDataType,
+  StudioLeftPanelType,
 } from '../../../../types/general';
 import Button from '../../../../components/Button';
 import { ArrowRefresh, TrashCanFilled } from '../../../../icons';
@@ -296,6 +296,13 @@ const Conversation = ({
         // Set input to the message being removed
         setInput(conversation[i]);
       }
+      if (
+        i === conversation.length - 1 &&
+        conversation[i].author === StudioConversationMessageAuthor.ASSISTANT &&
+        isLoading
+      ) {
+        handleCancel();
+      }
       setConversation((prev) => {
         const newConv = prev.filter((_, j) =>
           andSubsequent ? i > j : i !== j,
@@ -311,17 +318,13 @@ const Conversation = ({
         return newConv;
       });
 
-      const messages: ({ User: string } | { Assistant: string })[] =
-        conversation
-          .map((c) => ({ [c.author as 'User']: c.message }))
-          .filter((m, j) => (andSubsequent ? i > j : i !== j));
-      await patchCodeStudio(studioId, {
-        messages,
-      }).then(() => {
-        refetchCodeStudio('token_counts');
-      });
+      const messages = conversation.filter((m, j) =>
+        andSubsequent ? i > j : i !== j,
+      );
+      await saveConversation(true, messages);
+      refetchCodeStudio('token_counts');
     },
-    [conversation],
+    [conversation, isLoading],
   );
 
   const handleClearConversation = useCallback(async () => {
