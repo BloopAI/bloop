@@ -28,10 +28,10 @@ pub const GPT_3_5_TURBO_FINETUNED: AnswerModel = AnswerModel {
 
 pub const GPT_3_5_TURBO_FINETUNED_AGENT: AnswerModel = AnswerModel {
     tokenizer: "gpt-3.5-turbo-0613",
-    model_name: "ft:gpt-3.5-turbo-0613:bloop:answer-filtered:80csjkJX",
-    answer_headroom: 200,
-    prompt_headroom: 500,
-    history_headroom: 500,
+    model_name: "ft:gpt-3.5-turbo-0613:bloop::80csjkJX",
+    answer_headroom: 512,
+    prompt_headroom: 1600,
+    history_headroom: 1024,
 };
 
 pub const GPT_4: AnswerModel = AnswerModel {

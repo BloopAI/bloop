@@ -87,7 +87,7 @@ const Chat = () => {
             }`
           : ''
       }&model=${
-        preferredAnswerSpeed === 'normal' ? 'gpt-4' : 'gpt-3.5-turbo-finetuned'
+        preferredAnswerSpeed === 'normal' ? 'gpt-4' : 'gpt-4'
       }`;
       console.log(url);
       const eventSource = new EventSource(url);

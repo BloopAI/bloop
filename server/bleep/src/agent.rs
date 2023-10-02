@@ -227,12 +227,14 @@ impl Agent {
         ))];
         history.extend(self.history()?);
 
-        let trimmed_history = trim_history(history.clone(), self.model)?;
+        let trimmed_history = trim_history(history.clone(), model::GPT_3_5_TURBO_FINETUNED_AGENT)?;
+
+        debug!("Model name: {}", self.model.model_name.clone());
 
         let raw_response = self
             .llm_gateway
             .chat_stream(
-                &trim_history(history.clone(), model::GPT_3_5_TURBO_FINETUNED_AGENT)?,
+                &trim_history(history.clone(), self.model)?,
                 None,
             )
             .await?
@@ -249,11 +251,17 @@ impl Agent {
                 .with_payload("raw_response", &raw_response),
         );
 
+        debug!("{}", raw_response.clone());
+
         let function_call: FunctionCall = serde_json::from_str(&raw_response)
             .context("failed to parse LLM output into FunctionCall")?;
 
+        debug!("{}", function_call.arguments.clone());
+
         let action =
             Action::deserialize_gpt(&function_call).context("failed to deserialize LLM output")?;
+
+        debug!("action chosen");
 
         Ok(Some(action))
     }
@@ -303,18 +311,13 @@ impl Agent {
                     };
 
 
-                    let function_call = FunctionCall {
-                        name: Some("code".to_owned()),
-                        arguments: serde_json::json!({
-                            "query": "single file focus exchange"
-                        }),
-                    };
-                    let function_call_str = serde_json::to_string(&function_call).unwrap();
+                    
+                    let function_call_str = format!("{{\"name\":\"{}\",\"arguments\":{}}}", name.clone(), arguments.clone());
+                    let user_string = format!("This is the result of the {} function call: {}\n\n{}", name.clone(), &s.get_response(), FUNCTION_CALL_INSTRUCTION);
 
                     vec![
                         llm_gateway::api::Message::assistant(&function_call_str),
-                        llm_gateway::api::Message::function_return(&name, &s.get_response()),
-                        llm_gateway::api::Message::user(FUNCTION_CALL_INSTRUCTION),
+                        llm_gateway::api::Message::user(&user_string),
                     ]
                 });
 

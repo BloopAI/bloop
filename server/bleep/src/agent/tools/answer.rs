@@ -43,6 +43,8 @@ impl Agent {
         let context = self.answer_context(aliases).await?;
         let system_prompt = prompts::answer_article_prompt(&context);
         let system_message = llm_gateway::api::Message::system(&system_prompt);
+        debug!("Answer model: {}", self.model.model_name.clone());
+
         let history = {
             let h = self.utter_history().collect::<Vec<_>>();
             let system_headroom = tiktoken_rs::num_tokens_from_messages(

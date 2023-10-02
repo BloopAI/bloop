@@ -85,7 +85,7 @@ fn default_thread_id() -> uuid::Uuid {
 }
 
 fn default_model() -> agent::model::AnswerModel {
-    agent::model::GPT_3_5_TURBO_FINETUNED
+    agent::model::GPT_4
 }
 
 pub(super) async fn answer(
@@ -215,7 +215,7 @@ async fn try_execute_agent(
     let llm_gateway = llm_gateway::Client::new(&app.config.answer_api_url)
         .temperature(0.0)
         .bearer(answer_api_token)
-        .session_reference_id(conversation_id.to_string());
+        .session_reference_id(conversation_id.to_string()).model(agent::model::GPT_3_5_TURBO_FINETUNED_AGENT.model_name.clone());
 
     // confirm client compatibility with answer-api
     match llm_gateway
