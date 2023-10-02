@@ -258,6 +258,16 @@ impl Agent {
                 .push(c.start_line..c.end_line);
         }
 
+        // If there are no relevant code chunks, but there is a focused chunk, we use that.
+        if spans_by_path.is_empty() {
+            if let Some(chunk) = self.last_exchange().focused_chunk.clone() {
+                spans_by_path
+                    .entry(chunk.file_path.clone())
+                    .or_default()
+                    .push(chunk.start_line..chunk.end_line);
+            }
+        }
+
         debug!(?spans_by_path, "expanding spans");
 
         let self_ = &*self;
