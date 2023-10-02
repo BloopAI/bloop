@@ -10,11 +10,11 @@ pub struct FileWalker {
     file_list: Vec<PathBuf>,
 
     /// Branch to index files as part of.
-    branch: Option<String>,
+    branch: String,
 }
 
 impl FileWalker {
-    pub fn index_directory(dir: impl AsRef<Path>, branch: Option<String>) -> impl FileSource {
+    pub fn index_directory(dir: impl AsRef<Path>, branch: String) -> impl FileSource {
         // note: this WILL observe .gitignore files for the respective repos.
         let walker = ignore::WalkBuilder::new(&dir)
             .standard_filters(true)
@@ -61,12 +61,12 @@ impl FileSource for FileWalker {
                         Some(RepoDirEntry::File(RepoFile {
                             buffer,
                             path: entry_disk_path.to_string_lossy().to_string(),
-                            branches: self.branch.clone().into_iter().collect(),
+                            branches: vec![self.branch.clone()],
                         }))
                     } else if entry_disk_path.is_dir() {
                         Some(RepoDirEntry::Dir(RepoDir {
                             path: entry_disk_path.to_string_lossy().to_string(),
-                            branches: self.branch.clone().into_iter().collect(),
+                            branches: vec![self.branch.clone()],
                         }))
                     } else {
                         Some(RepoDirEntry::Other)
