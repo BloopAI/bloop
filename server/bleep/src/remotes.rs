@@ -47,8 +47,8 @@ pub(crate) enum RemoteError {
     #[error("permission denied")]
     PermissionDenied,
 
-    #[error("invalid configuration; missing: {0}")]
-    Configuration(&'static str),
+    #[error("failed to refresh JWT token: {0}")]
+    RefreshToken(reqwest::Error),
 
     #[error("operation not supported: {0}")]
     NotSupported(&'static str),

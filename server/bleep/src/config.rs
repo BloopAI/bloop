@@ -171,7 +171,7 @@ pub struct Configuration {
 
     /// Instance-specific shared secret between bloop c&c & instance
     #[clap(long)]
-    pub bloop_instance_org: Option<Uuid>,
+    pub bloop_instance_org: Option<String>,
 
     #[clap(long)]
     #[serde(serialize_with = "serialize_secret_opt_str", default)]

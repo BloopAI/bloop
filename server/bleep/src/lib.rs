@@ -356,6 +356,51 @@ impl Application {
 
         Ok(llm_gateway::Client::new(&self.config.answer_api_url).bearer(answer_api_token))
     }
+
+    fn seal_auth_state(&self, payload: serde_json::Value) -> String {
+        use base64::Engine;
+        use rand::RngCore;
+
+        let privkey = {
+            let bytes = self
+                .config
+                .bloop_instance_secret
+                .as_ref()
+                .expect("no instance secret configured")
+                .as_bytes();
+
+            ring::aead::LessSafeKey::new(
+                ring::aead::UnboundKey::new(&ring::aead::AES_128_GCM, bytes)
+                    .expect("bad key initialization"),
+            )
+        };
+
+        let (nonce, nonce_str) = {
+            let mut buf = [0; 12];
+            rand::thread_rng().fill_bytes(&mut buf);
+
+            let nonce_str = hex::encode(buf);
+            (ring::aead::Nonce::assume_unique_for_key(buf), nonce_str)
+        };
+
+        let enc = {
+            let mut serialized = serde_json::to_vec(&payload).unwrap();
+            privkey
+                .seal_in_place_append_tag(nonce, ring::aead::Aad::empty(), &mut serialized)
+                .expect("encryption failed");
+
+            serialized
+        };
+
+        base64::engine::general_purpose::STANDARD_NO_PAD.encode(
+            serde_json::to_vec(&serde_json::json!({
+            "org": self.config.bloop_instance_org.as_ref().expect("bad config"),
+            "n": nonce_str,
+            "enc": enc
+            }))
+            .expect("bad encoding"),
+        )
+    }
 }
 
 impl FromRef<Application> for axum_extra::extract::cookie::Key {

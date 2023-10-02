@@ -565,7 +565,6 @@ dependencies = [
  "thiserror",
  "thread-priority",
  "tiktoken-rs",
- "time",
  "tokenizers",
  "tokio",
  "tokio-stream",

@@ -101,7 +101,6 @@ compact_str = "0.7.1"
 bincode = "1.3.3"
 directories = "5.0.1"
 chrono = { version = "0.4.31", features = ["serde"], default-features = false }
-time = { version = "0.3.29", default-features = false }
 phf = "0.11.2"
 rand = "0.8.5"
 once_cell = "1.18.0"

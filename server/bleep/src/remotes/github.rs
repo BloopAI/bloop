@@ -1,10 +1,5 @@
-use base64::Engine;
 use chrono::{DateTime, Utc};
-use octocrab::{
-    models::{Installation, InstallationToken},
-    Octocrab,
-};
-use rand::RngCore;
+use octocrab::Octocrab;
 use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -54,7 +49,9 @@ impl State {
 
     pub(crate) fn expiry(&self) -> Option<DateTime<Utc>> {
         match self.auth {
-            Auth::App { expiry, .. } => Some(expiry),
+            Auth::App {
+                expires_at: expiry, ..
+            } => Some(expiry),
             _ => None,
         }
     }
@@ -86,7 +83,7 @@ pub(crate) enum Auth {
         /// because it expires quickly, but the current code paths
         /// make this the most straightforward way to implement it
         token: SecretString,
-        expiry: DateTime<Utc>,
+        expires_at: DateTime<Utc>,
         org: String,
     },
 }
@@ -94,27 +91,6 @@ pub(crate) enum Auth {
 impl From<Auth> for State {
     fn from(value: Auth) -> Self {
         State::with_auth(value)
-    }
-}
-
-impl Auth {
-    pub async fn from_installation(
-        install: Installation,
-        install_id: u64,
-        octocrab: Octocrab,
-    ) -> Result<Self> {
-        let token: InstallationToken = octocrab
-            .post(
-                format!("/app/installations/{install_id}/access_tokens"),
-                None::<&()>,
-            )
-            .await?;
-
-        Ok(Self::App {
-            token: token.token.into(),
-            expiry: token.expires_at.unwrap().parse().unwrap(),
-            org: install.account.login,
-        })
     }
 }
 
@@ -230,10 +206,39 @@ impl Auth {
 }
 
 pub(crate) async fn refresh_github_installation_token(app: &Application) -> Result<()> {
-    todo!()
+    let timestamp = chrono::Utc::now();
+    let payload = json!({ "timestamp": timestamp.to_rfc2822()});
+    let state = app.seal_auth_state(payload);
 
-    // let auth = remotes::github::Auth::from_installation(installation, install_id, octocrab).await?;
+    let token_url = app
+        .config
+        .cognito_mgmt_url
+        .as_ref()
+        .expect("bad config")
+        .join("refresh_token")
+        .unwrap();
 
-    // app.credentials.set_github(State::with_auth(auth));
-    // Ok(())
+    let response: RefreshTokenResponse = reqwest::Client::new()
+        .post(token_url)
+        .json(&json!({ "state": state }))
+        .send()
+        .await
+        .map_err(RemoteError::RefreshToken)?
+        .json()
+        .await
+        .map_err(RemoteError::RefreshToken)?;
+
+    app.credentials.set_github(State::with_auth(Auth::App {
+        org: app.config.bloop_instance_org.clone().unwrap(),
+        token: response.token,
+        expires_at: response.expires_at,
+    }));
+
+    Ok(())
+}
+
+#[derive(Deserialize)]
+struct RefreshTokenResponse {
+    token: SecretString,
+    expires_at: DateTime<Utc>,
 }
