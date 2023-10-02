@@ -260,7 +260,7 @@ impl Agent {
 
         // If there are no relevant code chunks, but there is a focused chunk, we use that.
         if spans_by_path.is_empty() {
-            if let Some(chunk) = self.last_exchange().focused_chunk.clone() {
+            if let Some(chunk) = &self.last_exchange().focused_chunk {
                 spans_by_path
                     .entry(chunk.file_path.clone())
                     .or_default()
