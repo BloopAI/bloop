@@ -170,18 +170,21 @@ impl LocalEmbedder {
         let model = llm::load_dynamic(
             Some(llm::ModelArchitecture::Bert),
             &model_dir.join("ggml-model-q4_0.bin"),
+            // this tokenizer is used for embedding
             llm::TokenizerSource::HuggingFaceTokenizerFile(model_dir.join("tokenizer.json")),
             model_params,
             llm::load_progress_callback_stdout,
         )?;
 
-        let session_count = if cfg!(macos) {
-            12
+        let session_count = if cfg!(feature = "metal") {
+            3
         } else {
             std::thread::available_parallelism()
                 .map(|t| t.get())
                 .unwrap_or(4)
         };
+
+        info!(%session_count, "spawned inference sessions");
 
         let sessions = (0..session_count)
             .map(|_| model.start_session(Default::default()))
@@ -189,8 +192,10 @@ impl LocalEmbedder {
             .map(Arc::new)
             .collect();
 
+        // this tokenizer is used for chunking - do not pad or truncate chunks
         let mut tokenizer = Tokenizer::from_file(model_dir.join("tokenizer.json")).unwrap();
         tokenizer.with_padding(None).with_truncation(None);
+
         Ok(Self {
             model,
             sessions,
