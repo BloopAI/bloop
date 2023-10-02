@@ -2346,7 +2346,6 @@ dependencies = [
 [[package]]
 name = "ggml"
 version = "0.2.0-dev"
-source = "git+https://github.com/nerdypepper/llm?branch=batch-metal-kernels#d21eaec48753d4f07e9c1bf80f63677f50d662c7"
 dependencies = [
  "ggml-sys",
  "memmap2 0.5.10",
@@ -2356,7 +2355,6 @@ dependencies = [
 [[package]]
 name = "ggml-sys"
 version = "0.2.0-dev"
-source = "git+https://github.com/nerdypepper/llm?branch=batch-metal-kernels#d21eaec48753d4f07e9c1bf80f63677f50d662c7"
 dependencies = [
  "cc",
 ]
@@ -4091,7 +4089,6 @@ checksum = "1a9bad9f94746442c783ca431b22403b519cd7fbeed0533fdd6328b2f2212128"
 [[package]]
 name = "llm"
 version = "0.2.0-dev"
-source = "git+https://github.com/nerdypepper/llm?branch=batch-metal-kernels#d21eaec48753d4f07e9c1bf80f63677f50d662c7"
 dependencies = [
  "llm-base",
  "llm-bert",
@@ -4103,7 +4100,6 @@ dependencies = [
 [[package]]
 name = "llm-base"
 version = "0.2.0-dev"
-source = "git+https://github.com/nerdypepper/llm?branch=batch-metal-kernels#d21eaec48753d4f07e9c1bf80f63677f50d662c7"
 dependencies = [
  "bytemuck",
  "ggml",
@@ -4123,7 +4119,6 @@ dependencies = [
 [[package]]
 name = "llm-bert"
 version = "0.2.0-dev"
-source = "git+https://github.com/nerdypepper/llm?branch=batch-metal-kernels#d21eaec48753d4f07e9c1bf80f63677f50d662c7"
 dependencies = [
  "bytemuck",
  "llm-base",
