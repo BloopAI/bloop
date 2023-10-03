@@ -6,7 +6,7 @@ default-run = "bleep"
 build = "build.rs"
 
 [features]
-default = ["onnx", "dynamic-ort"]
+default = ["metal"]
 debug = ["console-subscriber", "histogram"]
 onnx = ["dep:ort", "dep:ndarray"]
 dynamic-ort = ["onnx", "ort?/load-dynamic"]

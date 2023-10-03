@@ -6,23 +6,23 @@ use std::{
 };
 
 fn main() {
-    if env::var("ORT_DYLIB_PATH").is_err() {
-        let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
-        let profile_dir = out_dir
-            // "target/.../build/bloop-hash"
-            .parent()
-            .unwrap()
-            // "target/.../build"
-            .parent()
-            .unwrap()
-            // "target/.../"
-            .parent()
-            .unwrap();
+    // if env::var("ORT_DYLIB_PATH").is_err() {
+    //     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+    //     let profile_dir = out_dir
+    //         // "target/.../build/bloop-hash"
+    //         .parent()
+    //         .unwrap()
+    //         // "target/.../build"
+    //         .parent()
+    //         .unwrap()
+    //         // "target/.../"
+    //         .parent()
+    //         .unwrap();
 
-        copy(profile_dir);
-    } else {
-        println!("cargo:rerun-if-env-changed=ORT_DYLIB_PATH");
-    }
+    //     copy(profile_dir);
+    // } else {
+    //     println!("cargo:rerun-if-env-changed=ORT_DYLIB_PATH");
+    // }
 
     tauri_build::build()
 }
