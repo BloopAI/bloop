@@ -473,7 +473,7 @@ fn trim_history(
                     role,
                     ref mut content,
                 } => {
-                    if role == "assistant" && content != HIDDEN {
+                    if role == "user" && content != HIDDEN {
                         *content = HIDDEN.into();
                         tm.content = HIDDEN.into();
                         true
@@ -481,15 +481,7 @@ fn trim_history(
                         false
                     }
                 }
-                llm_gateway::api::Message::FunctionReturn {
-                    role: _,
-                    name: _,
-                    ref mut content,
-                } if content != HIDDEN => {
-                    *content = HIDDEN.into();
-                    tm.content = HIDDEN.into();
-                    true
-                }
+                
                 _ => false,
             })
             .ok_or_else(|| anyhow!("could not find message to trim"))?;

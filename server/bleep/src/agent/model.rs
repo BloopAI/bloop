@@ -31,7 +31,7 @@ pub const GPT_3_5_TURBO_FINETUNED_AGENT: AnswerModel = AnswerModel {
     model_name: "ft:gpt-3.5-turbo-0613:bloop::80csjkJX",
     answer_headroom: 512,
     prompt_headroom: 1600,
-    history_headroom: 1024,
+    history_headroom: 256,
 };
 
 pub const GPT_4: AnswerModel = AnswerModel {
