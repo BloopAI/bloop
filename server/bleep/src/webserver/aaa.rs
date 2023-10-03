@@ -31,6 +31,8 @@ pub(super) async fn login(
     let mut oauth_url = app.config.cognito_auth_url.clone().expect("bad config");
     let client_id = app.config.cognito_client_id.as_ref().expect("bad config");
     oauth_url.query_pairs_mut().extend_pairs(&[
+        ("response_type", "code"),
+        ("scope", "email openid profile"),
         ("state", state.as_ref()),
         ("client_id", client_id.as_ref()),
         (
