@@ -466,8 +466,6 @@ fn xml_for_each(article: &str, f: impl Fn(&str) -> Option<String>) -> String {
             let xml = &rest[tag.start()..end_tag.end()];
             rest = &rest[m.end()..];
 
-            dbg!(xml, rest);
-
             xml
         } else {
             let xml = &rest[tag.start()..];
