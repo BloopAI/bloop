@@ -13,22 +13,22 @@ Engineers are increasing their productivity by using bloop to:
 - Ask questions about English language codebases in other languages
 - Reduce code duplication by checking for existing functionality
 
-![code search demo](https://assets.bloop.ai/video-search.mp4)
+<video src='https://assets.bloop.ai/video-search.mp4' controls="controls"></video>
 
 ## Features
 
 - GPT-4 based conversational search
 - Code Studio, an LLM playground that uses your code as context
 - Blazing fast regex search
-- Privacy focussed on-device embedding for semantic search
 - Sync your local and GitHub repositories (support for more code hosts coming soon!)
 - Sophisticated query filters so you can narrow down your results
 - Find functions, variables or traits with symbol search
 - Precise code navigation (go-to-reference and go-to-definition) for 10+ of the most popular languages built with [Tree-sitter](https://tree-sitter.github.io/tree-sitter/)
+- Privacy focussed on-device embedding for semantic search
 
 bloop stands on the shoulders of the Rust ecosystem. Our search indexes are powered by [Tantivy](https://github.com/quickwit-oss/tantivy) and [Qdrant](https://github.com/qdrant/qdrant), and our multi-platform app is built with [Tauri](https://github.com/tauri-apps/tauri).
 
-![code studio demo](https://assets.bloop.ai/video-studio.mp4)
+<video src='https://assets.bloop.ai/video-studio.mp4' controls="controls"></video>
 
 ## Get Started
 
