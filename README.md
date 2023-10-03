@@ -13,6 +13,8 @@ Engineers are increasing their productivity by using bloop to:
 - Ask questions about English language codebases in other languages
 - Reduce code duplication by checking for existing functionality
 
+![code search demo](https://assets.bloop.ai/video-search.mp4)
+
 ## Features
 
 - GPT-4 based conversational search
@@ -26,7 +28,7 @@ Engineers are increasing their productivity by using bloop to:
 
 bloop stands on the shoulders of the Rust ecosystem. Our search indexes are powered by [Tantivy](https://github.com/quickwit-oss/tantivy) and [Qdrant](https://github.com/qdrant/qdrant), and our multi-platform app is built with [Tauri](https://github.com/tauri-apps/tauri).
 
-![code search demo](https://assets.bloop.ai/github_auth_4k.gif)
+![code studio demo](https://assets.bloop.ai/video-studio.mp4)
 
 ## Get Started
 
@@ -66,9 +68,7 @@ If you find a bug or have a feature request, [open an issue](https://github.com/
 
 ## Privacy
 
-We store as little data as possible. Opting in now to send telemetry to bloop helps us identify bugs and make data-driven product decisions. This option sends us crash reports, logs and high level information about feature usage (so we can tell that a search was made, but we wouldn't be able to see the query or results). If you change your mind, you can always disable this later in Settings!
-
-You can read our full privacy policy [here](https://bloop.ai/privacy).
+We store as little data as possible. We use telemetry to helps us identify bugs and make data-driven product decisions. You can read our full privacy policy [here](https://bloop.ai/privacy).
 
 ## License
 
