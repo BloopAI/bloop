@@ -125,7 +125,7 @@ const DirEntry = ({
       className="flex flex-col transition-all ease-linear overflow-hidden flex-shrink-0 w-full min-w-fit"
     >
       <a
-        className={`min-w-full w-max text-left h-7 flex items-center gap-1.5 py-2 px-3 cursor-pointer caption group
+        className={`min-w-full w-max text-left h-7 flex-shrink-0 flex items-center gap-1.5 py-2 px-3 cursor-pointer caption group
       ${
         currentPath === fullPath
           ? 'bg-bg-main/15 text-label-title'
