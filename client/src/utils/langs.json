@@ -1231,6 +1231,9 @@
   "Python traceback": [
     ".pytb"
   ],
+  "PRQL": [
+    ".prql"
+  ],
   "QML": [
     ".qml",
     ".qbs"
