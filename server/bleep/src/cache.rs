@@ -16,7 +16,7 @@ use crate::{
     repo::RepoRef,
     semantic::{
         embedder::{EmbedChunk, EmbedQueue},
-        Embedder, Payload, Semantic,
+        Payload, Semantic,
     },
     state::RepositoryPool,
 };
