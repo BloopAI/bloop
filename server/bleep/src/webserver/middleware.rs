@@ -1,13 +1,14 @@
 use super::prelude::*;
 use crate::Application;
 
-use anyhow::Context;
+use anyhow::{bail, Context};
 use axum::{
     extract::State,
     http::Request,
     middleware::{from_fn, from_fn_with_state, Next},
     response::Response,
 };
+use jwt_authorizer::{JwtClaims, RegisteredClaims};
 use sentry::{Hub, SentryFutureExt};
 
 #[derive(Serialize, Clone)]
@@ -81,6 +82,25 @@ async fn local_user_mw<B>(
                     let gh = app.credentials.github().context("no github")?;
                     Ok(gh.client()?)
                 }),
+            })
+            .unwrap_or_else(|| User::Unknown),
+    );
+
+    next.run(request).await
+}
+
+pub async fn remote_user_layer_mw<B>(
+    JwtClaims(claims): JwtClaims<RegisteredClaims>,
+    State(app): State<Application>,
+    mut request: Request<B>,
+    next: Next<B>,
+) -> Response {
+    request.extensions_mut().insert(
+        claims
+            .sub
+            .map(|login| User::Authenticated {
+                login,
+                crab: Arc::new(move || bail!("unsupported")),
             })
             .unwrap_or_else(|| User::Unknown),
     );

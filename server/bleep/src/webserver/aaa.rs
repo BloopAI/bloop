@@ -1,7 +1,7 @@
-use crate::Application;
+use crate::{webserver::middleware, Application};
 
 use super::prelude::*;
-use axum::{extract::Query, routing::get};
+use axum::{extract::Query, middleware::from_fn_with_state, routing::get};
 use secrecy::SecretString;
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -60,6 +60,7 @@ pub(super) async fn router(router: Router, app: Application) -> Router {
     let auth: Authorizer = JwtAuthorizer::from_jwks_url(&url).build().await.unwrap();
 
     router
+        .layer(from_fn_with_state(app, middleware::remote_user_layer_mw))
         .layer(auth.into_layer())
         .route("/auth/login/start", get(login))
 }
