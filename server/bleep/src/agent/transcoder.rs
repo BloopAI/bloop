@@ -433,7 +433,7 @@ impl CodeChunk {
 /// ```
 ///
 /// The above markdown document contains an XML block enclosed in `<Code>...</Code>`, but it is
-/// not valid as the code snippet contains unescape characters. Of note, the `println!` call
+/// not valid as the code snippet contains unescaped characters. Of note, the `println!` call
 /// contains literal `<` and `>` characters, which in valid XML *must* be escaped as `&lt;` and
 /// `&gt;`, respectively. Because of this, the xml block will be incorrectly parsed to terminate
 /// halfway through the string literal provided in the code sample.
@@ -447,15 +447,25 @@ fn xml_for_each(article: &str, f: impl Fn(&str) -> Option<String>) -> String {
     let mut out = String::new();
     let mut rest = article;
 
-    while let Some(captures) = regex!(r"\n\s*(<(\w+)>)").captures(rest) {
-        let tag = captures.get(1).unwrap();
-        let name = &rest[captures.get(2).unwrap().range()];
+    while let Some(captures) = regex!(r"\n(```.*\n)?\s*(<(\w+)>)").captures(rest) {
+        let md_block_start = captures.get(1);
+        let tag = captures.get(2).unwrap();
+        let name = &rest[captures.get(3).unwrap().range()];
 
-        out += &rest[..tag.start()];
+        let start = md_block_start.map(|c| c.start()).unwrap_or(tag.start());
 
-        let xml = if let Some(m) = Regex::new(&format!(r"</{name}>")).unwrap().find(rest) {
-            let xml = &rest[tag.start()..m.end()];
+        out += &rest[..start];
+
+        let xml = if let Some(captures) = Regex::new(&format!(r"(</{name}>)(?:\n?```)?"))
+            .unwrap()
+            .captures(rest)
+        {
+            let m = captures.get(0).unwrap();
+            let end_tag = captures.get(1).unwrap();
+
+            let xml = &rest[tag.start()..end_tag.end()];
             rest = &rest[m.end()..];
+
             xml
         } else {
             let xml = &rest[tag.start()..];
@@ -1399,5 +1409,70 @@ Baz quux.";
 
         assert_eq!("Foo bar.", body);
         assert_eq!("Baz quux.", conclusion.unwrap());
+    }
+
+    #[test]
+    fn test_markdown_wrapped_generated_xml_block_info_string() {
+        let input = "Generated code, accidentally wrapped in a markdown block:
+
+```jsx
+<GeneratedCode>
+<Code>
+<Link to=\"/home\">Home</Link>
+</Code>
+<Language>JSX</Language>
+</GeneratedCode>
+```
+
+Another paragraph.";
+
+        let expected = "Generated code, accidentally wrapped in a markdown block:
+
+``` type:Generated,lang:JSX,path:,lines:0-0
+<Link to=\"/home\">Home</Link>
+```
+
+Another paragraph.";
+
+        let (body, conclusion) = decode(input);
+
+        assert_eq!(expected, body);
+        assert_eq!(None, conclusion);
+    }
+
+    #[test]
+    fn test_markdown_wrapped_quoted_xml_block() {
+        let input = "Quoted code this time, also accidentally wrapped in a markdown block, but this time without an info string:
+
+```
+<QuotedCode>
+<Code>
+fn main() {
+    println!(\"hello world\");
+}
+</Code>
+<Language>Rust</Language>
+<Path>src/main.rs</Path>
+<StartLine>1</StartLine>
+<EndLine>3</EndLine>
+</QuotedCode>
+```
+
+Another paragraph.";
+
+        let expected = "Quoted code this time, also accidentally wrapped in a markdown block, but this time without an info string:
+
+``` type:Quoted,lang:Rust,path:src/main.rs,lines:0-2
+fn main() {
+    println!(\"hello world\");
+}
+```
+
+Another paragraph.";
+
+        let (body, conclusion) = decode(input);
+
+        assert_eq!(expected, body);
+        assert_eq!(None, conclusion);
     }
 }
