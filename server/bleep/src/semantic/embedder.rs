@@ -195,16 +195,21 @@ mod gpu {
 
             let model = llm::load_dynamic(
                 Some(llm::ModelArchitecture::Bert),
-                &model_dir.join("ggml-model-q4_0.bin"),
+                &model_dir.join("ggml").join("ggml-model-q4_0.bin"),
                 // this tokenizer is used for embedding
                 llm::TokenizerSource::HuggingFaceTokenizerFile(
-                    model_dir.join("updated_tokenizers.json"),
+                    model_dir.join("ggml").join("tokenizer.json"),
                 ),
                 model_params,
                 llm::load_progress_callback_stdout,
             )?;
 
-            let session_count = if cfg!(feature = "metal") { 3 } else { 25 };
+            // TODO: this can be parameterized
+            //
+            // the lower this number, the more time we might spend waiting to run an embedding.
+            // the higher this number, the more vram we use, currently we use ~2G per session. this
+            // can be fixed by disabling scratch buffers in ggml, bert has no use for this.
+            let session_count = 3;
 
             info!(%session_count, "spawned inference sessions");
 
@@ -219,8 +224,9 @@ mod gpu {
                 .collect();
 
             // this tokenizer is used for chunking - do not pad or truncate chunks
-            let mut tokenizer = Tokenizer::from_file(model_dir.join("tokenizer.json")).unwrap();
-            tokenizer.with_padding(None).with_truncation(None);
+            let mut tokenizer =
+                Tokenizer::from_file(model_dir.join("ggml").join("tokenizer.json")).unwrap();
+            let _ = tokenizer.with_padding(None).with_truncation(None);
 
             Ok(Self {
                 model,
@@ -248,7 +254,6 @@ mod gpu {
                 .collect::<Vec<_>>();
 
             if let Ok(_permit) = self.permits.acquire().await {
-                println!("available permits: {}", self.permits.available_permits());
                 for s in &self.sessions {
                     if let Ok(mut session) = s.try_lock() {
                         self.model
