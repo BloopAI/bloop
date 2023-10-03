@@ -6,6 +6,7 @@ import { buildRepoQuery } from '../../utils';
 import { Directory } from '../../types/api';
 import { SyncStatus } from '../../types/general';
 import { AppNavigationContext } from '../../context/appNavigationContext';
+import OverflowTracker from '../OverflowTracker';
 
 type Props = {
   onClick: () => void;
@@ -57,22 +58,26 @@ const FolderChip = ({ onClick, path, repoName, selectedBranch }: Props) => {
         </span>
       </button>
       <div
-        className={`w-full my-4 p-4 bg-bg-shade text-sm border border-bg-border rounded-md relative max-h-80 overflow-auto`}
+        className={
+          'w-full flex flex-col my-1 folder-chip text-sm border border-bg-border rounded-md overflow-auto max-h-80 p-1'
+        }
       >
-        <DirEntry
-          name={path}
-          isDirectory
-          level={0}
-          currentPath={''}
-          fetchFiles={fetchFiles}
-          fullPath={path}
-          navigateToPath={navigateToPath}
-          defaultOpen
-          indexed
-          repoRef={''}
-          repoStatus={SyncStatus.Done}
-          refetchParentFolder={() => {}}
-        />
+        <OverflowTracker className="auto-fade-vertical">
+          <DirEntry
+            name={path}
+            isDirectory
+            level={0}
+            currentPath={''}
+            fetchFiles={fetchFiles}
+            fullPath={path}
+            navigateToPath={navigateToPath}
+            defaultOpen
+            indexed
+            repoRef={''}
+            repoStatus={SyncStatus.Done}
+            refetchParentFolder={() => {}}
+          />
+        </OverflowTracker>
       </div>
     </>
   );

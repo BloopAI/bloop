@@ -1249,6 +1249,26 @@ h5, .h5 {
   --end-fade: var(--fade-length);
 }
 
+.auto-fade-vertical {
+  overflow-x: scroll;
+  --fade-length: 40px;
+  --start-fade: 0px;
+  --end-fade: 0px;
+  -webkit-mask: linear-gradient(
+          to bottom,
+          transparent,
+          black var(--start-fade),
+          black calc(100% - var(--end-fade)),
+          transparent
+  );
+}
+.auto-fade-vertical[data-overflow-top] {
+  --start-fade: var(--fade-length);
+}
+.auto-fade-vertical[data-overflow-bottom] {
+  --end-fade: var(--fade-length);
+}
+
 .backdrop-blur-0 {
   backdrop-filter: blur(0);
   -webkit-backdrop-filter: blur(0);
@@ -1402,6 +1422,11 @@ h5, .h5 {
   border: 1px solid rgb(var(--bg-border));
   border-radius: 4px;
   padding: 2px 4px;
+}
+
+.code-studio-md .folder-chip a {
+  background-color: transparent;
+  border: unset;
 }
 
 .article-response li>p, .code-studio-md li>p {
