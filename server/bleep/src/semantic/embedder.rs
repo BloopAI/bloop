@@ -188,10 +188,7 @@ mod gpu {
     impl LocalEmbedder {
         pub fn new(model_dir: &Path) -> anyhow::Result<Self> {
             let mut model_params = llm::ModelParameters::default();
-
-            if cfg!(feature = "metal") {
-                model_params.use_gpu = true; // TODO: make configurable
-            }
+            model_params.use_gpu = true;
 
             let model = llm::load_dynamic(
                 Some(llm::ModelArchitecture::Bert),
@@ -301,7 +298,7 @@ mod gpu {
                         let embedding: Vec<Vec<f32>> = output_request
                             .embeddings
                             .unwrap()
-                            .chunks(384)
+                            .chunks(crate::semantic::schema::EMBEDDING_DIM)
                             .inspect(|chunk| {
                                 if chunk.iter().any(|f| f.is_nan()) {
                                     error!("found nan in sequence");
