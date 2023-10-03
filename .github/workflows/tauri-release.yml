@@ -35,6 +35,11 @@ jobs:
       ORT_LIB_LOCATION: ${{ github.workspace }}/lib/${{ matrix.target }}/onnxruntime
 
     steps:
+      - if: matrix.name == 'ubuntu-latest'
+        uses: pierotofy/set-swap-space@v1.0
+        with:
+          swap-size-gb: 10
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
@@ -72,10 +77,9 @@ jobs:
         run: npm ci
 
       - name: Install Rust stable
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
-          profile: minimal
           target: ${{ matrix.target }}
 
       - name: Check if keys exist
