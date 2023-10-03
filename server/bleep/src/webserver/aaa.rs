@@ -29,8 +29,10 @@ pub(super) async fn login(
     let state = app.seal_auth_state(payload);
 
     let mut oauth_url = app.config.cognito_auth_url.clone().expect("bad config");
+    let client_id = app.config.cognito_client_id.as_ref().expect("bad config");
     oauth_url.query_pairs_mut().extend_pairs(&[
         ("state", state.as_ref()),
+        ("client_id", client_id.as_ref()),
         (
             "redirect_url",
             app.config
