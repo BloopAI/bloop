@@ -19,15 +19,28 @@ import {
   RepoType,
   StudioContextFile,
 } from '../types/general';
+import { ACCESS_TOKEN_KEY, getPlainFromStorage } from './storage';
 
 const DB_API = 'https://api.bloop.ai';
 let http: AxiosInstance;
 
-export const initApi = (serverUrl = '') => {
+export const initApi = (serverUrl = '', isSelfServe?: boolean) => {
   if (!http) {
     http = axios.create({
       baseURL: serverUrl,
     });
+    if (isSelfServe) {
+      http.interceptors.request.use(
+        function (config) {
+          const token = getPlainFromStorage(ACCESS_TOKEN_KEY);
+          config.headers.Authorization = `Bearer ${token}`;
+
+          return config;
+        },
+        null,
+        { synchronous: true },
+      );
+    }
   }
 };
 

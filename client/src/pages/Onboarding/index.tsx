@@ -25,8 +25,6 @@ import UserForm from './UserForm';
 import FeaturesStep from './FeaturesStep';
 import SelfServeStep from './SelfServeStep';
 
-let onboardingFinished = false;
-
 export type Form = {
   firstName: string;
   lastName: string;
@@ -53,7 +51,6 @@ const Onboarding = ({ activeTab }: { activeTab: string }) => {
 
   const closeOnboarding = useCallback(() => {
     setShouldShowWelcome(false);
-    onboardingFinished = true; // to avoid showing onboarding twice per session when using VITE_ONBOARDING=true
     savePlainToStorage(ONBOARDING_DONE_KEY, 'true');
   }, []);
 
@@ -93,29 +90,7 @@ const Onboarding = ({ activeTab }: { activeTab: string }) => {
           setShouldShowWelcome(true);
         });
     }
-  }, []);
-
-  useEffect(() => {
-    let intervalId: number;
-    let timerId: number;
-    if (isGithubConnected && !envConfig.github_user?.login) {
-      intervalId = window.setInterval(() => {
-        getConfig().then((resp) => {
-          setEnvConfig((prev) =>
-            JSON.stringify(prev) === JSON.stringify(resp) ? prev : resp,
-          );
-        });
-      }, 500);
-      timerId = window.setTimeout(() => {
-        clearInterval(intervalId);
-      }, 30000);
-    }
-
-    return () => {
-      clearInterval(intervalId);
-      clearTimeout(timerId);
-    };
-  }, [isGithubConnected, envConfig.github_user]);
+  }, [isGithubConnected]);
 
   const onSubmit = useCallback(() => {
     saveUserData({

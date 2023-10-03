@@ -6,15 +6,19 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { useLocation } from 'react-router-dom';
 import { UIContext } from '../uiContext';
 import { usePersistentState } from '../../hooks/usePersistentState';
 import { DeviceContext } from '../deviceContext';
 import { getConfig } from '../../services/api';
 import { SettingSections } from '../../components/Settings';
 import {
+  ACCESS_TOKEN_EXP_KEY,
+  ACCESS_TOKEN_KEY,
   ANSWER_SPEED_KEY,
   getPlainFromStorage,
   ONBOARDING_DONE_KEY,
+  REFRESH_TOKEN_KEY,
   savePlainToStorage,
   THEME,
 } from '../../services/storage';
@@ -36,7 +40,9 @@ export const GeneralUiContextProvider = memo(
       'onBoardingState',
     );
     const { isSelfServe } = useContext(DeviceContext);
-    const [isGithubConnected, setGithubConnected] = useState(isSelfServe);
+    const [isGithubConnected, setGithubConnected] = useState(
+      isSelfServe ? !!getPlainFromStorage(ACCESS_TOKEN_KEY) : false,
+    );
     const [isGithubChecked, setGithubChecked] = useState(false);
     const [shouldShowWelcome, setShouldShowWelcome] = useState(
       !getPlainFromStorage(ONBOARDING_DONE_KEY),
@@ -51,10 +57,30 @@ export const GeneralUiContextProvider = memo(
     const [preferredAnswerSpeed, setPreferredAnswerSpeed] = useState<
       'normal' | 'fast'
     >((getPlainFromStorage(ANSWER_SPEED_KEY) as 'normal') || 'normal');
+    const location = useLocation();
 
     useEffect(() => {
       savePlainToStorage(ANSWER_SPEED_KEY, preferredAnswerSpeed);
     }, [preferredAnswerSpeed]);
+
+    useEffect(() => {
+      if (location.hash) {
+        const params = new URLSearchParams('?' + location.hash.slice(1));
+        if (params.get('token')) {
+          savePlainToStorage(ACCESS_TOKEN_KEY, params.get('token'));
+          setGithubConnected(true);
+        }
+        if (params.get('refresh_token')) {
+          savePlainToStorage(REFRESH_TOKEN_KEY, params.get('refresh_token'));
+        }
+        if (params.get('exp')) {
+          savePlainToStorage(ACCESS_TOKEN_EXP_KEY, params.get('exp'));
+        }
+        if (params.get('user')) {
+          console.log('user', params.get('user'));
+        }
+      }
+    }, []);
 
     useEffect(() => {
       if (!isSelfServe) {

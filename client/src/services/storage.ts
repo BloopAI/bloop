@@ -35,3 +35,6 @@ export const LEFT_SIDEBAR_WIDTH_KEY = 'left_sidebar_width_key';
 export const LOADING_STEPS_SHOWN_KEY = 'loading_steps_shown';
 export const ANSWER_SPEED_KEY = 'answer_speed_key';
 export const HIDE_TUTORIALS_KEY = 'hide_tutorials';
+export const ACCESS_TOKEN_KEY = 'access_token';
+export const ACCESS_TOKEN_EXP_KEY = 'access_token_exp';
+export const REFRESH_TOKEN_KEY = 'refresh_token';
