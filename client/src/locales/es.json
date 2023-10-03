@@ -384,5 +384,13 @@
 	"Token limit exceeded": "Límite de token excedido",
 	"bloop automatically excludes certain files from the indexing. This file might be too big or it might have an excluded file type.": "Bloop excluye automáticamente ciertos archivos de la indexación. Este archivo puede ser demasiado grande o podría tener un tipo de archivo excluido.",
 	"We use analytics to improve your experience. Please refresh the page after changing the value.": "Utilizamos análisis para mejorar su experiencia. Actualice la página después de cambiar el valor.",
-	"Allow analytics": "Permitir análisis"
+	"Allow analytics": "Permitir análisis",
+	"Complete your transaction in Stripe...": "Complete su transacción en Stripe ...",
+	"Launch manually": "Lanzar manualmente",
+	"Check payment status": "Verificar el estado de pago",
+	"No change in payment status identified.": "No hay cambio en el estado de pago identificado.",
+	"Thank you for your purchase!": "Gracias por su compra!",
+	"You've successfully upgraded your plan.": "Ha actualizado con éxito su plan.",
+	"We've redirected you to Stripe to complete your transaction. Didn't work?": "Te hemos redirigido a rayar para completar su transacción. ¿No funcionó?",
+	"You've run out of free usage for today, please wait for your quota to reset or upgrade for unlimited usage": "Se ha quedado sin uso gratuito para hoy, espere a que su cuota se reinicie o actualice para un uso ilimitado"
 }

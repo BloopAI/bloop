@@ -14,9 +14,11 @@ const UpgradePopup = () => {
   const { t } = useTranslation();
   const { openLink } = useContext(DeviceContext);
   const { refetchQuota } = useContext(PersonalQuotaContext.Handlers);
-  const { isUpgradePopupOpen, setUpgradePopupOpen } = useContext(
-    UIContext.UpgradePopup,
-  );
+  const {
+    isUpgradePopupOpen,
+    setUpgradePopupOpen,
+    setWaitingUpgradePopupOpen,
+  } = useContext(UIContext.UpgradePopup);
   const [link, setLink] = useState('');
 
   useEffect(() => {
@@ -29,9 +31,10 @@ const UpgradePopup = () => {
 
   const onClick = useCallback(() => {
     openLink(link);
+    setWaitingUpgradePopupOpen(true);
+    setUpgradePopupOpen(false);
     let intervalId = window.setInterval(() => refetchQuota(), 2000);
     setTimeout(() => clearInterval(intervalId), 10 * 60 * 1000);
-    setUpgradePopupOpen(false);
   }, [openLink]);
 
   return (

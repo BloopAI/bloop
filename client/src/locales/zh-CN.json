@@ -389,5 +389,13 @@
 	"bloop automatically excludes certain files from the indexing. This file might be too big or it might have an excluded file type.": "Bloop自动将某些文件从索引中排除。 该文件可能太大，或者可能具有排除的文件类型。",
 	"File not indexed": "文件未索引",
 	"Allow analytics": "允许分析",
-	"We use analytics to improve your experience. Please refresh the page after changing the value.": "我们使用分析来改善您的经验。 更改值后，请刷新页面。"
+	"We use analytics to improve your experience. Please refresh the page after changing the value.": "我们使用分析来改善您的经验。 更改值后，请刷新页面。",
+	"Complete your transaction in Stripe...": "完成您的交易...",
+	"Launch manually": "手动启动",
+	"Check payment status": "检查付款状态",
+	"No change in payment status identified.": "未确定付款状态的变化。",
+	"Thank you for your purchase!": "感谢您的购买！",
+	"You've successfully upgraded your plan.": "您已经成功升级了计划。",
+	"We've redirected you to Stripe to complete your transaction. Didn't work?": "我们将您重定向到条纹以完成您的交易。 不起作用吗？",
+	"Usage resets in": "用法重置"
 }
