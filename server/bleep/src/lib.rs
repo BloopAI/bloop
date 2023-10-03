@@ -383,20 +383,24 @@ impl Application {
             (ring::aead::Nonce::assume_unique_for_key(buf), nonce_str)
         };
 
-        let enc = {
+        let (enc, tag) = {
             let mut serialized = serde_json::to_vec(&payload).unwrap();
-            privkey
-                .seal_in_place_append_tag(nonce, ring::aead::Aad::empty(), &mut serialized)
+            let tag = privkey
+                .seal_in_place_separate_tag(nonce, ring::aead::Aad::empty(), &mut serialized)
                 .expect("encryption failed");
 
-            serialized
+            (
+                base64::engine::general_purpose::STANDARD_NO_PAD.encode(serialized),
+                base64::engine::general_purpose::STANDARD_NO_PAD.encode(tag),
+            )
         };
 
         base64::engine::general_purpose::STANDARD_NO_PAD.encode(
             serde_json::to_vec(&serde_json::json!({
             "org": self.config.bloop_instance_org.as_ref().expect("bad config"),
             "n": nonce_str,
-            "enc": enc
+            "enc": enc,
+            "tag": tag
             }))
             .expect("bad encoding"),
         )
