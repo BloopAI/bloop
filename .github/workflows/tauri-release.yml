@@ -72,10 +72,9 @@ jobs:
         run: npm ci
 
       - name: Install Rust stable
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
-          profile: minimal
           target: ${{ matrix.target }}
 
       - name: Check if keys exist
