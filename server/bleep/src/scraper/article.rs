@@ -129,6 +129,16 @@ trait Extractor {
             .next()
     }
 
+    fn icon<'a>(&self, doc: &'a Document) -> Option<Cow<'a, str>> {
+        doc.find(Name("head").descendant(Name("link").and(Attr("rel", "icon"))))
+            .find_map(|node| {
+                node.attr("href")
+                    .map(str::trim)
+                    .filter(|s| !s.is_empty())
+                    .map(Cow::Borrowed)
+            })
+    }
+
     fn text<'a>(&self, doc: &'a Document, lang: Language) -> Option<Cow<'a, str>> {
         self.text_with_cleaner(doc, lang, DefaultDocumentCleaner)
     }
@@ -181,6 +191,10 @@ trait Extractor {
             builder = builder.title(title);
         }
 
+        if let Some(icon) = self.icon(doc) {
+            builder = builder.icon(icon);
+        }
+
         if let Some(txt_node) = self.article_node(doc, lang) {
             builder = builder.text(txt_node.clean_text().into());
         }
@@ -222,6 +236,7 @@ impl Article {
 #[derive(Debug, Clone)]
 pub struct ArticleContent<'a> {
     pub title: Option<Cow<'a, str>>,
+    pub icon: Option<Cow<'a, str>>,
     pub language: Option<Language>,
     pub description: Option<Cow<'a, str>>,
     pub text: Option<Cow<'a, str>>,
@@ -235,6 +250,7 @@ impl<'a> ArticleContent<'a> {
     fn into_owned(self) -> ArticleContent<'static> {
         ArticleContent {
             title: self.title.map(Cow::into_owned).map(Cow::Owned),
+            icon: self.icon.map(Cow::into_owned).map(Cow::Owned),
             language: self.language,
             description: self.description.map(Cow::into_owned).map(Cow::Owned),
             text: self.text.map(Cow::into_owned).map(Cow::Owned),
@@ -244,6 +260,7 @@ impl<'a> ArticleContent<'a> {
 #[derive(Debug, Default)]
 struct ArticleContentBuilder<'a> {
     title: Option<Cow<'a, str>>,
+    icon: Option<Cow<'a, str>>,
     text: Option<Cow<'a, str>>,
     language: Option<Language>,
     description: Option<Cow<'a, str>>,
@@ -252,6 +269,11 @@ struct ArticleContentBuilder<'a> {
 impl<'a> ArticleContentBuilder<'a> {
     fn title(mut self, title: Cow<'a, str>) -> Self {
         self.title = Some(title);
+        self
+    }
+
+    fn icon(mut self, icon: Cow<'a, str>) -> Self {
+        self.icon = Some(icon);
         self
     }
 
@@ -273,6 +295,7 @@ impl<'a> ArticleContentBuilder<'a> {
     fn build(self) -> ArticleContent<'a> {
         ArticleContent {
             title: self.title,
+            icon: self.icon,
             text: self.text,
             description: self.description,
             language: self.language,

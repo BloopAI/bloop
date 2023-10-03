@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
 use async_stream::stream;
-use futures::stream::{Stream, StreamExt};
+use futures::stream::Stream;
 use select::predicate::Name;
 use tokio::{sync::RwLock, task};
 use tracing::{debug, error};
@@ -52,16 +52,11 @@ impl Scraper {
 
     // decides which urls to actually scrape
     //
-    // - if base url ends with a file - ../foo/bar, we index everything under /foo
-    // - if base url ends with a trailing slash - ../foo/, we index everything under /foo
+    // every url that contains base_url exactly is eligible for scraping
     fn is_permitted(&self, url: &Url) -> bool {
-        let mut allowed_prefix = self.base_url().clone();
-
-        if !allowed_prefix.path().ends_with('/') {
-            allowed_prefix.path_segments_mut().unwrap().pop();
-        }
-
-        url.as_str().strip_prefix(allowed_prefix.as_str()).is_some()
+        url.as_str()
+            .strip_prefix(self.base_url().as_str())
+            .is_some()
     }
 
     fn finished_tasks(&mut self) -> Vec<task::JoinHandle<Result<ScraperResult>>> {
@@ -197,11 +192,11 @@ impl Document {
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, serde::Serialize)]
 pub struct Meta {
     pub title: Option<String>,
     pub description: Option<String>,
-    pub favicon: Option<String>,
+    pub icon: Option<String>,
 }
 
 async fn visit(
@@ -257,7 +252,7 @@ async fn visit(
     let meta = include_meta.then(|| Meta {
         title: article.content.title.map(|c| c.to_string()),
         description: article.content.description.map(|c| c.to_string()),
-        ..Default::default()
+        icon: article.content.icon.map(|c| c.to_string()),
     });
 
     let doc = Document {
