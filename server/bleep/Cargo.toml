@@ -141,7 +141,7 @@ quick-xml = { version = "0.29.0", features = ["serialize"] }
 jsonwebtokens-cognito = "0.1.1"
 
 # llm = { path = "/home/np/bloop/experimental/llm/crates/llm", default-features = false, features = ["bert"] }
-llm = { git = "https://github.com/nerdypepper/llm", branch = "batch-metal-kernels", default-features = false, features = ["bert"], optional = true }
+llm = { git = "https://github.com/bloopai/llm", branch = "batch-metal-kernels", default-features = false, features = ["bert"], optional = true }
 
 [dev-dependencies]
 criterion = { version = "0.5.1", features = ["async_tokio"] }
