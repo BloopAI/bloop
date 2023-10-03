@@ -10,8 +10,8 @@
 #![warn(unused_crate_dependencies)]
 #![allow(elided_lifetimes_in_paths)]
 
-#[cfg(all(feature = "cpu", feature = "metal"))]
-compile_error!("cannot enable `cpu` and `metal` at the same time");
+#[cfg(all(feature = "onnx", feature = "ggml"))]
+compile_error!("cannot enable `onnx` and `ggml` at the same time");
 
 #[cfg(any(bench, test))]
 use criterion as _;

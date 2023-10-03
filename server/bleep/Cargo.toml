@@ -6,11 +6,12 @@ default-run = "bleep"
 build = "build.rs"
 
 [features]
-default = ["cpu"]
+default = ["onnx", "dynamic-ort"]
 debug = ["console-subscriber", "histogram"]
-cpu = ["dep:ort", "dep:ndarray"]
-dynamic-ort = ["cpu", "ort?/load-dynamic"]
-metal = ["llm/metal"]
+onnx = ["dep:ort", "dep:ndarray"]
+dynamic-ort = ["onnx", "ort?/load-dynamic"]
+ggml = ["llm/metal"]
+metal = ["ggml"]
 cublas = ["llm/cublas"]
 ee = []
 
