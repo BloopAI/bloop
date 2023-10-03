@@ -13,7 +13,7 @@ Engineers are increasing their productivity by using bloop to:
 - Ask questions about English language codebases in other languages
 - Reduce code duplication by checking for existing functionality
 
-<video src='https://assets.bloop.ai/video-search.mp4' controls="controls"></video>
+https://github.com/BloopAI/bloop/assets/7957964/01db3ccb-4af0-49a0-92d6-5a9c42357a51
 
 ## Features
 
@@ -28,7 +28,7 @@ Engineers are increasing their productivity by using bloop to:
 
 bloop stands on the shoulders of the Rust ecosystem. Our search indexes are powered by [Tantivy](https://github.com/quickwit-oss/tantivy) and [Qdrant](https://github.com/qdrant/qdrant), and our multi-platform app is built with [Tauri](https://github.com/tauri-apps/tauri).
 
-<video src='https://assets.bloop.ai/video-studio.mp4' controls="controls"></video>
+https://github.com/BloopAI/bloop/assets/7957964/93715188-d8d5-477b-8cd1-95d9cbd368cb
 
 ## Get Started
 
