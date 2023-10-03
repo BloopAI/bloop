@@ -1,10 +1,17 @@
-use axum::extract::{Json, Path, Query, State};
+use async_stream::try_stream;
+use axum::{
+    extract::{Json, Path, Query, State},
+    response::{sse::Event, Sse},
+};
+use futures::stream::{Stream, StreamExt};
 
 use crate::{
     indexes::doc,
     webserver::{Error, Result},
     Application,
 };
+
+use std::{convert::Infallible, pin::Pin};
 
 // schema
 #[derive(serde::Deserialize)]
@@ -14,7 +21,7 @@ pub struct Sync {
 
 #[derive(serde::Deserialize)]
 pub struct Search {
-    pub q: String,
+    pub q: Option<String>,
     pub limit: u64,
 }
 
@@ -44,15 +51,44 @@ pub async fn delete(State(app): State<Application>, Path(id): Path<i64>) -> Resu
     Ok(Json(app.indexes.doc.delete(id).await?))
 }
 
-pub async fn resync(State(app): State<Application>, Path(id): Path<i64>) -> Result<Json<i64>> {
-    Ok(Json(app.indexes.doc.resync(id).await?))
+pub async fn sync(
+    State(app): State<Application>,
+    Query(params): Query<Sync>,
+) -> Sse<Pin<Box<dyn Stream<Item = Result<Event, Infallible>> + Send>>> {
+    let s = try_stream! {
+        let mut sync = Box::pin(app.indexes.doc.sync(params.url));
+        while let Some(result) = sync.next().await {
+            yield Event::default()
+                .json_data(result.as_ref().map_err(ToString::to_string))
+                .unwrap();
+        }
+    };
+    Sse::new(Box::pin(s))
+}
+
+pub async fn resync(
+    State(app): State<Application>,
+    Path(id): Path<i64>,
+) -> Sse<Pin<Box<dyn Stream<Item = Result<Event, Infallible>> + Send>>> {
+    let s = try_stream! {
+        let mut sync = Box::pin(app.indexes.doc.resync(id));
+        while let Some(result) = sync.next().await {
+            yield Event::default()
+                .json_data(result.as_ref().map_err(ToString::to_string))
+                .unwrap();
+            }
+    };
+    Sse::new(Box::pin(s))
 }
 
 pub async fn search(
     State(app): State<Application>,
     Query(params): Query<Search>,
 ) -> Result<Json<Vec<doc::Record>>> {
-    Ok(Json(app.indexes.doc.search(params.q, params.limit).await?))
+    Ok(Json(match params.q {
+        Some(q) => app.indexes.doc.search(q, params.limit).await?,
+        None => app.indexes.doc.list().await?,
+    }))
 }
 
 pub async fn search_with_id(
@@ -60,12 +96,20 @@ pub async fn search_with_id(
     Path(id): Path<i64>,
     Query(params): Query<Search>,
 ) -> Result<Json<Vec<doc::SearchResult>>> {
-    Ok(Json(
-        app.indexes
-            .doc
-            .search_with_id(params.q, params.limit, id)
-            .await?,
-    ))
+    Ok(Json(match params.q {
+        Some(query) => {
+            app.indexes
+                .doc
+                .search_with_id(query, params.limit, id)
+                .await?
+        }
+        None => {
+            app.indexes
+                .doc
+                .list_with_id(params.limit as u32, id)
+                .await?
+        }
+    }))
 }
 
 pub async fn fetch(
@@ -74,10 +118,6 @@ pub async fn fetch(
     Query(params): Query<Fetch>,
 ) -> Result<Json<Vec<doc::SearchResult>>> {
     Ok(Json(app.indexes.doc.fetch(id, params.relative_url).await?))
-}
-
-pub async fn sync(State(app): State<Application>, Query(params): Query<Sync>) -> Result<Json<i64>> {
-    Ok(Json(app.indexes.doc.sync(params.url).await?))
 }
 
 pub async fn verify(Query(params): Query<Verify>) -> Result<reqwest::StatusCode> {

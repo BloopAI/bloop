@@ -1,4 +1,5 @@
-use futures::stream::StreamExt;
+use async_stream::{stream, try_stream};
+use futures::stream::{Stream, StreamExt};
 use qdrant_client::qdrant::{
     point_id::PointIdOptions, r#match::MatchValue, vectors_config, with_payload_selector,
     CreateCollection, Distance, FieldCondition, FieldType, Filter, Match, PointId, PointStruct,
@@ -31,6 +32,19 @@ pub struct Record {
     pub favicon: Option<String>,
     pub description: Option<String>,
     pub modified_at: chrono::NaiveDateTime,
+}
+
+#[derive(serde::Serialize)]
+pub enum Progress {
+    Update(Update),
+    Done(i64),
+}
+
+#[derive(serde::Serialize)]
+pub struct Update {
+    url: url::Url,
+    discovered_count: usize,
+    meta: Option<scraper::Meta>,
 }
 
 #[derive(Error, Debug)]
@@ -70,77 +84,91 @@ impl Doc {
     }
 
     /// Add a doc source to the index
-    ///
-    ///TODO: turn this into a background process and stream progress
-    pub async fn sync(&self, url: url::Url) -> Result<i64, Error> {
-        // add entry to sqlite
-        let url_string = url.to_string();
-        let id = sqlx::query! {
-            "INSERT INTO docs (url) VALUES (?)",
-            url_string,
+    pub fn sync(&self, url: url::Url) -> impl Stream<Item = Result<Progress, Error>> + '_ {
+        try_stream! {
+            // add entry to sqlite
+            let url_string = url.to_string();
+            let id = sqlx::query! {
+                "INSERT INTO docs (url) VALUES (?)",
+                url_string,
+            }
+            .execute(&*self.sql)
+                .await?
+                .last_insert_rowid();
+
+            let mut meta = None;
+
+            for await progress in self.insert_into_qdrant(id, url.clone()) {
+                if let Some(m) = progress.meta.clone() {
+                    meta = Some(m);
+                };
+                yield Progress::Update(progress);
+            }
+
+            if let Some(meta) = meta {
+                if let Some(title) = meta.title.clone() {
+                    sqlx::query! {
+                        "UPDATE docs SET name = ? WHERE id = ?",
+                        title,
+                        id,
+                    }
+                    .execute(&*self.sql)
+                    .await?;
+                }
+                if let Some(favicon) = meta.icon.clone() {
+                    let mut resolved_url = url.clone();
+                    resolved_url.set_path(&favicon);
+                    let resolved_url_str = resolved_url.as_str();
+                    sqlx::query! {
+                        "UPDATE docs SET favicon = ? WHERE id = ?",
+                        resolved_url_str,
+                        id,
+                    }
+                    .execute(&*self.sql)
+                    .await?;
+                }
+                if let Some(description) = meta.description.clone() {
+                    sqlx::query! {
+                        "UPDATE docs SET description = ? WHERE id = ?",
+                        description,
+                        id,
+                    }
+                    .execute(&*self.sql)
+                    .await?;
+                }
+            }
+
+            yield Progress::Done(id);
         }
-        .execute(&*self.sql)
-        .await?
-        .last_insert_rowid();
-
-        let meta = self.insert_into_qdrant(id, url).await?;
-
-        if let Some(meta) = meta {
-            if let Some(title) = meta.title.clone() {
-                sqlx::query! {
-                    "UPDATE docs SET name = ? WHERE id = ?",
-                    title,
-                    id,
-                }
-                .execute(&*self.sql)
-                .await?;
-            }
-            if let Some(favicon) = meta.favicon.clone() {
-                sqlx::query! {
-                    "UPDATE docs SET favicon = ? WHERE id = ?",
-                    favicon,
-                    id,
-                }
-                .execute(&*self.sql)
-                .await?;
-            }
-            if let Some(description) = meta.description.clone() {
-                sqlx::query! {
-                    "UPDATE docs SET description = ? WHERE id = ?",
-                    description,
-                    id,
-                }
-                .execute(&*self.sql)
-                .await?;
-            }
-        }
-
-        Ok(id)
     }
 
     /// Update documentation in the index - this will rescrape the entire website
-    pub async fn resync(&self, id: i64) -> Result<i64, Error> {
-        let url = sqlx::query!("SELECT url FROM docs WHERE id = ?", id)
-            .fetch_optional(&*self.sql)
-            .await?
-            .ok_or(Error::InvalidDocId(id))?
-            .url;
-        let url = url::Url::parse(&url).map_err(|e| Error::UrlParse(url, e))?;
+    pub fn resync(&self, id: i64) -> impl Stream<Item = Result<Progress, Error>> + '_ {
+        try_stream! {
+            let url = sqlx::query!("SELECT url FROM docs WHERE id = ?", id)
+                .fetch_optional(&*self.sql)
+                .await?
+                .ok_or(Error::InvalidDocId(id))?
+                .url;
+            let url = url::Url::parse(&url).map_err(|e| Error::UrlParse(url, e))?;
 
-        // delete old docs from qdrant
-        self.delete_from_qdrant(id).await?;
+            // delete old docs from qdrant
+            self.delete_from_qdrant(id).await?;
 
-        sqlx::query! {
-            "UPDATE docs SET modified_at = datetime('now') WHERE id = ?",
-            id,
+            sqlx::query! {
+                "UPDATE docs SET modified_at = datetime('now') WHERE id = ?",
+                id,
+            }
+            .execute(&*self.sql)
+                .await?;
+
+            // insert new docs into qdrant
+            for await progress in self.insert_into_qdrant(id, url) {
+                yield Progress::Update(progress);
+            };
+
+            yield Progress::Done(id);
         }
-        .execute(&*self.sql)
-        .await?;
-
-        // insert new docs into qdrant
-        self.insert_into_qdrant(id, url).await?;
-
-        Ok(id)
     }
 
     /// Remove this doc source from qdrant and sqlite
@@ -225,7 +253,7 @@ impl Doc {
             .collect())
     }
 
-    /// Search in given doc
+    /// Search in given doc source
     pub async fn search_with_id(
         &self,
         q: String,
@@ -244,6 +272,33 @@ impl Doc {
                 collection_name: COLLECTION_NAME.into(),
                 vector: term_embedding,
                 limit,
+                filter: Some(Filter {
+                    must: vec![make_kv_int_filter("doc_id", id).into()],
+                    ..Default::default()
+                }),
+                with_payload: Some(WithPayloadSelector {
+                    selector_options: Some(with_payload_selector::SelectorOptions::Enable(true)),
+                }),
+                ..Default::default()
+            })
+            .await
+            .map_err(Error::Qdrant)?
+            .result;
+
+        Ok(data
+            .into_iter()
+            .filter_map(|s| SearchResult::from_qdrant(s.id.unwrap(), s.payload))
+            .collect())
+    }
+
+    /// Scroll sections in a doc
+    pub async fn list_with_id(&self, limit: u32, id: i64) -> Result<Vec<SearchResult>, Error> {
+        let data = self
+            .semantic
+            .qdrant_client()
+            .scroll(&ScrollPoints {
+                collection_name: COLLECTION_NAME.into(),
+                limit: Some(limit),
                 filter: Some(Filter {
                     must: vec![make_kv_int_filter("doc_id", id).into()],
                     ..Default::default()
@@ -302,32 +357,35 @@ impl Doc {
     }
 
     /// Scrape & insert a doc source into qdrant and return doc metadata if available
-    async fn insert_into_qdrant(
-        &self,
-        id: i64,
-        url: url::Url,
-    ) -> Result<Option<scraper::Meta>, Error> {
-        let mut scraper = Scraper::with_config(Config::new(url.clone()));
-        let mut stream = Box::pin(scraper.complete());
-        let mut meta = None;
-        let mut handles = Vec::new();
-        while let Some(doc) = stream.next().await {
-            if let Some(m) = doc.meta.clone() {
-                meta = Some(m);
+    fn insert_into_qdrant(&self, id: i64, url: url::Url) -> impl Stream<Item = Update> + '_ {
+        stream! {
+            let mut scraper = Scraper::with_config(Config::new(url.clone()));
+            let mut stream = Box::pin(scraper.complete());
+            let mut handles = Vec::new();
+            let mut discovered_count = 0;
+            while let Some(doc) = stream.next().await {
+                discovered_count += 1;
+                let mut progress = Update {
+                    url: doc.url.clone(),
+                    discovered_count,
+                    meta: None
+                };
+                if let Some(m) = doc.meta.clone() {
+                    progress.meta = Some(m);
+                }
+                yield progress;
+                let semantic = self.semantic.clone();
+                let u = url.clone();
+                handles.push(tokio::task::spawn(async move {
+                    let embedder = semantic.embedder();
+                    let points_to_insert = doc.embed(id, &u, embedder);
+                    let _ = semantic
+                        .qdrant_client()
+                        .upsert_points(COLLECTION_NAME, points_to_insert, None)
+                        .await;
+                    }));
             }
-            let semantic = self.semantic.clone();
-            let u = url.clone();
-            handles.push(tokio::task::spawn(async move {
-                let embedder = semantic.embedder();
-                let points_to_insert = doc.embed(id, &u, embedder);
-                let _ = semantic
-                    .qdrant_client()
-                    .upsert_points(COLLECTION_NAME, points_to_insert, None)
-                    .await;
-            }));
         }
-
-        Ok(meta)
     }
 
     async fn delete_from_qdrant(&self, id: i64) -> Result<(), Error> {
@@ -387,7 +445,7 @@ impl scraper::Document {
         url: &url::Url,
         embedder: &dyn crate::semantic::Embedder,
     ) -> Vec<PointStruct> {
-        info!("inserting points for `{}`", self.path.display());
+        info!("inserting points for `{}`", self.url.as_str());
         scraper::chunk::by_section(
             &self.content,           // section content
             url.as_str(),            // section url base
