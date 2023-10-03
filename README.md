@@ -3,21 +3,22 @@
   <img alt="bloop logo" src="https://assets.bloop.ai/bloop_github_logo_light.png">
 </picture>
 
-bloop is a developer assistant that uses GPT-4 to answer questions about your codebase. The agent searches both your local and remote repositories with natural language, regex and filtered queries.
+bloop is ChatGPT for your code. Ask questions in natural language, search for code and generate patches using your existing codebase as context. 
 
-Some of the ways engineers use bloop to improve their efficiency when working on large codebases:
-- Summarising how large files work and how multiple files work together
-- Understand how to use open source libraries when documentation is lacking
-- Identify the origin of errors
+Engineers are increasing their productivity by using bloop to:
+- Explain how files or features work in simple language
+- Write new features, using their code as context
+- Understand how to use poorly documented open source libraries
+- Pinpoint errors
 - Ask questions about English language codebases in other languages
 - Reduce code duplication by checking for existing functionality
-- Write new code, taking into account existing codebase context (eg: "write a dockerfile for this project")
-
 
 ## Features
 
 - GPT-4 based conversational search
+- Code Studio, an LLM playground that uses your code as context
 - Blazing fast regex search
+- Privacy focussed on-device embedding for semantic search
 - Sync your local and GitHub repositories (support for more code hosts coming soon!)
 - Sophisticated query filters so you can narrow down your results
 - Find functions, variables or traits with symbol search
@@ -29,14 +30,14 @@ bloop stands on the shoulders of the Rust ecosystem. Our search indexes are powe
 
 ## Get Started
 
-The simplest way to get started with bloop is to [download the app](https://github.com/BloopAI/bloop/releases) and follow the onboarding steps. Checkout our [getting started guide](https://bloop.ai/docs/getting-started) and our references for [conversational](https://bloop.ai/docs/natural-language-queries) and [regex](https://bloop.ai/docs/regex-queries) search.
+The simplest way to get started with bloop is to [download the app](https://github.com/BloopAI/bloop/releases) and follow the onboarding steps. Checkout our [getting started guide](https://bloop.ai/docs/getting-started) and our references for [conversational](https://bloop.ai/docs/natural-language-queries) and [regex](https://bloop.ai/docs/regex-queries) search and [Code Studio](https://bloop.ai/docs/code-studio).
 
 For instructions on how to build from source or run bloop from the command line, check out these pages:
 
 - [Build bloop app from source](./apps/desktop/README.md)
 - [Run bloop from the command line](./server/README.md)
 
-Note that it is currently _not_ possible to run conversational GPT-4 search where bloop has been built from source (we're working on this). You can run regex searches and use code-navigation.
+Note that it is currently _not_ possible to use conversational GPT-4 search where bloop has been built from source (we're working on this). You can run regex searches and use code-navigation.
 
 If you encounter any index issues you can wipe the bloop cache and reindex. Instructions on how to do this on different platforms [are here](./apps/desktop/README.md).
 
