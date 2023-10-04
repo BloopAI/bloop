@@ -3,13 +3,20 @@ use axum::{
     middleware::from_fn_with_state,
     routing::get,
 };
-use jwt_authorizer::{Authorizer, IntoLayer, JwtAuthorizer};
+use axum_extra::extract::{
+    cookie::{Cookie, SameSite},
+    CookieJar,
+};
+use chrono::{DateTime, Utc};
+use jwt_authorizer::{layer::JwtSource, Authorizer, IntoLayer, JwtAuthorizer};
 use secrecy::{ExposeSecret, SecretString};
 use serde_json::json;
 
 use crate::{webserver::middleware, Application};
 
 use super::prelude::*;
+
+const COOKIE_NAME: &str = "X-Bleep-Cognito";
 
 #[derive(serde::Serialize, serde::Deserialize)]
 struct GithubAuthToken {
@@ -73,7 +80,9 @@ pub async fn get_authorizer(app: &Application) -> Authorizer {
     let url =
         format!("https://cognito-idp.{region}.amazonaws.com/{userpool_id}/.well-known/jwks.json");
 
-    JwtAuthorizer::from_jwks_url(&url).build().await.unwrap()
+    let mut auth = JwtAuthorizer::from_jwks_url(&url).build().await.unwrap();
+    auth.jwt_source = JwtSource::Cookie(COOKIE_NAME.into());
+    auth
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -93,6 +102,7 @@ pub(super) struct RefreshParams {
 pub(super) async fn refresh_token(
     State(app): State<Application>,
     Query(RefreshParams { refresh_token }): Query<RefreshParams>,
+    jar: CookieJar,
 ) -> Result<impl IntoResponse> {
     let response: TokenResponse = reqwest::Client::new()
         .post(
@@ -114,18 +124,44 @@ pub(super) async fn refresh_token(
         .await
         .map_err(|_| Error::new(ErrorKind::UpstreamService, "incompatible auth"))?;
 
-    let sub = get_authorizer(&app)
+    let claims = get_authorizer(&app)
         .await
         .check_auth(response.access_token.expose_secret())
         .await
         .map_err(|_| Error::new(ErrorKind::UpstreamService, "invalid token issued"))?
-        .claims
-        .sub
+        .claims;
+
+    let sub = claims.sub.ok_or(Error::new(
+        ErrorKind::UpstreamService,
+        "invalid token issued",
+    ))?;
+
+    app.user_profiles.entry(sub).or_default().get_mut().username = Some(response.username.clone());
+
+    let now = Utc::now();
+    let exp: DateTime<Utc> = claims
+        .exp
         .ok_or(Error::new(
             ErrorKind::UpstreamService,
             "invalid token issued",
-        ))?;
+        ))?
+        .into();
 
-    app.user_profiles.entry(sub).or_default().get_mut().username = Some(response.username.clone());
-    Ok(json(response))
+    let max_age = (now - exp).num_minutes();
+
+    Ok((
+        jar.add(
+            Cookie::build(
+                COOKIE_NAME,
+                response.access_token.expose_secret().to_owned(),
+            )
+            .same_site(SameSite::Strict)
+            .secure(true)
+            .http_only(true)
+            // thank you rust for having 3 competing, perfectly functional, and distinct `Duration` types
+            .max_age(tantivy::time::Duration::minutes(max_age))
+            .finish(),
+        ),
+        json(response),
+    ))
 }

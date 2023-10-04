@@ -136,7 +136,7 @@ quick-xml = { version = "0.29.0", features = ["serialize"] }
 ring = "0.16.20"
 hex = "0.4.3"
 base64 = "0.21.4"
-jwt-authorizer = { version = "0.11.0", default-features = false, features = ["rustls-tls-webpki-roots"] }
+jwt-authorizer = { version = "0.11.0", default-features = false, features = ["rustls-tls-webpki-roots", "chrono"] }
 
 [dev-dependencies]
 criterion = { version = "0.5.1", features = ["async_tokio"] }
