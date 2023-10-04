@@ -14,7 +14,6 @@ import LiteLoaderContainer from '../../Loaders/LiteLoader';
 import { getSubscriptionLink } from '../../../services/api';
 import { DeviceContext } from '../../../context/deviceContext';
 import { PersonalQuotaContext } from '../../../context/personalQuotaContext';
-import ConversationSvg from '../ConversationSvg';
 
 type Props = {};
 
@@ -58,8 +57,12 @@ const WaitingUpgradePopup = ({}: Props) => {
       <div className="relative rounded-lg border border-bg-border shadow-float bg-bg-shade overflow-auto w-[34rem]">
         {hasChecked && isSubscribed ? (
           <>
-            <div>
-              <ConversationSvg />
+            <div className="bg-bg-base w-full h-[11.25rem]">
+              <img
+                src="/upgradeIllustration.png"
+                className="w-full h-full"
+                alt="celebration"
+              />
             </div>
             <div className="flex flex-col items-center gap-8 px-6 py-8 text-label-title">
               <div className="flex flex-col gap-3 items-center text-center">
