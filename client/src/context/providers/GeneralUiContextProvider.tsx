@@ -1,19 +1,18 @@
 import React, {
   memo,
   PropsWithChildren,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
   useState,
 } from 'react';
-import { useLocation } from 'react-router-dom';
 import { UIContext } from '../uiContext';
 import { usePersistentState } from '../../hooks/usePersistentState';
 import { DeviceContext } from '../deviceContext';
-import { getConfig } from '../../services/api';
+import { getConfig, refreshToken as refreshTokenApi } from '../../services/api';
 import { SettingSections } from '../../components/Settings';
 import {
-  ACCESS_TOKEN_EXP_KEY,
   ACCESS_TOKEN_KEY,
   ANSWER_SPEED_KEY,
   getPlainFromStorage,
@@ -39,9 +38,9 @@ export const GeneralUiContextProvider = memo(
       {},
       'onBoardingState',
     );
-    const { isSelfServe } = useContext(DeviceContext);
+    const { isSelfServe, setEnvConfig } = useContext(DeviceContext);
     const [isGithubConnected, setGithubConnected] = useState(
-      isSelfServe ? !!getPlainFromStorage(ACCESS_TOKEN_KEY) : false,
+      isSelfServe ? !!getPlainFromStorage(REFRESH_TOKEN_KEY) : false,
     );
     const [isGithubChecked, setGithubChecked] = useState(false);
     const [shouldShowWelcome, setShouldShowWelcome] = useState(
@@ -51,36 +50,45 @@ export const GeneralUiContextProvider = memo(
     const [isStudioGuideOpen, setStudioGuideOpen] = useState(false);
     const [isCloudFeaturePopupOpen, setCloudFeaturePopupOpen] = useState(false);
     const [isUpgradePopupOpen, setUpgradePopupOpen] = useState(false);
+    const [tokenExpiresAt, setTokenExpiresAt] = useState(0);
     const [theme, setTheme] = useState<Theme>(
       (getPlainFromStorage(THEME) as 'system' | null) || 'system',
     );
     const [preferredAnswerSpeed, setPreferredAnswerSpeed] = useState<
       'normal' | 'fast'
     >((getPlainFromStorage(ANSWER_SPEED_KEY) as 'normal') || 'normal');
-    const location = useLocation();
 
     useEffect(() => {
       savePlainToStorage(ANSWER_SPEED_KEY, preferredAnswerSpeed);
     }, [preferredAnswerSpeed]);
 
-    useEffect(() => {
-      if (location.hash) {
-        const params = new URLSearchParams('?' + location.hash.slice(1));
-        if (params.get('token')) {
-          savePlainToStorage(ACCESS_TOKEN_KEY, params.get('token'));
-          setGithubConnected(true);
-        }
-        if (params.get('refresh_token')) {
-          savePlainToStorage(REFRESH_TOKEN_KEY, params.get('refresh_token'));
-        }
-        if (params.get('exp')) {
-          savePlainToStorage(ACCESS_TOKEN_EXP_KEY, params.get('exp'));
-        }
-        if (params.get('user')) {
-          console.log('user', params.get('user'));
-        }
+    const refreshToken = useCallback(async (refToken: string) => {
+      if (refToken) {
+        const data = await refreshTokenApi(refToken);
+        savePlainToStorage(ACCESS_TOKEN_KEY, data.access_token);
+        setTokenExpiresAt(Date.now() + data.exp * 1000);
+        setTimeout(() => getConfig().then(setEnvConfig), 100);
+      } else {
+        throw new Error('No refresh token provided!');
       }
     }, []);
+
+    useEffect(() => {
+      const storedToken = getPlainFromStorage(REFRESH_TOKEN_KEY);
+      const tokenExpiresIn = Date.now() - tokenExpiresAt;
+      const timerId =
+        tokenExpiresAt && storedToken
+          ? window.setTimeout(
+              () => {
+                refreshToken(storedToken);
+              },
+              tokenExpiresIn - 60 * 1000,
+            )
+          : 0;
+      return () => {
+        clearTimeout(timerId);
+      };
+    }, [tokenExpiresAt]);
 
     useEffect(() => {
       if (!isSelfServe) {
@@ -130,6 +138,7 @@ export const GeneralUiContextProvider = memo(
         isGithubConnected,
         setGithubConnected,
         isGithubChecked,
+        refreshToken,
       }),
       [isGithubChecked, isGithubConnected],
     );

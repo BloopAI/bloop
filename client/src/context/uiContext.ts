@@ -28,6 +28,7 @@ export const UIContext = {
     isGithubConnected: false,
     setGithubConnected: (b: boolean) => {},
     isGithubChecked: false,
+    refreshToken: (refreshT: string) => Promise.resolve(),
   }),
   Filters: createContext<{
     isFiltersOpen: boolean;

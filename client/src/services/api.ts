@@ -19,7 +19,12 @@ import {
   RepoType,
   StudioContextFile,
 } from '../types/general';
-import { ACCESS_TOKEN_KEY, getPlainFromStorage } from './storage';
+import {
+  ACCESS_TOKEN_KEY,
+  getPlainFromStorage,
+  REFRESH_TOKEN_KEY,
+  savePlainToStorage,
+} from './storage';
 
 const DB_API = 'https://api.bloop.ai';
 let http: AxiosInstance;
@@ -39,6 +44,29 @@ export const initApi = (serverUrl = '', isSelfServe?: boolean) => {
         },
         null,
         { synchronous: true },
+      );
+      http.interceptors.response.use(
+        (response) => response,
+        (error) => {
+          const status = error.response ? error.response.status : null;
+
+          const refreshToken = getPlainFromStorage(REFRESH_TOKEN_KEY);
+          if (status === 401 && refreshToken) {
+            return axios
+              .get(`${serverUrl}/auth/refresh_token`, {
+                params: { refresh_token: refreshToken },
+              })
+              .then((resp) => {
+                savePlainToStorage(ACCESS_TOKEN_KEY, resp.data.access_token);
+                error.config.headers['Authorization'] =
+                  'Bearer ' + resp.data.access_token;
+                error.config.baseURL = undefined;
+                return http.request(error.config);
+              });
+          }
+
+          return Promise.reject(error);
+        },
       );
     }
   }
@@ -375,3 +403,8 @@ export const getTutorialQuestions = (
   repo_ref: string,
 ): Promise<{ questions: TutorialQuestionType[] }> =>
   http('/tutorial-questions', { params: { repo_ref } }).then((r) => r.data);
+
+export const refreshToken = (refresh_token: string) =>
+  http('/auth/refresh_token', { params: { refresh_token } }).then(
+    (r) => r.data,
+  );

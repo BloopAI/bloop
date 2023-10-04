@@ -13,6 +13,7 @@ import {
   getJsonFromStorage,
   getPlainFromStorage,
   ONBOARDING_DONE_KEY,
+  REFRESH_TOKEN_KEY,
   saveJsonToStorage,
   savePlainToStorage,
   SESSION_ID_KEY,
@@ -45,7 +46,9 @@ const Onboarding = ({ activeTab }: { activeTab: string }) => {
   const { shouldShowWelcome, setShouldShowWelcome } = useContext(
     UIContext.Onboarding,
   );
-  const { isGithubConnected } = useContext(UIContext.GitHubConnected);
+  const { isGithubConnected, refreshToken } = useContext(
+    UIContext.GitHubConnected,
+  );
   const { isSelfServe, os, setEnvConfig, envConfig } =
     useContext(DeviceContext);
 
@@ -69,13 +72,27 @@ const Onboarding = ({ activeTab }: { activeTab: string }) => {
 
   useEffect(() => {
     if (isSelfServe) {
-      getRepos()
-        .then(() => {
-          closeOnboarding();
-        })
-        .catch(() => {
-          setShouldShowWelcome(true);
-        });
+      let token: string | null = null;
+      if (location.hash) {
+        const params = new URLSearchParams('?' + location.hash.slice(1));
+        token = params.get('refresh_token');
+        if (token) {
+          savePlainToStorage(REFRESH_TOKEN_KEY, token);
+        }
+      }
+      const storedToken = getPlainFromStorage(REFRESH_TOKEN_KEY);
+      token = token || storedToken;
+      if (token) {
+        refreshToken(token)
+          .then(() => {
+            closeOnboarding();
+          })
+          .catch(() => {
+            setShouldShowWelcome(true);
+          });
+      } else {
+        setShouldShowWelcome(true);
+      }
     } else {
       getConfig()
         .then((d) => {
