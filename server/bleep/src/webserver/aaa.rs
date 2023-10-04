@@ -147,7 +147,7 @@ pub(super) async fn refresh_token(
         ))?
         .into();
 
-    let max_age = (now - exp).num_minutes();
+    let max_age = (exp - now).num_seconds();
 
     Ok((
         jar.add(
@@ -159,7 +159,7 @@ pub(super) async fn refresh_token(
             .secure(true)
             .http_only(true)
             // thank you rust for having 3 competing, perfectly functional, and distinct `Duration` types
-            .max_age(tantivy::time::Duration::minutes(max_age))
+            .max_age(tantivy::time::Duration::seconds(max_age))
             .finish(),
         ),
         json(response),
