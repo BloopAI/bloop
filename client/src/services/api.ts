@@ -19,12 +19,7 @@ import {
   RepoType,
   StudioContextFile,
 } from '../types/general';
-import {
-  ACCESS_TOKEN_KEY,
-  getPlainFromStorage,
-  REFRESH_TOKEN_KEY,
-  savePlainToStorage,
-} from './storage';
+import { getPlainFromStorage, REFRESH_TOKEN_KEY } from './storage';
 
 const DB_API = 'https://api.bloop.ai';
 let http: AxiosInstance;
@@ -35,16 +30,16 @@ export const initApi = (serverUrl = '', isSelfServe?: boolean) => {
       baseURL: serverUrl,
     });
     if (isSelfServe) {
-      http.interceptors.request.use(
-        function (config) {
-          const token = getPlainFromStorage(ACCESS_TOKEN_KEY);
-          config.headers.Authorization = `Bearer ${token}`;
-
-          return config;
-        },
-        null,
-        { synchronous: true },
-      );
+      // http.interceptors.request.use(
+      //   function (config) {
+      //     const token = getPlainFromStorage(ACCESS_TOKEN_KEY);
+      //     config.headers.Authorization = `Bearer ${token}`;
+      //
+      //     return config;
+      //   },
+      //   null,
+      //   { synchronous: true },
+      // );
       http.interceptors.response.use(
         (response) => response,
         (error) => {
@@ -57,9 +52,9 @@ export const initApi = (serverUrl = '', isSelfServe?: boolean) => {
                 params: { refresh_token: refreshToken },
               })
               .then((resp) => {
-                savePlainToStorage(ACCESS_TOKEN_KEY, resp.data.access_token);
-                error.config.headers['Authorization'] =
-                  'Bearer ' + resp.data.access_token;
+                // savePlainToStorage(ACCESS_TOKEN_KEY, resp.data.access_token);
+                // error.config.headers['Authorization'] =
+                //   'Bearer ' + resp.data.access_token;
                 error.config.baseURL = undefined;
                 return http.request(error.config);
               });

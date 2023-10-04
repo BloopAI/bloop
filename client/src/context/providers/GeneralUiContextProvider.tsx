@@ -75,14 +75,14 @@ export const GeneralUiContextProvider = memo(
 
     useEffect(() => {
       const storedToken = getPlainFromStorage(REFRESH_TOKEN_KEY);
-      const tokenExpiresIn = Date.now() - tokenExpiresAt;
+      const tokenExpiresIn = tokenExpiresAt - Date.now();
       const timerId =
         tokenExpiresAt && storedToken
           ? window.setTimeout(
               () => {
                 refreshToken(storedToken);
               },
-              tokenExpiresIn - 60 * 1000,
+              tokenExpiresIn - 60 * 2 * 1000,
             )
           : 0;
       return () => {
