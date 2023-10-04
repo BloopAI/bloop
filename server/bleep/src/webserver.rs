@@ -13,7 +13,7 @@ use tower_http::services::{ServeDir, ServeFile};
 use tower_http::{catch_panic::CatchPanicLayer, cors::CorsLayer};
 use tracing::info;
 
-mod aaa;
+pub mod aaa;
 pub mod answer;
 mod autocomplete;
 mod commits;

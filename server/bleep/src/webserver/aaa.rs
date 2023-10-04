@@ -67,7 +67,7 @@ pub(super) async fn router(router: Router, app: Application) -> Router {
         .route("/auth/refresh_token", get(refresh_token))
 }
 
-async fn get_authorizer(app: &Application) -> Authorizer {
+pub async fn get_authorizer(app: &Application) -> Authorizer {
     let userpool_id = app.config.cognito_userpool_id.as_ref().expect("bad config");
     let (region, _) = userpool_id.split_once('_').unwrap();
     let url =
