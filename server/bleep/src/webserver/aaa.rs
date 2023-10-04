@@ -95,7 +95,14 @@ pub(super) async fn refresh_token(
     Query(RefreshParams { refresh_token }): Query<RefreshParams>,
 ) -> Result<impl IntoResponse> {
     let response: TokenResponse = reqwest::Client::new()
-        .post(app.config.cognito_mgmt_url.clone().expect("bad config"))
+        .post(
+            app.config
+                .cognito_mgmt_url
+                .as_ref()
+                .expect("bad config")
+                .join("refresh_token")
+                .unwrap(),
+        )
         .json(&json!({
             "type":"user",
             "refresh_token": refresh_token.expose_secret(),
