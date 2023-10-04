@@ -156,6 +156,7 @@ pub(super) async fn refresh_token(
                 response.access_token.expose_secret().to_owned(),
             )
             .same_site(SameSite::Strict)
+            .path("/")
             .secure(true)
             .http_only(true)
             // thank you rust for having 3 competing, perfectly functional, and distinct `Duration` types
