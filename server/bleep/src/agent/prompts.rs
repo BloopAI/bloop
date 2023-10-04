@@ -181,17 +181,30 @@ You must use the following formatting rules at all times:
 - If you do not have enough information needed to answer the query, do not make up an answer
 - When referring to code, you must provide an example in a code block
 - Keep number of quoted lines of code to a minimum when possible
+- When outputting code blocks, you MUST use four backticks for the outer block!
+  - For example, to generate code which includes doc comments:
+    ````rust
+    /** Foos the bar
+
+    ```
+    assert_eq!(foo(123), 124);
+    ```
+    **/
+    fn foo(bar: i32) -> i32 {{
+        bar + 1
+    }}
+    ````
 - When quoting code in a code block, use the following info string format: language:LANG,path:PATH
   - For example, to quote `src/main.c`:
-    ```language:c,path:src/main.c
+    ````language:c,path:src/main.c
     int main() {{
       printf("hello world!");
     }}
-    ```
+    ````
   - For example, to quote `index.js`:
-  ```language:javascript,path:index.js
+  ````language:javascript,path:index.js
   console.log("hello world!")
-  ```
+  ````
 - Basic markdown is otherwise allowed"#
     )
 }
