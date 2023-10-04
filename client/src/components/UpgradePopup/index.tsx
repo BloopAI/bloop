@@ -7,6 +7,7 @@ import { DeviceContext } from '../../context/deviceContext';
 import { UIContext } from '../../context/uiContext';
 import { getSubscriptionLink } from '../../services/api';
 import { PersonalQuotaContext } from '../../context/personalQuotaContext';
+import useAnalytics from '../../hooks/useAnalytics';
 import Countdown from './Countdown';
 import ConversationSvg from './ConversationSvg';
 
@@ -20,9 +21,11 @@ const UpgradePopup = () => {
     setWaitingUpgradePopupOpen,
   } = useContext(UIContext.UpgradePopup);
   const [link, setLink] = useState('');
+  const { trackUpgradePopup } = useAnalytics();
 
   useEffect(() => {
     if (isUpgradePopupOpen) {
+      trackUpgradePopup();
       getSubscriptionLink().then((resp) => {
         setLink(resp.url);
       });
