@@ -155,21 +155,11 @@ pub struct Configuration {
     //
     // Installation-specific values
     //
-    #[clap(long)]
-    #[serde(serialize_with = "serialize_secret_opt_str", default)]
-    /// Github Client ID for GitHub Apps
-    pub github_client_id: Option<SecretString>,
-
-    // Github client secret
-    #[clap(long)]
-    #[serde(serialize_with = "serialize_secret_opt_str", default)]
-    pub github_client_secret: Option<SecretString>,
-
     /// Instance-specific shared secret between bloop c&c & instance
     #[clap(long)]
     pub bloop_instance_secret: Option<Uuid>,
 
-    /// Instance-specific shared secret between bloop c&c & instance
+    /// Instance organization name
     #[clap(long)]
     pub bloop_instance_org: Option<String>,
 
@@ -216,12 +206,6 @@ impl Configuration {
 
     pub fn index_path(&self, name: impl AsRef<Path>) -> impl AsRef<Path> {
         self.index_dir.join(name)
-    }
-
-    pub fn github_client_id_and_secret(&self) -> Option<(&str, &str)> {
-        let id = self.github_client_id.as_ref()?.expose_secret();
-        let secret = self.github_client_secret.as_ref()?.expose_secret();
-        Some((id, secret))
     }
 
     pub fn cli_overriding_config_file() -> Result<Self> {
@@ -314,10 +298,6 @@ impl Configuration {
             cognito_auth_url: b.cognito_auth_url.or(a.cognito_auth_url),
 
             cognito_mgmt_url: b.cognito_mgmt_url.or(a.cognito_mgmt_url),
-
-            github_client_id: b.github_client_id.or(a.github_client_id),
-
-            github_client_secret: b.github_client_secret.or(a.github_client_secret),
 
             bloop_instance_secret: b.bloop_instance_secret.or(a.bloop_instance_secret),
 
