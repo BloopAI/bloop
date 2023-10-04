@@ -12,6 +12,7 @@ import { getSubscriptionLink, gitHubLogout } from '../../services/api';
 import { TabType } from '../../types/general';
 import { PersonalQuotaContext } from '../../context/personalQuotaContext';
 import LiteLoaderContainer from '../Loaders/LiteLoader';
+import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from '../../services/storage';
 import Tab from './Tab';
 
 type Props = {
@@ -79,7 +80,8 @@ const NavBar = ({ isSkeleton, activeTab }: Props) => {
         type: MenuListItemType.DEFAULT,
         onClick: () => {
           setShouldShowWelcome(true);
-          deleteAuthCookie();
+          localStorage.removeItem(REFRESH_TOKEN_KEY);
+          localStorage.removeItem(ACCESS_TOKEN_KEY);
           setGithubConnected(false);
           if (!isSelfServe) {
             gitHubLogout();
