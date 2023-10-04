@@ -81,7 +81,10 @@ impl Scraper {
                     debug!("task finished");
                     match h.await {
                         Ok(Ok(mut scraper_result)) => {
-                            yield scraper_result.doc;
+                            // insert doc into the stream if any
+                            if let Some(d) = scraper_result.doc.take() {
+                                yield d;
+                            }
 
                             // there could be dupes among the new urls, collect them into a set first
                             let new_urls = scraper_result
@@ -155,7 +158,7 @@ pub struct ScraperRequest {
 }
 
 pub struct ScraperResult {
-    pub doc: Document,
+    pub doc: Option<Document>,
     pub new_urls: Vec<(usize, Url)>,
 }
 
@@ -243,11 +246,7 @@ async fn visit(
     // self.link_stack.extend(new_links);
 
     // build document
-    let content = article
-        .content
-        .text
-        .ok_or_else(|| anyhow!("unable to fetch article content"))?
-        .to_string();
+    let content = article.content.text.map(|c| c.to_string());
 
     let meta = include_meta.then(|| Meta {
         title: article.content.title.map(|c| c.to_string()),
@@ -255,12 +254,12 @@ async fn visit(
         icon: article.content.icon.map(|c| c.to_string()),
     });
 
-    let doc = Document {
+    let doc = content.map(|content| Document {
         url,
         path: doc_path,
         content,
         meta,
-    };
+    });
 
     Ok(ScraperResult { doc, new_urls })
 }
