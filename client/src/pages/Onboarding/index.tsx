@@ -6,6 +6,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom';
 import { UIContext } from '../../context/uiContext';
 import { DeviceContext } from '../../context/deviceContext';
 import NavBar from '../../components/NavBar';
@@ -51,6 +52,7 @@ const Onboarding = ({ activeTab }: { activeTab: string }) => {
   );
   const { isSelfServe, os, setEnvConfig, envConfig } =
     useContext(DeviceContext);
+  const location = useLocation();
 
   const closeOnboarding = useCallback(() => {
     setShouldShowWelcome(false);
@@ -107,7 +109,7 @@ const Onboarding = ({ activeTab }: { activeTab: string }) => {
           setShouldShowWelcome(true);
         });
     }
-  }, [isGithubConnected]);
+  }, []);
 
   const onSubmit = useCallback(() => {
     saveUserData({
