@@ -43,10 +43,17 @@ const StatusBar = () => {
     setWaitingUpgradePopupOpen(true);
     getSubscriptionLink()
       .then((resp) => {
-        openLink(resp.url);
-        clearInterval(intervalId);
-        intervalId = window.setInterval(() => refetchQuota(), 2000);
-        setTimeout(() => clearInterval(intervalId), 10 * 60 * 1000);
+        if (resp.url) {
+          openLink(resp.url);
+          clearInterval(intervalId);
+          intervalId = window.setInterval(() => refetchQuota(), 2000);
+          setTimeout(() => clearInterval(intervalId), 10 * 60 * 1000);
+        } else {
+          setBugReportModalOpen(true);
+        }
+      })
+      .catch(() => {
+        setBugReportModalOpen(true);
       })
       .finally(() => setIsFetchingLink(false));
   }, [openLink]);

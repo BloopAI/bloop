@@ -25,15 +25,24 @@ const WaitingUpgradePopup = ({}: Props) => {
   const { openLink } = useContext(DeviceContext);
   const { refetchQuota } = useContext(PersonalQuotaContext.Handlers);
   const { isSubscribed } = useContext(PersonalQuotaContext.Values);
+  const { setBugReportModalOpen } = useContext(UIContext.BugReport);
   const [hasChecked, setHasChecked] = useState(false);
 
   const onManualOpenClick = useCallback(
     (e: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
       e.preventDefault();
       setWaitingUpgradePopupOpen(true);
-      getSubscriptionLink().then((resp) => {
-        openLink(resp.url);
-      });
+      getSubscriptionLink()
+        .then((resp) => {
+          if (resp.url) {
+            openLink(resp.url);
+          } else {
+            setBugReportModalOpen(true);
+          }
+        })
+        .catch(() => {
+          setBugReportModalOpen(true);
+        });
     },
     [openLink],
   );

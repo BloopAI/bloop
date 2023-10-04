@@ -20,6 +20,7 @@ const UpgradePopup = () => {
     setUpgradePopupOpen,
     setWaitingUpgradePopupOpen,
   } = useContext(UIContext.UpgradePopup);
+  const { setBugReportModalOpen } = useContext(UIContext.BugReport);
   const [link, setLink] = useState('');
   const { trackUpgradePopup } = useAnalytics();
 
@@ -33,12 +34,16 @@ const UpgradePopup = () => {
   }, [isUpgradePopupOpen]);
 
   const onClick = useCallback(() => {
-    openLink(link);
-    setWaitingUpgradePopupOpen(true);
-    setUpgradePopupOpen(false);
-    let intervalId = window.setInterval(() => refetchQuota(), 2000);
-    setTimeout(() => clearInterval(intervalId), 10 * 60 * 1000);
-  }, [openLink]);
+    if (link) {
+      openLink(link);
+      setWaitingUpgradePopupOpen(true);
+      setUpgradePopupOpen(false);
+      let intervalId = window.setInterval(() => refetchQuota(), 2000);
+      setTimeout(() => clearInterval(intervalId), 10 * 60 * 1000);
+    } else {
+      setBugReportModalOpen(true);
+    }
+  }, [openLink, link]);
 
   return (
     <ModalOrSidebar
