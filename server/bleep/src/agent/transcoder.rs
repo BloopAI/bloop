@@ -404,8 +404,17 @@ impl CodeChunk {
             }
         };
 
+        // If we find ticks in the code content, we make sure we have at least N+1 ticks for our
+        // braces, to ensure a proper block is formed.
+        let ticks = if let Some(captures) = regex!("^(````*)"m).captures(code) {
+            let num_ticks = captures.get(1).unwrap().len();
+            "`".repeat(num_ticks + 1)
+        } else {
+            "```".to_owned()
+        };
+
         format!(
-            "```type:{ty},lang:{lang},path:{path},lines:{}-{}\n{code}\n```",
+            "{ticks}type:{ty},lang:{lang},path:{path},lines:{}-{}\n{code}\n{ticks}",
             start.unwrap_or(0),
             end.unwrap_or(0)
         )
@@ -1467,6 +1476,96 @@ fn main() {
     println!(\"hello world\");
 }
 ```
+
+Another paragraph.";
+
+        let (body, conclusion) = decode(input);
+
+        assert_eq!(expected, body);
+        assert_eq!(None, conclusion);
+    }
+
+    #[test]
+    fn test_xml_code_with_markdown_doc_comment() {
+        let input = "Generated code, with markdown doc comments:
+
+<GeneratedCode>
+<Code>
+/**
+```
+assert_eq!(foo(), 123);
+```
+*/
+fn foo() -> i32 {
+    123
+}
+</Code>
+<Language>Rust</Language>
+</GeneratedCode>
+
+Another paragraph.";
+
+        let expected = "Generated code, with markdown doc comments:
+
+```` type:Generated,lang:Rust,path:,lines:0-0
+/**
+```
+assert_eq!(foo(), 123);
+```
+*/
+fn foo() -> i32 {
+    123
+}
+````
+
+Another paragraph.";
+
+        let (body, conclusion) = decode(input);
+
+        assert_eq!(expected, body);
+        assert_eq!(None, conclusion);
+    }
+
+    #[test]
+    fn test_xml_code_with_markdown_doc_comment_meta() {
+        let input =
+            "Generated code, with markdown doc comments that have multiple block nesting levels:
+
+<GeneratedCode>
+<Code>
+/**
+````
+```
+bar
+```
+assert_eq!(foo(), 123);
+````
+*/
+fn foo() -> i32 {
+    123
+}
+</Code>
+<Language>Rust</Language>
+</GeneratedCode>
+
+Another paragraph.";
+
+        let expected =
+            "Generated code, with markdown doc comments that have multiple block nesting levels:
+
+````` type:Generated,lang:Rust,path:,lines:0-0
+/**
+````
+```
+bar
+```
+assert_eq!(foo(), 123);
+````
+*/
+fn foo() -> i32 {
+    123
+}
+`````
 
 Another paragraph.";
 
