@@ -568,7 +568,13 @@ async fn token_counts(
     //
     // We accept that here, and opt to always use the slightly less accurate (but larger) number
     // for consistency.
-    let total = (messages + per_file.iter().flatten().sum::<usize>()).saturating_sub(baseline);
+    let total = (messages
+        + per_file
+            .iter()
+            .flatten()
+            .chain(per_doc_file.iter().flatten())
+            .sum::<usize>())
+    .saturating_sub(baseline);
 
     Ok(TokenCounts {
         total,
