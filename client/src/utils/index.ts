@@ -244,7 +244,7 @@ export const generateUniqueId = (): string => {
 
 export const deleteAuthCookie = () => {
   document.cookie =
-    'auth_cookie=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+    'X-Bleep-Cognito=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
 };
 
 export const previewTheme = (key: string) => {

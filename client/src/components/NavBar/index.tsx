@@ -9,10 +9,8 @@ import { UIContext } from '../../context/uiContext';
 import { DeviceContext } from '../../context/deviceContext';
 import { TabsContext } from '../../context/tabsContext';
 import { getSubscriptionLink, gitHubLogout } from '../../services/api';
-import { TabType } from '../../types/general';
 import { PersonalQuotaContext } from '../../context/personalQuotaContext';
 import LiteLoaderContainer from '../Loaders/LiteLoader';
-import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from '../../services/storage';
 import Tab from './Tab';
 
 type Props = {
@@ -80,8 +78,7 @@ const NavBar = ({ isSkeleton, activeTab }: Props) => {
         type: MenuListItemType.DEFAULT,
         onClick: () => {
           setShouldShowWelcome(true);
-          localStorage.removeItem(REFRESH_TOKEN_KEY);
-          localStorage.removeItem(ACCESS_TOKEN_KEY);
+          deleteAuthCookie();
           setGithubConnected(false);
           if (!isSelfServe) {
             gitHubLogout();
