@@ -414,5 +414,6 @@
 	"# sections_one": "{{count}}节",
 	"# sections_other": "{{count}}节",
 	"Select library": "选择库",
-	"Select page": "选择页面"
+	"Select page": "选择页面",
+	"Resync": "Resync"
 }

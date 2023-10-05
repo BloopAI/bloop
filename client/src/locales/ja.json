@@ -405,5 +405,6 @@
 	"# sections_other": "{{count}}セクション",
 	"Clear sections": "クリアセクション",
 	"Select library": "ライブラリを選択します",
-	"Select page": "[ページ]を選択します"
+	"Select page": "[ページ]を選択します",
+	"Resync": "resync"
 }

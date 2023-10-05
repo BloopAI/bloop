@@ -3,6 +3,7 @@ import React, {
   FormEvent,
   memo,
   useCallback,
+  useContext,
   useEffect,
   useState,
 } from 'react';
@@ -22,7 +23,9 @@ import LiteLoaderContainer from '../../../components/Loaders/LiteLoader';
 import { Magazine, Paper, RepositoryFilled, WarningSign } from '../../../icons';
 import { DocShortType } from '../../../types/api';
 import StepItem from '../AddContextModal/StepItem';
+import { DeviceContext } from '../../../context/deviceContext';
 import IndexedDocRow from './IndexedDocRow';
+import CommandIndicator from './CommandIndicator';
 
 type Props = {
   isVisible: boolean;
@@ -40,9 +43,11 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
   const [isVerifying, setVerifying] = useState(false);
   const [verifyError, setVerifyError] = useState(false);
   const [docsUrl, setDocsUrl] = useState('');
+  const [currentlyIndexingUrl, setCurrentlyIndexingUrl] = useState('');
   const [indexedDocs, setIndexedDocs] = useState<DocShortType[]>([]);
   const [indexedPages, setIndexedPages] = useState<DocShortType[]>([]);
   const containerRef = useArrowKeyNavigation();
+  const { apiUrl } = useContext(DeviceContext);
 
   const handleKeyEvent = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape') {
@@ -86,11 +91,26 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
           setVerifying(false);
           setVerifyError(false);
           setIndexing(true);
-          indexDocsUrl(docsUrl).finally(() => {
-            setIndexing(false);
-            setDocsUrl('');
-            refreshIndexedDocs();
-          });
+          const eventSource = new EventSource(
+            `${apiUrl.replace('https:', '')}/docs/sync?url=${docsUrl}`,
+          );
+          eventSource.onerror = (err) => {
+            console.log(err);
+          };
+          eventSource.onmessage = (ev) => {
+            const data = JSON.parse(ev.data);
+            console.log(data);
+            if (data.Ok.Done) {
+              eventSource.close();
+              setIndexing(false);
+              setDocsUrl('');
+              setCurrentlyIndexingUrl('');
+              refreshIndexedDocs();
+              return;
+            } else if (data.Ok.Update?.url) {
+              setCurrentlyIndexingUrl(data.Ok.Update.url);
+            }
+          };
         })
         .catch(() => {
           setVerifying(false);
@@ -148,7 +168,7 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
             <>
               <LiteLoaderContainer sizeClassName="w-4 h-4" />
               <p className="text-label-title">
-                <Trans values={{ url: docsUrl }}>
+                <Trans values={{ url: currentlyIndexingUrl || docsUrl }}>
                   Indexing <span className="text-label-link">#</span>. This
                   process takes about 1 minute.
                 </Trans>
@@ -234,19 +254,23 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
           )}
         </div>
         <div className="flex justify-between items-center gap-1 py-3 px-4 border-t border-bg-border bg-bg-base">
-          <div className="flex items-center gap-1.5">
-            <KeyboardChip type="Esc" />
-            <span className="caption text-label-base">
-              <Trans>Close</Trans>
-            </span>
+          <div className="flex items-center gap-3">
+            <CommandIndicator label={t('Close')} keyboardKeys={['Esc']} />
+            {/*{step === 0 && (*/}
+            {/*  <>*/}
+            {/*    <div className="h-3.5 w-px bg-bg-border flex-shrink-0" />*/}
+            {/*    <CommandIndicator*/}
+            {/*      label={t('Remove')}*/}
+            {/*      keyboardKeys={['cmd', 'bksp']}*/}
+            {/*    />*/}
+            {/*    <CommandIndicator*/}
+            {/*      label={t('Resync')}*/}
+            {/*      keyboardKeys={['cmd', 'R']}*/}
+            {/*    />*/}
+            {/*  </>*/}
+            {/*)}*/}
           </div>
-          <div className="flex items-center gap-1.5">
-            <KeyboardChip type="↑" />
-            <KeyboardChip type="↓" />
-            <span className="caption text-label-base">
-              <Trans>Navigate</Trans>
-            </span>
-          </div>
+          <CommandIndicator label={t('Navigate')} keyboardKeys={['↑', '↓']} />
         </div>
       </div>
     </SeparateOnboardingStep>

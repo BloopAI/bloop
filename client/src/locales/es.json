@@ -408,5 +408,6 @@
 	"# sections_one": "{{count}} sección",
 	"# sections_other": "{{count}} secciones",
 	"Select library": "Seleccionar biblioteca",
-	"Select page": "Página de selección"
+	"Select page": "Página de selección",
+	"Resync": "Resincronarse"
 }
