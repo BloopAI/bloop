@@ -91,25 +91,11 @@ pub async fn search(
     }))
 }
 
-pub async fn search_with_id(
+pub async fn list_with_id(
     State(app): State<Application>,
     Path(id): Path<i64>,
-    Query(params): Query<Search>,
-) -> Result<Json<Vec<doc::SearchResult>>> {
-    Ok(Json(match params.q {
-        Some(query) => {
-            app.indexes
-                .doc
-                .search_with_id(query, params.limit, id)
-                .await?
-        }
-        None => {
-            app.indexes
-                .doc
-                .list_with_id(params.limit as u32, id)
-                .await?
-        }
-    }))
+) -> Result<Json<Vec<doc::PageResult>>> {
+    Ok(Json(app.indexes.doc.list_with_id(100, id).await?))
 }
 
 pub async fn fetch(

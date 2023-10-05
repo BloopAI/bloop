@@ -64,7 +64,7 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
                 .route("/:id", get(docs::list_one))
                 .route("/:id", delete(docs::delete))
                 .route("/:id/resync", get(docs::resync))
-                .route("/:id/search", get(docs::search_with_id))
+                .route("/:id/list", get(docs::list_with_id))
                 .route("/:id/fetch", get(docs::fetch))
                 .route("/search", get(docs::search))
                 .route("/sync", get(docs::sync))
