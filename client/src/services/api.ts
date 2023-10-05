@@ -3,6 +3,7 @@ import {
   AllConversationsResponse,
   CodeStudioType,
   ConversationType,
+  DocPageType,
   DocSectionType,
   DocShortType,
   FileResponse,
@@ -405,13 +406,15 @@ export const verifyDocsUrl = (url: string) =>
   http('/docs/verify', { params: { url } }).then((r) => r.data);
 export const getIndexedDocs = (): Promise<DocShortType[]> =>
   http('/docs').then((r) => r.data);
+export const getIndexedPages = (id: number | string): Promise<DocPageType[]> =>
+  http(`docs/${id}/list`, { params: { limit: 100 } }).then((r) => r.data);
 export const searchDocSections = (
   id: string,
   q: string,
 ): Promise<DocSectionType[]> =>
   http(`/docs/${id}/search`, { params: { q, limit: 20 } }).then((r) => r.data);
 export const getDocSections = (
-  id: string,
+  id: number | string,
   url: string,
 ): Promise<DocSectionType[]> =>
   http(`/docs/${id}/fetch`, {

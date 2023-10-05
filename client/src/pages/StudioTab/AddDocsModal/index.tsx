@@ -26,6 +26,7 @@ import { DeviceContext } from '../../../context/deviceContext';
 import IndexedDocRow from './IndexedDocRow';
 import CommandIndicator from './CommandIndicator';
 import RenderedSection from './RenderedSection';
+import PagesWithPreview from './PagesWithPreview';
 
 type Props = {
   isVisible: boolean;
@@ -52,7 +53,6 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
   const [currentlyIndexingUrl, setCurrentlyIndexingUrl] = useState('');
   const [indexedDocs, setIndexedDocs] = useState<DocShortType[]>([]);
   const [filteredDocs, setFilteredDocs] = useState<DocShortType[]>([]);
-  const [indexedPages, setIndexedPages] = useState<DocShortType[]>([]);
   const [filteredSections, setFilteredSections] = useState<DocSectionType[]>(
     [],
   );
@@ -73,12 +73,6 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
       setFilteredDocs(resp);
     });
   }, []);
-
-  useEffect(() => {
-    if (selectedProvider) {
-      // get all pages request
-    }
-  }, [selectedProvider, docsUrl]);
 
   useEffect(() => {
     if (isVisible) {
@@ -168,6 +162,10 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
     },
     [onClose, onSubmit],
   );
+
+  const handleSelectPage = useCallback(() => {
+    onClose();
+  }, []);
 
   return (
     <SeparateOnboardingStep
@@ -281,31 +279,32 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
                 />
               );
             })
-          ) : (
-            <div className="w-full break-word">
-              {docsUrl ? (
-                <div className="flex flex-col divide-y divide-bg-border">
-                  {filteredSections.map((s) => (
-                    <a
-                      href="#"
-                      key={s.point_id}
-                      className="px-4 py-4 w-full"
-                      onClick={() =>
-                        handleDocSubmit(
-                          selectedProvider!.id,
-                          selectedProvider!.name,
-                          selectedProvider!.url,
-                          s.relative_url,
-                          s.point_id,
-                        )
-                      }
-                    >
-                      <RenderedSection text={s.text} />
-                    </a>
-                  ))}
-                </div>
-              ) : null}
+          ) : docsUrl ? (
+            <div className="w-full break-wordflex flex-col divide-y divide-bg-border">
+              {filteredSections.map((s) => (
+                <a
+                  href="#"
+                  key={s.point_id}
+                  className="px-4 py-4 w-full"
+                  onClick={() =>
+                    handleDocSubmit(
+                      selectedProvider!.id,
+                      selectedProvider!.name,
+                      selectedProvider!.url,
+                      s.relative_url,
+                      s.point_id,
+                    )
+                  }
+                >
+                  <RenderedSection text={s.text} />
+                </a>
+              ))}
             </div>
+          ) : (
+            <PagesWithPreview
+              docId={selectedProvider!.id}
+              handleSelectPage={handleSelectPage}
+            />
           )}
         </div>
         <div className="flex justify-between items-center gap-1 py-3 px-4 border-t border-bg-border bg-bg-base">

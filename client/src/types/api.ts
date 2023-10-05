@@ -324,6 +324,13 @@ export type DocShortType = {
   favicon: string;
 };
 
+export type DocPageType = {
+  doc_id: number;
+  doc_source: string;
+  relative_url: string;
+  title: string;
+};
+
 export type DocSectionType = {
   ancestry: string[];
   doc_id: number;
