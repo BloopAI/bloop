@@ -3,7 +3,8 @@ use futures::stream::{Stream, StreamExt};
 use qdrant_client::qdrant::{
     point_id::PointIdOptions, r#match::MatchValue, vectors_config, with_payload_selector,
     CreateCollection, Distance, FieldCondition, FieldType, Filter, Match, PointId, PointStruct,
-    ScrollPoints, SearchPoints, VectorParams, VectorsConfig, WithPayloadSelector,
+    ScrollPoints, SearchPointGroups, SearchPoints, VectorParams, VectorsConfig,
+    WithPayloadSelector,
 };
 use rayon::prelude::*;
 use thiserror::Error;
@@ -291,14 +292,17 @@ impl Doc {
             .collect())
     }
 
-    /// Scroll sections in a doc
-    pub async fn list_with_id(&self, limit: u32, id: i64) -> Result<Vec<SearchResult>, Error> {
+    /// Scroll pages in a doc
+    pub async fn list_with_id(&self, limit: u32, id: i64) -> Result<Vec<PageResult>, Error> {
         let data = self
             .semantic
             .qdrant_client()
-            .scroll(&ScrollPoints {
+            .search_groups(&SearchPointGroups {
+                vector: vec![0.; 384], // re-export from semantic::schema, this will cause an index wipe
                 collection_name: COLLECTION_NAME.into(),
-                limit: Some(limit),
+                limit,
+                group_size: 1,
+                group_by: "relative_url".into(),
                 filter: Some(Filter {
                     must: vec![make_kv_int_filter("doc_id", id).into()],
                     ..Default::default()
@@ -310,15 +314,18 @@ impl Doc {
             })
             .await
             .map_err(Error::Qdrant)?
-            .result;
+            .result
+            .ok_or(Error::Qdrant(anyhow::anyhow!("empty search result field")))?;
 
         Ok(data
+            .groups
             .into_iter()
-            .filter_map(|s| SearchResult::from_qdrant(s.id.unwrap(), s.payload))
+            .flat_map(|s| s.hits)
+            .filter_map(|s| PageResult::from_qdrant(s.payload))
             .collect())
     }
 
-    /// Fetch all sections of a single document, in order
+    /// Fetch all sections of a page, in order
     pub async fn fetch<S: AsRef<str>>(
         &self,
         id: i64,
@@ -566,6 +573,28 @@ impl SearchResult {
             ancestry,
             text,
             section_range: section_start_byte..section_end_byte,
+        })
+    }
+}
+
+#[derive(serde::Serialize)]
+pub struct PageResult {
+    pub doc_id: i64,
+    pub doc_source: url::Url,
+    pub relative_url: String,
+}
+
+impl PageResult {
+    pub fn from_qdrant(payload: HashMap<String, qdrant_client::qdrant::Value>) -> Option<Self> {
+        let doc_id = payload["doc_id"].as_integer()?;
+        let doc_source = payload["doc_source"]
+            .as_str()
+            .and_then(|s| url::Url::parse(s).ok())?;
+        let relative_url = payload["relative_url"].as_str().map(ToOwned::to_owned)?;
+        Some(Self {
+            doc_id,
+            doc_source,
+            relative_url,
         })
     }
 }
