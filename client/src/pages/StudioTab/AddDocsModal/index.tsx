@@ -45,6 +45,7 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
   const [docsUrl, setDocsUrl] = useState('');
   const [currentlyIndexingUrl, setCurrentlyIndexingUrl] = useState('');
   const [indexedDocs, setIndexedDocs] = useState<DocShortType[]>([]);
+  const [filteredDocs, setFilteredDocs] = useState<DocShortType[]>([]);
   const [indexedPages, setIndexedPages] = useState<DocShortType[]>([]);
   const containerRef = useArrowKeyNavigation();
   const { apiUrl } = useContext(DeviceContext);
@@ -60,6 +61,7 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
   const refreshIndexedDocs = useCallback(() => {
     getIndexedDocs().then((resp) => {
       setIndexedDocs(resp);
+      setFilteredDocs(resp);
     });
   }, []);
 
@@ -78,9 +80,19 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
     }
   }, [isVisible, refreshIndexedDocs]);
 
-  const handleDocUrlChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-    setDocsUrl(e.target.value);
-  }, []);
+  const handleDocUrlChange = useCallback(
+    (e: ChangeEvent<HTMLInputElement>) => {
+      setDocsUrl(e.target.value);
+      setFilteredDocs(
+        indexedDocs.filter(
+          (d) =>
+            d.name?.toLowerCase().includes(e.target.value.toLowerCase()) ||
+            d.url?.toLowerCase().startsWith(e.target.value.toLowerCase()),
+        ),
+      );
+    },
+    [indexedDocs],
+  );
 
   const handleUrlSubmit = useCallback(
     (e: FormEvent) => {
@@ -240,7 +252,7 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
         </form>
         <div className="flex max-h-72 overflow-auto px-1 py-3 flex-col items-start gap-1">
           {step === 0 ? (
-            indexedDocs.map((d) => {
+            filteredDocs.map((d) => {
               return (
                 <IndexedDocRow
                   key={d.id}
