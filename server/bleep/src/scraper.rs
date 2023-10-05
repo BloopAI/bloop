@@ -71,7 +71,6 @@ impl Scraper {
             self.queue_request(ScraperRequest {
                 url: self.base_url().clone(),
                 depth: 1,
-                include_meta: true,
             })
             .await;
 
@@ -107,7 +106,6 @@ impl Scraper {
                             .map(|(url, depth)| ScraperRequest {
                                 url,
                                 depth,
-                                include_meta: false,
                             })
                             .collect::<Vec<_>>();
 
@@ -154,7 +152,6 @@ impl Scraper {
 pub struct ScraperRequest {
     url: Url,
     depth: usize,
-    include_meta: bool,
 }
 
 pub struct ScraperResult {
@@ -186,7 +183,7 @@ pub struct Document {
     pub url: Url,
     pub path: PathBuf,
     pub content: String,
-    pub meta: Option<Meta>,
+    pub meta: Meta,
 }
 
 impl Document {
@@ -202,13 +199,13 @@ pub struct Meta {
     pub icon: Option<String>,
 }
 
-async fn visit(
-    ScraperRequest {
-        url,
-        depth,
-        include_meta,
-    }: ScraperRequest,
-) -> Result<ScraperResult> {
+impl Meta {
+    pub fn is_empty(&self) -> bool {
+        self.title.is_none() && self.description.is_none() && self.icon.is_none()
+    }
+}
+
+async fn visit(ScraperRequest { url, depth }: ScraperRequest) -> Result<ScraperResult> {
     debug!("visited - {}", url);
 
     // calculate the location on disk to store this url
@@ -248,11 +245,11 @@ async fn visit(
     // build document
     let content = article.content.text.map(|c| c.to_string());
 
-    let meta = include_meta.then(|| Meta {
+    let meta = Meta {
         title: article.content.title.map(|c| c.to_string()),
         description: article.content.description.map(|c| c.to_string()),
         icon: article.content.icon.map(|c| c.to_string()),
-    });
+    };
 
     let doc = content.map(|content| Document {
         url,

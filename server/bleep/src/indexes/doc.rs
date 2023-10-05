@@ -45,7 +45,7 @@ pub enum Progress {
 pub struct Update {
     url: url::Url,
     discovered_count: usize,
-    meta: Option<scraper::Meta>,
+    meta: scraper::Meta,
 }
 
 #[derive(Error, Debug)]
@@ -100,8 +100,15 @@ impl Doc {
             let mut meta = None;
 
             for await progress in self.insert_into_qdrant(id, url.clone()) {
-                if let Some(m) = progress.meta.clone() {
-                    meta = Some(m);
+                // populate metadata in for sqlite
+                //
+                // the first scraped doc that contains metadata is used to populate
+                // metadata in sqlite - this is typically the base_url entered by the user,
+                // if the base_url does not contain any metadata, we
+                if !progress.meta.is_empty() {
+                    if meta.is_none() {
+                        meta = Some(progress.meta.clone());
+                    }
                 };
                 yield Progress::Update(progress);
             }
@@ -402,14 +409,11 @@ impl Doc {
             let mut discovered_count = 0;
             while let Some(doc) = stream.next().await {
                 discovered_count += 1;
-                let mut progress = Update {
+                let progress = Update {
                     url: doc.url.clone(),
                     discovered_count,
-                    meta: None
+                    meta: doc.meta.clone(),
                 };
-                if let Some(m) = doc.meta.clone() {
-                    progress.meta = Some(m);
-                }
                 yield progress;
                 let semantic = self.semantic.clone();
                 let u = url.clone();
@@ -530,6 +534,20 @@ impl scraper::Document {
             payload.insert("header".to_owned(), section.header.unwrap_or("").into());
             payload.insert("ancestry_text".to_owned(), section.ancestry_str().into());
             payload.insert("ancestry".to_owned(), section.ancestry.into());
+
+            // doc meta
+            payload.insert(
+                "doc_title".to_owned(),
+                self.meta.title.as_deref().unwrap_or("").into(),
+            );
+            payload.insert(
+                "doc_description".to_owned(),
+                self.meta.description.as_deref().unwrap_or("").into(),
+            );
+            payload.insert(
+                "doc_favicon".to_owned(),
+                self.meta.icon.as_deref().unwrap_or("").into(),
+            );
             PointStruct {
                 id: Some(PointId {
                     point_id_options: Some(PointIdOptions::Uuid(uuid::Uuid::new_v4().to_string())),
@@ -611,8 +629,10 @@ impl SearchResult {
 pub struct PageResult {
     pub doc_id: i64,
     pub doc_source: url::Url,
+    pub doc_title: String,
+    pub doc_description: String,
+    pub doc_favicon: String,
     pub relative_url: String,
-    pub title: String,
 }
 
 impl PageResult {
@@ -622,12 +642,16 @@ impl PageResult {
             .as_str()
             .and_then(|s| url::Url::parse(s).ok())?;
         let relative_url = payload["relative_url"].as_str().map(ToOwned::to_owned)?;
-        let title = format!("{} - placeholder", relative_url.clone());
+        let doc_title = payload["doc_title"].as_str().map(ToOwned::to_owned)?;
+        let doc_description = payload["doc_description"].as_str().map(ToOwned::to_owned)?;
+        let doc_favicon = payload["doc_favicon"].as_str().map(ToOwned::to_owned)?;
         Some(Self {
             doc_id,
             doc_source,
+            doc_title,
+            doc_description,
+            doc_favicon,
             relative_url,
-            title,
         })
     }
 }
