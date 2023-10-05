@@ -1,54 +1,18 @@
-import React, {
-  Dispatch,
-  memo,
-  SetStateAction,
-  useCallback,
-  useContext,
-  useMemo,
-} from 'react';
-import { Remarkable } from 'remarkable';
-import { highlightCode } from '../../../utils/prism';
-import { DeviceContext } from '../../../context/deviceContext';
+import React, { Dispatch, memo, SetStateAction } from 'react';
 import Checkbox from '../../../components/Checkbox';
-
-const md = new Remarkable({
-  html: true,
-  highlight(str: string, lang: string): string {
-    try {
-      return highlightCode(str, lang);
-    } catch (err) {
-      console.log(err);
-      return '';
-    }
-  },
-  linkTarget: '__blank',
-});
+import RenderedSection from '../AddDocsModal/RenderedSection';
 
 type Props = {
   text: string;
+  point_id: string;
   isSelected: boolean;
   setSelected: Dispatch<SetStateAction<boolean>>;
 };
 
-const DocSection = ({ text, isSelected, setSelected }: Props) => {
-  const { openLink } = useContext(DeviceContext);
-
-  const markdown = useMemo(() => md.render(text), [text]);
-
-  const handleClick = useCallback(
-    (e: React.MouseEvent) => {
-      // @ts-ignore
-      const { href } = e.target;
-      if (href) {
-        e.preventDefault();
-        openLink(href);
-      }
-    },
-    [openLink],
-  );
-
+const DocSection = ({ text, isSelected, setSelected, point_id }: Props) => {
   return (
     <div
+      data-section-id={point_id}
       className={`body-s ${
         isSelected
           ? 'bg-bg-main/15 opacity-100'
@@ -57,14 +21,7 @@ const DocSection = ({ text, isSelected, setSelected }: Props) => {
     >
       <Checkbox
         checked={isSelected}
-        label={
-          <div className="body-s overflow-x-auto doc-section">
-            <div
-              dangerouslySetInnerHTML={{ __html: markdown }}
-              onClick={handleClick}
-            />
-          </div>
-        }
+        label={<RenderedSection text={text} />}
         isBoxAtTop
         boxClassName="relative top-1"
         onChange={setSelected}

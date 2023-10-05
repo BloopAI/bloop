@@ -14,23 +14,28 @@ import { useArrowKeyNavigation } from '../../../hooks/useArrowNavigationHook';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
 import {
   getIndexedDocs,
-  indexDocsUrl,
-  searchIndexedDocs,
+  searchDocSections,
   verifyDocsUrl,
 } from '../../../services/api';
 import Button from '../../../components/Button';
 import LiteLoaderContainer from '../../../components/Loaders/LiteLoader';
 import { Magazine, Paper, RepositoryFilled, WarningSign } from '../../../icons';
-import { DocShortType } from '../../../types/api';
+import { DocSectionType, DocShortType } from '../../../types/api';
 import StepItem from '../AddContextModal/StepItem';
 import { DeviceContext } from '../../../context/deviceContext';
 import IndexedDocRow from './IndexedDocRow';
 import CommandIndicator from './CommandIndicator';
+import RenderedSection from './RenderedSection';
 
 type Props = {
   isVisible: boolean;
   onClose: () => void;
-  onSubmit: (id: string, name: string, url: string) => void;
+  onSubmit: (
+    id: string,
+    name: string,
+    url: string,
+    selectedSection?: string,
+  ) => void;
 };
 
 const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
@@ -47,6 +52,9 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
   const [indexedDocs, setIndexedDocs] = useState<DocShortType[]>([]);
   const [filteredDocs, setFilteredDocs] = useState<DocShortType[]>([]);
   const [indexedPages, setIndexedPages] = useState<DocShortType[]>([]);
+  const [filteredSections, setFilteredSections] = useState<DocSectionType[]>(
+    [],
+  );
   const containerRef = useArrowKeyNavigation();
   const { apiUrl } = useContext(DeviceContext);
 
@@ -67,10 +75,7 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
 
   useEffect(() => {
     if (selectedProvider) {
-      searchIndexedDocs(selectedProvider.id, docsUrl).then((resp) => {
-        console.log(resp);
-        setIndexedPages(resp);
-      });
+      // get all pages request
     }
   }, [selectedProvider, docsUrl]);
 
@@ -82,16 +87,24 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
 
   const handleDocUrlChange = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
-      setDocsUrl(e.target.value);
-      setFilteredDocs(
-        indexedDocs.filter(
-          (d) =>
-            d.name?.toLowerCase().includes(e.target.value.toLowerCase()) ||
-            d.url?.toLowerCase().startsWith(e.target.value.toLowerCase()),
-        ),
-      );
+      const newValue = e.target.value;
+      setDocsUrl(newValue);
+      if (step === 0) {
+        setFilteredDocs(
+          indexedDocs.filter(
+            (d) =>
+              d.name?.toLowerCase().includes(newValue.toLowerCase()) ||
+              d.url?.toLowerCase().startsWith(newValue.toLowerCase()),
+          ),
+        );
+      } else {
+        searchDocSections(selectedProvider!.id, newValue).then((resp) => {
+          console.log(resp);
+          setFilteredSections(resp);
+        });
+      }
     },
-    [indexedDocs],
+    [indexedDocs, step, selectedProvider?.id],
   );
 
   const handleUrlSubmit = useCallback(
@@ -142,8 +155,8 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
   );
 
   const handleDocSubmit = useCallback(
-    (id: string, name: string, url: string) => {
-      onSubmit(id, name, url);
+    (id: string, name: string, url: string, selectedSection?: string) => {
+      onSubmit(id, name, url, selectedSection);
       onClose();
     },
     [onClose, onSubmit],
@@ -262,7 +275,29 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
               );
             })
           ) : (
-            <div>step 1</div>
+            <div className="w-full break-word">
+              {docsUrl ? (
+                <div className="flex flex-col divide-y divide-bg-border">
+                  {filteredSections.map((s) => (
+                    <a
+                      href="#"
+                      key={s.point_id}
+                      className="px-4 py-4 w-full"
+                      onClick={() =>
+                        handleDocSubmit(
+                          selectedProvider!.id,
+                          selectedProvider!.name,
+                          s.relative_url,
+                          s.point_id,
+                        )
+                      }
+                    >
+                      <RenderedSection text={s.text} />
+                    </a>
+                  ))}
+                </div>
+              ) : null}
+            </div>
           )}
         </div>
         <div className="flex justify-between items-center gap-1 py-3 px-4 border-t border-bg-border bg-bg-base">

@@ -405,15 +405,15 @@ export const verifyDocsUrl = (url: string) =>
   http('/docs/verify', { params: { url } }).then((r) => r.data);
 export const getIndexedDocs = (): Promise<DocShortType[]> =>
   http('/docs').then((r) => r.data);
-export const searchIndexedDocs = (
+export const searchDocSections = (
   id: string,
   q: string,
-): Promise<DocShortType[]> =>
+): Promise<DocSectionType[]> =>
   http(`/docs/${id}/search`, { params: { q, limit: 20 } }).then((r) => r.data);
 export const getDocSections = (
   id: string,
   url: string,
 ): Promise<DocSectionType[]> =>
   http(`/docs/${id}/fetch`, {
-    params: { relative_url: '?activeTab=dependents' },
+    params: { relative_url: url },
   }).then((r) => r.data);

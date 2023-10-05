@@ -112,12 +112,15 @@ const ContentContainer = ({
     [],
   );
 
-  const onDocSelected = useCallback((id: string, name: string, url: string) => {
-    setLeftPanel({
-      type: StudioLeftPanelType.DOCS,
-      data: { id, name, url, isDocInContext: false },
-    });
-  }, []);
+  const onDocSelected = useCallback(
+    (id: string, name: string, url: string, selectedSection?: string) => {
+      setLeftPanel({
+        type: StudioLeftPanelType.DOCS,
+        data: { id, name, url, isDocInContext: false, selectedSection },
+      });
+    },
+    [],
+  );
 
   const onFileRangesChanged = useCallback(
     (

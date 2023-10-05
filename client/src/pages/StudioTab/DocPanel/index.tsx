@@ -17,6 +17,7 @@ import { DocsSection, Magazine } from '../../../icons';
 import TokensUsageBadge from '../TokensUsageBadge';
 import { getDocSections } from '../../../services/api';
 import { DocSectionType } from '../../../types/api';
+import { findElementInCurrentTab } from '../../../utils/domUtils';
 import SectionsBadge from './SectionsBadge';
 import DocSection from './DocSection';
 
@@ -24,6 +25,7 @@ type Props = {
   isActiveTab: boolean;
   isDocInContext: boolean;
   initialSections?: string[];
+  selectedSection?: string;
   setLeftPanel: Dispatch<SetStateAction<StudioLeftPanelDataType>>;
   id: string;
   name: string;
@@ -44,6 +46,7 @@ const DocPanel = ({
   isDocInContext,
   initialSections,
   onSectionsChanged,
+  selectedSection,
 }: Props) => {
   useTranslation();
   const [selectedSections, setSelectedSections] = useState(
@@ -59,6 +62,15 @@ const DocPanel = ({
       });
     }
   }, [isActiveTab, id, url]);
+
+  useEffect(() => {
+    if (selectedSection && sections.length) {
+      setSelectedSections((prev) => [...prev, selectedSection]);
+      findElementInCurrentTab(
+        `[data-section-id="${selectedSection}"]`,
+      )?.scrollIntoView();
+    }
+  }, [selectedSection, sections.length]);
 
   const onCancel = useCallback(() => {
     setLeftPanel({ type: StudioLeftPanelType.CONTEXT });
@@ -76,7 +88,7 @@ const DocPanel = ({
           <div className="flex items-center p-1 rounded border border-bg-border bg-bg-base">
             <Magazine raw sizeClassName="w-4 h-4" />
           </div>
-          <p className="body-s-strong text-label-title">{name}</p>
+          <p className="body-s-strong text-label-title ellipsis">{name}</p>
           <SectionsBadge sections={selectedSections} />
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
