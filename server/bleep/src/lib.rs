@@ -390,12 +390,12 @@ impl Application {
                 .expect("encryption failed");
 
             (
-                base64::engine::general_purpose::STANDARD_NO_PAD.encode(serialized),
-                base64::engine::general_purpose::STANDARD_NO_PAD.encode(tag),
+                base64::engine::general_purpose::URL_SAFE.encode(serialized),
+                base64::engine::general_purpose::URL_SAFE.encode(tag),
             )
         };
 
-        base64::engine::general_purpose::STANDARD_NO_PAD.encode(
+        base64::engine::general_purpose::URL_SAFE.encode(
             serde_json::to_vec(&serde_json::json!({
             "org": self.config.bloop_instance_org.as_ref().expect("bad config"),
             "n": nonce_str,
