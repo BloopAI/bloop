@@ -452,6 +452,21 @@ async fn token_counts(
         },
     });
 
+    let total = {
+        let llm_context = generate_llm_context(app.clone(), context).await?;
+        let system_prompt = tiktoken_rs::ChatCompletionRequestMessage {
+            role: "system".to_owned(),
+            content: prompts::studio_article_prompt(&llm_context),
+            name: None,
+        };
+
+        let llm_messages = iter::once(system_prompt)
+            .chain(tiktoken_messages.clone())
+            .collect::<Vec<_>>();
+
+        tiktoken_rs::num_tokens_from_messages(LLM_GATEWAY_MODEL, &llm_messages).unwrap()
+    };
+
     let messages = tiktoken_rs::num_tokens_from_messages(
         LLM_GATEWAY_MODEL,
         &iter::once(empty_system_message)
@@ -461,7 +476,7 @@ async fn token_counts(
     .unwrap();
 
     Ok(TokenCounts {
-        total: per_file.iter().flatten().sum::<usize>() + messages,
+        total,
         messages,
         per_file,
     })
@@ -565,7 +580,7 @@ pub async fn generate(
             .with_payload("messages", &messages),
     );
 
-    let llm_context = generate_llm_context((*app).clone(), context).await?;
+    let llm_context = generate_llm_context((*app).clone(), &context).await?;
     let system_prompt = prompts::studio_article_prompt(&llm_context);
     let llm_messages = iter::once(llm_gateway::api::Message::system(&system_prompt))
         .chain(messages.iter().map(llm_gateway::api::Message::from))
@@ -629,7 +644,7 @@ pub async fn generate(
     Ok(Sse::new(Box::pin(stream)))
 }
 
-async fn generate_llm_context(app: Application, context: Vec<ContextFile>) -> Result<String> {
+async fn generate_llm_context(app: Application, context: &[ContextFile]) -> Result<String> {
     let mut s = String::new();
 
     s += "##### PATHS #####\n";
