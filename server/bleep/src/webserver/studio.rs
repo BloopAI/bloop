@@ -556,7 +556,12 @@ async fn token_counts(
     .unwrap();
 
     Ok(TokenCounts {
-        total: per_file.iter().flatten().sum::<usize>() + messages,
+        total: per_file
+            .iter()
+            .flatten()
+            .chain(per_doc_file.iter().flatten())
+            .sum::<usize>()
+            + messages,
         messages,
         per_file,
         per_doc_file,
