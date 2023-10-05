@@ -30,6 +30,7 @@ type Props = {
   id: string;
   name: string;
   url: string;
+  baseUrl: string;
   onSectionsChanged: (
     selectedSections: string[],
     id: string,
@@ -40,6 +41,7 @@ type Props = {
 const DocPanel = ({
   id,
   setLeftPanel,
+  baseUrl,
   url,
   name,
   isActiveTab,
@@ -116,7 +118,10 @@ const DocPanel = ({
       </div>
       <div className="flex px-8 py-2 items-center justify-between gap-2 border-b border-bg-border bg-bg-sub text-label-base overflow-x-auto flex-shrink-0">
         <div className="flex items-center gap-1.5 caption text-label-link ellipsis">
-          <p>{url}</p>
+          <p>
+            {baseUrl}
+            {url}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <TokensUsageBadge tokens={tokenCount} />
@@ -129,14 +134,7 @@ const DocPanel = ({
               key={s.point_id}
               {...s}
               isSelected={selectedSections.includes(s.point_id)}
-              setSelected={(b) =>
-                setSelectedSections((prev) => {
-                  if (b) {
-                    return [...prev, s.point_id];
-                  }
-                  return prev.filter((r) => r !== s.point_id);
-                })
-              }
+              setSelectedSections={setSelectedSections}
             />
           );
         })}

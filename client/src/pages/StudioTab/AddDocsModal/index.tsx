@@ -33,6 +33,7 @@ type Props = {
   onSubmit: (
     id: string,
     name: string,
+    baseUrl: string,
     url: string,
     selectedSection?: string,
   ) => void;
@@ -155,8 +156,14 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
   );
 
   const handleDocSubmit = useCallback(
-    (id: string, name: string, url: string, selectedSection?: string) => {
-      onSubmit(id, name, url, selectedSection);
+    (
+      id: string,
+      name: string,
+      baseUrl: string,
+      url: string,
+      selectedSection?: string,
+    ) => {
+      onSubmit(id, name, baseUrl, url, selectedSection);
       onClose();
     },
     [onClose, onSubmit],
@@ -287,6 +294,7 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
                         handleDocSubmit(
                           selectedProvider!.id,
                           selectedProvider!.name,
+                          selectedProvider!.url,
                           s.relative_url,
                           s.point_id,
                         )

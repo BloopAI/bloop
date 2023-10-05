@@ -113,10 +113,23 @@ const ContentContainer = ({
   );
 
   const onDocSelected = useCallback(
-    (id: string, name: string, url: string, selectedSection?: string) => {
+    (
+      id: string,
+      name: string,
+      baseUrl: string,
+      url: string,
+      selectedSection?: string,
+    ) => {
       setLeftPanel({
         type: StudioLeftPanelType.DOCS,
-        data: { id, name, url, isDocInContext: false, selectedSection },
+        data: {
+          id,
+          name,
+          baseUrl,
+          url,
+          isDocInContext: false,
+          selectedSection,
+        },
       });
     },
     [],

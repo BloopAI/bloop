@@ -33,8 +33,10 @@ const Checkbox = ({
       } flex gap-2 ${
         description || isBoxAtTop ? 'items-start' : 'items-center'
       } group-custom w-full focus:outline-none focus:outline-0 outline-none`}
-      onClick={() => {
+      onClick={(e) => {
         if (!disabled) {
+          e.stopPropagation();
+          console.log('onChange', !checked);
           onChange(!checked);
         }
       }}

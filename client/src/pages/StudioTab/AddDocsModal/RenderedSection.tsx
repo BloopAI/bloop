@@ -31,6 +31,7 @@ const RenderedSection = ({ text }: Props) => {
       const { href } = e.target;
       if (href) {
         e.preventDefault();
+        e.stopPropagation();
         openLink(href);
       }
     },

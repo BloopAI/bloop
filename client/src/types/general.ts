@@ -386,6 +386,7 @@ export type DocsStudioPanelType = {
     id: string;
     name: string;
     url: string;
+    baseUrl: string;
     selectedSection?: string;
     isDocInContext: boolean;
     initialSections?: string[];
