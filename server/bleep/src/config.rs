@@ -141,15 +141,19 @@ pub struct Configuration {
     // Cognito setup
     //
     /// Cognito userpool_id
+    #[clap(long)]
     pub cognito_userpool_id: Option<String>,
 
     /// Cognito client_id
+    #[clap(long)]
     pub cognito_client_id: Option<String>,
 
     /// Entry point to the Cognito authentication flow
+    #[clap(long)]
     pub cognito_auth_url: Option<reqwest::Url>,
 
     /// Auth management base URL
+    #[clap(long)]
     pub cognito_mgmt_url: Option<reqwest::Url>,
 
     //
