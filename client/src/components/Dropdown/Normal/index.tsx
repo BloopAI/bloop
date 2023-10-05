@@ -1,4 +1,4 @@
-import React, { ReactNode, useEffect, useRef, useState } from 'react';
+import React, { memo, ReactNode, useEffect, useRef, useState } from 'react';
 import { ChevronDownFilled, ChevronUpFilled } from '../../../icons';
 import TextField from '../../TextField';
 import ContextMenu, { ContextMenuItem } from '../../ContextMenu';
@@ -26,6 +26,7 @@ const Dropdown = ({
 }: Props) => {
   const [visible, setVisibility] = useState(false);
   const [selectedItem, setSelectedItem] = useState(selected);
+  const [isMounted, setMounted] = useState(false);
   const ref = useRef(null);
   useOnClickOutside(ref, () => setVisibility(false));
 
@@ -33,14 +34,13 @@ const Dropdown = ({
     setSelectedItem(selected);
   }, [selected]);
 
-  const handleSelect = (item: ContextMenuItem) => {
-    setSelectedItem(item);
-    setVisibility(false);
-  };
-
   useEffect(() => {
-    if (!visible && onClose) {
+    if (visible) {
+      setMounted(true);
+    }
+    if (!visible && onClose && isMounted) {
       onClose();
+      setMounted(false);
     }
   }, [visible]);
 
@@ -83,4 +83,4 @@ const Dropdown = ({
     </div>
   );
 };
-export default Dropdown;
+export default memo(Dropdown);

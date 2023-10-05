@@ -31,9 +31,6 @@ export const GeneralUiContextProvider = memo(
   ({ children, activeTab }: PropsWithChildren<Props>) => {
     const [isSettingsOpen, setSettingsOpen] = useState(false);
     const [isBugReportModalOpen, setBugReportModalOpen] = useState(false);
-    const [settingsSection, setSettingsSection] = useState(
-      SettingSections.GENERAL,
-    );
     const [onBoardingState, setOnBoardingState] = usePersistentState(
       {},
       'onBoardingState',
@@ -108,10 +105,8 @@ export const GeneralUiContextProvider = memo(
       () => ({
         isSettingsOpen,
         setSettingsOpen,
-        settingsSection,
-        setSettingsSection,
       }),
-      [isSettingsOpen, settingsSection],
+      [isSettingsOpen],
     );
 
     const onboardingContextValue = useMemo(

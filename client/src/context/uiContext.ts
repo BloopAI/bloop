@@ -6,8 +6,6 @@ export const UIContext = {
   Settings: createContext({
     isSettingsOpen: false,
     setSettingsOpen: (b: boolean) => {},
-    settingsSection: 0,
-    setSettingsSection: (n: number) => {},
   }),
   Symbols: createContext({
     symbolsCollapsed: true,

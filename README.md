@@ -3,40 +3,43 @@
   <img alt="bloop logo" src="https://assets.bloop.ai/bloop_github_logo_light.png">
 </picture>
 
-bloop is a developer assistant that uses GPT-4 to answer questions about your codebase. The agent searches both your local and remote repositories with natural language, regex and filtered queries.
+bloop is ChatGPT for your code. Ask questions in natural language, search for code and generate patches using your existing codebase as context. 
 
-Some of the ways engineers use bloop to improve their efficiency when working on large codebases:
-- Summarising how large files work and how multiple files work together
-- Understand how to use open source libraries when documentation is lacking
-- Identify the origin of errors
+Engineers are increasing their productivity by using bloop to:
+- Explain how files or features work in simple language
+- Write new features, using their code as context
+- Understand how to use poorly documented open source libraries
+- Pinpoint errors
 - Ask questions about English language codebases in other languages
 - Reduce code duplication by checking for existing functionality
-- Write new code, taking into account existing codebase context (eg: "write a dockerfile for this project")
 
+https://github.com/BloopAI/bloop/assets/7957964/01db3ccb-4af0-49a0-92d6-5a9c42357a51
 
 ## Features
 
 - GPT-4 based conversational search
+- Code Studio, an LLM playground that uses your code as context
 - Blazing fast regex search
 - Sync your local and GitHub repositories (support for more code hosts coming soon!)
 - Sophisticated query filters so you can narrow down your results
 - Find functions, variables or traits with symbol search
 - Precise code navigation (go-to-reference and go-to-definition) for 10+ of the most popular languages built with [Tree-sitter](https://tree-sitter.github.io/tree-sitter/)
+- Privacy focussed on-device embedding for semantic search
 
 bloop stands on the shoulders of the Rust ecosystem. Our search indexes are powered by [Tantivy](https://github.com/quickwit-oss/tantivy) and [Qdrant](https://github.com/qdrant/qdrant), and our multi-platform app is built with [Tauri](https://github.com/tauri-apps/tauri).
 
-![code search demo](https://assets.bloop.ai/github_auth_4k.gif)
+https://github.com/BloopAI/bloop/assets/7957964/93715188-d8d5-477b-8cd1-95d9cbd368cb
 
 ## Get Started
 
-The simplest way to get started with bloop is to [download the app](https://github.com/BloopAI/bloop/releases) and follow the onboarding steps. Checkout our [getting started guide](https://bloop.ai/docs/getting-started) and our references for [conversational](https://bloop.ai/docs/natural-language-queries) and [regex](https://bloop.ai/docs/regex-queries) search.
+The simplest way to get started with bloop is to [download the app](https://github.com/BloopAI/bloop/releases) and follow the onboarding steps. Checkout our [getting started guide](https://bloop.ai/docs/getting-started) and our references for [conversational](https://bloop.ai/docs/natural-language-queries) and [regex](https://bloop.ai/docs/regex-queries) search and [Code Studio](https://bloop.ai/docs/code-studio).
 
 For instructions on how to build from source or run bloop from the command line, check out these pages:
 
 - [Build bloop app from source](./apps/desktop/README.md)
 - [Run bloop from the command line](./server/README.md)
 
-Note that it is currently _not_ possible to run conversational GPT-4 search where bloop has been built from source (we're working on this). You can run regex searches and use code-navigation.
+Note that it is currently _not_ possible to use conversational GPT-4 search where bloop has been built from source (we're working on this). You can run regex searches and use code-navigation.
 
 If you encounter any index issues you can wipe the bloop cache and reindex. Instructions on how to do this on different platforms [are here](./apps/desktop/README.md).
 
@@ -65,9 +68,7 @@ If you find a bug or have a feature request, [open an issue](https://github.com/
 
 ## Privacy
 
-We store as little data as possible. Opting in now to send telemetry to bloop helps us identify bugs and make data-driven product decisions. This option sends us crash reports, logs and high level information about feature usage (so we can tell that a search was made, but we wouldn't be able to see the query or results). If you change your mind, you can always disable this later in Settings!
-
-You can read our full privacy policy [here](https://bloop.ai/privacy).
+We store as little data as possible. We use telemetry to helps us identify bugs and make data-driven product decisions. You can read our full privacy policy [here](https://bloop.ai/privacy).
 
 ## License
 
