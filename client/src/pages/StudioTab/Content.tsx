@@ -419,6 +419,7 @@ const ContentContainer = ({
                   contextFiles={stateToShow.context}
                   contextDocs={stateToShow.doc_context}
                   tokensPerFile={stateToShow.token_counts?.per_file || []}
+                  tokensPerDoc={stateToShow.token_counts?.per_doc_file || []}
                   onFileRemove={onFileRemove}
                   onFileHide={onFileHide}
                   onDocRemove={onDocRemove}

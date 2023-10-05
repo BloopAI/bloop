@@ -19,7 +19,7 @@ import {
 } from '../../../services/api';
 import Button from '../../../components/Button';
 import LiteLoaderContainer from '../../../components/Loaders/LiteLoader';
-import { Magazine, Paper, RepositoryFilled, WarningSign } from '../../../icons';
+import { Magazine, Paper, WarningSign } from '../../../icons';
 import { DocSectionType, DocShortType } from '../../../types/api';
 import StepItem from '../AddContextModal/StepItem';
 import { DeviceContext } from '../../../context/deviceContext';

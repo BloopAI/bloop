@@ -29,6 +29,7 @@ type Props = {
   contextFiles: StudioContextFile[];
   contextDocs: StudioContextDoc[];
   tokensPerFile: (number | null)[];
+  tokensPerDoc: number[];
   onFileRemove: (
     f:
       | { path: string; repo: string; branch: string | null }
@@ -69,6 +70,7 @@ const ContextPanel = ({
   contextFiles,
   contextDocs,
   tokensPerFile,
+  tokensPerDoc,
   onFileRemove,
   onFileHide,
   onFileAdded,
@@ -251,14 +253,14 @@ const ContextPanel = ({
               </div>
             </div>
           )}
-          {contextDocs.map((d) => (
+          {contextDocs.map((d, i) => (
             <ContextDocRow
               key={d.relative_url}
               onDocRemove={onDocRemove}
               onDocHide={onDocHide}
               isPreviewing={isPreviewing}
               setLeftPanel={setLeftPanel}
-              tokens={null}
+              tokens={tokensPerDoc[i]}
               {...d}
             />
           ))}

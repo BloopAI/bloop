@@ -268,6 +268,7 @@ export type CodeStudioType = {
   token_counts: {
     total: number;
     per_file: (number | null)[];
+    per_doc_file: number[];
     messages: number;
   };
 };
