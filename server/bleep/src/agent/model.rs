@@ -20,7 +20,7 @@ pub struct AnswerModel {
 
 pub const GPT_3_5_TURBO_FINETUNED: AnswerModel = AnswerModel {
     tokenizer: "gpt-3.5-turbo-0613",
-    model_name: "gpt-3.5-turbo-finetuned",
+    model_name: "code-chat-bison",
     answer_headroom: 512,
     prompt_headroom: 1600,
     history_headroom: 1024,
