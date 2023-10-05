@@ -76,14 +76,16 @@ const WaitingUpgradePopup = ({}: Props) => {
             <div className="flex flex-col items-center gap-8 px-6 py-8 text-label-title">
               <div className="flex flex-col gap-3 items-center text-center">
                 <h4 className="h4 text-label-title">
-                  <Trans>Thank you for your purchase!</Trans>
+                  <Trans>You&apos;ve upgraded your account!</Trans>
                 </h4>
                 <p className="body-s text-label-base">
-                  <Trans>You&apos;ve successfully upgraded your plan.</Trans>
+                  <Trans>
+                    Unlimited usage and premium features are activated.
+                  </Trans>
                 </p>
               </div>
               <Button onClick={() => setWaitingUpgradePopupOpen(false)}>
-                <Trans>Got it!</Trans>
+                <Trans>Let&apos;s go</Trans>
               </Button>
             </div>
           </>
