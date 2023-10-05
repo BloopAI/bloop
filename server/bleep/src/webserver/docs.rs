@@ -20,6 +20,11 @@ pub struct Sync {
 }
 
 #[derive(serde::Deserialize)]
+pub struct List {
+    limit: u32,
+}
+
+#[derive(serde::Deserialize)]
 pub struct Search {
     pub q: Option<String>,
     pub limit: u64,
@@ -94,8 +99,9 @@ pub async fn search(
 pub async fn list_with_id(
     State(app): State<Application>,
     Path(id): Path<i64>,
+    Query(params): Query<List>,
 ) -> Result<Json<Vec<doc::PageResult>>> {
-    Ok(Json(app.indexes.doc.list_with_id(100, id).await?))
+    Ok(Json(app.indexes.doc.list_with_id(params.limit, id).await?))
 }
 
 pub async fn fetch(

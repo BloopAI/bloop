@@ -317,12 +317,16 @@ impl Doc {
             .result
             .ok_or(Error::Qdrant(anyhow::anyhow!("empty search result field")))?;
 
-        Ok(data
+        let mut data = data
             .groups
             .into_iter()
             .flat_map(|s| s.hits)
             .filter_map(|s| PageResult::from_qdrant(s.payload))
-            .collect())
+            .collect::<Vec<_>>();
+
+        data.sort_by(|a, b| a.relative_url.cmp(&b.relative_url));
+
+        Ok(data)
     }
 
     /// Fetch all sections of a page, in order
@@ -582,6 +586,7 @@ pub struct PageResult {
     pub doc_id: i64,
     pub doc_source: url::Url,
     pub relative_url: String,
+    pub title: String,
 }
 
 impl PageResult {
@@ -591,10 +596,12 @@ impl PageResult {
             .as_str()
             .and_then(|s| url::Url::parse(s).ok())?;
         let relative_url = payload["relative_url"].as_str().map(ToOwned::to_owned)?;
+        let title = format!("{} - placeholder", relative_url.clone());
         Some(Self {
             doc_id,
             doc_source,
             relative_url,
+            title,
         })
     }
 }
