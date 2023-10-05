@@ -232,7 +232,7 @@ impl Doc {
             "
             SELECT id, name, url, description, favicon, modified_at
             FROM docs 
-            WHERE name LIKE ?
+            WHERE name LIKE $1 OR description LIKE $1 OR url LIKE $1
             LIMIT ?
             ",
             q,
@@ -254,8 +254,8 @@ impl Doc {
             .collect())
     }
 
-    /// Search in given doc source
-    pub async fn search_with_id(
+    /// Search for pages in a given doc source
+    pub async fn search_sections(
         &self,
         q: String,
         limit: u64,
@@ -292,8 +292,34 @@ impl Doc {
             .collect())
     }
 
+    pub async fn list_sections(&self, limit: u32, id: i64) -> Result<Vec<SearchResult>, Error> {
+        let data = self
+            .semantic
+            .qdrant_client()
+            .scroll(&ScrollPoints {
+                collection_name: COLLECTION_NAME.into(),
+                limit: Some(limit),
+                filter: Some(Filter {
+                    must: vec![make_kv_int_filter("doc_id", id).into()],
+                    ..Default::default()
+                }),
+                with_payload: Some(WithPayloadSelector {
+                    selector_options: Some(with_payload_selector::SelectorOptions::Enable(true)),
+                }),
+                ..Default::default()
+            })
+            .await
+            .map_err(Error::Qdrant)?
+            .result;
+
+        Ok(data
+            .into_iter()
+            .filter_map(|s| SearchResult::from_qdrant(s.id.unwrap(), s.payload))
+            .collect())
+    }
+
     /// Scroll pages in a doc
-    pub async fn list_with_id(&self, limit: u32, id: i64) -> Result<Vec<PageResult>, Error> {
+    pub async fn list_pages(&self, limit: u32, id: i64) -> Result<Vec<PageResult>, Error> {
         let data = self
             .semantic
             .qdrant_client()

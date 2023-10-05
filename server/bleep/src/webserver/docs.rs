@@ -96,12 +96,33 @@ pub async fn search(
     }))
 }
 
+pub async fn search_with_id(
+    State(app): State<Application>,
+    Path(id): Path<i64>,
+    Query(params): Query<Search>,
+) -> Result<Json<Vec<doc::SearchResult>>> {
+    Ok(Json(match params.q {
+        Some(query) => {
+            app.indexes
+                .doc
+                .search_sections(query, params.limit, id)
+                .await?
+        }
+        None => {
+            app.indexes
+                .doc
+                .list_sections(params.limit as u32, id)
+                .await?
+        }
+    }))
+}
+
 pub async fn list_with_id(
     State(app): State<Application>,
     Path(id): Path<i64>,
     Query(params): Query<List>,
 ) -> Result<Json<Vec<doc::PageResult>>> {
-    Ok(Json(app.indexes.doc.list_with_id(params.limit, id).await?))
+    Ok(Json(app.indexes.doc.list_pages(params.limit, id).await?))
 }
 
 pub async fn fetch(

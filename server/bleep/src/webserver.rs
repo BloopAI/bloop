@@ -60,15 +60,16 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         .nest(
             "/docs",
             Router::new()
-                .route("/", get(docs::list))
-                .route("/:id", get(docs::list_one))
-                .route("/:id", delete(docs::delete))
-                .route("/:id/resync", get(docs::resync))
-                .route("/:id/list", get(docs::list_with_id))
-                .route("/:id/fetch", get(docs::fetch))
-                .route("/search", get(docs::search))
-                .route("/sync", get(docs::sync))
-                .route("/verify", get(docs::verify)),
+                .route("/", get(docs::list))                     // list all doc providers
+                .route("/search", get(docs::search))             // text search over doc providers
+                .route("/sync", get(docs::sync))                 // index a new doc provider
+                .route("/verify", get(docs::verify))             // verify if a doc url is valid
+                .route("/:id", get(docs::list_one))              // list a doc provider by id
+                .route("/:id", delete(docs::delete))             // delete a doc provider by id
+                .route("/:id/resync", get(docs::resync))         // resync a doc provider by id
+                .route("/:id/search", get(docs::search_with_id)) // search/list sections of a doc provider
+                .route("/:id/list", get(docs::list_with_id))     // list pages of a doc provider
+                .route("/:id/fetch", get(docs::fetch)),          // fetch all sections of a page of a doc provider
         )
         // intelligence
         .route("/tutorial-questions", get(commits::tutorial_questions))
