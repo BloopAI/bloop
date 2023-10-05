@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use async_stream::stream;
 use futures::stream::Stream;
 use select::predicate::Name;
