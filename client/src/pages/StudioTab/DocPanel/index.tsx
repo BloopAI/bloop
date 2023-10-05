@@ -33,8 +33,9 @@ type Props = {
   baseUrl: string;
   onSectionsChanged: (
     selectedSections: string[],
-    id: string,
-    name: string,
+    docId: string,
+    baseUrl: string,
+    relativeUrl: string,
   ) => void;
 };
 
@@ -79,9 +80,9 @@ const DocPanel = ({
   }, [setLeftPanel]);
 
   const onSubmit = useCallback(() => {
-    onSectionsChanged(selectedSections, id, name);
+    onSectionsChanged(selectedSections, id, baseUrl, url);
     setLeftPanel({ type: StudioLeftPanelType.CONTEXT });
-  }, [onSectionsChanged, selectedSections, id, name, setLeftPanel]);
+  }, [onSectionsChanged, selectedSections, id, url, baseUrl, setLeftPanel]);
 
   return (
     <div className="flex flex-col w-full flex-1 overflow-auto relative">

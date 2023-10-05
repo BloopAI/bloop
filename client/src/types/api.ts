@@ -1,5 +1,5 @@
 import { SymbolType, Range, TokenInfoType } from './results';
-import { StudioContextFile } from './general';
+import { StudioContextDoc, StudioContextFile } from './general';
 
 export interface RangeLine {
   byte: number;
@@ -264,6 +264,7 @@ export type CodeStudioType = {
   modified_at: string;
   messages: CodeStudioMessageType[];
   context: StudioContextFile[];
+  doc_context: StudioContextDoc[];
   token_counts: {
     total: number;
     per_file: (number | null)[];

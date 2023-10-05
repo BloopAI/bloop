@@ -7,7 +7,7 @@ import RenderedSection from './RenderedSection';
 
 type Props = {
   docId: string;
-  handleSelectPage: () => void;
+  handleSelectPage: (url: string) => void;
 };
 
 const PagesWithPreview = ({ docId, handleSelectPage }: Props) => {
@@ -43,7 +43,7 @@ const PagesWithPreview = ({ docId, handleSelectPage }: Props) => {
               type="button"
               onMouseOver={() => setPreviewingIndex(i)}
               onFocus={() => setPreviewingIndex(i)}
-              onClick={() => handleSelectPage()}
+              onClick={() => handleSelectPage(p.relative_url)}
               className="flex h-9 px-3 gap-3 items-center justify-between group rounded-6 bg-bg-shade hover:bg-bg-base-hover focus:bg-bg-base-hover focus:outline-0 focus:outline-none w-full cursor-pointer body-s ellipsis flex-shrink-0"
             >
               <div className="body-s text-label-base group-hover:text-label-title group-focus:text-label-title ellipsis flex gap-2 items-center">

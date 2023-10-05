@@ -1,0 +1,130 @@
+import React, { Dispatch, memo, SetStateAction, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
+import {
+  StudioContextDoc,
+  StudioLeftPanelDataType,
+  StudioLeftPanelType,
+} from '../../../types/general';
+import TokensUsageBadge from '../TokensUsageBadge';
+import Button from '../../../components/Button';
+import { Eye, EyeCut, Magazine, TrashCanFilled } from '../../../icons';
+import Tooltip from '../../../components/Tooltip';
+import SectionsBadge from '../DocPanel/SectionsBadge';
+
+type Props = StudioContextDoc & {
+  setLeftPanel: Dispatch<SetStateAction<StudioLeftPanelDataType>>;
+  tokens: number | null;
+  onDocHide: (
+    docId: string,
+    baseUrl: string,
+    relativeUrl: string,
+    hide: boolean,
+  ) => void;
+  onDocRemove: (docId: string, baseUrl: string, relativeUrl: string) => void;
+  isPreviewing: boolean;
+};
+
+const ContextFileRow = ({
+  tokens,
+  ranges,
+  hidden,
+  setLeftPanel,
+  isPreviewing,
+  relative_url,
+  doc_id,
+  doc_source,
+  onDocHide,
+  onDocRemove,
+}: Props) => {
+  const { t } = useTranslation();
+
+  const handleClick = useCallback(() => {
+    setLeftPanel({
+      type: StudioLeftPanelType.DOCS,
+      data: {
+        id: doc_id,
+        isDocInContext: true,
+        baseUrl: doc_source,
+        url: relative_url,
+        name: '',
+        initialSections: ranges,
+      },
+    });
+  }, [doc_id, doc_source, relative_url, ranges]);
+
+  return (
+    <div
+      className="w-full overflow-x-auto border-b border-bg-base bg-bg-sub group cursor-pointer flex-shrink-0 select-none"
+      onClick={handleClick}
+    >
+      <div className={`max-w-full flex gap-2 items-center py-3 px-8`}>
+        <div
+          className={`rounded flex items-center justify-center p-1 bg-bg-base`}
+        >
+          <Magazine />
+        </div>
+        <div className="flex items-center gap-2 flex-1">
+          <p
+            className={`body-s-strong text-label-title ellipsis ${
+              hidden ? 'opacity-30' : ''
+            }`}
+          >
+            <Tooltip
+              text={doc_source + relative_url}
+              placement={'bottom-start'}
+              delay={500}
+            >
+              {relative_url}
+            </Tooltip>
+          </p>
+          <SectionsBadge sections={ranges} />
+        </div>
+        {tokens !== null && tokens !== undefined && (
+          <div className="w-16 flex items-center flex-shrink-0">
+            <TokensUsageBadge tokens={tokens} />
+          </div>
+        )}
+        {!isPreviewing && (
+          <>
+            <Button
+              variant="tertiary"
+              size="tiny"
+              onlyIcon
+              title={hidden ? t('Show file') : t('Hide file')}
+              className={
+                'opacity-50 group-hover:opacity-100 group-focus:opacity-100'
+              }
+              onClick={(e) => {
+                e.stopPropagation();
+                onDocHide(doc_id, doc_source, relative_url, !hidden);
+              }}
+            >
+              {hidden ? (
+                <EyeCut raw sizeClassName="w-3.5 h-3.5" />
+              ) : (
+                <Eye raw sizeClassName="w-3.5 h-3.5" />
+              )}
+            </Button>
+            <Button
+              variant="tertiary"
+              size="tiny"
+              onlyIcon
+              title={t('Remove file')}
+              className={
+                'opacity-50 group-hover:opacity-100 group-focus:opacity-100'
+              }
+              onClick={(e) => {
+                e.stopPropagation();
+                onDocRemove(doc_id, doc_source, relative_url);
+              }}
+            >
+              <TrashCanFilled raw sizeClassName="w-3.5 h-3.5" />
+            </Button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default memo(ContextFileRow);

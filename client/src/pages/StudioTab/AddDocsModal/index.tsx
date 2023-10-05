@@ -38,9 +38,15 @@ type Props = {
     url: string,
     selectedSection?: string,
   ) => void;
+  onDocAdded: (
+    doc_id: string,
+    doc_source: string,
+    relative_url: string,
+    ranges: string[],
+  ) => void;
 };
 
-const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
+const AddDocsModal = ({ isVisible, onClose, onSubmit, onDocAdded }: Props) => {
   const { t } = useTranslation();
   const [step, setStep] = useState(0);
   const [selectedProvider, setSelectedProvider] = useState<DocShortType | null>(
@@ -94,7 +100,6 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
         );
       } else {
         searchDocSections(selectedProvider!.id, newValue).then((resp) => {
-          console.log(resp);
           setFilteredSections(resp);
         });
       }
@@ -163,9 +168,13 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
     [onClose, onSubmit],
   );
 
-  const handleSelectPage = useCallback(() => {
-    onClose();
-  }, []);
+  const handleSelectPage = useCallback(
+    (url: string) => {
+      onDocAdded(selectedProvider!.id, selectedProvider!.url, url, []);
+      onClose();
+    },
+    [selectedProvider],
+  );
 
   return (
     <SeparateOnboardingStep

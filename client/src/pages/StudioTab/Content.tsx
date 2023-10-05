@@ -12,6 +12,7 @@ import ErrorFallback from '../../components/ErrorFallback';
 import PageTemplate from '../../components/PageTemplate';
 import {
   RepoType,
+  StudioContextDoc,
   StudioContextFile,
   StudioLeftPanelDataType,
   StudioLeftPanelType,
@@ -37,6 +38,7 @@ type Props = {
   tab: StudioTabType;
   isActive: boolean;
   currentContext: CodeStudioType['context'];
+  currentDocContext: CodeStudioType['doc_context'];
   currentMessages: CodeStudioType['messages'];
   currentTokenCounts: CodeStudioType['token_counts'];
   refetchCodeStudio: (keyToUpdate?: keyof CodeStudioType) => Promise<void>;
@@ -46,6 +48,7 @@ const ContentContainer = ({
   tab,
   isActive,
   currentContext,
+  currentDocContext,
   currentMessages,
   currentTokenCounts,
   refetchCodeStudio,
@@ -100,6 +103,30 @@ const ContentContainer = ({
       }
     },
     [tab.key, currentContext],
+  );
+  const onDocAdded = useCallback(
+    (
+      doc_id: string,
+      doc_source: string,
+      relative_url: string,
+      ranges: string[],
+    ) => {
+      if (tab.key) {
+        patchCodeStudio(tab.key, {
+          doc_context: [
+            ...currentDocContext,
+            {
+              doc_id,
+              doc_source,
+              relative_url,
+              ranges,
+              hidden: false,
+            },
+          ],
+        }).then(() => refetchCodeStudio());
+      }
+    },
+    [tab.key, currentDocContext],
   );
 
   const onFileSelected = useCallback(
@@ -169,10 +196,35 @@ const ContentContainer = ({
     },
     [tab.key, currentContext],
   );
-
-  const onSectionsChanged = useCallback(() => {
-    console.log('onSectionsChanged');
-  }, [tab.key, currentState.context]);
+  const onDocSectionsChanged = useCallback(
+    (ranges: string[], docId: string, baseUrl: string, relativeUrl: string) => {
+      const patchedDoc = currentDocContext.find(
+        (f) =>
+          f.doc_id === docId &&
+          f.doc_source === baseUrl &&
+          f.relative_url === relativeUrl,
+      );
+      if (!patchedDoc) {
+        onDocAdded(docId, baseUrl, relativeUrl, ranges);
+        return;
+      }
+      if (tab.key && patchedDoc) {
+        patchedDoc.ranges = ranges;
+        const newContext = currentDocContext
+          .filter(
+            (f) =>
+              f.doc_id !== docId ||
+              f.doc_source !== baseUrl ||
+              f.relative_url !== relativeUrl,
+          )
+          .concat(patchedDoc);
+        patchCodeStudio(tab.key, {
+          doc_context: newContext,
+        }).then(() => refetchCodeStudio());
+      }
+    },
+    [tab.key, currentDocContext],
+  );
 
   const onFileHide = useCallback(
     (
@@ -200,6 +252,31 @@ const ContentContainer = ({
     },
     [tab.key, currentContext],
   );
+  const onDocHide = useCallback(
+    (docId: string, baseUrl: string, relativeUrl: string, hide: boolean) => {
+      const patchedDoc = currentDocContext.find(
+        (f) =>
+          f.doc_id === docId &&
+          f.doc_source === baseUrl &&
+          f.relative_url === relativeUrl,
+      );
+      if (tab.key && patchedDoc) {
+        patchedDoc.hidden = hide;
+        const newContext = currentDocContext
+          .filter(
+            (f) =>
+              f.doc_id !== docId ||
+              f.doc_source !== baseUrl ||
+              f.relative_url !== relativeUrl,
+          )
+          .concat(patchedDoc);
+        patchCodeStudio(tab.key, {
+          doc_context: newContext,
+        }).then(() => refetchCodeStudio());
+      }
+    },
+    [tab.key, currentDocContext],
+  );
 
   const onFileRemove = useCallback(
     (
@@ -224,6 +301,26 @@ const ContentContainer = ({
       }).then(() => refetchCodeStudio());
     },
     [tab.key, currentContext],
+  );
+  const onDocRemove = useCallback(
+    (docId: string, baseUrl: string, relativeUrl: string) => {
+      let newContext: StudioContextDoc[] = JSON.parse(
+        JSON.stringify(currentDocContext),
+      );
+      const patchedDoc = currentDocContext.findIndex(
+        (f) =>
+          f.doc_id === docId &&
+          f.doc_source === baseUrl &&
+          f.relative_url === relativeUrl,
+      );
+      if (tab.key && patchedDoc > -1) {
+        newContext = newContext.filter((f, i) => i !== patchedDoc);
+      }
+      patchCodeStudio(tab.key, {
+        doc_context: newContext,
+      }).then(() => refetchCodeStudio());
+    },
+    [tab.key, currentDocContext],
   );
 
   const handlePreview = useCallback(
@@ -263,6 +360,7 @@ const ContentContainer = ({
       ? previewingState
       : {
           context: currentContext,
+          doc_context: currentDocContext,
           messages: currentMessages,
           token_counts: currentTokenCounts,
         };
@@ -319,9 +417,12 @@ const ContentContainer = ({
                   setAddDocsOpen={setAddDocsOpen}
                   studioId={tab.key}
                   contextFiles={stateToShow.context}
+                  contextDocs={stateToShow.doc_context}
                   tokensPerFile={stateToShow.token_counts?.per_file || []}
                   onFileRemove={onFileRemove}
                   onFileHide={onFileHide}
+                  onDocRemove={onDocRemove}
+                  onDocHide={onDocHide}
                   onFileAdded={onFileAdded}
                   isPreviewing={!!previewingState}
                   isActiveTab={isActive}
@@ -341,7 +442,7 @@ const ContentContainer = ({
                   {...leftPanel.data}
                   setLeftPanel={setLeftPanel}
                   isActiveTab={isActive}
-                  onSectionsChanged={onSectionsChanged}
+                  onSectionsChanged={onDocSectionsChanged}
                 />
               ) : null}
               <AddContextModal
@@ -354,6 +455,7 @@ const ContentContainer = ({
                 isVisible={isAddDocsOpen}
                 onClose={handleAddDocsClose}
                 onSubmit={onDocSelected}
+                onDocAdded={onDocAdded}
               />
             </div>
             <div

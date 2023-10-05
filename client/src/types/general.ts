@@ -413,3 +413,11 @@ export type StudioContextFile = {
   branch: string | null;
   hidden: boolean;
 };
+
+export type StudioContextDoc = {
+  doc_id: string;
+  doc_source: string;
+  relative_url: string;
+  ranges: string[];
+  hidden: boolean;
+};

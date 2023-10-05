@@ -13,11 +13,13 @@ import { CodeStudioColored, Magazine, PlusSignInCircle } from '../../../icons';
 import KeyboardChip from '../KeyboardChip';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
 import {
+  StudioContextDoc,
   StudioContextFile,
   StudioLeftPanelDataType,
 } from '../../../types/general';
 import { RepositoriesContext } from '../../../context/repositoriesContext';
 import ContextFileRow from './ContextFileRow';
+import ContextDocRow from './ContextDocRow';
 
 type Props = {
   setLeftPanel: Dispatch<SetStateAction<StudioLeftPanelDataType>>;
@@ -25,6 +27,7 @@ type Props = {
   setAddDocsOpen: Dispatch<SetStateAction<boolean>>;
   studioId: string;
   contextFiles: StudioContextFile[];
+  contextDocs: StudioContextDoc[];
   tokensPerFile: (number | null)[];
   onFileRemove: (
     f:
@@ -43,6 +46,13 @@ type Props = {
     filePath: string,
     ranges?: { start: number; end: number }[],
   ) => void;
+  onDocHide: (
+    docId: string,
+    baseUrl: string,
+    relativeUrl: string,
+    hide: boolean,
+  ) => void;
+  onDocRemove: (docId: string, baseUrl: string, relativeUrl: string) => void;
   isPreviewing: boolean;
   isActiveTab: boolean;
 };
@@ -57,10 +67,13 @@ const ContextPanel = ({
   setLeftPanel,
   setAddContextOpen,
   contextFiles,
+  contextDocs,
   tokensPerFile,
   onFileRemove,
   onFileHide,
   onFileAdded,
+  onDocHide,
+  onDocRemove,
   isPreviewing,
   isActiveTab,
   setAddDocsOpen,
@@ -169,7 +182,7 @@ const ContextPanel = ({
           </Button>
         </div>
       </div>
-      {!contextFiles.length ? (
+      {!contextFiles.length && !contextDocs.length ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-3">
           <div className="w-30 h-30">
             <CodeStudioColored />
@@ -228,6 +241,26 @@ const ContextPanel = ({
                 />
               ))}
             </Fragment>
+          ))}
+          {!!contextDocs.length && (
+            <div className="w-full overflow-x-auto border-b border-bg-base bg-bg-main/15 group cursor-pointer flex-shrink-0">
+              <div className={`max-w-full flex gap-3 items-center py-0 px-8`}>
+                <p className={`body-s text-label-title ellipsis`}>
+                  <Trans>Documentation</Trans>
+                </p>
+              </div>
+            </div>
+          )}
+          {contextDocs.map((d) => (
+            <ContextDocRow
+              key={d.relative_url}
+              onDocRemove={onDocRemove}
+              onDocHide={onDocHide}
+              isPreviewing={isPreviewing}
+              setLeftPanel={setLeftPanel}
+              tokens={null}
+              {...d}
+            />
           ))}
         </div>
       )}

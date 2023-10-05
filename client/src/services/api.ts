@@ -307,14 +307,8 @@ export const getIndexQueue = () => http('/repos/queue').then((r) => r.data);
 
 export const getCodeStudios = (): Promise<CodeStudioShortType[]> =>
   http('/studio').then((r) => r.data);
-export const patchCodeStudio = (
-  id: string,
-  data: {
-    name?: string;
-    context?: StudioContextFile[];
-    messages?: ({ User: string } | { Assistant: string })[];
-  },
-) => http.patch(`/studio/${id}`, data).then((r) => r.data);
+export const patchCodeStudio = (id: string, data: Partial<CodeStudioType>) =>
+  http.patch(`/studio/${id}`, data).then((r) => r.data);
 export const getCodeStudio = (id: string): Promise<CodeStudioType> =>
   http(`/studio/${id}`).then((r) => r.data);
 export const getCodeStudioHistory = (
