@@ -157,7 +157,7 @@ pub struct Configuration {
     pub cognito_mgmt_url: Option<reqwest::Url>,
 
     //
-    // Installation-specific values
+    // Cloud-based Github App installation-specific values
     //
     /// Instance-specific shared secret between bloop c&c & instance
     #[clap(long)]

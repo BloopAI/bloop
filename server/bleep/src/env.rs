@@ -14,11 +14,11 @@ pub(crate) enum Feature {
 
     /// Allow GitHub Device flow. This is useful for typically local
     /// installations
-    CognitoUserAuth = 1 << 3,
+    DesktopUserAuth = 1 << 3,
 
     /// Use GitHub App permission system scoped to a single
     /// installation. Cloud instances use this.
-    GithubOrgInstallation = 1 << 4,
+    CloudUserAuth = 1 << 4,
 }
 
 #[rustfmt::skip]
@@ -32,7 +32,7 @@ pub(crate) enum Feature {
 enum EnvironmentInner {
     /// Safe API that's suitable for public use
     Server =
-	CognitoUserAuth as u64
+	DesktopUserAuth as u64
 	| SafePathScan as u64,
 
     /// Use a GitHub App installation to manage repositories and user access.
@@ -53,13 +53,13 @@ enum EnvironmentInner {
     /// the GitHub App. All users belonging to the organization are able to see all repos that the
     /// installation was allowed to access.
     PrivateServer =
-	GithubOrgInstallation as u64
+	CloudUserAuth as u64
 	| AuthorizationRequired as u64,
 
     /// Enables scanning arbitrary user-specified locations through a Web-endpoint.
     InsecureLocal =
 	AnyPathScan as u64
-	| CognitoUserAuth as u64,
+	| DesktopUserAuth as u64,
 }
 
 #[derive(Debug, Clone)]
@@ -83,6 +83,6 @@ impl Environment {
     }
 
     pub fn is_cloud_instance(&self) -> bool {
-        self.allow(GithubOrgInstallation)
+        self.allow(CloudUserAuth)
     }
 }

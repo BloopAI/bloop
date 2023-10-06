@@ -89,7 +89,7 @@ async fn local_user_mw<B>(
     next.run(request).await
 }
 
-pub async fn remote_user_layer_mw<B>(
+pub async fn cloud_user_layer_mw<B>(
     JwtClaims(claims): JwtClaims<RegisteredClaims>,
     State(app): State<Application>,
     mut request: Request<B>,

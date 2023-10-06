@@ -326,7 +326,7 @@ impl Application {
     }
 
     fn answer_api_token(&self) -> Result<Option<SecretString>> {
-        Ok(if self.env.allow(env::Feature::CognitoUserAuth) {
+        Ok(if self.env.allow(env::Feature::DesktopUserAuth) {
             let Some(cred) = self.credentials.github() else {
                 bail!("missing Github token");
             };

@@ -84,7 +84,7 @@ pub(super) async fn router(router: Router, app: Application) -> Router {
     let auth = get_authorizer(&app).await;
 
     router
-        .layer(from_fn_with_state(app, middleware::remote_user_layer_mw))
+        .layer(from_fn_with_state(app, middleware::cloud_user_layer_mw))
         .layer(auth.into_layer())
         .route("/auth/login", get(login))
         .route("/auth/refresh_token", get(refresh_token))

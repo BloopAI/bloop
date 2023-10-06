@@ -115,7 +115,7 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         api = api.route("/repos/scan", get(repos::scan_local));
     }
 
-    if app.env.allow(Feature::CognitoUserAuth) {
+    if app.env.allow(Feature::DesktopUserAuth) {
         api = api
             .route("/auth/login", get(github::login))
             .route("/auth/logout", get(github::logout));
