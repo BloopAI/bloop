@@ -182,12 +182,6 @@ export const getAutocomplete = async (
   return http.get(`/autocomplete?q=${q}`).then((r) => r.data);
 };
 
-export const gitHubDeviceLogin = () =>
-  http.get('/remotes/github/login').then((r) => r.data);
-
-export const gitHubLogout = () =>
-  http.get('/remotes/github/logout').then((r) => r.data);
-
 export const getRepos = (): Promise<{ list: RepoType[] }> =>
   http.get('/repos').then((r) => r.data);
 export const getIndexedRepos = (): Promise<{ list: RepoType[] }> =>
@@ -264,10 +258,9 @@ export const getUpvote = (params: {
 export const getDiscordLink = () =>
   axios.get(`${DB_API}/discord-url`).then((r) => r.data);
 
-export const githubWebLogin = (redirect_to: string) =>
-  http
-    .get('/auth/login/start', { params: { redirect_to } })
-    .then((r) => r.data);
+export const githubLogout = () => http.get('/auth/logout').then((r) => r.data);
+export const githubLogin = (redirect_to?: string) =>
+  http.get('/auth/login', { params: { redirect_to } }).then((r) => r.data);
 
 export const getConfig = () => http.get('/config').then((r) => r.data);
 export const putConfig = (data: Partial<EnvConfig>) =>

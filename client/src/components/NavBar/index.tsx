@@ -8,7 +8,7 @@ import DropdownWithIcon from '../Dropdown/WithIcon';
 import { UIContext } from '../../context/uiContext';
 import { DeviceContext } from '../../context/deviceContext';
 import { TabsContext } from '../../context/tabsContext';
-import { getSubscriptionLink, gitHubLogout } from '../../services/api';
+import { getSubscriptionLink, githubLogout } from '../../services/api';
 import { PersonalQuotaContext } from '../../context/personalQuotaContext';
 import LiteLoaderContainer from '../Loaders/LiteLoader';
 import Tab from './Tab';
@@ -81,20 +81,12 @@ const NavBar = ({ isSkeleton, activeTab }: Props) => {
           deleteAuthCookie();
           setGithubConnected(false);
           if (!isSelfServe) {
-            gitHubLogout();
+            githubLogout();
           }
         },
       },
     ] as ContextMenuItem[];
-  }, [
-    isSelfServe,
-    openLink,
-    gitHubLogout,
-    t,
-    isSubscribed,
-    handleUpgrade,
-    isFetchingLink,
-  ]);
+  }, [isSelfServe, openLink, t, isSubscribed, handleUpgrade, isFetchingLink]);
 
   const tabsWithoutHome = useMemo(() => {
     return tabs.slice(1);
