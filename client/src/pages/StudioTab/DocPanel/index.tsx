@@ -15,7 +15,7 @@ import Button from '../../../components/Button';
 import KeyboardChip from '../KeyboardChip';
 import { DocsSection, Magazine } from '../../../icons';
 import TokensUsageBadge from '../TokensUsageBadge';
-import { getDocSections } from '../../../services/api';
+import { getDocSections, getDocTokenCount } from '../../../services/api';
 import { DocSectionType } from '../../../types/api';
 import { findElementInCurrentTab } from '../../../utils/domUtils';
 import SectionsBadge from './SectionsBadge';
@@ -65,6 +65,10 @@ const DocPanel = ({
       });
     }
   }, [isActiveTab, id, url]);
+
+  useEffect(() => {
+    getDocTokenCount(id, selectedSections).then(setTokenCount);
+  }, [selectedSections, id]);
 
   useEffect(() => {
     if (selectedSection && sections.length) {

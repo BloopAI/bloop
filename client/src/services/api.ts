@@ -338,6 +338,16 @@ export const getFileTokenCount = (
       ranges,
     })
     .then((r) => r.data);
+export const getDocTokenCount = (
+  doc_id: string,
+  ranges?: string[],
+): Promise<number> =>
+  http
+    .post(`/studio/doc-token-count`, {
+      doc_id,
+      ranges,
+    })
+    .then((r) => r.data);
 
 export const getRelatedFiles = (
   relative_path: string,
