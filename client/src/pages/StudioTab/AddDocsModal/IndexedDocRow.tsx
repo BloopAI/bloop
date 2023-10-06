@@ -2,6 +2,7 @@ import { memo } from 'react';
 import { Trans } from 'react-i18next';
 import KeyboardChip from '../KeyboardChip';
 import { DocShortType } from '../../../types/api';
+import { Magazine } from '../../../icons';
 
 type Props = {
   doc: DocShortType;
@@ -17,7 +18,11 @@ const IndexedDocRow = ({ onSubmit, doc }: Props) => {
     >
       <div className="body-s text-label-base group-hover:text-label-title group-focus:text-label-title ellipsis flex gap-2 items-center">
         <div className="w-5 h-5">
-          <img src={doc.favicon} alt={doc.name} />
+          {doc.favicon ? (
+            <img src={doc.favicon} alt={doc.name} />
+          ) : (
+            <Magazine />
+          )}
         </div>
         {doc.name}
       </div>

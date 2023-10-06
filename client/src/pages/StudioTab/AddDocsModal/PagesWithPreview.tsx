@@ -44,12 +44,12 @@ const PagesWithPreview = ({ docId, handleSelectPage }: Props) => {
               onMouseOver={() => setPreviewingIndex(i)}
               onFocus={() => setPreviewingIndex(i)}
               onClick={() => handleSelectPage(p.relative_url)}
-              className="flex h-9 px-3 gap-3 items-center justify-between group rounded-6 bg-bg-shade hover:bg-bg-base-hover focus:bg-bg-base-hover focus:outline-0 focus:outline-none w-full cursor-pointer body-s ellipsis flex-shrink-0"
+              className="relative h-9 px-3 group rounded-6 bg-bg-shade hover:bg-bg-base-hover focus:bg-bg-base-hover focus:outline-0 focus:outline-none w-full cursor-pointer body-s ellipsis flex-shrink-0"
             >
               <div className="body-s text-label-base group-hover:text-label-title group-focus:text-label-title ellipsis flex gap-2 items-center">
-                {p.title}
+                {p.doc_title}
               </div>
-              <div className="opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-all flex gap-1.5 items-center caption text-label-base">
+              <div className="absolute top-1 right-0 opacity-0 bg-bg-base-hover px-2 py-1 group-hover:opacity-100 group-focus:opacity-100 transition-all flex gap-1.5 items-center caption text-label-base">
                 Select whole page
                 <KeyboardChip type="entr" variant="tertiary" />
               </div>

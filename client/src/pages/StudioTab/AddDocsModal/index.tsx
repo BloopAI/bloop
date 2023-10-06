@@ -218,7 +218,9 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit, onDocAdded }: Props) => {
       </div>
       <div
         ref={containerRef}
-        className="flex flex-col w-[38.75rem] relative flex-1 bg-bg-shade rounded-md border border-bg-border overflow-auto "
+        className={`flex flex-col overflow-auto ${
+          step === 0 ? 'w-[38.75rem]' : 'w-[80vw] max-w-[57.75rem]'
+        } relative flex-1 bg-bg-shade rounded-md border border-bg-border`}
       >
         <div className="flex items-center gap-0.5 py-3 px-4">
           <StepItem text={t('Add docs')} />
@@ -289,12 +291,12 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit, onDocAdded }: Props) => {
               );
             })
           ) : docsUrl ? (
-            <div className="w-full break-wordflex flex-col divide-y divide-bg-border">
+            <div className="w-full break-wordflex flex-col">
               {filteredSections.map((s) => (
                 <a
                   href="#"
                   key={s.point_id}
-                  className="px-4 py-4 w-full"
+                  className="px-4 py-4 w-full block border-b-2 border-bg-border hover:bg-bg-base-hover"
                   onClick={() =>
                     handleDocSubmit(
                       selectedProvider!.id,
