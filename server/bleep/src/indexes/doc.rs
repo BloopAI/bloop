@@ -74,7 +74,7 @@ pub enum Error {
 
 impl Doc {
     /// Initialize docs index
-    pub async fn create(sql: SqlDb, semantic: Semantic) -> Result<Self, DocError> {
+    pub async fn create(sql: SqlDb, semantic: Semantic) -> Result<Self, Error> {
         if create_indexes(semantic.qdrant_client()).await? {
             info!(%COLLECTION_NAME, "created doc index");
         } else {
@@ -100,11 +100,12 @@ impl Doc {
             let mut meta = None;
 
             for await progress in self.insert_into_qdrant(id, url.clone()) {
-                // populate metadata in for sqlite
+                // populate metadata in sqlite
                 //
                 // the first scraped doc that contains metadata is used to populate
                 // metadata in sqlite - this is typically the base_url entered by the user,
-                // if the base_url does not contain any metadata, we
+                // if the base_url does not contain any metadata, we move on the the second
+                // scraped url
                 if !progress.meta.is_empty() {
                     if meta.is_none() {
                         meta = Some(progress.meta.clone());
@@ -125,7 +126,14 @@ impl Doc {
                 }
                 if let Some(favicon) = meta.icon.clone() {
                     let mut resolved_url = url.clone();
-                    resolved_url.set_path(&favicon);
+                    match url::Url::parse(&favicon) {
+                        Ok(f) => {
+                            resolved_url = f;
+                        },
+                        Err(_) => {
+                            resolved_url.set_path(&favicon);
+                        },
+                    }
                     let resolved_url_str = resolved_url.as_str();
                     sqlx::query! {
                         "UPDATE docs SET favicon = ? WHERE id = ?",
@@ -494,6 +502,9 @@ impl scraper::Document {
             embedder.tokenizer(),
         )
         .par_bridge()
+        .inspect(|(section, chunks)| {
+            println!("{}", section.data);
+        })
         .map(|(section, chunks)| {
             let embeddings = chunks
                 .iter()

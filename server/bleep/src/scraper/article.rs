@@ -50,14 +50,6 @@ impl Extractor for DefaultExtractor {}
 
 trait Extractor {
     fn title<'a>(&self, doc: &'a Document) -> Option<Cow<'a, str>> {
-        if let Some(title) = doc
-            .find(Name("h1"))
-            .filter_map(|node| node.as_text().map(str::trim))
-            .next()
-        {
-            return Some(Cow::Borrowed(title));
-        }
-
         if let Some(title) = self.meta_content(doc, Attr("property", "og:title")) {
             return Some(title);
         }
@@ -67,7 +59,14 @@ trait Extractor {
         }
 
         if let Some(title) = doc.find(Name("title")).next() {
-            return title.as_text().map(str::trim).map(Cow::Borrowed);
+            return Some(Cow::Owned(title.text()));
+        }
+        if let Some(title) = doc
+            .find(Name("h1"))
+            .filter_map(|node| node.as_text().map(str::trim))
+            .next()
+        {
+            return Some(Cow::Borrowed(title));
         }
         None
     }
@@ -129,14 +128,14 @@ trait Extractor {
             .next()
     }
 
-    fn icon<'a>(&self, doc: &'a Document) -> Option<Cow<'a, str>> {
-        doc.find(Name("head").descendant(Name("link").and(Attr("rel", "icon"))))
-            .find_map(|node| {
-                node.attr("href")
-                    .map(str::trim)
-                    .filter(|s| !s.is_empty())
-                    .map(Cow::Borrowed)
-            })
+    fn icon<'a>(&self, doc: &'a Document) -> Cow<'a, str> {
+        Cow::Borrowed(
+            doc.find(Name("head").descendant(
+                Name("link").and(Attr("rel", "icon").or(Attr("rel", "shortcut icon"))),
+            ))
+            .find_map(|node| node.attr("href").map(str::trim).filter(|s| !s.is_empty()))
+            .unwrap_or("/favicon.ico"),
+        )
     }
 
     fn text<'a>(&self, doc: &'a Document, lang: Language) -> Option<Cow<'a, str>> {
@@ -191,9 +190,7 @@ trait Extractor {
             builder = builder.title(title);
         }
 
-        if let Some(icon) = self.icon(doc) {
-            builder = builder.icon(icon);
-        }
+        builder = builder.icon(self.icon(doc));
 
         if let Some(txt_node) = self.article_node(doc, lang) {
             builder = builder.text(txt_node.clean_text().into());
@@ -392,7 +389,11 @@ impl ArticleBuilder {
         let resp = builder.build()?.get(url).send().await?;
 
         if !resp.status().is_success() {
-            return Err(anyhow::anyhow!("Unsuccessful request to {:?}", resp.url()));
+            return Err(anyhow::anyhow!(
+                "Unsuccessful request to {:?} ({})",
+                resp.url(),
+                resp.status()
+            ));
         }
 
         let url = resp.url().to_owned();
