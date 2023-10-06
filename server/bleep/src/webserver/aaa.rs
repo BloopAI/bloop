@@ -18,15 +18,21 @@ use super::prelude::*;
 
 const COOKIE_NAME: &str = "X-Bleep-Cognito";
 
-#[derive(serde::Serialize, serde::Deserialize)]
-struct GithubAuthToken {
-    expires_in: u64,
-    #[serde(serialize_with = "crate::config::serialize_secret_str")]
-    refresh_token: SecretString,
-    #[serde(serialize_with = "crate::config::serialize_secret_str")]
-    access_token: SecretString,
-    // Ignore other fields here ...
+#[derive(Serialize)]
+#[serde(rename_all = "snake_case")]
+pub(super) enum CredentialStatus {
+    Ok,
+    Missing,
 }
+
+#[derive(Serialize)]
+#[serde(rename_all = "snake_case")]
+pub(super) enum AuthResponse {
+    AuthenticationNeeded { url: String },
+    Status(CredentialStatus),
+}
+
+impl super::ApiResponse for AuthResponse {}
 
 #[derive(serde::Deserialize)]
 pub(super) struct RedirectQuery {
@@ -38,30 +44,40 @@ pub(super) async fn login(
     State(app): State<Application>,
     Query(RedirectQuery { redirect_to }): Query<RedirectQuery>,
 ) -> impl IntoResponse {
-    let timestamp = chrono::Utc::now();
-    let payload = serde_json::json!({ "timestamp": timestamp.to_rfc2822(), "redirect_url": redirect_to.as_ref() });
-    let state = app.seal_auth_state(payload);
+    let state = {
+        let timestamp = chrono::Utc::now();
+        let payload = serde_json::json!({
+            "timestamp": timestamp.to_rfc2822(),
+            "redirect_url": redirect_to.as_ref()
+        });
+        app.seal_auth_state(payload)
+    };
 
-    let mut oauth_url = app.config.cognito_auth_url.clone().expect("bad config");
-    let client_id = app.config.cognito_client_id.as_ref().expect("bad config");
-    oauth_url.query_pairs_mut().extend_pairs(&[
-        ("response_type", "code"),
-        ("scope", "email openid profile"),
-        ("state", state.as_ref()),
-        ("client_id", client_id.as_ref()),
-        (
-            "redirect_url",
-            app.config
-                .cognito_mgmt_url
-                .as_ref()
-                .expect("bad config")
-                .join("complete")
-                .unwrap()
-                .as_ref(),
-        ),
-    ]);
+    let url = {
+        let mut url = app.config.cognito_auth_url.clone().expect("bad config");
+        let client_id = app.config.cognito_client_id.as_ref().expect("bad config");
 
-    serde_json::json!({ "oauth_url": oauth_url }).to_string()
+        url.query_pairs_mut().extend_pairs(&[
+            ("response_type", "code"),
+            ("scope", "email openid profile"),
+            ("state", state.as_ref()),
+            ("client_id", client_id.as_ref()),
+            (
+                "redirect_url",
+                app.config
+                    .cognito_mgmt_url
+                    .as_ref()
+                    .expect("bad config")
+                    .join("complete")
+                    .unwrap()
+                    .as_ref(),
+            ),
+        ]);
+
+        url.to_string()
+    };
+
+    json(AuthResponse::AuthenticationNeeded { url })
 }
 
 pub(super) async fn router(router: Router, app: Application) -> Router {
@@ -70,7 +86,7 @@ pub(super) async fn router(router: Router, app: Application) -> Router {
     router
         .layer(from_fn_with_state(app, middleware::remote_user_layer_mw))
         .layer(auth.into_layer())
-        .route("/auth/login/start", get(login))
+        .route("/auth/login", get(login))
         .route("/auth/refresh_token", get(refresh_token))
 }
 

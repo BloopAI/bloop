@@ -1,6 +1,10 @@
-use super::{middleware::User, prelude::*};
+use super::{
+    aaa::{AuthResponse, CredentialStatus},
+    middleware::User,
+    prelude::*,
+};
 use crate::{
-    remotes::{github, AuthResponse, BackendCredential},
+    remotes::{self, github, BackendCredential},
     repo::Backend,
     Application,
 };
@@ -9,22 +13,6 @@ use axum::extract::State;
 use tracing::{debug, error, warn};
 
 use std::time::{Duration, Instant};
-
-#[derive(Serialize)]
-#[serde(rename_all = "snake_case")]
-pub(super) enum GithubResponse {
-    AuthenticationNeeded { url: String },
-    Status(GithubCredentialStatus),
-}
-
-impl super::ApiResponse for GithubResponse {}
-
-#[derive(Serialize)]
-#[serde(rename_all = "snake_case")]
-pub(super) enum GithubCredentialStatus {
-    Ok,
-    Missing,
-}
 
 /// Connect to Github through Cognito & OAuth
 //
@@ -61,7 +49,7 @@ pub(super) async fn login(Extension(app): Extension<Application>) -> impl IntoRe
     ]);
 
     let url = url_base.to_string();
-    json(GithubResponse::AuthenticationNeeded { url })
+    json(AuthResponse::AuthenticationNeeded { url })
 }
 
 /// Remove Github OAuth credentials
@@ -103,7 +91,7 @@ pub(super) async fn logout(
             .unwrap();
 
         match app.credentials.store() {
-            Ok(_) => return Ok(json(GithubResponse::Status(GithubCredentialStatus::Ok))),
+            Ok(_) => return Ok(json(AuthResponse::Status(CredentialStatus::Ok))),
             Err(err) => {
                 error!(?err, "Failed to delete credentials from disk");
                 return Err(Error::internal("failed to save changes"));
@@ -111,9 +99,7 @@ pub(super) async fn logout(
         }
     }
 
-    Ok(json(GithubResponse::Status(
-        GithubCredentialStatus::Missing,
-    )))
+    Ok(json(AuthResponse::Status(CredentialStatus::Missing)))
 }
 
 async fn poll_for_oauth_token(code: String, app: Application) {
@@ -153,14 +139,14 @@ async fn poll_for_oauth_token(code: String, app: Application) {
         };
 
         match response {
-            Ok(AuthResponse::Backoff { backoff_secs }) => {
+            Ok(remotes::AuthResponse::Backoff { backoff_secs }) => {
                 clock = tokio::time::interval(Duration::from_secs(backoff_secs));
                 clock.tick().await;
             }
-            Ok(AuthResponse::Success(success)) => {
+            Ok(remotes::AuthResponse::Success(success)) => {
                 break success;
             }
-            Ok(AuthResponse::Error { error }) => {
+            Ok(remotes::AuthResponse::Error { error }) => {
                 warn!(?error, "bloop authentication failed");
                 return;
             }
