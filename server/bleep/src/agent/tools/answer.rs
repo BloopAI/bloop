@@ -61,7 +61,11 @@ impl Agent {
             self.llm_gateway
                 .clone()
                 .model(self.model.model_name)
-                .frequency_penalty(if self.model.model_name == "gpt-3-finetuned" {Some(0.2)} else {Some(0.0)})
+                .frequency_penalty(if self.model.model_name == "gpt-3-finetuned" {
+                    Some(0.2)
+                } else {
+                    Some(0.0)
+                })
                 .chat_stream(&messages, None)
                 .await?
         );
