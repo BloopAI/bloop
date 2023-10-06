@@ -394,8 +394,9 @@
 	"Launch manually": "手动启动",
 	"Check payment status": "检查付款状态",
 	"No change in payment status identified.": "未确定付款状态的变化。",
-	"Thank you for your purchase!": "感谢您的购买！",
-	"You've successfully upgraded your plan.": "您已经成功升级了计划。",
 	"We've redirected you to Stripe to complete your transaction. Didn't work?": "我们将您重定向到条纹以完成您的交易。 不起作用吗？",
-	"Usage resets in": "用法重置"
+	"Usage resets in": "用法重置",
+	"Let's go": "我们走吧",
+	"You've upgraded your account!": "您已经升级了您的帐户！",
+	"Unlimited usage and premium features are activated.": "无限用法和高级功能被激活。"
 }

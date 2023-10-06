@@ -389,8 +389,9 @@
 	"Launch manually": "Lanzar manualmente",
 	"Check payment status": "Verificar el estado de pago",
 	"No change in payment status identified.": "No hay cambio en el estado de pago identificado.",
-	"Thank you for your purchase!": "Gracias por su compra!",
-	"You've successfully upgraded your plan.": "Ha actualizado con éxito su plan.",
 	"We've redirected you to Stripe to complete your transaction. Didn't work?": "Te hemos redirigido a rayar para completar su transacción. ¿No funcionó?",
-	"You've run out of free usage for today, please wait for your quota to reset or upgrade for unlimited usage": "Se ha quedado sin uso gratuito para hoy, espere a que su cuota se reinicie o actualice para un uso ilimitado"
+	"You've run out of free usage for today, please wait for your quota to reset or upgrade for unlimited usage": "Se ha quedado sin uso gratuito para hoy, espere a que su cuota se reinicie o actualice para un uso ilimitado",
+	"Unlimited usage and premium features are activated.": "Se activan el uso ilimitado y las características premium.",
+	"You've upgraded your account!": "¡Has actualizado tu cuenta!",
+	"Let's go": "Vamos"
 }
