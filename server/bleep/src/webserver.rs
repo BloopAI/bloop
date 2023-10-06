@@ -60,16 +60,16 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         .nest(
             "/docs",
             Router::new()
-                .route("/", get(docs::list))                     // list all doc providers
-                .route("/search", get(docs::search))             // text search over doc providers
-                .route("/sync", get(docs::sync))                 // index a new doc provider
-                .route("/verify", get(docs::verify))             // verify if a doc url is valid
-                .route("/:id", get(docs::list_one))              // list a doc provider by id
-                .route("/:id", delete(docs::delete))             // delete a doc provider by id
-                .route("/:id/resync", get(docs::resync))         // resync a doc provider by id
+                .route("/", get(docs::list)) // list all doc providers
+                .route("/search", get(docs::search)) // text search over doc providers
+                .route("/sync", get(docs::sync)) // index a new doc provider
+                .route("/verify", get(docs::verify)) // verify if a doc url is valid
+                .route("/:id", get(docs::list_one)) // list a doc provider by id
+                .route("/:id", delete(docs::delete)) // delete a doc provider by id
+                .route("/:id/resync", get(docs::resync)) // resync a doc provider by id
                 .route("/:id/search", get(docs::search_with_id)) // search/list sections of a doc provider
-                .route("/:id/list", get(docs::list_with_id))     // list pages of a doc provider
-                .route("/:id/fetch", get(docs::fetch)),          // fetch all sections of a page of a doc provider
+                .route("/:id/list", get(docs::list_with_id)) // list pages of a doc provider
+                .route("/:id/fetch", get(docs::fetch)), // fetch all sections of a page of a doc provider
         )
         // intelligence
         .route("/tutorial-questions", get(commits::tutorial_questions))
@@ -112,6 +112,10 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         .route(
             "/studio/file-token-count",
             post(studio::get_file_token_count),
+        )
+        .route(
+            "/studio/doc-file-token-count",
+            post(studio::get_doc_file_token_count),
         )
         .route("/template", post(template::create))
         .route("/template", get(template::list))

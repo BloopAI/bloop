@@ -490,31 +490,6 @@ async fn token_counts(
                 .map(|sr| sr.text)
                 .collect::<String>();
 
-            // let retreived_points = qdrant
-            //     .get_points(
-            //         doc::COLLECTION_NAME,
-            //         &file
-            //             .ranges
-            //             .iter()
-            //             .map(|uuid| uuid.to_string().into())
-            //             .collect::<Vec<_>>(),
-            //         None::<qdrant_client::qdrant::WithVectorsSelector>,
-            //         Some(qdrant_client::qdrant::WithPayloadSelector {
-            //             selector_options: Some(
-            //                 qdrant_client::qdrant::with_payload_selector::SelectorOptions::Enable(
-            //                     true,
-            //                 ),
-            //             ),
-            //         }),
-            //         None,
-            //     )
-            //     .await?
-            //     .result;
-            // let content = retreived_points
-            //     .into_iter()
-            //     .filter_map(|p| doc::SearchResult::from_qdrant(p.id.unwrap(), p.payload))
-            //     .map(|sr| sr.text)
-            //     .collect::<String>();
             Ok(Some(content))
         })
         .boxed()
@@ -569,7 +544,7 @@ async fn token_counts(
 }
 
 #[derive(serde::Deserialize)]
-pub struct GetTokenCount {
+pub struct GetFileTokenCount {
     pub path: String,
     pub repo: RepoRef,
     pub branch: Option<String>,
@@ -578,7 +553,7 @@ pub struct GetTokenCount {
 
 pub async fn get_file_token_count(
     app: Extension<Application>,
-    Json(params): Json<GetTokenCount>,
+    Json(params): Json<GetFileTokenCount>,
 ) -> webserver::Result<Json<usize>> {
     let file = ContextFile {
         path: params.path,
@@ -601,6 +576,40 @@ pub async fn get_file_token_count(
         })?;
 
     let token_count = count_tokens_in_file(&doc.content, &file.ranges);
+
+    Ok(Json(token_count))
+}
+
+#[derive(serde::Deserialize)]
+pub struct GetDocFileTokenCount {
+    pub doc_id: i64,
+    pub relative_url: String,
+    pub ranges: Vec<Uuid>,
+}
+
+pub async fn get_doc_file_token_count(
+    app: Extension<Application>,
+    Json(params): Json<GetDocFileTokenCount>,
+) -> webserver::Result<Json<usize>> {
+    let content = app
+        .indexes
+        .doc
+        .fetch(params.doc_id, &params.relative_url)
+        .await
+        .map_err(Error::internal)?
+        .into_iter()
+        .filter(|search_result| {
+            if params.ranges.is_empty() {
+                true
+            } else {
+                params.ranges.contains(&search_result.point_id)
+            }
+        })
+        .map(|sr| sr.text)
+        .collect::<String>();
+
+    let core_bpe = tiktoken_rs::get_bpe_from_model("gpt-4-0613").unwrap();
+    let token_count = core_bpe.encode_ordinary(&content).len();
 
     Ok(Json(token_count))
 }
