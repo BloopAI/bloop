@@ -22,23 +22,24 @@ export const PersonalQuotaContextProvider = memo(
     const [resetAt, setResetAt] = useState(new Date().toISOString());
     const { isSelfServe } = useContext(DeviceContext);
 
-    const refetchQuota = useCallback(() => {
+    const refetchQuota = useCallback(async () => {
       if (!isSelfServe) {
-        getQuota().then((resp) => {
-          setIsSubscribed(resp.upgraded);
-          setQuota((prev) => {
-            const newState = { used: resp.used, allowed: resp.allowed };
-            if (JSON.stringify(prev) === JSON.stringify(newState)) {
-              return prev;
-            }
-            return newState;
-          });
-          setRequestsLeft(
-            resp.upgraded ? 99999 : Math.max(resp.allowed - resp.used, 0),
-          );
-          setHasCheckedQuota(true);
-          setResetAt(resp.reset_at);
+        const resp = await getQuota();
+        setIsSubscribed(resp.upgraded);
+        setQuota((prev) => {
+          const newState = { used: resp.used, allowed: resp.allowed };
+          if (JSON.stringify(prev) === JSON.stringify(newState)) {
+            return prev;
+          }
+          return newState;
         });
+        setRequestsLeft(
+          resp.upgraded ? 99999 : Math.max(resp.allowed - resp.used, 0),
+        );
+        setHasCheckedQuota(true);
+        setResetAt(resp.reset_at);
+      } else {
+        return Promise.resolve();
       }
     }, [isSelfServe]);
 

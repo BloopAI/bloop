@@ -49,6 +49,8 @@ export const UIContext = {
   UpgradePopup: createContext({
     isUpgradePopupOpen: false,
     setUpgradePopupOpen: (b: boolean) => {},
+    isWaitingUpgradePopupOpen: false,
+    setWaitingUpgradePopupOpen: (b: boolean) => {},
   }),
   Tab: createContext<{ tab: RepoTabType }>({
     tab: {

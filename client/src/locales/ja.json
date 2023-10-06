@@ -381,5 +381,14 @@
 	"Token limit exceeded": "トークンの制限が超えました",
 	"bloop automatically excludes certain files from the indexing. This file might be too big or it might have an excluded file type.": "Bloopは、インデックスから特定のファイルを自動的に除外します。 このファイルが大きすぎるか、除外されたファイルタイプがある場合があります。",
 	"Allow analytics": "分析を許可します",
-	"We use analytics to improve your experience. Please refresh the page after changing the value.": "分析を使用して体験を向上させます。 値を変更した後、ページを更新してください。"
+	"We use analytics to improve your experience. Please refresh the page after changing the value.": "分析を使用して体験を向上させます。 値を変更した後、ページを更新してください。",
+	"Complete your transaction in Stripe...": "ストライプでトランザクションを完了してください...",
+	"We've redirected you to Stripe to complete your transaction. Didn't work?": "トランザクションを完了するために、ストライプにリダイレクトしました。 うまくいかなかった？",
+	"Check payment status": "支払いステータスを確認してください",
+	"No change in payment status identified.": "支払いステータスの変更は特定されていません。",
+	"Launch manually": "手動で起動します",
+	"Usage resets in": "使用法がリセットされます",
+	"You've upgraded your account!": "アカウントをアップグレードしました！",
+	"Unlimited usage and premium features are activated.": "無制限の使用機能とプレミアム機能がアクティブになります。",
+	"Let's go": "さあ行こう"
 }
