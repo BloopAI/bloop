@@ -237,12 +237,12 @@ impl Agent {
         ))];
         history.extend(self.history()?);
 
-        let trimmed_history = trim_history(history.clone(), self.model)?;
+        let trimmed_history = trim_history(history.clone(), model::GPT_3_5_TURBO_FINETUNED_AGENT)?;
 
         let raw_response = self
             .llm_gateway
             .chat_stream(
-                &trim_history(history.clone(), self.model)?,
+                &trim_history(history.clone(), model::GPT_3_5_TURBO_FINETUNED_AGENT)?,
                 Some(&functions),
             )
             .await?

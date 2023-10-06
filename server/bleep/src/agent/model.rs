@@ -34,6 +34,14 @@ pub const GPT_4: AnswerModel = AnswerModel {
     history_headroom: 2048,
 };
 
+pub const GPT_3_5_TURBO_FINETUNED_AGENT: AnswerModel = AnswerModel {
+    tokenizer: "gpt-3.5-turbo-0613",
+    model_name: "ft:gpt-3.5-turbo-0613:bloop:agent-function:86UMuKnt",
+    answer_headroom: 512,
+    prompt_headroom: 1600,
+    history_headroom: 256,
+};
+
 impl FromStr for AnswerModel {
     type Err = ();
     fn from_str(s: &str) -> Result<Self, Self::Err> {

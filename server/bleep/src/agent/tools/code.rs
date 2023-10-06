@@ -13,7 +13,7 @@ use crate::{
 impl Agent {
     #[instrument(skip(self))]
     pub async fn code_search(&mut self, query: &String) -> Result<String> {
-        const CODE_SEARCH_LIMIT: u64 = 10;
+        const CODE_SEARCH_LIMIT: u64 = 5;
         const MINIMUM_RESULTS: usize = CODE_SEARCH_LIMIT as usize / 2;
 
         self.update(Update::StartStep(SearchStep::Code {
