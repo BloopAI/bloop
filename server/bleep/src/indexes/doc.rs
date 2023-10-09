@@ -25,10 +25,14 @@ pub struct Doc {
     semantic: Semantic,
 }
 
+static STATUS_DONE: &str = "done";
+static STATUS_INDEXING: &str = "indexing";
+
 #[derive(serde::Serialize)]
 pub struct Record {
     pub id: i64,
     pub url: String,
+    pub index_status: String,
     pub name: Option<String>,
     pub favicon: Option<String>,
     pub description: Option<String>,
@@ -84,20 +88,70 @@ impl Doc {
         Ok(Self { sql, semantic })
     }
 
+    async fn set_title(&self, title: &str, id: i64) -> Result<(), Error> {
+        sqlx::query! {
+            "UPDATE docs SET name = ? WHERE id = ?",
+            title,
+            id,
+        }
+        .execute(&*self.sql)
+        .await
+        .map(|_| ())
+        .map_err(Error::Sql)
+    }
+
+    async fn set_favicon(&self, favicon: &str, id: i64) -> Result<(), Error> {
+        sqlx::query! {
+            "UPDATE docs SET favicon = ? WHERE id = ?",
+            favicon,
+            id,
+        }
+        .execute(&*self.sql)
+        .await
+        .map(|_| ())
+        .map_err(Error::Sql)
+    }
+
+    async fn set_description(&self, description: &str, id: i64) -> Result<(), Error> {
+        sqlx::query! {
+            "UPDATE docs SET description = ? WHERE id = ?",
+            description,
+            id,
+        }
+        .execute(&*self.sql)
+        .await
+        .map(|_| ())
+        .map_err(Error::Sql)
+    }
+
+    async fn set_index_status(&self, status: &str, id: i64) -> Result<(), Error> {
+        let status = status.to_string();
+        sqlx::query! {
+            "UPDATE docs SET index_status = ? WHERE id = ?",
+            status,
+            id,
+        }
+        .execute(&*self.sql)
+        .await
+        .map(|_| ())
+        .map_err(Error::Sql)
+    }
+
     /// Add a doc source to the index
     pub fn sync(&self, url: url::Url) -> impl Stream<Item = Result<Progress, Error>> + '_ {
         try_stream! {
             // add entry to sqlite
             let url_string = url.to_string();
             let id = sqlx::query! {
-                "INSERT INTO docs (url) VALUES (?)",
+                "INSERT INTO docs (url, index_status) VALUES (?, ?)",
                 url_string,
+                STATUS_INDEXING,
             }
             .execute(&*self.sql)
-                .await?
-                .last_insert_rowid();
+            .await?
+            .last_insert_rowid();
 
-            let mut meta = None;
+            let mut is_meta_set = false;
 
             for await progress in self.insert_into_qdrant(id, url.clone()) {
                 // populate metadata in sqlite
@@ -107,53 +161,36 @@ impl Doc {
                 // if the base_url does not contain any metadata, we move on the the second
                 // scraped url
                 if !progress.meta.is_empty() {
-                    if meta.is_none() {
-                        meta = Some(progress.meta.clone());
+                    if !is_meta_set {
+                        // set title
+                        if let Some(title) = &progress.meta.title {
+                            self.set_title(title, id).await?;
+                        }
+
+                        // set favicon
+                        if let Some(favicon) = &progress.meta.icon {
+                            let resolved_url = url::Url::parse(&favicon).unwrap_or_else(|_| {
+                                let mut r = url.clone();
+                                r.set_path(&favicon);
+                                r
+                            });
+                            self.set_favicon(resolved_url.as_str(), id).await?;
+                        }
+
+                        // set description
+                        if let Some(description) = &progress.meta.description {
+                            self.set_description(description, id).await?;
+
+                        }
+
+                        // do not set meta for this doc provider in subsequent turns
+                        is_meta_set = true;
                     }
                 };
                 yield Progress::Update(progress);
             }
 
-            if let Some(meta) = meta {
-                if let Some(title) = meta.title.clone() {
-                    sqlx::query! {
-                        "UPDATE docs SET name = ? WHERE id = ?",
-                        title,
-                        id,
-                    }
-                    .execute(&*self.sql)
-                    .await?;
-                }
-                if let Some(favicon) = meta.icon.clone() {
-                    let mut resolved_url = url.clone();
-                    match url::Url::parse(&favicon) {
-                        Ok(f) => {
-                            resolved_url = f;
-                        },
-                        Err(_) => {
-                            resolved_url.set_path(&favicon);
-                        },
-                    }
-                    let resolved_url_str = resolved_url.as_str();
-                    sqlx::query! {
-                        "UPDATE docs SET favicon = ? WHERE id = ?",
-                        resolved_url_str,
-                        id,
-                    }
-                    .execute(&*self.sql)
-                    .await?;
-                }
-                if let Some(description) = meta.description.clone() {
-                    sqlx::query! {
-                        "UPDATE docs SET description = ? WHERE id = ?",
-                        description,
-                        id,
-                    }
-                    .execute(&*self.sql)
-                    .await?;
-                }
-            }
-
+            self.set_index_status(STATUS_DONE, id).await?;
             yield Progress::Done(id);
         }
     }
@@ -203,27 +240,28 @@ impl Doc {
 
     /// List all synced doc sources
     pub async fn list(&self) -> Result<Vec<Record>, Error> {
-        Ok(
-            sqlx::query!("SELECT id, name, url, favicon, description, modified_at FROM docs")
-                .fetch_all(&*self.sql)
-                .await?
-                .into_iter()
-                .map(|record| Record {
-                    id: record.id,
-                    name: record.name,
-                    description: record.description,
-                    favicon: record.favicon,
-                    url: record.url,
-                    modified_at: record.modified_at,
-                })
-                .collect::<Vec<_>>(),
+        Ok(sqlx::query!(
+            "SELECT id, index_status, name, url, favicon, description, modified_at FROM docs"
         )
+        .fetch_all(&*self.sql)
+        .await?
+        .into_iter()
+        .map(|record| Record {
+            id: record.id,
+            name: record.name,
+            index_status: record.index_status,
+            description: record.description,
+            favicon: record.favicon,
+            url: record.url,
+            modified_at: record.modified_at,
+        })
+        .collect::<Vec<_>>())
     }
 
     /// List a synced doc source by id
     pub async fn list_one(&self, id: i64) -> Result<Record, Error> {
         let record = sqlx::query!(
-            "SELECT id, name, url, favicon, description, modified_at FROM docs WHERE id = ?",
+            "SELECT id, index_status, name, url, favicon, description, modified_at FROM docs WHERE id = ?",
             id
         )
         .fetch_one(&*self.sql)
@@ -232,6 +270,7 @@ impl Doc {
         Ok(Record {
             id: record.id,
             name: record.name,
+            index_status: record.index_status,
             description: record.description,
             favicon: record.favicon,
             url: record.url,
@@ -245,7 +284,7 @@ impl Doc {
         let q = format!("%{q}%");
         let records = sqlx::query!(
             "
-            SELECT id, name, url, description, favicon, modified_at
+            SELECT id, name, url, description, favicon, modified_at, index_status
             FROM docs 
             WHERE name LIKE $1 OR description LIKE $1 OR url LIKE $1
             LIMIT ?
@@ -260,6 +299,7 @@ impl Doc {
             .into_iter()
             .map(|r| Record {
                 id: r.id,
+                index_status: r.index_status,
                 name: r.name,
                 favicon: r.favicon,
                 description: r.description,
@@ -502,9 +542,9 @@ impl scraper::Document {
             embedder.tokenizer(),
         )
         .par_bridge()
-        .inspect(|(section, chunks)| {
-            println!("{}", section.data);
-        })
+        // .inspect(|(section, chunks)| {
+        //     println!("{}", section.data);
+        // })
         .map(|(section, chunks)| {
             let embeddings = chunks
                 .iter()

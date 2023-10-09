@@ -2,6 +2,7 @@ CREATE TABLE docs (
     id INTEGER PRIMARY KEY,
 
     url TEXT NOT NULL,
+    index_status TEXT NOT NULL,
 
     name TEXT,
     favicon TEXT,
