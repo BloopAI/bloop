@@ -1,11 +1,19 @@
-import React, { Dispatch, memo, SetStateAction, useCallback } from 'react';
-import Checkbox from '../../../components/Checkbox';
+import React, {
+  Dispatch,
+  memo,
+  SetStateAction,
+  useCallback,
+  MouseEvent,
+} from 'react';
+import { Trans } from 'react-i18next';
 import RenderedSection from '../AddDocsModal/Sections/RenderedSection';
+import Button from '../../../components/Button';
 
 type Props = {
   text: string;
   point_id: string;
   isSelected: boolean;
+  isNothingSelected: boolean;
   setSelectedSections: Dispatch<SetStateAction<string[]>>;
 };
 
@@ -14,6 +22,7 @@ const DocSection = ({
   isSelected,
   setSelectedSections,
   point_id,
+  isNothingSelected,
 }: Props) => {
   const setSelected = useCallback(
     (b: boolean) => {
@@ -26,16 +35,39 @@ const DocSection = ({
     },
     [point_id, setSelectedSections],
   );
+
+  const handleClick = useCallback(
+    (e: MouseEvent) => {
+      e.stopPropagation();
+      setSelected(!isSelected);
+    },
+    [isSelected],
+  );
   return (
     <div
       data-section-id={point_id}
-      className={`body-s cursor-pointer ${
+      className={`body-s cursor-pointer relative group ${
         isSelected
-          ? 'bg-bg-main/15 opacity-100'
-          : 'opacity-50 hover:opacity-100'
+          ? 'bg-bg-main/8 opacity-100'
+          : `hover:bg-bg-base-hover ${
+              isNothingSelected ? '' : 'opacity-50 hover:opacity-100'
+            }`
       } pl-8 pr-4 py-3 transition-opacity duration-150 ease-in-out flex items-start gap-5`}
-      onClick={() => setSelected(!isSelected)}
+      onClick={handleClick}
     >
+      <div
+        className={`absolute top-2 right-2 z-10 ${
+          isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+        } transition-opacity duration-150 ease-in-out`}
+      >
+        <Button size="tiny" variant="secondary" onClick={handleClick}>
+          {!isSelected ? (
+            <Trans>Select section</Trans>
+          ) : (
+            <Trans>Clear selection</Trans>
+          )}
+        </Button>
+      </div>
       <RenderedSection text={text} />
     </div>
   );

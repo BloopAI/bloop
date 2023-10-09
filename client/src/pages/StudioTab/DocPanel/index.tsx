@@ -152,6 +152,7 @@ const DocPanel = ({
               {...s}
               isSelected={selectedSections.includes(s.point_id)}
               setSelectedSections={setSelectedSections}
+              isNothingSelected={!selectedSections.length}
             />
           );
         })}

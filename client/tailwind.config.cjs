@@ -15,6 +15,7 @@ module.exports = {
         "bg-border": "rgb(var(--bg-border))",
         "bg-border-hover": "rgb(var(--bg-border-hover))",
         "bg-main": "rgb(var(--bg-main))",
+        "bg-main/8": "rgba(var(--bg-main), 0.08)",
         "bg-main/15": "rgba(var(--bg-main), 0.15)",
         "bg-main/30": "rgba(var(--bg-main), 0.3)",
         "bg-main-hover": "rgb(var(--bg-main-hover))",

@@ -410,5 +410,7 @@
 	"Select page": "Página de selección",
 	"Resync": "Resincronarse",
 	"Indexing <1>#</1>. This process can take a couple of minutes.": "Indexación <1>{{url}}</1>. Este proceso puede tomar un par de minutos.",
-	"Indexing <1>#</1>.": "Indexación <1>{{url}}</1>."
+	"Indexing <1>#</1>.": "Indexación <1>{{url}}</1>.",
+	"Select section": "Seleccionar sección",
+	"Clear selection": "Selección clara"
 }
