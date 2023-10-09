@@ -6,10 +6,11 @@ default-run = "bleep"
 build = "build.rs"
 
 [features]
-default = ["dynamic-ort"]
+default = ["dynamic-ort", "ee-pro"]
 debug = ["console-subscriber", "histogram"]
 dynamic-ort = ["ort/load-dynamic"]
-ee = []
+ee-pro = []
+ee-cloud = []
 
 [[bin]]
 name = "bleep"

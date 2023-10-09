@@ -87,7 +87,7 @@ impl BackgroundExecutor {
             .spawn_handler(move |thread| {
                 let tokio_ref = tokio_ref.clone();
 
-                let thread_priority = if cfg!(feature = "ee") {
+                let thread_priority = if cfg!(feature = "ee-cloud") {
                     // 0-100 low-high
                     // pick mid-range for worker threads so we don't starve other threads
                     thread_priority::ThreadPriority::Crossplatform(49u8.try_into().unwrap())
