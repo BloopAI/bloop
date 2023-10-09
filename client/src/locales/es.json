@@ -384,5 +384,6 @@
 	"Token limit exceeded": "Límite de token excedido",
 	"bloop automatically excludes certain files from the indexing. This file might be too big or it might have an excluded file type.": "Bloop excluye automáticamente ciertos archivos de la indexación. Este archivo puede ser demasiado grande o podría tener un tipo de archivo excluido.",
 	"We use analytics to improve your experience. Please refresh the page after changing the value.": "Utilizamos análisis para mejorar su experiencia. Actualice la página después de cambiar el valor.",
-	"Allow analytics": "Permitir análisis"
+	"Allow analytics": "Permitir análisis",
+	"Token limit reached, this answer may be incomplete. To generate a full answer, please reduce the number of tokens used and regenerate.": "Límite de token alcanzado, esta respuesta puede estar incompleta. Para generar una respuesta completa, reduzca el número de tokens utilizados y regenerados."
 }

@@ -389,5 +389,6 @@
 	"bloop automatically excludes certain files from the indexing. This file might be too big or it might have an excluded file type.": "Bloop自动将某些文件从索引中排除。 该文件可能太大，或者可能具有排除的文件类型。",
 	"File not indexed": "文件未索引",
 	"Allow analytics": "允许分析",
-	"We use analytics to improve your experience. Please refresh the page after changing the value.": "我们使用分析来改善您的经验。 更改值后，请刷新页面。"
+	"We use analytics to improve your experience. Please refresh the page after changing the value.": "我们使用分析来改善您的经验。 更改值后，请刷新页面。",
+	"Token limit reached, this answer may be incomplete. To generate a full answer, please reduce the number of tokens used and regenerate.": "达到令牌限制，此答案可能不完整。 要产生完整的答案，请减少使用和再生的代币数量。"
 }
