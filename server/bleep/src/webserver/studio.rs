@@ -391,6 +391,7 @@ pub struct TokenCounts {
     total: usize,
     messages: usize,
     per_file: Vec<Option<usize>>,
+    baseline: usize,
 }
 
 async fn token_counts(
@@ -429,15 +430,20 @@ async fn token_counts(
                 None => return Some(0),
             };
 
-            body.map(|b| count_tokens_in_file(&b, &file.ranges))
+            body.map(|b| count_tokens_for_file(&file.path, &b, &file.ranges))
         })
         .collect::<Vec<_>>();
 
+    let empty_context = generate_llm_context(app.clone(), &[]).await?;
     let empty_system_message = tiktoken_rs::ChatCompletionRequestMessage {
         role: "system".to_owned(),
-        content: prompts::studio_article_prompt(""),
+        content: prompts::studio_article_prompt(&empty_context),
         name: None,
     };
+
+    let baseline =
+        tiktoken_rs::num_tokens_from_messages(LLM_GATEWAY_MODEL, &[empty_system_message.clone()])
+            .unwrap();
 
     let tiktoken_messages = messages.iter().cloned().map(|message| match message {
         Message::User(content) => tiktoken_rs::ChatCompletionRequestMessage {
@@ -479,6 +485,7 @@ async fn token_counts(
         total,
         messages,
         per_file,
+        baseline,
     })
 }
 
@@ -514,32 +521,53 @@ pub async fn get_file_token_count(
             )
         })?;
 
-    let token_count = count_tokens_in_file(&doc.content, &file.ranges);
+    let token_count = count_tokens_for_file(&file.path, &doc.content, &file.ranges);
 
     Ok(Json(token_count))
 }
 
-fn count_tokens_in_file(body: &str, ranges: &[Range<usize>]) -> usize {
-    let mut token_count = 0;
+fn count_tokens_for_file(path: &str, body: &str, ranges: &[Range<usize>]) -> usize {
     let core_bpe = tiktoken_rs::get_bpe_from_model("gpt-4-0613").unwrap();
 
+    let mut chunks = Vec::new();
+
     if ranges.is_empty() {
-        token_count = core_bpe.encode_ordinary(body).len();
+        let numbered_body = body
+            .lines()
+            .enumerate()
+            .map(|(i, line)| format!("{} {line}\n", i + 1))
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        chunks.push(numbered_body);
     } else {
         let lines = body.lines().collect::<Vec<_>>();
         for range in ranges {
             let chunk = lines
                 .iter()
                 .copied()
+                .enumerate()
                 .skip(range.start)
                 .take(range.end - range.start)
+                .map(|(i, line)| format!("{} {line}\n", range.start + i + 1))
                 .collect::<Vec<_>>()
                 .join("\n");
-            token_count += core_bpe.encode_ordinary(&chunk).len();
+
+            chunks.push(chunk);
         }
     }
 
-    token_count
+    // Here, we build up a pseudo context in order to count tokens more accurately. This includes
+    // the path twice; once for the full path list under the `##### PATHS #####` section, and
+    // another time for the path when it is re-printed above the code chunk.
+
+    let mut pseudo_context = format!("{path}\n");
+
+    for chunk in chunks {
+        pseudo_context += &format!("### {path} ###\n{chunk}\n");
+    }
+
+    core_bpe.encode_ordinary(&pseudo_context).len()
 }
 
 pub async fn generate(
