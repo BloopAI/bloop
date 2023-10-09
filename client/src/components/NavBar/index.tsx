@@ -33,7 +33,14 @@ const NavBar = ({ isSkeleton, activeTab }: Props) => {
     setIsFetchingLink(true);
     getSubscriptionLink()
       .then((resp) => {
-        openLink(resp.url);
+        if (resp.url) {
+          openLink(resp.url);
+        } else {
+          setBugReportModalOpen(true);
+        }
+      })
+      .catch(() => {
+        setBugReportModalOpen(true);
       })
       .finally(() => setIsFetchingLink(false));
   }, [openLink]);

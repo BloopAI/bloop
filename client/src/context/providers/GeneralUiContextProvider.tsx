@@ -48,6 +48,8 @@ export const GeneralUiContextProvider = memo(
     const [isCloudFeaturePopupOpen, setCloudFeaturePopupOpen] = useState(false);
     const [isUpgradePopupOpen, setUpgradePopupOpen] = useState(false);
     const [tokenExpiresAt, setTokenExpiresAt] = useState(0);
+    const [isWaitingUpgradePopupOpen, setWaitingUpgradePopupOpen] =
+      useState(false);
     const [theme, setTheme] = useState<Theme>(
       (getPlainFromStorage(THEME) as 'system' | null) || 'system',
     );
@@ -174,8 +176,10 @@ export const GeneralUiContextProvider = memo(
       () => ({
         isUpgradePopupOpen,
         setUpgradePopupOpen,
+        isWaitingUpgradePopupOpen,
+        setWaitingUpgradePopupOpen,
       }),
-      [isUpgradePopupOpen],
+      [isUpgradePopupOpen, isWaitingUpgradePopupOpen],
     );
 
     const answerSpeedContextValue = useMemo(

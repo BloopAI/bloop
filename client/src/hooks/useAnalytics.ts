@@ -13,8 +13,13 @@ const useAnalytics = () => {
     [analytics],
   );
 
+  const trackUpgradePopup = useCallback(() => {
+    analytics?.track('Studio limit reached');
+  }, []);
+
   return {
     trackSearch,
+    trackUpgradePopup,
   };
 };
 

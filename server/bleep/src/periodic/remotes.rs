@@ -12,7 +12,7 @@ use notify_debouncer_mini::{
     DebounceEventResult, Debouncer,
 };
 use rand::{distributions, thread_rng, Rng};
-use tokio::{task::JoinHandle, time::sleep};
+use tokio::task::JoinHandle;
 use tracing::{debug, error, info, warn};
 
 use crate::{
@@ -34,18 +34,42 @@ const POLL_INTERVAL_MINUTE: &[Duration] = &[
     Duration::from_secs(30 * 60),
 ];
 
+/// Like `tokio::time::sleep`, but sleeps based on wall clock time rather than uptime.
+///
+/// This internally sleeps in uptime increments of 2 seconds, checking whether the wall clock
+/// duration has passed. We do this to support better updates when a system goes into a suspended
+/// state, because `tokio::time::sleep` does not sleep according to wall clock time on some
+/// systems.
+///
+/// For short sleep durations, this will simply call `tokio::time::sleep`, as drift due to suspend
+/// is not usually relevant here.
+async fn sleep_systime(duration: Duration) {
+    if duration <= Duration::from_secs(2) {
+        return tokio::time::sleep(duration).await;
+    }
+
+    let start = SystemTime::now();
+
+    loop {
+        tokio::time::sleep(Duration::from_secs(2)).await;
+        if start.elapsed().unwrap() >= duration {
+            return;
+        }
+    }
+}
+
 pub(crate) async fn sync_github_status(app: Application) {
     const POLL_PERIOD: Duration = POLL_INTERVAL_MINUTE[1];
     const LIVENESS: Duration = Duration::from_secs(1);
 
     let timeout = || async {
-        sleep(LIVENESS).await;
+        sleep_systime(LIVENESS).await;
     };
 
     let timeout_or_update = |last_poll: SystemTime, handle: flume::Receiver<()>| async move {
         loop {
             tokio::select! {
-                _ = sleep(POLL_PERIOD) => {
+                _ = sleep_systime(POLL_PERIOD) => {
                     debug!("timeout expired; refreshing repositories");
                     return SystemTime::now();
                 },
@@ -243,7 +267,7 @@ async fn update_credentials(app: &Application) {
 
 pub(crate) async fn check_repo_updates(app: Application) {
     while app.credentials.github().is_none() {
-        sleep(Duration::from_millis(100)).await
+        sleep_systime(Duration::from_millis(100)).await
     }
 
     let handles: Arc<scc::HashMap<RepoRef, JoinHandle<_>>> = Arc::default();
@@ -266,7 +290,7 @@ pub(crate) async fn check_repo_updates(app: Application) {
             })
             .await;
 
-        sleep(Duration::from_secs(5)).await
+        sleep_systime(Duration::from_secs(5)).await
     }
 }
 
@@ -319,7 +343,7 @@ async fn periodic_repo_poll(app: Application, reporef: RepoRef) -> Option<()> {
             )
         }
 
-        let timeout = sleep(poller.jittery_interval());
+        let timeout = sleep_systime(poller.jittery_interval());
         tokio::select!(
             _ = timeout => {
                 debug!(?reporef, "reindexing");

@@ -48,6 +48,7 @@ import ErrorFallback from './components/ErrorFallback';
 import { PersonalQuotaContextProvider } from './context/providers/PersonalQuotaContextProvider';
 import UpgradePopup from './components/UpgradePopup';
 import StudioGuidePopup from './components/StudioGuidePopup';
+import WaitingUpgradePopup from './components/UpgradePopup/WaitingUpgradePopup';
 
 type Props = {
   deviceContextValue: DeviceContextType;
@@ -393,6 +394,7 @@ function App({ deviceContextValue }: Props) {
                 <StatusBar />
                 <CloudFeaturePopup />
                 <UpgradePopup />
+                <WaitingUpgradePopup />
               </PersonalQuotaContextProvider>
             </GeneralUiContextProvider>
           </TabsContext.Provider>
