@@ -22,6 +22,27 @@ pub const AVG_LINE_LEN: u64 = 30;
 pub const MAX_LINE_COUNT: u64 = 20000;
 pub const MAX_FILE_LEN: u64 = AVG_LINE_LEN * MAX_LINE_COUNT;
 
+#[rustfmt::skip]
+pub const EXT_BLACKLIST: &[&str] = &[
+    // graphics
+    "png", "jpg", "jpeg", "ico", "bmp", "bpg", "eps", "pcx", "ppm", "tga", "tiff", "wmf", "xpm",
+    "svg", "riv",
+    // fonts
+    "ttf", "woff2", "fnt", "fon", "otf",
+    // documents
+    "pdf", "ps", "doc", "dot", "docx", "dotx", "xls", "xlsx", "xlt", "odt", "ott", "ods", "ots", "dvi", "pcl",
+    // media
+    "mp3", "ogg", "ac3", "aac", "mod", "mp4", "mkv", "avi", "m4v", "mov", "flv",
+    // compiled
+    "jar", "pyc", "war", "ear",
+    // compression
+    "tar", "gz", "bz2", "xz", "7z", "bin", "apk", "deb", "rpm",
+    // executable
+    "com", "exe", "out", "coff", "obj", "dll", "app", "class",
+    // misc.
+    "log", "wad", "bsp", "bak", "sav", "dat", "lock",
+];
+
 pub trait FileSource {
     fn len(&self) -> usize;
     fn for_each(self, signal: &SyncPipes, iterator: impl Fn(RepoDirEntry) + Sync + Send);
@@ -83,27 +104,6 @@ pub(crate) fn should_index<P: AsRef<Path> + ?Sized>(p: &P) -> bool {
     if path.components().any(|c| c.as_os_str() == ".git") {
         return false;
     }
-
-    #[rustfmt::skip]
-    const EXT_BLACKLIST: &[&str] = &[
-        // graphics
-        "png", "jpg", "jpeg", "ico", "bmp", "bpg", "eps", "pcx", "ppm", "tga", "tiff", "wmf", "xpm",
-        "svg", "riv",
-        // fonts
-        "ttf", "woff2", "fnt", "fon", "otf",
-        // documents
-        "pdf", "ps", "doc", "dot", "docx", "dotx", "xls", "xlsx", "xlt", "odt", "ott", "ods", "ots", "dvi", "pcl",
-        // media
-        "mp3", "ogg", "ac3", "aac", "mod", "mp4", "mkv", "avi", "m4v", "mov", "flv",
-        // compiled
-        "jar", "pyc", "war", "ear",
-        // compression
-        "tar", "gz", "bz2", "xz", "7z", "bin", "apk", "deb", "rpm",
-        // executable
-        "com", "exe", "out", "coff", "obj", "dll", "app", "class",
-        // misc.
-        "log", "wad", "bsp", "bak", "sav", "dat", "lock",
-    ];
 
     let Some(ext) = path.extension() else {
         return true;

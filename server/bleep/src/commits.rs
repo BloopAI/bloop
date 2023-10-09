@@ -13,6 +13,7 @@ use tracing::{debug, error, trace};
 
 use crate::{
     llm_gateway::{self, api::Message},
+    repo::iterator::EXT_BLACKLIST,
     repo::RepoRef,
     state::RepositoryPool,
 };
@@ -90,6 +91,13 @@ impl<'a> Iterator for CommitIterator<'a> {
                     .to_path_lossy()
                     .extension()
                     .map(|ext| ext.to_string_lossy().to_string());
+
+                if let Some(ext) = ext.clone() {
+                    if EXT_BLACKLIST.contains(&ext.as_str()) {
+                        debug!("Ignoring file with excluded extension: {}", ext);
+                        return Ok::<Action, NoneError>(Action::Continue);
+                    }
+                }
 
                 if let Some(ext) = ext.clone() {
                     stats.modified_file_exts.insert(ext);
