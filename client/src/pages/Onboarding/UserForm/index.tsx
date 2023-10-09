@@ -13,11 +13,7 @@ import { EMAIL_REGEX } from '../../../consts/validations';
 import Button from '../../../components/Button';
 import { UIContext } from '../../../context/uiContext';
 import { DeviceContext } from '../../../context/deviceContext';
-import {
-  getConfig,
-  gitHubDeviceLogin,
-  gitHubLogout,
-} from '../../../services/api';
+import { getConfig, githubLogout, githubLogin } from '../../../services/api';
 import { Form } from '../index';
 import Dropdown from '../../../components/Dropdown/Normal';
 import { MenuItemType } from '../../../types/general';
@@ -48,12 +44,12 @@ const UserForm = ({ form, setForm, onContinue }: Props) => {
   const [showErrors, setShowErrors] = useState(false);
 
   const handleLogout = useCallback(() => {
-    gitHubLogout();
+    githubLogout();
     setGithubConnected(false);
   }, []);
 
   useEffect(() => {
-    gitHubDeviceLogin().then((data) => {
+    githubLogin().then((data) => {
       setLoginUrl(data.authentication_needed.url);
     });
   }, []);
@@ -65,7 +61,7 @@ const UserForm = ({ form, setForm, onContinue }: Props) => {
     } else {
       if (isTimedOut) {
         setIsTimedOut(false);
-        gitHubDeviceLogin().then((data) => {
+        githubLogin().then((data) => {
           setLoginUrl(data.authentication_needed.url);
           openLink(data.authentication_needed.url);
         });

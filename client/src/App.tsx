@@ -55,7 +55,9 @@ type Props = {
 };
 
 function App({ deviceContextValue }: Props) {
-  useComponentWillMount(() => initApi(deviceContextValue.apiUrl));
+  useComponentWillMount(() =>
+    initApi(deviceContextValue.apiUrl, deviceContextValue.isSelfServe),
+  );
 
   const [tabs, setTabs] = useState<UITabType[]>([
     {

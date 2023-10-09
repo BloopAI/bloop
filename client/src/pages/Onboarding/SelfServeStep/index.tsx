@@ -4,7 +4,7 @@ import { useTranslation, Trans } from 'react-i18next';
 import DialogText from '../DialogText';
 import Button from '../../../components/Button';
 import { GitHubLogo } from '../../../icons';
-import { githubWebLogin } from '../../../services/api';
+import { githubLogin } from '../../../services/api';
 
 const SelfServeStep = () => {
   const { t } = useTranslation();
@@ -12,14 +12,14 @@ const SelfServeStep = () => {
   const location = useLocation();
 
   useEffect(() => {
-    githubWebLogin(
+    githubLogin(
       encodeURIComponent(
         encodeURIComponent(
           `${location.pathname}${location.search}${location.hash}`,
         ),
       ),
     ).then((resp) => {
-      setLoginUrl(resp.oauth_url);
+      setLoginUrl(resp.authentication_needed.url);
     });
   }, []);
 

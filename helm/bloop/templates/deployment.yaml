@@ -65,11 +65,12 @@ spec:
           - --embedding-server-url={{ .Values.bloop.embeddingServerUrl }}:8080
           - --embedding-batch-size={{ .Values.bloop.embeddingBatchSize }}
           - --instance-domain={{ .Values.bloop.instanceDomain }}
-          - --github-app-id={{ .Values.bloop.githubAppId }}
-          - --github-app-install-id={{ .Values.bloop.githubAppInstallId }}
-          - --github-client-id={{ .Values.bloop.githubClientId }}
-          - --github-client-secret={{ .Values.bloop.githubClientSecret }}
-          - --github-app-private-key=/app/secrets/github-app-private-key.pem
+          - --cognito-userpool-id={{ .Values.bloop.cognitoUserpoolId }}
+          - --cognito-client-id={{ .Values.bloop.cognitoClientId }}
+          - --cognito-mgmt-url={{ .Values.bloop.cognitoMgmtUrl }}
+          - --cognito-auth-url={{ .Values.bloop.cognitoAuthUrl }}
+          - --bloop-instance-secret={{ .Values.bloop.bloopInstanceSecret }}
+          - --bloop-instance-org={{ .Values.bloop.bloopInstanceOrg }}
           - --analytics-key={{ .Values.bloop.analyticsKey }}
           - --analytics-data-plane={{ .Values.bloop.analyticsDataPlane }}
           - --sentry-dsn={{ .Values.bloop.sentryDsn }}

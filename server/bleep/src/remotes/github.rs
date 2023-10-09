@@ -1,12 +1,8 @@
 use chrono::{DateTime, Utc};
-use jsonwebtoken::EncodingKey;
-use octocrab::{
-    models::{Installation, InstallationToken},
-    Octocrab,
-};
-
+use octocrab::Octocrab;
 use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 
 use crate::repo::{GitRemote, RepoRemote, Repository};
 
@@ -53,7 +49,9 @@ impl State {
 
     pub(crate) fn expiry(&self) -> Option<DateTime<Utc>> {
         match self.auth {
-            Auth::App { expiry, .. } => Some(expiry),
+            Auth::App {
+                expires_at: expiry, ..
+            } => Some(expiry),
             _ => None,
         }
     }
@@ -85,7 +83,7 @@ pub(crate) enum Auth {
         /// because it expires quickly, but the current code paths
         /// make this the most straightforward way to implement it
         token: SecretString,
-        expiry: DateTime<Utc>,
+        expires_at: DateTime<Utc>,
         org: String,
     },
 }
@@ -93,27 +91,6 @@ pub(crate) enum Auth {
 impl From<Auth> for State {
     fn from(value: Auth) -> Self {
         State::with_auth(value)
-    }
-}
-
-impl Auth {
-    pub async fn from_installation(
-        install: Installation,
-        install_id: u64,
-        octocrab: Octocrab,
-    ) -> Result<Self> {
-        let token: InstallationToken = octocrab
-            .post(
-                format!("/app/installations/{install_id}/access_tokens"),
-                None::<&()>,
-            )
-            .await?;
-
-        Ok(Self::App {
-            token: token.token.into(),
-            expiry: token.expires_at.unwrap().parse().unwrap(),
-            org: install.account.login,
-        })
     }
 }
 
@@ -229,40 +206,39 @@ impl Auth {
 }
 
 pub(crate) async fn refresh_github_installation_token(app: &Application) -> Result<()> {
-    let privkey = std::fs::read(
-        app.config
-            .github_app_private_key
-            .as_ref()
-            .ok_or(RemoteError::Configuration("github_app_private_key"))?,
-    )?;
+    let timestamp = chrono::Utc::now();
+    let payload = json!({ "timestamp": timestamp.to_rfc2822()});
+    let state = app.seal_auth_state(payload);
 
-    let install_id = app
+    let token_url = app
         .config
-        .github_app_install_id
-        .ok_or(RemoteError::Configuration("github_app_install_id"))?;
+        .cognito_mgmt_url
+        .as_ref()
+        .expect("bad config")
+        .join("refresh_token")
+        .unwrap();
 
-    let octocrab = Octocrab::builder()
-        .app(
-            app.config
-                .github_app_id
-                .ok_or(RemoteError::Configuration("github_app_id"))?
-                .into(),
-            EncodingKey::from_rsa_pem(&privkey)?,
-        )
-        .build()?;
+    let response: RefreshTokenResponse = reqwest::Client::new()
+        .post(token_url)
+        .json(&json!({ "state": state }))
+        .send()
+        .await
+        .map_err(RemoteError::RefreshToken)?
+        .json()
+        .await
+        .map_err(RemoteError::RefreshToken)?;
 
-    let installation: Installation = octocrab
-        .get(format!("/app/installations/{install_id}"), None::<&()>)
-        .await?;
+    app.credentials.set_github(State::with_auth(Auth::App {
+        org: app.config.bloop_instance_org.clone().unwrap(),
+        token: response.token,
+        expires_at: response.expires_at,
+    }));
 
-    if !matches!(installation.target_type.as_deref(), Some("Organization")) {
-        return Err(RemoteError::NotSupported(
-            "installation target must be an organization",
-        ));
-    };
-
-    let auth = remotes::github::Auth::from_installation(installation, install_id, octocrab).await?;
-
-    app.credentials.set_github(State::with_auth(auth));
     Ok(())
+}
+
+#[derive(Deserialize)]
+struct RefreshTokenResponse {
+    token: SecretString,
+    expires_at: DateTime<Utc>,
 }

@@ -6,6 +6,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom';
 import { UIContext } from '../../context/uiContext';
 import { DeviceContext } from '../../context/deviceContext';
 import NavBar from '../../components/NavBar';
@@ -13,6 +14,7 @@ import {
   getJsonFromStorage,
   getPlainFromStorage,
   ONBOARDING_DONE_KEY,
+  REFRESH_TOKEN_KEY,
   saveJsonToStorage,
   savePlainToStorage,
   SESSION_ID_KEY,
@@ -24,8 +26,6 @@ import StatusBar from '../../components/StatusBar';
 import UserForm from './UserForm';
 import FeaturesStep from './FeaturesStep';
 import SelfServeStep from './SelfServeStep';
-
-let onboardingFinished = false;
 
 export type Form = {
   firstName: string;
@@ -47,13 +47,15 @@ const Onboarding = ({ activeTab }: { activeTab: string }) => {
   const { shouldShowWelcome, setShouldShowWelcome } = useContext(
     UIContext.Onboarding,
   );
-  const { isGithubConnected } = useContext(UIContext.GitHubConnected);
+  const { isGithubConnected, refreshToken } = useContext(
+    UIContext.GitHubConnected,
+  );
   const { isSelfServe, os, setEnvConfig, envConfig } =
     useContext(DeviceContext);
+  const location = useLocation();
 
   const closeOnboarding = useCallback(() => {
     setShouldShowWelcome(false);
-    onboardingFinished = true; // to avoid showing onboarding twice per session when using VITE_ONBOARDING=true
     savePlainToStorage(ONBOARDING_DONE_KEY, 'true');
   }, []);
 
@@ -72,13 +74,27 @@ const Onboarding = ({ activeTab }: { activeTab: string }) => {
 
   useEffect(() => {
     if (isSelfServe) {
-      getRepos()
-        .then(() => {
-          closeOnboarding();
-        })
-        .catch(() => {
-          setShouldShowWelcome(true);
-        });
+      let token: string | null = null;
+      if (location.hash) {
+        const params = new URLSearchParams('?' + location.hash.slice(1));
+        token = params.get('refresh_token');
+        if (token) {
+          savePlainToStorage(REFRESH_TOKEN_KEY, token);
+        }
+      }
+      const storedToken = getPlainFromStorage(REFRESH_TOKEN_KEY);
+      token = token || storedToken;
+      if (token) {
+        refreshToken(token)
+          .then(() => {
+            closeOnboarding();
+          })
+          .catch(() => {
+            setShouldShowWelcome(true);
+          });
+      } else {
+        setShouldShowWelcome(true);
+      }
     } else {
       getConfig()
         .then((d) => {
@@ -94,28 +110,6 @@ const Onboarding = ({ activeTab }: { activeTab: string }) => {
         });
     }
   }, []);
-
-  useEffect(() => {
-    let intervalId: number;
-    let timerId: number;
-    if (isGithubConnected && !envConfig.github_user?.login) {
-      intervalId = window.setInterval(() => {
-        getConfig().then((resp) => {
-          setEnvConfig((prev) =>
-            JSON.stringify(prev) === JSON.stringify(resp) ? prev : resp,
-          );
-        });
-      }, 500);
-      timerId = window.setTimeout(() => {
-        clearInterval(intervalId);
-      }, 30000);
-    }
-
-    return () => {
-      clearInterval(intervalId);
-      clearTimeout(timerId);
-    };
-  }, [isGithubConnected, envConfig.github_user]);
 
   const onSubmit = useCallback(() => {
     saveUserData({

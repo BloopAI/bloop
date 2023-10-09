@@ -6,7 +6,6 @@ use std::{
 
 use anyhow::Context;
 use chrono::Utc;
-use jsonwebtokens_cognito::KeySet;
 use notify_debouncer_mini::{
     new_debouncer_opt,
     notify::{Config, RecommendedWatcher, RecursiveMode},
@@ -132,7 +131,7 @@ struct RefreshedAccessToken {
 }
 
 async fn update_credentials(app: &Application) {
-    if app.env.allow(Feature::GithubOrgInstallation) {
+    if app.env.allow(Feature::CloudUserAuth) {
         match app.credentials.github().and_then(|c| c.expiry()) {
             // If we have a valid token, do nothing.
             Some(expiry) if expiry > Utc::now() + chrono::Duration::minutes(10) => {}
@@ -149,7 +148,7 @@ async fn update_credentials(app: &Application) {
         }
     }
 
-    if app.env.allow(Feature::CognitoUserAuth) {
+    if app.env.allow(Feature::DesktopUserAuth) {
         let Some(github::State {
             auth: github::Auth::OAuth(ref creds),
             ..
@@ -158,27 +157,16 @@ async fn update_credentials(app: &Application) {
             return;
         };
 
-        let cognito_pool_id = app.config.cognito_userpool_id.as_ref().unwrap();
-        let (region, _pool_id) = cognito_pool_id.split_once('_').unwrap();
-        let keyset = KeySet::new(region, cognito_pool_id).unwrap();
-        let verifier = keyset
-            .new_access_token_verifier(&[app.config.cognito_client_id.as_ref().unwrap()])
-            .build()
-            .unwrap();
-
-        let rotate_access_key = match keyset.verify(&creds.access_token, &verifier).await {
-            Ok(serde_json::Value::Object(claims)) => {
-                let Some(exp) = claims.get("exp").and_then(serde_json::Value::as_u64)
+        let verifier = crate::webserver::aaa::get_authorizer(app).await;
+        let rotate_access_key = match verifier.check_auth(&creds.access_token).await {
+            Ok(jsonwebtoken::TokenData { claims, .. }) => {
+                let Some(exp) = claims.exp
                 else {
                     return;
                 };
 
-                let expiry_time = UNIX_EPOCH + Duration::from_secs(exp);
+                let expiry_time = UNIX_EPOCH + Duration::from_secs(i64::from(exp) as u64);
                 expiry_time - Duration::from_secs(600) < SystemTime::now()
-            }
-            Ok(_) => {
-                error!("invalid access key material; rotating");
-                true
             }
             Err(err) => {
                 warn!(?err, "failed to validate access token; rotating");
