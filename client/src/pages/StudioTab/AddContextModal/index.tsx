@@ -2,7 +2,6 @@ import { ChangeEvent, memo, useCallback, useContext, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import SeparateOnboardingStep from '../../../components/SeparateOnboardingStep';
 import KeyboardChip from '../KeyboardChip';
-import { useArrowKeyNavigation } from '../../../hooks/useArrowNavigationHook';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
 import { Branch, Paper, RepositoryFilled } from '../../../icons';
 import { RepoType, StudioContextFile } from '../../../types/general';
@@ -33,7 +32,6 @@ const AddContextModal = ({
   const [selectedBranch, setSelectedBranch] = useState('');
   const [search, setSearch] = useState('');
   const [canSkipRepo, setCanSkipRepo] = useState(true);
-  const containerRef = useArrowKeyNavigation();
   const { setCloudFeaturePopupOpen } = useContext(UIContext.CloudFeaturePopup);
 
   const handleKeyEvent = useCallback((e: KeyboardEvent) => {
@@ -70,10 +68,7 @@ const AddContextModal = ({
 
   return (
     <SeparateOnboardingStep isVisible={isVisible} onClose={onClose} noWrapper>
-      <div
-        ref={containerRef}
-        className="flex flex-col w-[38.75rem] relative flex-1 overflow-auto"
-      >
+      <div className="flex flex-col w-[38.75rem] relative flex-1 overflow-auto">
         <div className="flex flex-col gap-3 items-start w-full border-b border-bg-border-hover py-3 px-4">
           <div className="flex items-center gap-0.5">
             <StepItem text={t('Add context file')} />

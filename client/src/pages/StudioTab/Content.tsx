@@ -399,7 +399,11 @@ const ContentContainer = ({
     ) {
       setIsChangeUnsaved(false);
     }
-  }, [leftPanel.type]);
+  }, [leftPanel.type, isAddDocsOpen, isAddContextOpen]);
+
+  useEffect(() => {
+    setIsChangeUnsaved(isAddDocsOpen || isAddContextOpen);
+  }, [isAddDocsOpen, isAddContextOpen]);
 
   return (
     <PageTemplate renderPage="studio">
