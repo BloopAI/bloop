@@ -34,10 +34,6 @@ const SectionItem = ({
     }
   }, [isFocused]);
 
-  const handleMouseOver = useCallback(() => {
-    setHighlightedIndex(i);
-  }, []);
-
   const handleClick = useCallback(() => {
     handleDocSubmit(selectedProvider, relative_url, doc_title, point_id);
   }, [selectedProvider, relative_url, doc_title, point_id]);
@@ -50,7 +46,6 @@ const SectionItem = ({
         isFocused ? 'bg-bg-base-hover' : 'bg-transparent'
       }`}
       onClick={handleClick}
-      onMouseOver={handleMouseOver}
     >
       <RenderedSection text={text} />
     </a>

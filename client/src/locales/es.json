@@ -412,5 +412,7 @@
 	"Indexing <1>#</1>. This process can take a couple of minutes.": "Indexación <1>{{url}}</1>. Este proceso puede tomar un par de minutos.",
 	"Indexing <1>#</1>.": "Indexación <1>{{url}}</1>.",
 	"Select section": "Seleccionar sección",
-	"Clear selection": "Selección clara"
+	"Clear selection": "Selección clara",
+	"Search docs or paste a URL to index": "Buscar documentos o pegar una URL para indexar",
+	"Search pages": "Páginas de búsqueda"
 }

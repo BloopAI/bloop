@@ -393,7 +393,10 @@ const ContentContainer = ({
   ]);
 
   useEffect(() => {
-    if (leftPanel.type !== StudioLeftPanelType.FILE) {
+    if (
+      leftPanel.type !== StudioLeftPanelType.FILE &&
+      leftPanel.type !== StudioLeftPanelType.DOCS
+    ) {
       setIsChangeUnsaved(false);
     }
   }, [leftPanel.type]);
@@ -464,6 +467,7 @@ const ContentContainer = ({
                   setLeftPanel={setLeftPanel}
                   isActiveTab={isActive}
                   onSectionsChanged={onDocSectionsChanged}
+                  setIsChangeUnsaved={setIsChangeUnsaved}
                 />
               ) : null}
               <AddContextModal

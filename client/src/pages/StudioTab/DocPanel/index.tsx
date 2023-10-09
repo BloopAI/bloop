@@ -4,6 +4,7 @@ import React, {
   SetStateAction,
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
@@ -39,6 +40,7 @@ type Props = {
     doc_icon: string;
     doc_title: string;
   }) => void;
+  setIsChangeUnsaved: Dispatch<SetStateAction<boolean>>;
 };
 
 const DocPanel = ({
@@ -51,6 +53,7 @@ const DocPanel = ({
   initialSections,
   onSectionsChanged,
   selectedSection,
+  setIsChangeUnsaved,
 }: Props) => {
   useTranslation();
   const [selectedSections, setSelectedSections] = useState(
@@ -107,19 +110,30 @@ const DocPanel = ({
   );
   useKeyboardNavigation(handleKeyEvent, !isActiveTab);
 
+  const hasChanges = useMemo(() => {
+    return (
+      !isDocInContext ||
+      JSON.stringify(initialSections) !== JSON.stringify(selectedSections)
+    );
+  }, [isDocInContext, initialSections, selectedSections]);
+
+  useEffect(() => {
+    setIsChangeUnsaved(hasChanges);
+  }, [hasChanges]);
+
   return (
     <div className="flex flex-col w-full flex-1 overflow-auto relative">
       <div className="flex gap-1 px-8 justify-between items-center border-b border-bg-border bg-bg-shade shadow-low h-11.5 flex-shrink-0">
         <div className="flex items-center gap-3 overflow-auto">
-          <div className="flex items-center p-1 rounded border border-bg-border bg-bg-base">
+          <div className="flex items-center p-1 rounded border border-bg-border bg-bg-base flex-shrink-0">
             {docProvider.favicon ? (
               <img
                 src={docProvider.favicon}
                 alt={docProvider.name}
-                className="w-4 h-4"
+                className="w-4 h-4 flex-shrink-0"
               />
             ) : (
-              <Magazine raw sizeClassName="w-4 h-4" />
+              <Magazine raw sizeClassName="w-4 h-4 flex-shrink-0" />
             )}
           </div>
           <p className="body-s-strong text-label-title ellipsis">{title}</p>

@@ -418,5 +418,7 @@
 	"Indexing <1>#</1>. This process can take a couple of minutes.": "索引<1>{{url}}</1>。 这个过程可能需要几分钟。",
 	"Indexing <1>#</1>.": "索引<1>{{url}}</1>。 ",
 	"Select section": "选择部分",
-	"Clear selection": "清空选项"
+	"Clear selection": "清空选项",
+	"Search docs or paste a URL to index": "搜索文档或将URL粘贴到索引",
+	"Search pages": "搜索页"
 }

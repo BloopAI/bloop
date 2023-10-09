@@ -411,5 +411,7 @@
 	"Indexing <1>#</1>. This process can take a couple of minutes.": "Indexing <1>{{url}}</1>. This process can take a couple of minutes.",
 	"Indexing <1>#</1>.": "Indexing <1>{{url}}</1>.",
 	"Select section": "Select section",
-	"Clear selection": "Clear selection"
+	"Clear selection": "Clear selection",
+	"Search docs or paste a URL to index": "Search docs or paste a URL to index",
+	"Search pages": "Search pages"
 }

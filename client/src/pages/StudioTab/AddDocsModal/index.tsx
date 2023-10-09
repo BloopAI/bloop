@@ -82,6 +82,7 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
       setStep(0);
       setSelectedProvider(null);
       setDocsUrl('');
+      setVerifyError(false);
     }
   }, [isVisible]);
 
@@ -97,8 +98,8 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
               d.url?.toLowerCase().startsWith(newValue.toLowerCase()),
           ),
         );
-      } else {
-        searchDocSections(selectedProvider!.id, newValue).then((resp) => {
+      } else if (selectedProvider) {
+        searchDocSections(selectedProvider.id, newValue).then((resp) => {
           setFilteredSections(resp);
         });
       }
@@ -147,11 +148,11 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
         return;
       }
       setVerifying(true);
-      verifyDocsUrl(docsUrl)
+      verifyDocsUrl(docsUrl.trim())
         .then(() => {
           setVerifying(false);
           setVerifyError(false);
-          syncDocProvider(docsUrl);
+          syncDocProvider(docsUrl.trim());
         })
         .catch(() => {
           setVerifying(false);
@@ -182,8 +183,10 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
 
   const handleSelectPage = useCallback(
     (url: string, title: string) => {
-      onSubmit(selectedProvider!, url, title);
-      onClose();
+      if (selectedProvider) {
+        onSubmit(selectedProvider, url, title);
+        onClose();
+      }
     },
     [selectedProvider],
   );
@@ -280,7 +283,11 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
             className="flex-1 w-full bg-transparent outline-none focus:outline-0 body-m placeholder:text-label-muted"
             value={docsUrl}
             onChange={handleDocUrlChange}
-            placeholder={step === 0 ? 'Docs URL' : 'Search page'}
+            placeholder={
+              step === 0
+                ? t('Search docs or paste a URL to index')
+                : t('Search pages')
+            }
             autoFocus
             key={step}
             disabled={isIndexing}
@@ -300,7 +307,7 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
                   : 'Index'}
               </Trans>
               {!isVerifying && !isIndexing && (
-                <KeyboardChip type="cmd" variant="primary" />
+                <KeyboardChip type="entr" variant="primary" />
               )}
             </Button>
           )}
@@ -313,18 +320,20 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
               handleLibrarySubmit={handleLibrarySubmit}
               syncDocProvider={syncDocProvider}
             />
-          ) : docsUrl ? (
-            <Sections
-              filteredSections={filteredSections}
-              handleDocSubmit={handleDocSubmit}
-              selectedProvider={selectedProvider!}
-            />
-          ) : (
-            <PagesWithPreview
-              docId={selectedProvider!.id}
-              handleSelectPage={handleSelectPage}
-            />
-          )}
+          ) : selectedProvider ? (
+            docsUrl ? (
+              <Sections
+                filteredSections={filteredSections}
+                handleDocSubmit={handleDocSubmit}
+                selectedProvider={selectedProvider!}
+              />
+            ) : (
+              <PagesWithPreview
+                docId={selectedProvider!.id}
+                handleSelectPage={handleSelectPage}
+              />
+            )
+          ) : null}
         </div>
         <div className="flex justify-between items-center gap-1 py-3 px-4 border-t border-bg-border bg-bg-base">
           <div className="flex items-center gap-3">
