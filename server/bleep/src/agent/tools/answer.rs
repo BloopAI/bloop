@@ -372,7 +372,7 @@ impl Agent {
 
         debug!(?spans_by_path, "expanded spans");
 
-        spans_by_path
+        let code_chunks = spans_by_path
             .into_iter()
             .flat_map(|(path, spans)| spans.into_iter().map(move |s| (path.clone(), s)))
             .map(|(path, span)| {
@@ -386,7 +386,24 @@ impl Agent {
                     end_line: span.end,
                 }
             })
-            .collect()
+            .collect::<Vec<CodeChunk>>();
+
+        // Handle case where there is only one code chunk and it exceeds `max_tokens`.
+        // In this instance we trim the chunk to fit within the limit.
+        if code_chunks.len() == 1 {
+            let chunk = code_chunks.first().unwrap();
+            let trimmed_snippet = transcoder::limit_tokens(&chunk.snippet, bpe, max_tokens);
+            let num_trimmed_lines = trimmed_snippet.lines().count();
+            vec![CodeChunk {
+                alias: chunk.alias,
+                path: chunk.path.clone(),
+                snippet: trimmed_snippet.to_string(),
+                start_line: chunk.start_line,
+                end_line: (chunk.start_line + num_trimmed_lines).saturating_sub(1),
+            }]
+        } else {
+            code_chunks
+        }
     }
 }
 
