@@ -10,7 +10,6 @@ import React, {
 import { Trans, useTranslation } from 'react-i18next';
 import SeparateOnboardingStep from '../../../components/SeparateOnboardingStep';
 import KeyboardChip from '../KeyboardChip';
-import { useArrowKeyNavigation } from '../../../hooks/useArrowNavigationHook';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
 import {
   getIndexedDocs,
@@ -23,10 +22,10 @@ import { Magazine, Paper, WarningSign } from '../../../icons';
 import { DocSectionType, DocShortType } from '../../../types/api';
 import StepItem from '../AddContextModal/StepItem';
 import { DeviceContext } from '../../../context/deviceContext';
-import IndexedDocRow from './IndexedDocRow';
 import CommandIndicator from './CommandIndicator';
-import RenderedSection from './RenderedSection';
 import PagesWithPreview from './PagesWithPreview';
+import IndexedDocsList from './IndexedDocsList';
+import Sections from './Sections';
 
 type Props = {
   isVisible: boolean;
@@ -38,15 +37,9 @@ type Props = {
     url: string,
     selectedSection?: string,
   ) => void;
-  onDocAdded: (
-    doc_id: string,
-    doc_source: string,
-    relative_url: string,
-    ranges: string[],
-  ) => void;
 };
 
-const AddDocsModal = ({ isVisible, onClose, onSubmit, onDocAdded }: Props) => {
+const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
   const { t } = useTranslation();
   const [step, setStep] = useState(0);
   const [selectedProvider, setSelectedProvider] = useState<DocShortType | null>(
@@ -62,7 +55,6 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit, onDocAdded }: Props) => {
   const [filteredSections, setFilteredSections] = useState<DocSectionType[]>(
     [],
   );
-  const containerRef = useArrowKeyNavigation();
   const { apiUrl } = useContext(DeviceContext);
 
   const handleKeyEvent = useCallback((e: KeyboardEvent) => {
@@ -115,52 +107,66 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit, onDocAdded }: Props) => {
     [indexedDocs, step, selectedProvider?.id],
   );
 
+  const syncDocProvider = useCallback(
+    (urlOrId: string, isResync?: boolean) => {
+      setIndexing(true);
+      if (isResync) {
+        setCurrentlyIndexingUrl(
+          indexedDocs.find((d) => d.id === urlOrId)?.url || '',
+        );
+      }
+      const eventSource = new EventSource(
+        `${apiUrl.replace('https:', '')}/docs/${
+          isResync ? `${urlOrId}/resync` : `sync?url=${urlOrId}`
+        }`,
+      );
+      eventSource.onerror = (err) => {
+        console.log(err);
+      };
+      eventSource.onmessage = (ev) => {
+        const data = JSON.parse(ev.data);
+        console.log(data);
+        if (data.Ok.Done) {
+          eventSource.close();
+          setIndexing(false);
+          setDocsUrl('');
+          setCurrentlyIndexingUrl('');
+          refreshIndexedDocs();
+          return;
+        } else if (data.Ok.Update?.url) {
+          setCurrentlyIndexingUrl(data.Ok.Update.url);
+        }
+      };
+    },
+    [indexedDocs],
+  );
+
   const handleUrlSubmit = useCallback(
     (e: FormEvent) => {
       e.preventDefault();
+      if (!docsUrl) {
+        return;
+      }
       setVerifying(true);
       verifyDocsUrl(docsUrl)
         .then(() => {
           setVerifying(false);
           setVerifyError(false);
-          setIndexing(true);
-          const eventSource = new EventSource(
-            `${apiUrl.replace('https:', '')}/docs/sync?url=${docsUrl}`,
-          );
-          eventSource.onerror = (err) => {
-            console.log(err);
-          };
-          eventSource.onmessage = (ev) => {
-            const data = JSON.parse(ev.data);
-            console.log(data);
-            if (data.Ok.Done) {
-              eventSource.close();
-              setIndexing(false);
-              setDocsUrl('');
-              setCurrentlyIndexingUrl('');
-              refreshIndexedDocs();
-              return;
-            } else if (data.Ok.Update?.url) {
-              setCurrentlyIndexingUrl(data.Ok.Update.url);
-            }
-          };
+          syncDocProvider(docsUrl);
         })
         .catch(() => {
           setVerifying(false);
           setVerifyError(true);
         });
     },
-    [docsUrl, refreshIndexedDocs],
+    [docsUrl, refreshIndexedDocs, syncDocProvider],
   );
 
-  const handleLibrarySubmit = useCallback(
-    (docProvider: DocShortType) => {
-      setSelectedProvider(docProvider);
-      setDocsUrl('');
-      setStep(1);
-    },
-    [onClose, onSubmit],
-  );
+  const handleLibrarySubmit = useCallback((docProvider: DocShortType) => {
+    setSelectedProvider(docProvider);
+    setDocsUrl('');
+    setStep(1);
+  }, []);
 
   const handleDocSubmit = useCallback(
     (
@@ -244,7 +250,6 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit, onDocAdded }: Props) => {
         </div>
       </div>
       <div
-        ref={containerRef}
         className={`flex flex-col overflow-auto shadow-float ${
           step === 0 ? 'w-[38.75rem]' : 'w-[80vw] max-w-[57.75rem]'
         } relative flex-1 bg-bg-shade rounded-md border border-bg-border`}
@@ -284,6 +289,7 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit, onDocAdded }: Props) => {
             onChange={handleDocUrlChange}
             placeholder={step === 0 ? 'Docs URL' : 'Search page'}
             autoFocus
+            key={step}
             disabled={isIndexing}
           />
           {!!docsUrl && step === 0 && (
@@ -306,39 +312,20 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit, onDocAdded }: Props) => {
             </Button>
           )}
         </form>
-        <div className="flex max-h-72 overflow-auto px-1 py-3 flex-col items-start gap-1">
+        <div className="flex max-h-72 overflow-auto px-1 py-3 flex-col">
           {step === 0 ? (
-            filteredDocs.map((d) => {
-              return (
-                <IndexedDocRow
-                  key={d.id}
-                  doc={d}
-                  onSubmit={handleLibrarySubmit}
-                  refetchDocs={refreshIndexedDocs}
-                />
-              );
-            })
+            <IndexedDocsList
+              refetchDocs={refreshIndexedDocs}
+              filteredDocs={filteredDocs}
+              handleLibrarySubmit={handleLibrarySubmit}
+              syncDocProvider={syncDocProvider}
+            />
           ) : docsUrl ? (
-            <div className="w-full break-wordflex flex-col">
-              {filteredSections.map((s) => (
-                <a
-                  href="#"
-                  key={s.point_id}
-                  className="px-4 py-4 w-full block border-b-2 border-bg-border hover:bg-bg-base-hover"
-                  onClick={() =>
-                    handleDocSubmit(
-                      selectedProvider!.id,
-                      selectedProvider!.name,
-                      selectedProvider!.url,
-                      s.relative_url,
-                      s.point_id,
-                    )
-                  }
-                >
-                  <RenderedSection text={s.text} />
-                </a>
-              ))}
-            </div>
+            <Sections
+              filteredSections={filteredSections}
+              handleDocSubmit={handleDocSubmit}
+              selectedProvider={selectedProvider!}
+            />
           ) : (
             <PagesWithPreview
               docId={selectedProvider!.id}
@@ -349,18 +336,21 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit, onDocAdded }: Props) => {
         <div className="flex justify-between items-center gap-1 py-3 px-4 border-t border-bg-border bg-bg-base">
           <div className="flex items-center gap-3">
             <CommandIndicator label={t('Close')} keyboardKeys={['Esc']} />
+            <div className="h-3.5 w-px bg-bg-border flex-shrink-0" />
+            <CommandIndicator
+              label={t('Select')}
+              keyboardKeys={['cmd', 'entr']}
+            />
             {step === 0 && (
               <>
-                <div className="h-3.5 w-px bg-bg-border flex-shrink-0" />
-                <CommandIndicator label={t('Select')} keyboardKeys={['entr']} />
-                {/*    <CommandIndicator*/}
-                {/*      label={t('Remove')}*/}
-                {/*      keyboardKeys={['cmd', 'bksp']}*/}
-                {/*    />*/}
-                {/*    <CommandIndicator*/}
-                {/*      label={t('Resync')}*/}
-                {/*      keyboardKeys={['cmd', 'R']}*/}
-                {/*    />*/}
+                <CommandIndicator
+                  label={t('Remove')}
+                  keyboardKeys={['cmd', 'bksp']}
+                />
+                <CommandIndicator
+                  label={t('Resync')}
+                  keyboardKeys={['cmd', 'R']}
+                />
               </>
             )}
           </div>

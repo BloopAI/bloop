@@ -1,7 +1,7 @@
 import React, { memo, useCallback, useContext, useMemo } from 'react';
 import { Remarkable } from 'remarkable';
-import { highlightCode } from '../../../utils/prism';
-import { DeviceContext } from '../../../context/deviceContext';
+import { highlightCode } from '../../../../utils/prism';
+import { DeviceContext } from '../../../../context/deviceContext';
 
 const md = new Remarkable({
   html: true,

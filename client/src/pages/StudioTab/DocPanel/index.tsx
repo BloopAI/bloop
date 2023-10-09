@@ -18,6 +18,7 @@ import TokensUsageBadge from '../TokensUsageBadge';
 import { getDocSections, getDocTokenCount } from '../../../services/api';
 import { DocSectionType } from '../../../types/api';
 import { findElementInCurrentTab } from '../../../utils/domUtils';
+import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
 import SectionsBadge from './SectionsBadge';
 import DocSection from './DocSection';
 
@@ -87,6 +88,17 @@ const DocPanel = ({
     onSectionsChanged(selectedSections, id, baseUrl, url);
     setLeftPanel({ type: StudioLeftPanelType.CONTEXT });
   }, [onSectionsChanged, selectedSections, id, url, baseUrl, setLeftPanel]);
+
+  const handleKeyEvent = useCallback(
+    (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault();
+        onSubmit();
+      }
+    },
+    [onSubmit],
+  );
+  useKeyboardNavigation(handleKeyEvent, !isActiveTab);
 
   return (
     <div className="flex flex-col w-full flex-1 overflow-auto relative">

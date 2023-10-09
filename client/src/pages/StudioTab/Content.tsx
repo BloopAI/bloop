@@ -456,7 +456,6 @@ const ContentContainer = ({
                 isVisible={isAddDocsOpen}
                 onClose={handleAddDocsClose}
                 onSubmit={onDocSelected}
-                onDocAdded={onDocAdded}
               />
             </div>
             <div

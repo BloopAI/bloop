@@ -1,6 +1,6 @@
 import React, { Dispatch, memo, SetStateAction, useCallback } from 'react';
 import Checkbox from '../../../components/Checkbox';
-import RenderedSection from '../AddDocsModal/RenderedSection';
+import RenderedSection from '../AddDocsModal/Sections/RenderedSection';
 
 type Props = {
   text: string;
