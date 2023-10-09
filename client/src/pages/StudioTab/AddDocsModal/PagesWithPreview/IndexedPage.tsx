@@ -6,7 +6,7 @@ type Props = {
   i: number;
   doc_title: string;
   setHighlightedIndex: (i: number) => void;
-  handleSelectPage: (url: string) => void;
+  handleSelectPage: (url: string, title: string) => void;
   isFocused: boolean;
 };
 
@@ -31,7 +31,7 @@ const IndexedPage = ({
   }, []);
 
   const handleClick = useCallback(() => {
-    handleSelectPage(relative_url);
+    handleSelectPage(relative_url, doc_title);
   }, []);
   return (
     <button

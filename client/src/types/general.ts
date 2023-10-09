@@ -1,5 +1,5 @@
 import React, { ReactElement } from 'react';
-import { SearchStepType } from './api';
+import { DocShortType, SearchStepType } from './api';
 import { RepoSource } from './index';
 
 export enum MenuItemType {
@@ -383,10 +383,9 @@ export type FileStudioPanelType = {
 export type DocsStudioPanelType = {
   type: StudioLeftPanelType.DOCS;
   data: {
-    id: string;
-    name: string;
+    docProvider: DocShortType;
     url: string;
-    baseUrl: string;
+    title: string;
     selectedSection?: string;
     isDocInContext: boolean;
     initialSections?: string[];
@@ -417,6 +416,8 @@ export type StudioContextFile = {
 export type StudioContextDoc = {
   doc_id: string;
   doc_source: string;
+  doc_icon: string | null;
+  doc_title: string | null;
   relative_url: string;
   ranges: string[];
   hidden: boolean;

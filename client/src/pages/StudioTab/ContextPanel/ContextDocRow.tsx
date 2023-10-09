@@ -31,6 +31,8 @@ const ContextFileRow = ({
   setLeftPanel,
   isPreviewing,
   relative_url,
+  doc_icon,
+  doc_title,
   doc_id,
   doc_source,
   onDocHide,
@@ -42,11 +44,15 @@ const ContextFileRow = ({
     setLeftPanel({
       type: StudioLeftPanelType.DOCS,
       data: {
-        id: doc_id,
+        docProvider: {
+          id: doc_id,
+          url: doc_source,
+          name: doc_title || '',
+          favicon: doc_icon || '',
+        },
+        title: doc_title || doc_source,
         isDocInContext: true,
-        baseUrl: doc_source,
         url: relative_url,
-        name: '',
         initialSections: ranges,
       },
     });
@@ -59,9 +65,13 @@ const ContextFileRow = ({
     >
       <div className={`max-w-full flex gap-2 items-center py-3 px-8`}>
         <div
-          className={`rounded flex items-center justify-center p-1 bg-bg-base`}
+          className={`rounded flex-shrink-0 items-center justify-center p-1 bg-bg-base`}
         >
-          <Magazine />
+          {doc_icon ? (
+            <img src={doc_icon} alt={doc_title || ''} className="w-5 h-5" />
+          ) : (
+            <Magazine />
+          )}
         </div>
         <div className="flex items-center gap-2 flex-1">
           <p
@@ -74,7 +84,7 @@ const ContextFileRow = ({
               placement={'bottom-start'}
               delay={500}
             >
-              {relative_url}
+              {doc_title || relative_url}
             </Tooltip>
           </p>
           <SectionsBadge sections={ranges} />

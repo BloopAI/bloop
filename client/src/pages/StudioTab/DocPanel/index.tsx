@@ -16,7 +16,7 @@ import KeyboardChip from '../KeyboardChip';
 import { DocsSection, Magazine } from '../../../icons';
 import TokensUsageBadge from '../TokensUsageBadge';
 import { getDocSections, getDocTokenCount } from '../../../services/api';
-import { DocSectionType } from '../../../types/api';
+import { DocSectionType, DocShortType } from '../../../types/api';
 import { findElementInCurrentTab } from '../../../utils/domUtils';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
 import SectionsBadge from './SectionsBadge';
@@ -28,24 +28,24 @@ type Props = {
   initialSections?: string[];
   selectedSection?: string;
   setLeftPanel: Dispatch<SetStateAction<StudioLeftPanelDataType>>;
-  id: string;
-  name: string;
   url: string;
-  baseUrl: string;
-  onSectionsChanged: (
-    selectedSections: string[],
-    docId: string,
-    baseUrl: string,
-    relativeUrl: string,
-  ) => void;
+  title: string;
+  docProvider: DocShortType;
+  onSectionsChanged: (a: {
+    ranges: string[];
+    doc_id: string;
+    doc_source: string;
+    relative_url: string;
+    doc_icon: string;
+    doc_title: string;
+  }) => void;
 };
 
 const DocPanel = ({
-  id,
   setLeftPanel,
-  baseUrl,
   url,
-  name,
+  title,
+  docProvider,
   isActiveTab,
   isDocInContext,
   initialSections,
@@ -61,15 +61,15 @@ const DocPanel = ({
 
   useEffect(() => {
     if (isActiveTab) {
-      getDocSections(id, url).then((resp) => {
+      getDocSections(docProvider.id, url).then((resp) => {
         setSections(resp);
       });
     }
-  }, [isActiveTab, id, url]);
+  }, [isActiveTab, docProvider.id, url]);
 
   useEffect(() => {
-    getDocTokenCount(id, url, selectedSections).then(setTokenCount);
-  }, [selectedSections, url, id]);
+    getDocTokenCount(docProvider.id, url, selectedSections).then(setTokenCount);
+  }, [selectedSections, url, docProvider.id]);
 
   useEffect(() => {
     if (selectedSection && sections.length) {
@@ -85,9 +85,16 @@ const DocPanel = ({
   }, [setLeftPanel]);
 
   const onSubmit = useCallback(() => {
-    onSectionsChanged(selectedSections, id, baseUrl, url);
+    onSectionsChanged({
+      ranges: selectedSections,
+      doc_id: docProvider.id,
+      doc_source: docProvider.url,
+      relative_url: url,
+      doc_title: title,
+      doc_icon: docProvider.favicon,
+    });
     setLeftPanel({ type: StudioLeftPanelType.CONTEXT });
-  }, [onSectionsChanged, selectedSections, id, url, baseUrl, setLeftPanel]);
+  }, [onSectionsChanged, selectedSections, docProvider, url, setLeftPanel]);
 
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
@@ -105,9 +112,17 @@ const DocPanel = ({
       <div className="flex gap-1 px-8 justify-between items-center border-b border-bg-border bg-bg-shade shadow-low h-11.5 flex-shrink-0">
         <div className="flex items-center gap-3 overflow-auto">
           <div className="flex items-center p-1 rounded border border-bg-border bg-bg-base">
-            <Magazine raw sizeClassName="w-4 h-4" />
+            {docProvider.favicon ? (
+              <img
+                src={docProvider.favicon}
+                alt={docProvider.name}
+                className="w-4 h-4"
+              />
+            ) : (
+              <Magazine raw sizeClassName="w-4 h-4" />
+            )}
           </div>
-          <p className="body-s-strong text-label-title ellipsis">{name}</p>
+          <p className="body-s-strong text-label-title ellipsis">{title}</p>
           <SectionsBadge sections={selectedSections} />
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
@@ -136,7 +151,7 @@ const DocPanel = ({
       <div className="flex px-8 py-2 items-center justify-between gap-2 border-b border-bg-border bg-bg-sub text-label-base overflow-x-auto flex-shrink-0">
         <div className="flex items-center gap-1.5 caption text-label-link ellipsis">
           <p>
-            {baseUrl}
+            {docProvider.url}
             {url}
           </p>
         </div>

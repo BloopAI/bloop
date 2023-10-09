@@ -337,6 +337,7 @@ export type DocSectionType = {
   ancestry: string[];
   doc_id: number;
   doc_source: string;
+  doc_title: string;
   header: string;
   point_id: string;
   relative_url: string;

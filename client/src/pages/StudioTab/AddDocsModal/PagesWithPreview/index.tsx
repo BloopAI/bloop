@@ -7,7 +7,7 @@ import IndexedPage from './IndexedPage';
 
 type Props = {
   docId: string;
-  handleSelectPage: (url: string) => void;
+  handleSelectPage: (url: string, title: string) => void;
 };
 
 const PagesWithPreview = ({ docId, handleSelectPage }: Props) => {
@@ -21,7 +21,10 @@ const PagesWithPreview = ({ docId, handleSelectPage }: Props) => {
     (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey) {
         if (e.key === 'Enter') {
-          handleSelectPage(indexedPages[highlightedIndex].relative_url);
+          handleSelectPage(
+            indexedPages[highlightedIndex].relative_url,
+            indexedPages[highlightedIndex].doc_title,
+          );
         }
       } else {
         if (e.key === 'ArrowDown') {

@@ -7,10 +7,9 @@ type Props = {
   filteredSections: DocSectionType[];
   selectedProvider: DocShortType;
   handleDocSubmit: (
-    id: string,
-    name: string,
-    baseUrl: string,
+    docProvider: DocShortType,
     url: string,
+    title: string,
     selectedSection?: string,
   ) => void;
 };
@@ -27,9 +26,7 @@ const Sections = ({
       if (e.ctrlKey || e.metaKey) {
         if (e.key === 'Enter') {
           handleDocSubmit(
-            selectedProvider.id,
-            selectedProvider.name,
-            selectedProvider.url,
+            selectedProvider,
             filteredSections[highlightedIndex].relative_url,
             filteredSections[highlightedIndex].point_id,
           );

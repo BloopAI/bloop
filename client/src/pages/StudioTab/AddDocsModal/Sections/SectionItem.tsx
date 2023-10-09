@@ -5,10 +5,9 @@ import RenderedSection from './RenderedSection';
 type Props = DocSectionType & {
   selectedProvider: DocShortType;
   handleDocSubmit: (
-    id: string,
-    name: string,
-    baseUrl: string,
+    docProvider: DocShortType,
     url: string,
+    title: string,
     selectedSection?: string,
   ) => void;
   i: number;
@@ -19,6 +18,7 @@ type Props = DocSectionType & {
 const SectionItem = ({
   point_id,
   text,
+  doc_title,
   relative_url,
   selectedProvider,
   handleDocSubmit,
@@ -39,14 +39,8 @@ const SectionItem = ({
   }, []);
 
   const handleClick = useCallback(() => {
-    handleDocSubmit(
-      selectedProvider.id,
-      selectedProvider.name,
-      selectedProvider.url,
-      relative_url,
-      point_id,
-    );
-  }, [selectedProvider, relative_url, point_id]);
+    handleDocSubmit(selectedProvider, relative_url, doc_title, point_id);
+  }, [selectedProvider, relative_url, doc_title, point_id]);
   return (
     <a
       href="#"

@@ -19,7 +19,11 @@ import {
   StudioTabType,
 } from '../../types/general';
 import { patchCodeStudio } from '../../services/api';
-import { CodeStudioType, HistoryConversationTurn } from '../../types/api';
+import {
+  CodeStudioType,
+  DocShortType,
+  HistoryConversationTurn,
+} from '../../types/api';
 import useResizeableSplitPanel from '../../hooks/useResizeableSplitPanel';
 import { TOKEN_LIMIT } from '../../consts/codeStudio';
 import { Info } from '../../icons';
@@ -105,12 +109,14 @@ const ContentContainer = ({
     [tab.key, currentContext],
   );
   const onDocAdded = useCallback(
-    (
-      doc_id: string,
-      doc_source: string,
-      relative_url: string,
-      ranges: string[],
-    ) => {
+    ({
+      doc_id,
+      doc_source,
+      doc_icon,
+      doc_title,
+      relative_url,
+      ranges,
+    }: Omit<StudioContextDoc, 'hidden'>) => {
       if (tab.key) {
         patchCodeStudio(tab.key, {
           doc_context: [
@@ -118,6 +124,8 @@ const ContentContainer = ({
             {
               doc_id,
               doc_source,
+              doc_icon,
+              doc_title,
               relative_url,
               ranges,
               hidden: false,
@@ -141,19 +149,17 @@ const ContentContainer = ({
 
   const onDocSelected = useCallback(
     (
-      id: string,
-      name: string,
-      baseUrl: string,
+      docProvider: DocShortType,
       url: string,
+      title: string,
       selectedSection?: string,
     ) => {
       setLeftPanel({
         type: StudioLeftPanelType.DOCS,
         data: {
-          id,
-          name,
-          baseUrl,
+          docProvider,
           url,
+          title,
           isDocInContext: false,
           selectedSection,
         },
@@ -197,15 +203,29 @@ const ContentContainer = ({
     [tab.key, currentContext],
   );
   const onDocSectionsChanged = useCallback(
-    (ranges: string[], docId: string, baseUrl: string, relativeUrl: string) => {
+    ({
+      doc_id,
+      doc_source,
+      ranges,
+      relative_url,
+      doc_icon,
+      doc_title,
+    }: Omit<StudioContextDoc, 'hidden'>) => {
       const patchedDoc = currentDocContext.find(
         (f) =>
-          f.doc_id === docId &&
-          f.doc_source === baseUrl &&
-          f.relative_url === relativeUrl,
+          f.doc_id === doc_id &&
+          f.doc_source === doc_source &&
+          f.relative_url === relative_url,
       );
       if (!patchedDoc) {
-        onDocAdded(docId, baseUrl, relativeUrl, ranges);
+        onDocAdded({
+          doc_id,
+          doc_source,
+          relative_url,
+          ranges,
+          doc_icon,
+          doc_title,
+        });
         return;
       }
       if (tab.key && patchedDoc) {
@@ -213,9 +233,9 @@ const ContentContainer = ({
         const newContext = currentDocContext
           .filter(
             (f) =>
-              f.doc_id !== docId ||
-              f.doc_source !== baseUrl ||
-              f.relative_url !== relativeUrl,
+              f.doc_id !== doc_id ||
+              f.doc_source !== doc_source ||
+              f.relative_url !== relative_url,
           )
           .concat(patchedDoc);
         patchCodeStudio(tab.key, {
@@ -373,7 +393,7 @@ const ContentContainer = ({
   ]);
 
   useEffect(() => {
-    if (leftPanel.type !== StudioRightPanelType.FILE) {
+    if (leftPanel.type !== StudioLeftPanelType.FILE) {
       setIsChangeUnsaved(false);
     }
   }, [leftPanel.type]);

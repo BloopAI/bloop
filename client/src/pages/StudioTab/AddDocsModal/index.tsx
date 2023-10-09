@@ -31,10 +31,9 @@ type Props = {
   isVisible: boolean;
   onClose: () => void;
   onSubmit: (
-    id: string,
-    name: string,
-    baseUrl: string,
+    docProvider: DocShortType,
     url: string,
+    title: string,
     selectedSection?: string,
   ) => void;
 };
@@ -170,26 +169,20 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
 
   const handleDocSubmit = useCallback(
     (
-      id: string,
-      name: string,
-      baseUrl: string,
+      docProvider: DocShortType,
       url: string,
+      title: string,
       selectedSection?: string,
     ) => {
-      onSubmit(id, name, baseUrl, url, selectedSection);
+      onSubmit(docProvider, url, title, selectedSection);
       onClose();
     },
     [onClose, onSubmit],
   );
 
   const handleSelectPage = useCallback(
-    (url: string) => {
-      onSubmit(
-        selectedProvider!.id,
-        selectedProvider!.name,
-        selectedProvider!.url,
-        url,
-      );
+    (url: string, title: string) => {
+      onSubmit(selectedProvider!, url, title);
       onClose();
     },
     [selectedProvider],
