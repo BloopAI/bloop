@@ -400,7 +400,6 @@
 	"Check context files for any errors": "Verifique los archivos de contexto para cualquier error",
 	"Add docs": "Agregar documentos",
 	"We couldn't find any docs at that link. Try again or make sure the link is correct!": "No pudimos encontrar ningún documento en ese enlace. ¡Inténtelo de nuevo o asegúrese de que el enlace sea correcto!",
-	"Indexing <1>#</1>. This process takes about 1 minute.": "Indexación <1>{{url}}</1>. Este proceso toma aproximadamente 1 minuto.",
 	"Verifying link...": "Verificación del enlace ...",
 	"Only the selected sections will be used as context.": "Solo las secciones seleccionadas se utilizarán como contexto.",
 	"All sections": "Todas las secciones",
@@ -409,5 +408,7 @@
 	"# sections_other": "{{count}} secciones",
 	"Select library": "Seleccionar biblioteca",
 	"Select page": "Página de selección",
-	"Resync": "Resincronarse"
+	"Resync": "Resincronarse",
+	"Indexing <1>#</1>. This process can take a couple of minutes.": "Indexación <1>{{url}}</1>. Este proceso puede tomar un par de minutos.",
+	"Indexing <1>#</1>.": "Indexación <1>{{url}}</1>."
 }

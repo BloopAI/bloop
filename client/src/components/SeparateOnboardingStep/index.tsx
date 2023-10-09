@@ -63,9 +63,11 @@ const SeparateOnboardingStep = ({
       <AnimatePresence>
         {isVisible && (
           <motion.div
-            className={`overflow-auto fixed flex flex-col rounded-md ${
-              noBg ? '' : 'bg-bg-shade border border-bg-border backdrop-blur-8'
-            } drop-shadow-float z-70`}
+            className={`fixed flex flex-col rounded-md ${
+              noBg
+                ? ''
+                : 'bg-bg-shade border border-bg-border backdrop-blur-8 shadow-float overflow-auto'
+            } z-70`}
             animate={modalAnimation}
             initial={initialModalStyles}
             exit={initialModalStyles}

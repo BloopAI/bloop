@@ -67,8 +67,8 @@ const DocPanel = ({
   }, [isActiveTab, id, url]);
 
   useEffect(() => {
-    getDocTokenCount(id, selectedSections).then(setTokenCount);
-  }, [selectedSections, id]);
+    getDocTokenCount(id, url, selectedSections).then(setTokenCount);
+  }, [selectedSections, url, id]);
 
   useEffect(() => {
     if (selectedSection && sections.length) {

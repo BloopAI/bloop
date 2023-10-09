@@ -397,7 +397,6 @@
 	"Check context files for any errors": "エラーがない場合は、コンテキストファイルを確認してください",
 	"Add docs": "ドキュメントを追加します",
 	"We couldn't find any docs at that link. Try again or make sure the link is correct!": "そのリンクにドキュメントが見つかりませんでした。 もう一度やり直すか、リンクが正しいことを確認してください！",
-	"Indexing <1>#</1>. This process takes about 1 minute.": "インデックス作成<1>{{url}}</1>。 このプロセスには約1分かかります。",
 	"Verifying link...": "リンクの検証...",
 	"Only the selected sections will be used as context.": "選択したセクションのみがコンテキストとして使用されます。",
 	"All sections": "すべてのセクション",
@@ -406,5 +405,7 @@
 	"Clear sections": "クリアセクション",
 	"Select library": "ライブラリを選択します",
 	"Select page": "[ページ]を選択します",
-	"Resync": "resync"
+	"Resync": "resync",
+	"Indexing <1>#</1>. This process can take a couple of minutes.": "インデックス作成<1>{{url}}</1>。 このプロセスには数分かかる場合があります。",
+	"Indexing <1>#</1>.": "インデックス作成<1>{{url}}</1>。"
 }

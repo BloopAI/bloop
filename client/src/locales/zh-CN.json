@@ -405,7 +405,6 @@
 	"Check context files for any errors": "检查上下文文件是否有任何错误",
 	"Add docs": "添加文档",
 	"We couldn't find any docs at that link. Try again or make sure the link is correct!": "我们找不到该链接的任何文档。 重试或确保链接正确！",
-	"Indexing <1>#</1>. This process takes about 1 minute.": "索引<1>{{url}}</1>。 这个过程大约需要1分钟。",
 	"Verifying link...": "验证链接...",
 	"Only the selected sections will be used as context.": "仅选定的部分将用作上下文。",
 	"All sections": "所有部分",
@@ -415,5 +414,7 @@
 	"# sections_other": "{{count}}节",
 	"Select library": "选择库",
 	"Select page": "选择页面",
-	"Resync": "Resync"
+	"Resync": "Resync",
+	"Indexing <1>#</1>. This process can take a couple of minutes.": "索引<1>{{url}}</1>。 这个过程可能需要几分钟。",
+	"Indexing <1>#</1>.": "索引<1>{{url}}</1>。 "
 }

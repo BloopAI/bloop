@@ -75,8 +75,8 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit, onDocAdded }: Props) => {
 
   const refreshIndexedDocs = useCallback(() => {
     getIndexedDocs().then((resp) => {
-      setIndexedDocs(resp);
-      setFilteredDocs(resp);
+      setIndexedDocs(resp.filter((d) => d.name));
+      setFilteredDocs(resp.filter((d) => d.name));
     });
   }, []);
 
@@ -85,6 +85,14 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit, onDocAdded }: Props) => {
       refreshIndexedDocs();
     }
   }, [isVisible, refreshIndexedDocs]);
+
+  useEffect(() => {
+    if (!isVisible) {
+      setStep(0);
+      setSelectedProvider(null);
+      setDocsUrl('');
+    }
+  }, [isVisible]);
 
   const handleDocUrlChange = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
@@ -170,7 +178,12 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit, onDocAdded }: Props) => {
 
   const handleSelectPage = useCallback(
     (url: string) => {
-      onDocAdded(selectedProvider!.id, selectedProvider!.url, url, []);
+      onSubmit(
+        selectedProvider!.id,
+        selectedProvider!.name,
+        selectedProvider!.url,
+        url,
+      );
       onClose();
     },
     [selectedProvider],
@@ -184,8 +197,8 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit, onDocAdded }: Props) => {
       noBg
     >
       <div
-        className={`mb-3 mx-auto ${
-          verifyError || isIndexing ? 'opacity-100' : 'opacity-0'
+        className={`mb-3 mx-auto relative z-10 rounded-full ${
+          verifyError || isIndexing ? 'opacity-100 shadow-float' : 'opacity-0'
         }`}
       >
         <div className="text-center caption flex gap-1.5 items-center py-2 px-2.5 rounded-full bg-bg-shade">
@@ -207,10 +220,24 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit, onDocAdded }: Props) => {
             <>
               <LiteLoaderContainer sizeClassName="w-4 h-4" />
               <p className="text-label-title">
-                <Trans values={{ url: currentlyIndexingUrl || docsUrl }}>
-                  Indexing <span className="text-label-link">#</span>. This
-                  process takes about 1 minute.
-                </Trans>
+                {currentlyIndexingUrl ? (
+                  <Trans
+                    values={{
+                      url: currentlyIndexingUrl
+                        .slice(7)
+                        .split('/')
+                        .filter((i) => !!i)
+                        .join(' > '),
+                    }}
+                  >
+                    Indexing <span className="text-label-link">#</span>.
+                  </Trans>
+                ) : (
+                  <Trans values={{ url: docsUrl }}>
+                    Indexing <span className="text-label-link">#</span>. This
+                    process can take a couple of minutes.
+                  </Trans>
+                )}
               </p>
             </>
           )}
@@ -218,7 +245,7 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit, onDocAdded }: Props) => {
       </div>
       <div
         ref={containerRef}
-        className={`flex flex-col overflow-auto ${
+        className={`flex flex-col overflow-auto shadow-float ${
           step === 0 ? 'w-[38.75rem]' : 'w-[80vw] max-w-[57.75rem]'
         } relative flex-1 bg-bg-shade rounded-md border border-bg-border`}
       >
@@ -287,6 +314,7 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit, onDocAdded }: Props) => {
                   key={d.id}
                   doc={d}
                   onSubmit={handleLibrarySubmit}
+                  refetchDocs={refreshIndexedDocs}
                 />
               );
             })
@@ -321,19 +349,20 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit, onDocAdded }: Props) => {
         <div className="flex justify-between items-center gap-1 py-3 px-4 border-t border-bg-border bg-bg-base">
           <div className="flex items-center gap-3">
             <CommandIndicator label={t('Close')} keyboardKeys={['Esc']} />
-            {/*{step === 0 && (*/}
-            {/*  <>*/}
-            {/*    <div className="h-3.5 w-px bg-bg-border flex-shrink-0" />*/}
-            {/*    <CommandIndicator*/}
-            {/*      label={t('Remove')}*/}
-            {/*      keyboardKeys={['cmd', 'bksp']}*/}
-            {/*    />*/}
-            {/*    <CommandIndicator*/}
-            {/*      label={t('Resync')}*/}
-            {/*      keyboardKeys={['cmd', 'R']}*/}
-            {/*    />*/}
-            {/*  </>*/}
-            {/*)}*/}
+            {step === 0 && (
+              <>
+                <div className="h-3.5 w-px bg-bg-border flex-shrink-0" />
+                <CommandIndicator label={t('Select')} keyboardKeys={['entr']} />
+                {/*    <CommandIndicator*/}
+                {/*      label={t('Remove')}*/}
+                {/*      keyboardKeys={['cmd', 'bksp']}*/}
+                {/*    />*/}
+                {/*    <CommandIndicator*/}
+                {/*      label={t('Resync')}*/}
+                {/*      keyboardKeys={['cmd', 'R']}*/}
+                {/*    />*/}
+              </>
+            )}
           </div>
           <CommandIndicator label={t('Navigate')} keyboardKeys={['↑', '↓']} />
         </div>

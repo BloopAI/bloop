@@ -340,11 +340,13 @@ export const getFileTokenCount = (
     .then((r) => r.data);
 export const getDocTokenCount = (
   doc_id: string,
+  relative_url: string,
   ranges?: string[],
 ): Promise<number> =>
   http
-    .post(`/studio/doc-token-count`, {
+    .post(`/studio/doc-file-token-count`, {
       doc_id,
+      relative_url,
       ranges,
     })
     .then((r) => r.data);
@@ -412,6 +414,9 @@ export const getIndexedDocs = (): Promise<DocShortType[]> =>
   http('/docs').then((r) => r.data);
 export const getIndexedPages = (id: number | string): Promise<DocPageType[]> =>
   http(`docs/${id}/list`, { params: { limit: 100 } }).then((r) => r.data);
+export const deleteDocProvider = (
+  id: number | string,
+): Promise<DocPageType[]> => http.delete(`docs/${id}`).then((r) => r.data);
 export const searchDocSections = (
   id: string,
   q: string,
