@@ -175,8 +175,7 @@ mod gpu {
     use tracing::{error, info};
 
     pub struct LocalEmbedder {
-        model: Box<dyn llm::Model>,
-        sessions: Vec<Arc<tokio::sync::Mutex<llm::InferenceSession>>>,
+        ctx: Vec<Arc<tokio::sync::Mutex<(Box<dyn llm::Model>, llm::InferenceSession)>>>,
         tokenizer: Tokenizer,
         permits: Arc<tokio::sync::Semaphore>,
     }
@@ -187,34 +186,32 @@ mod gpu {
 
     impl LocalEmbedder {
         pub fn new(model_dir: &Path) -> anyhow::Result<Self> {
-            let mut model_params = llm::ModelParameters::default();
-            model_params.use_gpu = true;
-
-            let model = llm::load_dynamic(
-                Some(llm::ModelArchitecture::Bert),
-                &model_dir.join("ggml").join("ggml-model-q4_0.bin"),
-                // this tokenizer is used for embedding
-                llm::TokenizerSource::HuggingFaceTokenizerFile(
-                    model_dir.join("ggml").join("tokenizer.json"),
-                ),
-                model_params,
-                llm::load_progress_callback_stdout,
-            )?;
-
             // TODO: this can be parameterized
             //
             // the lower this number, the more time we might spend waiting to run an embedding.
             // the higher this number, the more vram we use, currently we use ~2G per session. this
             // can be fixed by disabling scratch buffers in ggml, bert has no use for this.
-            let session_count = 3;
+            let session_count = 1;
 
             info!(%session_count, "spawned inference sessions");
 
-            let sessions = (0..session_count)
+            let ctx = (0..session_count)
                 .map(|_| {
-                    model.start_session(llm::InferenceSessionConfig {
-                        ..Default::default()
-                    })
+                    let mut model_params = llm::ModelParameters::default();
+                    model_params.use_gpu = true;
+                    let model = llm::load_dynamic(
+                        Some(llm::ModelArchitecture::Bert),
+                        &model_dir.join("ggml").join("ggml-model-q4_0.bin"),
+                        // this tokenizer is used for embedding
+                        llm::TokenizerSource::HuggingFaceTokenizerFile(
+                            model_dir.join("ggml").join("tokenizer.json"),
+                        ),
+                        model_params,
+                        llm::load_progress_callback_stdout,
+                    )
+                    .unwrap();
+                    let session = model.start_session(Default::default());
+                    (model, session)
                 })
                 .map(tokio::sync::Mutex::new)
                 .map(Arc::new)
@@ -226,8 +223,7 @@ mod gpu {
             let _ = tokenizer.with_padding(None).with_truncation(None);
 
             Ok(Self {
-                model,
-                sessions,
+                ctx,
                 tokenizer,
                 permits: Arc::new(tokio::sync::Semaphore::new(session_count)),
             })
@@ -241,20 +237,24 @@ mod gpu {
                 all_logits: None,
                 embeddings: Some(Vec::new()),
             };
-            let vocab = self.model.tokenizer();
-            let beginning_of_sentence = true;
-            let query_token_ids = vocab
-                .tokenize(sequence, beginning_of_sentence)
-                .unwrap()
-                .iter()
-                .map(|(_, tok)| *tok)
-                .collect::<Vec<_>>();
-
             if let Ok(_permit) = self.permits.acquire().await {
-                for s in &self.sessions {
-                    if let Ok(mut session) = s.try_lock() {
-                        self.model
-                            .evaluate(&mut session, &query_token_ids, &mut output_request);
+                for s in &self.ctx {
+                    if let Ok(mut guard) = s.try_lock() {
+                        let guard = &mut *guard;
+                        let model = &guard.0;
+                        let session = &mut guard.1;
+                        let vocab = model.tokenizer();
+                        let beginning_of_sentence = true;
+                        let query_token_ids = vocab
+                            .tokenize(sequence, beginning_of_sentence)
+                            .unwrap()
+                            .iter()
+                            .map(|(_, tok)| *tok)
+                            .collect::<Vec<_>>();
+
+                        let n = tokio::time::Instant::now();
+                        model.evaluate(session, &query_token_ids, &mut output_request);
+                        println!("took {}ms", n.elapsed().as_millis());
                         return Ok(output_request.embeddings.unwrap());
                     }
                 }
@@ -263,38 +263,39 @@ mod gpu {
             unreachable!();
         }
 
-        fn tokenizer(&self) -> &Tokenizer {
-            &self.tokenizer
-        }
-
         async fn batch_embed(&self, log: Vec<&str>) -> anyhow::Result<Vec<Embedding>> {
+            if log.len() == 1 {
+                return self.embed(log[0]).await.map(|v| vec![v]);
+            }
             let mut output_request = llm::OutputRequest {
                 all_logits: None,
                 embeddings: Some(Vec::new()),
             };
-            let vocab = self.model.tokenizer();
-            let beginning_of_sentence = true;
-            let query_token_ids = log
-                .iter()
-                .map(|sequence| {
-                    vocab
-                        .tokenize(&sequence, beginning_of_sentence)
-                        .unwrap()
-                        .iter()
-                        .map(|(_, tok)| *tok)
-                        .collect::<Vec<_>>()
-                })
-                .collect::<Vec<_>>();
-            let query_token_ids: Vec<_> = query_token_ids.iter().map(AsRef::as_ref).collect();
-
             if let Ok(_permit) = self.permits.acquire().await {
-                for s in &self.sessions {
-                    if let Ok(mut session) = s.try_lock() {
-                        self.model.batch_evaluate(
-                            &mut session,
-                            &query_token_ids,
-                            &mut output_request,
-                        );
+                for s in &self.ctx {
+                    if let Ok(mut guard) = s.try_lock() {
+                        let guard = &mut *guard;
+                        let model = &guard.0;
+                        let session = &mut guard.1;
+                        let vocab = model.tokenizer();
+                        let beginning_of_sentence = true;
+                        let query_token_ids = log
+                            .iter()
+                            .map(|sequence| {
+                                vocab
+                                    .tokenize(&sequence, beginning_of_sentence)
+                                    .unwrap()
+                                    .iter()
+                                    .map(|(_, tok)| *tok)
+                                    .collect::<Vec<_>>()
+                            })
+                            .collect::<Vec<_>>();
+                        let query_token_ids: Vec<_> =
+                            query_token_ids.iter().map(AsRef::as_ref).collect();
+
+                        let n = tokio::time::Instant::now();
+                        model.batch_evaluate(session, &query_token_ids, &mut output_request);
+                        println!("took {}ms", n.elapsed().as_millis());
                         let embedding: Vec<Vec<f32>> = output_request
                             .embeddings
                             .unwrap()
@@ -311,6 +312,10 @@ mod gpu {
                 }
             }
             unreachable!()
+        }
+
+        fn tokenizer(&self) -> &Tokenizer {
+            &self.tokenizer
         }
     }
 }
