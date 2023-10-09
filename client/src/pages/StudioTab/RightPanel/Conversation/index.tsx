@@ -383,6 +383,8 @@ const Conversation = ({
               onMessageRemoved={onMessageRemoved}
               i={i}
               setLeftPanel={setLeftPanel}
+              isTokenLimitExceeded={isTokenLimitExceeded}
+              isLast={i === conversation.length - 1}
             />
           ))}
           {!isLoading &&
@@ -399,6 +401,8 @@ const Conversation = ({
                 scrollToBottom={scrollToBottom}
                 inputRef={inputRef}
                 setLeftPanel={setLeftPanel}
+                isTokenLimitExceeded={isTokenLimitExceeded}
+                isLast
               />
             )}
         </div>
