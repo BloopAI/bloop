@@ -135,6 +135,8 @@ impl ContextFile {
 struct DocContextFile {
     doc_id: i64,
     doc_source: url::Url,
+    doc_icon: Option<String>,
+    doc_title: Option<String>,
     relative_url: String,
     hidden: bool,
     ranges: Vec<Uuid>,
