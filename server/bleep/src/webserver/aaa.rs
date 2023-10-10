@@ -94,8 +94,8 @@ pub(super) async fn router(router: Router, app: Application) -> Router {
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct TokenClaims {
-    pub exp: Option<DateTime<Utc>>,
-    pub sub: Option<String>,
+    pub exp: DateTime<Utc>,
+    pub sub: String,
     #[serde(rename = "cognito:groups")]
     pub groups: Vec<String>,
 }
@@ -157,20 +157,13 @@ pub(super) async fn refresh_token(
         .map_err(|_| Error::new(ErrorKind::UpstreamService, "invalid token issued"))?
         .claims;
 
-    let sub = claims.sub.ok_or(Error::new(
-        ErrorKind::UpstreamService,
-        "invalid token issued",
-    ))?;
+    app.user_profiles
+        .entry(claims.sub)
+        .or_default()
+        .get_mut()
+        .username = Some(response.username.clone());
 
-    app.user_profiles.entry(sub).or_default().get_mut().username = Some(response.username.clone());
-
-    let now = Utc::now();
-    let exp = claims.exp.ok_or(Error::new(
-        ErrorKind::UpstreamService,
-        "invalid token issued",
-    ))?;
-    let max_age = (exp - now).num_seconds();
-
+    let max_age = (claims.exp - Utc::now()).num_seconds();
     Ok((
         jar.add(
             Cookie::build(

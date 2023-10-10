@@ -156,30 +156,22 @@ pub async fn cloud_user_layer_mw<B>(
     mut request: Request<B>,
     next: Next<B>,
 ) -> Response {
-    request.extensions_mut().insert(
-        claims
-            .sub
-            .map(|login| {
-                let login = app
-                    .user_profiles
-                    .read(&login, |_, v| v.username.clone())
-                    .flatten()
-                    .unwrap_or_default();
+    request.extensions_mut().insert({
+        let login = app
+            .user_profiles
+            .read(&claims.sub, |_, v| v.username.clone())
+            .flatten()
+            .unwrap_or_default();
 
-                // login will be an empty string if we can auth the user, but they haven't called `/auth/refresh_token` yet.
-                // this is to avoid inadvertently leaking our cognito user ids all over the place in remote calls
-
-                User::Authenticated {
-                    login,
-                    api_token: jar.get(super::aaa::COOKIE_NAME).unwrap().to_string(),
-                    crab: Arc::new(move || {
-                        let gh = app.credentials.github().context("no github")?;
-                        Ok(gh.client()?)
-                    }),
-                }
-            })
-            .unwrap_or_else(|| User::Unknown),
-    );
+        User::Authenticated {
+            login,
+            api_token: jar.get(super::aaa::COOKIE_NAME).unwrap().to_string(),
+            crab: Arc::new(move || {
+                let gh = app.credentials.github().context("no github")?;
+                Ok(gh.client()?)
+            }),
+        }
+    });
 
     next.run(request).await
 }

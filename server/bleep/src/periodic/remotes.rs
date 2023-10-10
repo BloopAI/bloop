@@ -160,12 +160,7 @@ async fn update_credentials(app: &Application) {
         let verifier = crate::webserver::aaa::get_authorizer(app).await;
         let rotate_access_key = match verifier.check_auth(&creds.access_token).await {
             Ok(jsonwebtoken::TokenData { claims, .. }) => {
-                let Some(exp) = claims.exp
-                else {
-                    return;
-                };
-
-                exp - Duration::from_secs(600) < Utc::now()
+                claims.exp - Duration::from_secs(600) < Utc::now()
             }
             Err(err) => {
                 warn!(?err, "failed to validate access token; rotating");
