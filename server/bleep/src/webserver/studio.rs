@@ -458,21 +458,6 @@ async fn token_counts(
         },
     });
 
-    let total = {
-        let llm_context = generate_llm_context(app.clone(), context).await?;
-        let system_prompt = tiktoken_rs::ChatCompletionRequestMessage {
-            role: "system".to_owned(),
-            content: prompts::studio_article_prompt(&llm_context),
-            name: None,
-        };
-
-        let llm_messages = iter::once(system_prompt)
-            .chain(tiktoken_messages.clone())
-            .collect::<Vec<_>>();
-
-        tiktoken_rs::num_tokens_from_messages(LLM_GATEWAY_MODEL, &llm_messages).unwrap()
-    };
-
     let messages = tiktoken_rs::num_tokens_from_messages(
         LLM_GATEWAY_MODEL,
         &iter::once(empty_system_message)
@@ -480,6 +465,15 @@ async fn token_counts(
             .collect::<Vec<_>>(),
     )
     .unwrap();
+
+    // We calculate `total` here as a summation of other calculated values here, because OpenAI's
+    // tokenization in general is contextual. Summing token counts from subsections of a string
+    // will often result in a different (and slightly larger) token count compared to counting
+    // tokens in the same string as a whole.
+    //
+    // We accept that here, and opt to always use the slightly less accurate (but larger) number
+    // for consistency.
+    let total = (messages + per_file.iter().flatten().sum::<usize>()).saturating_sub(baseline);
 
     Ok(TokenCounts {
         total,
