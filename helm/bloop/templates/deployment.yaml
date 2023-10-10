@@ -70,7 +70,7 @@ spec:
           - --cognito-mgmt-url={{ .Values.bloop.cognitoMgmtUrl }}
           - --cognito-auth-url={{ .Values.bloop.cognitoAuthUrl }}
           - --bloop-instance-secret={{ .Values.bloop.bloopInstanceSecret }}
-          - --bloop-instance-org={{ .Values.bloop.bloopInstanceOrg }}
+          - --bloop-instance-org={{ .Values.bloop.githubOrgName }}
           - --analytics-key={{ .Values.bloop.analyticsKey }}
           - --analytics-data-plane={{ .Values.bloop.analyticsDataPlane }}
           - --sentry-dsn={{ .Values.bloop.sentryDsn }}
