@@ -398,5 +398,6 @@
 	"Usage resets in": "用法重置",
 	"Let's go": "我们走吧",
 	"You've upgraded your account!": "您已经升级了您的帐户！",
-	"Unlimited usage and premium features are activated.": "无限用法和高级功能被激活。"
+	"Unlimited usage and premium features are activated.": "无限用法和高级功能被激活。",
+	"Token limit reached, this answer may be incomplete. To generate a full answer, please reduce the number of tokens used and regenerate.": "达到令牌限制，此答案可能不完整。 要产生完整的答案，请减少使用和再生的代币数量。"
 }
