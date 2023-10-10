@@ -1,5 +1,5 @@
-use super::prelude::*;
-use crate::Application;
+use super::{aaa, prelude::*};
+use crate::{remotes::CognitoGithubTokenBundle, Application};
 
 use anyhow::Context;
 use axum::{
@@ -8,14 +8,17 @@ use axum::{
     middleware::{from_fn, from_fn_with_state, Next},
     response::Response,
 };
-use jwt_authorizer::{JwtClaims, RegisteredClaims};
+use axum_extra::extract::CookieJar;
+use jwt_authorizer::JwtClaims;
 use sentry::{Hub, SentryFutureExt};
+use tracing::error;
 
 #[derive(Serialize, Clone)]
 pub enum User {
     Unknown,
     Authenticated {
         login: String,
+        api_token: String,
         #[serde(skip)]
         crab: Arc<dyn Fn() -> anyhow::Result<octocrab::Octocrab> + Send + Sync>,
     },
@@ -38,6 +41,48 @@ impl User {
 	};
 
         crab().ok()
+    }
+
+    pub(crate) async fn paid_features(&self, app: &Application) -> bool {
+        let User::Authenticated { api_token, ..} = self
+        else {
+	    return false;
+        };
+
+        let Ok(response) = reqwest::Client::new()
+            .get(format!("{}/v2/get-usage-quota", app.config.answer_api_url))
+            .bearer_auth(api_token)
+            .send()
+            .await
+	else {
+	    error!("failed to get quota for user");
+	    return false;
+	};
+
+        if response.status().is_success() {
+            let response: serde_json::Value =
+                response.json().await.expect("answer_api proto bad or down");
+
+            response
+                .get("upgraded")
+                .and_then(serde_json::Value::as_bool)
+                .unwrap_or_default()
+        } else {
+            let status = response.status();
+            match response.text().await {
+                Ok(body) if !body.is_empty() => {
+                    error!(?status, ?body, "request failed with status code")
+                }
+                Ok(_) => error!(?status, "request failed; response had no body"),
+                Err(err) => error!(
+                    ?status,
+                    ?err,
+                    "request failed; failed to retrieve response body",
+                ),
+            }
+
+            false
+        }
     }
 }
 
@@ -73,15 +118,30 @@ async fn local_user_mw<B>(
     next: Next<B>,
 ) -> Response {
     request.extensions_mut().insert(
-        app.clone()
-            .credentials
+        app.credentials
             .user()
-            .map(|user| User::Authenticated {
-                login: user,
-                crab: Arc::new(move || {
-                    let gh = app.credentials.github().context("no github")?;
-                    Ok(gh.client()?)
-                }),
+            .zip(app.credentials.github())
+            .map(|(user, gh)| {
+                use crate::remotes::github::{Auth, State};
+                let api_token = match gh {
+                    State {
+                        auth:
+                            Auth::OAuth(CognitoGithubTokenBundle {
+                                access_token: ref token,
+                                ..
+                            }),
+                        ..
+                    } => token.clone(),
+                    _ => {
+                        panic!("invalid configuration");
+                    }
+                };
+
+                User::Authenticated {
+                    api_token,
+                    login: user,
+                    crab: Arc::new(move || Ok(gh.client()?)),
+                }
             })
             .unwrap_or_else(|| User::Unknown),
     );
@@ -90,8 +150,9 @@ async fn local_user_mw<B>(
 }
 
 pub async fn cloud_user_layer_mw<B>(
-    JwtClaims(claims): JwtClaims<RegisteredClaims>,
+    JwtClaims(claims): JwtClaims<aaa::TokenClaims>,
     State(app): State<Application>,
+    jar: CookieJar,
     mut request: Request<B>,
     next: Next<B>,
 ) -> Response {
@@ -110,6 +171,7 @@ pub async fn cloud_user_layer_mw<B>(
 
                 User::Authenticated {
                     login,
+                    api_token: jar.get(super::aaa::COOKIE_NAME).unwrap().to_string(),
                     crab: Arc::new(move || {
                         let gh = app.credentials.github().context("no github")?;
                         Ok(gh.client()?)

@@ -165,8 +165,7 @@ async fn update_credentials(app: &Application) {
                     return;
                 };
 
-                let expiry_time = UNIX_EPOCH + Duration::from_secs(i64::from(exp) as u64);
-                expiry_time - Duration::from_secs(600) < SystemTime::now()
+                exp - Duration::from_secs(600) < Utc::now()
             }
             Err(err) => {
                 warn!(?err, "failed to validate access token; rotating");
