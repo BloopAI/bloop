@@ -169,11 +169,9 @@ impl Doc {
 
                         // set favicon
                         if let Some(favicon) = &progress.meta.icon {
-                            let resolved_url = url::Url::parse(&favicon).unwrap_or_else(|_| {
-                                let mut r = url.clone();
-                                r.set_path(&favicon);
-                                r
-                            });
+                            let resolved_url = url::Url::parse(&favicon).unwrap_or_else(|_|
+                                normalize_absolute_url(&url, &favicon)
+                            );
                             self.set_favicon(resolved_url.as_str(), id).await?;
                         }
 
@@ -213,7 +211,7 @@ impl Doc {
                 id,
             }
             .execute(&*self.sql)
-                .await?;
+            .await?;
 
             // insert new docs into qdrant
             for await progress in self.insert_into_qdrant(id, url) {
@@ -415,13 +413,14 @@ impl Doc {
         &self,
         id: i64,
         relative_url: S,
+        limit: u32,
     ) -> Result<Vec<SearchResult>, Error> {
         let data = self
             .semantic
             .qdrant_client()
             .scroll(&ScrollPoints {
                 collection_name: COLLECTION_NAME.into(),
-                limit: Some(9999), // we want all sections
+                limit: Some(limit),
                 filter: Some(Filter {
                     must: vec![
                         make_kv_int_filter("doc_id", id).into(),
@@ -448,6 +447,31 @@ impl Doc {
         Ok(data)
     }
 
+    pub async fn contains_page<S: AsRef<str>>(&self, id: i64, relative_url: S) -> bool {
+        use std::ops::Not;
+        self.semantic
+            .qdrant_client()
+            .scroll(&ScrollPoints {
+                collection_name: COLLECTION_NAME.into(),
+                limit: Some(1),
+                filter: Some(Filter {
+                    must: vec![
+                        make_kv_int_filter("doc_id", id).into(),
+                        make_kv_keyword_filter("relative_url", relative_url.as_ref()).into(),
+                    ],
+                    ..Default::default()
+                }),
+                with_payload: Some(WithPayloadSelector {
+                    selector_options: Some(with_payload_selector::SelectorOptions::Enable(true)),
+                }),
+                ..Default::default()
+            })
+            .await
+            .map(|v| v.result.is_empty())
+            .unwrap_or(true)
+            .not()
+    }
+
     /// Scrape & insert a doc source into qdrant and return doc metadata if available
     fn insert_into_qdrant(&self, id: i64, url: url::Url) -> impl Stream<Item = Update> + '_ {
         stream! {
@@ -465,14 +489,17 @@ impl Doc {
                 yield progress;
                 let semantic = self.semantic.clone();
                 let u = url.clone();
-                handles.push(tokio::task::spawn(async move {
-                    let embedder = semantic.embedder();
-                    let points_to_insert = doc.embed(id, &u, embedder);
-                    let _ = semantic
-                        .qdrant_client()
-                        .upsert_points(COLLECTION_NAME, points_to_insert, None)
-                        .await;
-                    }));
+                if !self.contains_page(id, doc.relative_url(&url)).await
+                {
+                    handles.push(tokio::task::spawn(async move {
+                        let embedder = semantic.embedder();
+                        let points_to_insert = doc.embed(id, &u, embedder);
+                        let _ = semantic
+                            .qdrant_client()
+                            .upsert_points(COLLECTION_NAME, points_to_insert, None)
+                            .await;
+                        }));
+                }
             }
         }
     }
@@ -570,6 +597,9 @@ impl scraper::Document {
         })
         .map(|(section, avg_embedding)| {
             let mut payload = HashMap::new();
+            let favicon = self.meta.icon.as_deref().unwrap_or("");
+            let favicon_url = url::Url::parse(&favicon)
+                .unwrap_or_else(|_| normalize_absolute_url(&url, &favicon));
             payload.insert("doc_id".to_owned(), id.into());
             payload.insert("doc_source".to_owned(), url.to_string().into());
             payload.insert("relative_url".to_owned(), self.relative_url(url).into());
@@ -595,10 +625,7 @@ impl scraper::Document {
                 "doc_description".to_owned(),
                 self.meta.description.as_deref().unwrap_or("").into(),
             );
-            payload.insert(
-                "doc_favicon".to_owned(),
-                self.meta.icon.as_deref().unwrap_or("").into(),
-            );
+            payload.insert("doc_favicon".to_owned(), favicon_url.as_str().into());
             PointStruct {
                 id: Some(PointId {
                     point_id_options: Some(PointIdOptions::Uuid(uuid::Uuid::new_v4().to_string())),
@@ -705,4 +732,10 @@ impl PageResult {
             relative_url,
         })
     }
+}
+
+fn normalize_absolute_url(base_url: &url::Url, absolute_url: &str) -> url::Url {
+    let mut root = base_url.clone();
+    root.set_path(&absolute_url);
+    root
 }

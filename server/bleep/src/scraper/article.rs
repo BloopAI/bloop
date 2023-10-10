@@ -682,7 +682,8 @@ impl ArticleTextNodeExtractor {
         // heuristics for commonly occurring nodes with main content
         if let Some(main_tag) = doc
             .find(
-                Name("main")
+                Name("article")
+                    .or(Name("main"))
                     .or(Attr("id", "main"))
                     .or(Attr("id", "content"))
                     .or(Attr("id", "doc-content"))
