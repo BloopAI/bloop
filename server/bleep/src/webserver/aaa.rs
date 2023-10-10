@@ -48,7 +48,9 @@ pub(super) async fn login(
         let timestamp = chrono::Utc::now();
         let payload = serde_json::json!({
             "timestamp": timestamp.to_rfc2822(),
-            "redirect_url": redirect_to.as_ref()
+            "redirect_to": format!("{}/{}",
+                                   app.config.instance_domain.as_ref().unwrap(),
+                                   redirect_to.unwrap_or_default())
         });
         app.seal_auth_state(payload)
     };
