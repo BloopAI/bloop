@@ -235,10 +235,9 @@ async fn visit(ScraperRequest { url, depth }: ScraperRequest) -> Result<ScraperR
             }
         })
         .filter_map(|new_path| url.join(new_path).ok())
-        .map(|mut u| {
-            u.set_fragment(None);
-            (depth + 1, u)
-        })
+        .filter(|u| !u.fragment().is_some()) // ignore urls with fragments
+        .filter(|u| !u.query().is_some()) // ignore urls with query params
+        .map(|u| (depth + 1, u))
         .collect();
     // self.link_stack.extend(new_links);
 

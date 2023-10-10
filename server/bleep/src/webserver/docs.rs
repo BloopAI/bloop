@@ -130,7 +130,9 @@ pub async fn fetch(
     Path(id): Path<i64>,
     Query(params): Query<Fetch>,
 ) -> Result<Json<Vec<doc::SearchResult>>> {
-    Ok(Json(app.indexes.doc.fetch(id, params.relative_url).await?))
+    Ok(Json(
+        app.indexes.doc.fetch(id, params.relative_url, 9999).await?,
+    ))
 }
 
 pub async fn verify(Query(params): Query<Verify>) -> Result<reqwest::StatusCode> {
