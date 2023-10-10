@@ -27,6 +27,7 @@ pub use embedder::Embedder;
 use embedder::LocalEmbedder;
 use schema::{create_collection, EMBEDDING_DIM};
 pub use schema::{Embedding, Payload};
+use tracing_subscriber::field::debug;
 
 #[derive(Error, Debug)]
 pub enum SemanticError {
@@ -189,10 +190,13 @@ impl Semantic {
         qdrant_url: &str,
         config: Arc<Configuration>,
     ) -> Result<Self, SemanticError> {
+        debug!(qdrant_url, "initializing qdrant client");
         let qdrant = QdrantClient::new(Some(QdrantClientConfig::from_url(qdrant_url))).unwrap();
 
         match qdrant.has_collection(&config.collection_name).await {
             Ok(false) => {
+                debug!(name = config.collection_name, "creating qdrant collection");
+
                 let CollectionOperationResponse { result, time } =
                     create_collection(&config.collection_name, &qdrant)
                         .await
@@ -207,14 +211,25 @@ impl Semantic {
 
                 assert!(result);
             }
-            Ok(true) => {}
+            Ok(true) => {
+                debug!(
+                    name = config.collection_name,
+                    "qdrant collection already exists"
+                );
+            }
             Err(_) => return Err(SemanticError::QdrantInitializationError),
         }
 
         create_indexes(&config.collection_name, &qdrant).await?;
 
+        debug!(name = config.collection_name, "qdrant indexes created");
+
         if let Some(dylib_dir) = config.dylib_dir.as_ref() {
             init_ort_dylib(dylib_dir);
+            debug!(
+                dylib_dir = dylib_dir.to_string_lossy().as_ref(),
+                "initialized ORT dylib"
+            );
         }
 
         #[cfg(feature = "ee")]
@@ -226,6 +241,8 @@ impl Semantic {
 
         #[cfg(not(feature = "ee"))]
         let embedder: Arc<dyn Embedder> = Arc::new(LocalEmbedder::new(model_dir)?);
+
+        debug!("initialized embedder");
 
         Ok(Self {
             qdrant: qdrant.into(),

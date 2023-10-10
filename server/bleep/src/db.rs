@@ -15,7 +15,10 @@ pub async fn init(config: &Configuration) -> Result<SqlitePool> {
     let data_dir = config.index_dir.to_string_lossy();
 
     match connect(&data_dir).await {
-        Ok(pool) => Ok(pool),
+        Ok(pool) => {
+            debug!("successfully connected to DB");
+            Ok(pool)
+        }
         Err(e) => {
             warn!(
                 ?e,

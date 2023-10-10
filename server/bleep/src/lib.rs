@@ -149,15 +149,25 @@ impl Application {
 
         // Wipe existing dbs & caches if the schema has changed
         if config.source.index_version_mismatch() {
+            debug!("schema version mismatch, resetting state");
+
             Indexes::reset_databases(&config).await?;
+            debug!("resetting caches");
+
             cache::FileCache::new(sql.clone(), semantic.clone())
                 .reset(&repo_pool)
                 .await?;
 
+            debug!("resetting semantic index");
             semantic.reset_collection_blocking().await?;
+
+            debug!("state reset complete");
         }
+
+        debug!("saving index version");
         config.source.save_index_version()?;
 
+        debug!("initializing indexes");
         let indexes = Indexes::new(&config).await?.into();
 
         // Enforce capabilies and features depending on environment
@@ -170,7 +180,10 @@ impl Application {
 
         // Analytics backend
         let analytics = match initialize_analytics(&config, tracking_seed, analytics_options) {
-            Ok(analytics) => Some(analytics),
+            Ok(analytics) => {
+                debug!("analytics initialized");
+                Some(analytics)
+            }
             Err(err) => {
                 warn!(?err, "failed to initialize analytics");
                 None
