@@ -253,8 +253,7 @@ const ContentContainer = ({
   return (
     <PageTemplate renderPage="studio">
       <div className="w-screen flex flex-col overflow-auto">
-        {stateToShow.token_counts?.total - stateToShow.token_counts?.baseline >
-          TOKEN_LIMIT && (
+        {stateToShow.token_counts?.total > TOKEN_LIMIT && (
           <div className="flex items-center gap-2 px-8 py-2 bg-bg-danger/12 select-none">
             <Info raw sizeClassName="w-4.5 h-4.5" className="text-bg-danger" />
             <p className="text-bg-danger caption">
@@ -329,10 +328,7 @@ const ContentContainer = ({
                 studioId={tab.key}
                 messages={stateToShow.messages}
                 refetchCodeStudio={refetchCodeStudio}
-                tokensTotal={
-                  stateToShow.token_counts?.total -
-                  stateToShow.token_counts?.baseline
-                }
+                tokensTotal={stateToShow.token_counts?.total}
                 setIsHistoryOpen={setIsHistoryOpen}
                 isPreviewing={!!previewingState}
                 handleRestore={handleRestore}

@@ -268,7 +268,6 @@ export type CodeStudioType = {
     total: number;
     per_file: (number | null)[];
     messages: number;
-    baseline: number;
   };
 };
 

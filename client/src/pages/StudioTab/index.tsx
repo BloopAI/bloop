@@ -23,7 +23,7 @@ type Props = {
 const emptyCodeStudio: CodeStudioType = {
   messages: [],
   context: [],
-  token_counts: { total: 0, per_file: [], messages: 0, baseline: 0 },
+  token_counts: { total: 0, per_file: [], messages: 0 },
   name: '',
   id: '',
   modified_at: '',
