@@ -7,6 +7,7 @@ import { DeviceContext } from '../../context/deviceContext';
 import { UIContext } from '../../context/uiContext';
 import { getSubscriptionLink } from '../../services/api';
 import { PersonalQuotaContext } from '../../context/personalQuotaContext';
+import useAnalytics from '../../hooks/useAnalytics';
 import Countdown from './Countdown';
 import ConversationSvg from './ConversationSvg';
 
@@ -14,13 +15,18 @@ const UpgradePopup = () => {
   const { t } = useTranslation();
   const { openLink } = useContext(DeviceContext);
   const { refetchQuota } = useContext(PersonalQuotaContext.Handlers);
-  const { isUpgradePopupOpen, setUpgradePopupOpen } = useContext(
-    UIContext.UpgradePopup,
-  );
+  const {
+    isUpgradePopupOpen,
+    setUpgradePopupOpen,
+    setWaitingUpgradePopupOpen,
+  } = useContext(UIContext.UpgradePopup);
+  const { setBugReportModalOpen } = useContext(UIContext.BugReport);
   const [link, setLink] = useState('');
+  const { trackUpgradePopup } = useAnalytics();
 
   useEffect(() => {
     if (isUpgradePopupOpen) {
+      trackUpgradePopup();
       getSubscriptionLink().then((resp) => {
         setLink(resp.url);
       });
@@ -28,11 +34,16 @@ const UpgradePopup = () => {
   }, [isUpgradePopupOpen]);
 
   const onClick = useCallback(() => {
-    openLink(link);
-    let intervalId = window.setInterval(() => refetchQuota(), 2000);
-    setTimeout(() => clearInterval(intervalId), 10 * 60 * 1000);
-    setUpgradePopupOpen(false);
-  }, [openLink]);
+    if (link) {
+      openLink(link);
+      setWaitingUpgradePopupOpen(true);
+      setUpgradePopupOpen(false);
+      let intervalId = window.setInterval(() => refetchQuota(), 2000);
+      setTimeout(() => clearInterval(intervalId), 10 * 60 * 1000);
+    } else {
+      setBugReportModalOpen(true);
+    }
+  }, [openLink, link]);
 
   return (
     <ModalOrSidebar

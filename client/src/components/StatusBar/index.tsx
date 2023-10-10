@@ -27,6 +27,7 @@ const StatusBar = () => {
     PersonalQuotaContext.Values,
   );
   const { refetchQuota } = useContext(PersonalQuotaContext.Handlers);
+  const { setWaitingUpgradePopupOpen } = useContext(UIContext.UpgradePopup);
   const [isOnline, setIsOnline] = useState(true);
   const [discordLink, setDiscordLink] = useState(
     'https://discord.com/invite/kZEgj5pyjm',
@@ -39,12 +40,20 @@ const StatusBar = () => {
 
   const handleUpgrade = useCallback(() => {
     setIsFetchingLink(true);
+    setWaitingUpgradePopupOpen(true);
     getSubscriptionLink()
       .then((resp) => {
-        openLink(resp.url);
-        clearInterval(intervalId);
-        intervalId = window.setInterval(() => refetchQuota(), 2000);
-        setTimeout(() => clearInterval(intervalId), 10 * 60 * 1000);
+        if (resp.url) {
+          openLink(resp.url);
+          clearInterval(intervalId);
+          intervalId = window.setInterval(() => refetchQuota(), 2000);
+          setTimeout(() => clearInterval(intervalId), 10 * 60 * 1000);
+        } else {
+          setBugReportModalOpen(true);
+        }
+      })
+      .catch(() => {
+        setBugReportModalOpen(true);
       })
       .finally(() => setIsFetchingLink(false));
   }, [openLink]);

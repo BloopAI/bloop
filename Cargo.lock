@@ -423,12 +423,6 @@ checksum = "9e1b586273c5702936fe7b7d6896644d8be71e6314cfe09d3167c95f712589e8"
 
 [[package]]
 name = "base64"
-version = "0.20.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ea22880d78093b0cbe17c89f64a7d457941e65759157ec6cb31a31d652b05e5"
-
-[[package]]
-name = "base64"
 version = "0.21.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9ba43ea6f343b788c8764558649e08df62f86c6ef251fdaeb1ffd010a9ae50a2"
@@ -493,13 +487,14 @@ dependencies = [
 
 [[package]]
 name = "bleep"
-version = "0.5.4"
+version = "0.5.5"
 dependencies = [
  "anyhow",
  "async-stream",
  "async-trait",
  "axum",
  "axum-extra",
+ "base64 0.21.4",
  "bincode",
  "blake3",
  "chrono",
@@ -518,11 +513,12 @@ dependencies = [
  "fuzzy-matcher",
  "git-version",
  "gix",
+ "hex",
  "histogram",
  "hyperpolyglot",
  "ignore",
  "jsonwebtoken",
- "jsonwebtokens-cognito",
+ "jwt-authorizer",
  "lazy-regex",
  "ndarray",
  "notify-debouncer-mini",
@@ -545,6 +541,7 @@ dependencies = [
  "relative-path",
  "reqwest",
  "reqwest-eventsource",
+ "ring",
  "rudderanalytics",
  "scc",
  "secrecy",
@@ -561,7 +558,6 @@ dependencies = [
  "thiserror",
  "thread-priority",
  "tiktoken-rs",
- "time",
  "tokenizers",
  "tokio",
  "tokio-stream",
@@ -603,7 +599,7 @@ dependencies = [
 
 [[package]]
 name = "bloop"
-version = "0.5.4"
+version = "0.5.5"
 dependencies = [
  "anyhow",
  "bleep",
@@ -3433,6 +3429,7 @@ dependencies = [
  "rustls-native-certs",
  "tokio",
  "tokio-rustls 0.24.1",
+ "webpki-roots 0.23.1",
 ]
 
 [[package]]
@@ -3842,33 +3839,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "jsonwebtokens"
-version = "1.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5fb4c5f203abfb17d5f30a9f8e44c91c222fe5dcff9d6f57090167c4cfc22b70"
-dependencies = [
- "base64 0.20.0",
- "pem",
- "regex 1.9.5",
- "ring",
- "serde",
- "serde_json",
- "simple_asn1",
-]
-
-[[package]]
-name = "jsonwebtokens-cognito"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ff66b1b17670196ec0fd5b844f8407b55386866af5e57718802d7befdee4cb9"
-dependencies = [
- "jsonwebtokens",
- "reqwest",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "jwalk"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3876,6 +3846,32 @@ checksum = "2735847566356cd2179a2a38264839308f7079fa96e6bd5a42d740460e003c56"
 dependencies = [
  "crossbeam",
  "rayon",
+]
+
+[[package]]
+name = "jwt-authorizer"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bf83a0849ccb18d1aad2ffcd99397a3ef1ae0a7f95e37a63ef12c4744f25cfa0"
+dependencies = [
+ "axum",
+ "chrono",
+ "futures-core",
+ "futures-util",
+ "headers",
+ "http",
+ "jsonwebtoken",
+ "pin-project",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tower-http",
+ "tower-layer",
+ "tower-service",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -7449,6 +7445,7 @@ dependencies = [
  "libc",
  "mio",
  "num_cpus",
+ "parking_lot 0.12.1",
  "pin-project-lite",
  "signal-hook-registry",
  "socket2 0.5.4",

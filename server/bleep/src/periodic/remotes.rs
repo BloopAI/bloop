@@ -6,14 +6,13 @@ use std::{
 
 use anyhow::Context;
 use chrono::Utc;
-use jsonwebtokens_cognito::KeySet;
 use notify_debouncer_mini::{
     new_debouncer_opt,
     notify::{Config, RecommendedWatcher, RecursiveMode},
     DebounceEventResult, Debouncer,
 };
 use rand::{distributions, thread_rng, Rng};
-use tokio::{task::JoinHandle, time::sleep};
+use tokio::task::JoinHandle;
 use tracing::{debug, error, info, warn};
 
 use crate::{
@@ -35,18 +34,42 @@ const POLL_INTERVAL_MINUTE: &[Duration] = &[
     Duration::from_secs(30 * 60),
 ];
 
+/// Like `tokio::time::sleep`, but sleeps based on wall clock time rather than uptime.
+///
+/// This internally sleeps in uptime increments of 2 seconds, checking whether the wall clock
+/// duration has passed. We do this to support better updates when a system goes into a suspended
+/// state, because `tokio::time::sleep` does not sleep according to wall clock time on some
+/// systems.
+///
+/// For short sleep durations, this will simply call `tokio::time::sleep`, as drift due to suspend
+/// is not usually relevant here.
+async fn sleep_systime(duration: Duration) {
+    if duration <= Duration::from_secs(2) {
+        return tokio::time::sleep(duration).await;
+    }
+
+    let start = SystemTime::now();
+
+    loop {
+        tokio::time::sleep(Duration::from_secs(2)).await;
+        if start.elapsed().unwrap() >= duration {
+            return;
+        }
+    }
+}
+
 pub(crate) async fn sync_github_status(app: Application) {
     const POLL_PERIOD: Duration = POLL_INTERVAL_MINUTE[1];
     const LIVENESS: Duration = Duration::from_secs(1);
 
     let timeout = || async {
-        sleep(LIVENESS).await;
+        sleep_systime(LIVENESS).await;
     };
 
     let timeout_or_update = |last_poll: SystemTime, handle: flume::Receiver<()>| async move {
         loop {
             tokio::select! {
-                _ = sleep(POLL_PERIOD) => {
+                _ = sleep_systime(POLL_PERIOD) => {
                     debug!("timeout expired; refreshing repositories");
                     return SystemTime::now();
                 },
@@ -108,7 +131,7 @@ struct RefreshedAccessToken {
 }
 
 async fn update_credentials(app: &Application) {
-    if app.env.allow(Feature::GithubOrgInstallation) {
+    if app.env.allow(Feature::CloudUserAuth) {
         match app.credentials.github().and_then(|c| c.expiry()) {
             // If we have a valid token, do nothing.
             Some(expiry) if expiry > Utc::now() + chrono::Duration::minutes(10) => {}
@@ -125,7 +148,7 @@ async fn update_credentials(app: &Application) {
         }
     }
 
-    if app.env.allow(Feature::CognitoUserAuth) {
+    if app.env.allow(Feature::DesktopUserAuth) {
         let Some(github::State {
             auth: github::Auth::OAuth(ref creds),
             ..
@@ -134,27 +157,16 @@ async fn update_credentials(app: &Application) {
             return;
         };
 
-        let cognito_pool_id = app.config.cognito_userpool_id.as_ref().unwrap();
-        let (region, _pool_id) = cognito_pool_id.split_once('_').unwrap();
-        let keyset = KeySet::new(region, cognito_pool_id).unwrap();
-        let verifier = keyset
-            .new_access_token_verifier(&[app.config.cognito_client_id.as_ref().unwrap()])
-            .build()
-            .unwrap();
-
-        let rotate_access_key = match keyset.verify(&creds.access_token, &verifier).await {
-            Ok(serde_json::Value::Object(claims)) => {
-                let Some(exp) = claims.get("exp").and_then(serde_json::Value::as_u64)
+        let verifier = crate::webserver::aaa::get_authorizer(app).await;
+        let rotate_access_key = match verifier.check_auth(&creds.access_token).await {
+            Ok(jsonwebtoken::TokenData { claims, .. }) => {
+                let Some(exp) = claims.exp
                 else {
                     return;
                 };
 
-                let expiry_time = UNIX_EPOCH + Duration::from_secs(exp);
+                let expiry_time = UNIX_EPOCH + Duration::from_secs(i64::from(exp) as u64);
                 expiry_time - Duration::from_secs(600) < SystemTime::now()
-            }
-            Ok(_) => {
-                error!("invalid access key material; rotating");
-                true
             }
             Err(err) => {
                 warn!(?err, "failed to validate access token; rotating");
@@ -255,7 +267,7 @@ async fn update_credentials(app: &Application) {
 
 pub(crate) async fn check_repo_updates(app: Application) {
     while app.credentials.github().is_none() {
-        sleep(Duration::from_millis(100)).await
+        sleep_systime(Duration::from_millis(100)).await
     }
 
     let handles: Arc<scc::HashMap<RepoRef, JoinHandle<_>>> = Arc::default();
@@ -278,7 +290,7 @@ pub(crate) async fn check_repo_updates(app: Application) {
             })
             .await;
 
-        sleep(Duration::from_secs(5)).await
+        sleep_systime(Duration::from_secs(5)).await
     }
 }
 
@@ -331,7 +343,7 @@ async fn periodic_repo_poll(app: Application, reporef: RepoRef) -> Option<()> {
             )
         }
 
-        let timeout = sleep(poller.jittery_interval());
+        let timeout = sleep_systime(poller.jittery_interval());
         tokio::select!(
             _ = timeout => {
                 debug!(?reporef, "reindexing");

@@ -161,7 +161,7 @@ impl Application {
         let indexes = Indexes::new(&config).await?.into();
 
         // Enforce capabilies and features depending on environment
-        let env = if config.github_app_id.is_some() {
+        let env = if config.bloop_instance_secret.is_some() {
             info!("Starting bleep in private server mode");
             Environment::private_server()
         } else {
@@ -326,7 +326,7 @@ impl Application {
     }
 
     fn answer_api_token(&self) -> Result<Option<SecretString>> {
-        Ok(if self.env.allow(env::Feature::CognitoUserAuth) {
+        Ok(if self.env.allow(env::Feature::DesktopUserAuth) {
             let Some(cred) = self.credentials.github() else {
                 bail!("missing Github token");
             };
@@ -355,6 +355,55 @@ impl Application {
         let answer_api_token = self.answer_api_token()?.map(|s| s.expose_secret().clone());
 
         Ok(llm_gateway::Client::new(&self.config.answer_api_url).bearer(answer_api_token))
+    }
+
+    fn seal_auth_state(&self, payload: serde_json::Value) -> String {
+        use base64::Engine;
+        use rand::RngCore;
+
+        let privkey = {
+            let bytes = self
+                .config
+                .bloop_instance_secret
+                .as_ref()
+                .expect("no instance secret configured")
+                .as_bytes();
+
+            ring::aead::LessSafeKey::new(
+                ring::aead::UnboundKey::new(&ring::aead::AES_128_GCM, bytes)
+                    .expect("bad key initialization"),
+            )
+        };
+
+        let (nonce, nonce_str) = {
+            let mut buf = [0; 12];
+            rand::thread_rng().fill_bytes(&mut buf);
+
+            let nonce_str = hex::encode(buf);
+            (ring::aead::Nonce::assume_unique_for_key(buf), nonce_str)
+        };
+
+        let (enc, tag) = {
+            let mut serialized = serde_json::to_vec(&payload).unwrap();
+            let tag = privkey
+                .seal_in_place_separate_tag(nonce, ring::aead::Aad::empty(), &mut serialized)
+                .expect("encryption failed");
+
+            (
+                base64::engine::general_purpose::URL_SAFE.encode(serialized),
+                base64::engine::general_purpose::URL_SAFE.encode(tag),
+            )
+        };
+
+        base64::engine::general_purpose::URL_SAFE.encode(
+            serde_json::to_vec(&serde_json::json!({
+            "org": self.config.bloop_instance_org.as_ref().expect("bad config"),
+            "n": nonce_str,
+            "enc": enc,
+            "tag": tag
+            }))
+            .expect("bad encoding"),
+        )
     }
 }
 

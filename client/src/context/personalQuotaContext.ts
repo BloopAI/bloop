@@ -23,6 +23,6 @@ export const PersonalQuotaContext = {
     resetAt: new Date().toISOString(),
   }),
   Handlers: createContext({
-    refetchQuota: () => {},
+    refetchQuota: () => Promise.resolve(),
   }),
 };

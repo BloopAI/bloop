@@ -385,5 +385,13 @@
 	"bloop automatically excludes certain files from the indexing. This file might be too big or it might have an excluded file type.": "bloop automatically excludes certain files from the indexing. This file might be too big or it might have an excluded file type.",
 	"Allow analytics": "Allow analytics",
 	"We use analytics to improve your experience. Please refresh the page after changing the value.": "We use analytics to improve your experience. Please refresh the page after changing the value.",
+	"Complete your transaction in Stripe...": "Complete your transaction in Stripe...",
+	"We've redirected you to Stripe to complete your transaction. Didn't work?": "We've redirected you to Stripe to complete your transaction. Didn't work?",
+	"Launch manually": "Launch manually",
+	"Check payment status": "Check payment status",
+	"No change in payment status identified.": "No change in payment status identified.",
+	"You've upgraded your account!": "You've upgraded your account!",
+	"Unlimited usage and premium features are activated.": "Unlimited usage and premium features are activated.",
+	"Let's go": "Let's go",
 	"Token limit reached, this answer may be incomplete. To generate a full answer, please reduce the number of tokens used and regenerate.": "Token limit reached, this answer may be incomplete. To generate a full answer, please reduce the number of tokens used and regenerate."
 }

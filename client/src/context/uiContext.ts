@@ -26,6 +26,7 @@ export const UIContext = {
     isGithubConnected: false,
     setGithubConnected: (b: boolean) => {},
     isGithubChecked: false,
+    refreshToken: (refreshT: string) => Promise.resolve(),
   }),
   Filters: createContext<{
     isFiltersOpen: boolean;
@@ -49,6 +50,8 @@ export const UIContext = {
   UpgradePopup: createContext({
     isUpgradePopupOpen: false,
     setUpgradePopupOpen: (b: boolean) => {},
+    isWaitingUpgradePopupOpen: false,
+    setWaitingUpgradePopupOpen: (b: boolean) => {},
   }),
   Tab: createContext<{ tab: RepoTabType }>({
     tab: {

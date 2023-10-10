@@ -1,6 +1,7 @@
 import React, {
   memo,
   PropsWithChildren,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -9,11 +10,14 @@ import React, {
 import { UIContext } from '../uiContext';
 import { usePersistentState } from '../../hooks/usePersistentState';
 import { DeviceContext } from '../deviceContext';
-import { getConfig } from '../../services/api';
+import { getConfig, refreshToken as refreshTokenApi } from '../../services/api';
+import { SettingSections } from '../../components/Settings';
 import {
+  ACCESS_TOKEN_KEY,
   ANSWER_SPEED_KEY,
   getPlainFromStorage,
   ONBOARDING_DONE_KEY,
+  REFRESH_TOKEN_KEY,
   savePlainToStorage,
   THEME,
 } from '../../services/storage';
@@ -31,8 +35,10 @@ export const GeneralUiContextProvider = memo(
       {},
       'onBoardingState',
     );
-    const { isSelfServe } = useContext(DeviceContext);
-    const [isGithubConnected, setGithubConnected] = useState(isSelfServe);
+    const { isSelfServe, setEnvConfig } = useContext(DeviceContext);
+    const [isGithubConnected, setGithubConnected] = useState(
+      isSelfServe ? !!getPlainFromStorage(REFRESH_TOKEN_KEY) : false,
+    );
     const [isGithubChecked, setGithubChecked] = useState(false);
     const [shouldShowWelcome, setShouldShowWelcome] = useState(
       !getPlainFromStorage(ONBOARDING_DONE_KEY),
@@ -41,6 +47,9 @@ export const GeneralUiContextProvider = memo(
     const [isStudioGuideOpen, setStudioGuideOpen] = useState(false);
     const [isCloudFeaturePopupOpen, setCloudFeaturePopupOpen] = useState(false);
     const [isUpgradePopupOpen, setUpgradePopupOpen] = useState(false);
+    const [tokenExpiresAt, setTokenExpiresAt] = useState(0);
+    const [isWaitingUpgradePopupOpen, setWaitingUpgradePopupOpen] =
+      useState(false);
     const [theme, setTheme] = useState<Theme>(
       (getPlainFromStorage(THEME) as 'system' | null) || 'system',
     );
@@ -51,6 +60,34 @@ export const GeneralUiContextProvider = memo(
     useEffect(() => {
       savePlainToStorage(ANSWER_SPEED_KEY, preferredAnswerSpeed);
     }, [preferredAnswerSpeed]);
+
+    const refreshToken = useCallback(async (refToken: string) => {
+      if (refToken) {
+        const data = await refreshTokenApi(refToken);
+        savePlainToStorage(ACCESS_TOKEN_KEY, data.access_token);
+        setTokenExpiresAt(Date.now() + data.exp * 1000);
+        setTimeout(() => getConfig().then(setEnvConfig), 100);
+      } else {
+        throw new Error('No refresh token provided!');
+      }
+    }, []);
+
+    useEffect(() => {
+      const storedToken = getPlainFromStorage(REFRESH_TOKEN_KEY);
+      const tokenExpiresIn = tokenExpiresAt - Date.now();
+      const timerId =
+        tokenExpiresAt && storedToken
+          ? window.setTimeout(
+              () => {
+                refreshToken(storedToken);
+              },
+              tokenExpiresIn - 60 * 2 * 1000,
+            )
+          : 0;
+      return () => {
+        clearTimeout(timerId);
+      };
+    }, [tokenExpiresAt]);
 
     useEffect(() => {
       if (!isSelfServe) {
@@ -98,6 +135,7 @@ export const GeneralUiContextProvider = memo(
         isGithubConnected,
         setGithubConnected,
         isGithubChecked,
+        refreshToken,
       }),
       [isGithubChecked, isGithubConnected],
     );
@@ -138,8 +176,10 @@ export const GeneralUiContextProvider = memo(
       () => ({
         isUpgradePopupOpen,
         setUpgradePopupOpen,
+        isWaitingUpgradePopupOpen,
+        setWaitingUpgradePopupOpen,
       }),
-      [isUpgradePopupOpen],
+      [isUpgradePopupOpen, isWaitingUpgradePopupOpen],
     );
 
     const answerSpeedContextValue = useMemo(
