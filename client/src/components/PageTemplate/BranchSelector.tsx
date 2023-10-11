@@ -12,6 +12,7 @@ import { UIContext } from '../../context/uiContext';
 import TextInput from '../TextInput';
 import { RepoType, SyncStatus } from '../../types/general';
 import { DeviceContext } from '../../context/deviceContext';
+import { PersonalQuotaContext } from '../../context/personalQuotaContext';
 import BranchItem from './BranchItem';
 
 let eventSource: EventSource;
@@ -27,6 +28,7 @@ const BranchSelector = () => {
 
   const { apiUrl, isSelfServe } = useContext(DeviceContext);
   const { tab } = useContext(UIContext.Tab);
+  const { isSubscribed } = useContext(PersonalQuotaContext.Values);
   const { repositories, setRepositories } = useContext(RepositoriesContext);
   const { selectedBranch, setSelectedBranch } = useContext(
     SearchContext.SelectedBranch,
@@ -191,7 +193,7 @@ const BranchSelector = () => {
           size="medium"
           type="button"
           onClick={() => {
-            if (isSelfServe) {
+            if (isSelfServe || isSubscribed) {
               setOpen((prev) => !prev);
             } else {
               setCloudFeaturePopupOpen(true);
