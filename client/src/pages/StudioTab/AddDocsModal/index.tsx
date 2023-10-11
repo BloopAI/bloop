@@ -218,7 +218,7 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
                 </Trans>
               </p>
             </>
-          ) : (
+          ) : isIndexing ? (
             <>
               <LiteLoaderContainer sizeClassName="w-4 h-4" />
               <p className="text-label-title">
@@ -242,7 +242,7 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
                 )}
               </p>
             </>
-          )}
+          ) : null}
         </div>
       </div>
       <div
