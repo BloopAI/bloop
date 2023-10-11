@@ -691,7 +691,7 @@ impl RepoFile {
 
         let indexed = file_filter
             .is_allowed(relative_path)
-            .unwrap_or_else(|| should_index(relative_path));
+            .unwrap_or_else(|| self.should_index());
 
         if !indexed {
             return Some(doc!(

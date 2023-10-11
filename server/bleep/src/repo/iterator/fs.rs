@@ -29,8 +29,6 @@ impl FileWalker {
                     None
                 }
             })
-            // Preliminarily ignore files that are very large, without reading the contents.
-            .filter(|de| matches!(de.metadata(), Ok(meta) if meta.len() < MAX_FILE_LEN))
             .filter(|de| !de.path().strip_prefix(&dir).unwrap().starts_with(".git"))
             .filter_map(|de| crate::canonicalize(de.into_path()).ok())
             .collect();
@@ -51,13 +49,14 @@ impl FileSource for FileWalker {
                 .into_par_iter()
                 .filter_map(|entry_disk_path| {
                     if entry_disk_path.is_file() {
-                        let buffer = match std::fs::read_to_string(&entry_disk_path) {
-                            Err(err) => {
-                                warn!(%err, ?entry_disk_path, "read failed; skipping");
-                                return None;
-                            }
-                            Ok(buffer) => buffer,
-                        };
+                        let buffer =
+                            Box::new(move || match std::fs::read_to_string(&entry_disk_path) {
+                                Err(err) => {
+                                    warn!(%err, ?entry_disk_path, "read failed; skipping");
+                                    return Err(err);
+                                }
+                                Ok(buffer) => Ok(buffer),
+                            });
                         Some(RepoDirEntry::File(RepoFile {
                             buffer,
                             path: entry_disk_path.to_string_lossy().to_string(),
