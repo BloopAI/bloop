@@ -13,6 +13,8 @@ use select::{
 };
 use url::Url;
 
+use crate::query::languages::{EXT_MAP, PROPER_CASE_MAP};
+
 use std::{
     borrow::Cow,
     collections::{HashMap, HashSet},
@@ -435,10 +437,14 @@ trait DocumentCleaner {
             node: Node,
             txt: &mut String,
             cleaner: &T,
+            classes: &mut HashSet<String>,
         ) -> bool {
             if cleaner.is_bad_node_name(node) {
                 return false;
             }
+
+            // maintain a hierarchy of classes
+            classes.extend(extract_language_classes(node));
 
             let mut txt_added = false;
             if cleaner.is_good_node(node) {
@@ -459,7 +465,29 @@ trait DocumentCleaner {
                         txt.push('\n');
                         txt_added |= true;
                     } else if child.is(pre()) {
-                        txt.push_str("\n```\n");
+                        // extract language tag from pre class if possible
+                        classes.extend(extract_language_classes(child));
+
+                        // heuristic: sometimes, the language tag is attached to a child tag,
+                        // typically a `code` tag, extract if possible
+                        classes.extend(
+                            child
+                                .children()
+                                .filter(|c| c.is(code()))
+                                .map(|c| extract_language_classes(c))
+                                .flatten(),
+                        );
+
+                        let language = EXT_MAP
+                            .keys()
+                            .chain(PROPER_CASE_MAP.keys())
+                            .find(|&k| classes.iter().any(|c| c == k));
+
+                        txt.push_str("\n```");
+                        if let Some(language) = language {
+                            txt.push_str(language);
+                        }
+                        txt.push('\n');
                         txt.push_str(&child.text());
                         txt.push_str("\n```\n");
                         txt_added |= true;
@@ -485,7 +513,7 @@ trait DocumentCleaner {
                         txt_added |= true;
                     } else {
                         let mut a = String::new();
-                        if recur_text(child, &mut a, cleaner) {
+                        if recur_text(child, &mut a, cleaner, classes) {
                             txt.push_str(&a);
                             txt_added |= true;
                         } else if !cleaner.is_bad_node_name(child) {
@@ -503,7 +531,8 @@ trait DocumentCleaner {
         }
 
         let mut txt = String::new();
-        recur_text(node, &mut txt, self);
+        let mut classes = HashSet::new();
+        recur_text(node, &mut txt, self, &mut classes);
         txt
     }
 
@@ -566,6 +595,7 @@ fn is_bad_node(node: Node) -> bool {
         false
     }
 }
+
 fn para() -> impl Predicate {
     Name("blockquote")
         .or(Name("dl"))
@@ -599,6 +629,20 @@ fn code() -> impl Predicate {
 
 fn link() -> impl Predicate {
     Name("a")
+}
+
+fn extract_language_classes(node: Node) -> impl Iterator<Item = String> + '_ {
+    node.attr("class")
+        .map(|s| s.split(' '))
+        .into_iter()
+        .flatten()
+        .map(|s| {
+            // some heuristic prefixes & suffixes to remove
+            s.replace("language", "")
+                .replace("source", "")
+                .replace("highlight", "")
+                .replace("-", "")
+        })
 }
 
 impl FromStr for Language {
