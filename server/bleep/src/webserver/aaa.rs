@@ -8,7 +8,7 @@ use axum_extra::extract::{
     CookieJar,
 };
 use chrono::{DateTime, Utc};
-use jwt_authorizer::{layer::JwtSource, Authorizer, IntoLayer, JwtAuthorizer};
+use jwt_authorizer::{layer::JwtSource, Authorizer, IntoLayer, JwtAuthorizer, NumericDate};
 use secrecy::{ExposeSecret, SecretString};
 use serde_json::json;
 
@@ -94,7 +94,7 @@ pub(super) async fn router(router: Router, app: Application) -> Router {
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct TokenClaims {
-    pub exp: DateTime<Utc>,
+    pub exp: NumericDate,
     pub sub: String,
     #[serde(rename = "cognito:groups")]
     pub groups: Vec<String>,
@@ -163,7 +163,7 @@ pub(super) async fn refresh_token(
         .get_mut()
         .username = Some(response.username.clone());
 
-    let max_age = (claims.exp - Utc::now()).num_seconds();
+    let max_age = (DateTime::<Utc>::from(claims.exp) - Utc::now()).num_seconds();
     Ok((
         jar.add(
             Cookie::build(
