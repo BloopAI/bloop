@@ -234,7 +234,7 @@ println!("hello world!");
 
 pub fn studio_article_prompt(context: &str) -> String {
     format!(
-        r#"{context}Your job is to answer a query about a codebase using the information above.
+        r#"{context}Your job is to answer a query about a codebase using the information above. You can generate, quote, and modify code.
 
 You must use the following formatting rules at all times:
 - Provide only as much information and code as is necessary to answer the query and be concise
@@ -242,31 +242,49 @@ You must use the following formatting rules at all times:
 - When referring to code, you must provide an example in a code block
 - Keep number of quoted lines of code to a minimum when possible
 - When outputting code blocks, you MUST use four backticks for the outer block!
-  - For example, to generate code which includes doc comments:
-    ````rust
-    /** Foos the bar
+- You may use two types of markdown blocks: Generated and Sourced
+  - You MUST use four backticks for the outer block!
+  - Generated code blocks have no effect
+  - Sourced blocks prompt to create a replacement of the users' input code
+  - When generating example code, use a Generated block
+  - When quoting code, use a Sourced block with unchanged contents
+  - When modifying code, use a Sourced block with modified contents
+  - Sourced blocks MUST be appended with an additional info string after the final closing backticks, that is a comma-separated list of the format `path:PATH,source_start_line:X,source_end_line:Y`
+- Basic markdown is otherwise allowed
 
-    ```
-    assert_eq!(foo(123), 124);
-    ```
-    **/
-    fn foo(bar: i32) -> i32 {{
-        bar + 1
-    }}
-    ````
-- When quoting code in a code block, use the following info string format: language:LANG,path:PATH
-  - For example, to quote `src/main.c`:
-    ````language:c,path:src/main.c
-    int main() {{
-      printf("hello world!");
-    }}
-    ````
-  - For example, to quote `index.js`:
-  ````language:javascript,path:index.js
-  console.log("hello world!")
-  ````
-- Basic markdown is otherwise allowed"#
-    )
+Here is an example answer that uses links, generated, and sourced blocks:
+
+> In `src/userService.js`, we fetch user data and update the UI accordingly, using two separate rendering functions (`renderPremiumProfile` and `renderBasicProfile`) depending on whether the user has a premium account.
+>
+> A more elegant approach might involve creating a helper function that takes the user data as input and returns the appropriate rendering function. Here's an example:
+>
+> ````javascript
+> function selectProfileRenderer(user) {{
+>     return user.premium ? renderPremiumProfile : renderBasicProfile;
+> }}
+> ````
+>
+> With this idea in mind, let's refactor the original code block to utilize this helper function, improving readability and maintainability.
+>
+> ````javascript
+> fetch('/api/user')
+>     .then(response => response.json())
+>     .then(user => {{
+>         // Select the appropriate renderer based on user status
+>         const renderProfile = selectProfileRenderer(user);
+>         document.getElementById('profile').innerHTML = renderProfile(user);
+>     }})
+>     .catch(error => console.error('Error fetching user data:', error));
+>
+> // A helper function to choose the appropriate profile rendering function
+> function selectProfileRenderer(user) {{
+>     return user.premium ? renderPremiumProfile : renderBasicProfile;
+> }}
+> ````path:src/userService.js,source_start_line:45,source_end_line:53
+>
+> With this refactoring, the `updateUserProfile` function becomes more concise and its main purpose (fetching user data and updating the UI) becomes clearer. The decision logic about which profile to render is now encapsulated in the `selectProfileRenderer` helper function, adhering to the single responsibility principle and making the code easier to understand and manage.
+"#
+    ).trim().to_owned()
 }
 
 pub fn studio_name_prompt(context_json: &str, messages_json: &str) -> String {

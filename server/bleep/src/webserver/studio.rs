@@ -28,6 +28,8 @@ use crate::{
     webserver, Application,
 };
 
+mod decode;
+
 const LLM_GATEWAY_MODEL: &str = "gpt-4-0613";
 
 fn no_user_id() -> Error {
@@ -655,7 +657,7 @@ pub async fn generate(
         async move { ok }
     });
 
-    let event_stream = stream.map(|result| {
+    let event_stream = stream.map_ok(decode::decode).map(|result| {
         sse::Event::default()
             .json_data(result.map_err(|e: Error| e.to_string()))
             .map_err(anyhow::Error::new)
