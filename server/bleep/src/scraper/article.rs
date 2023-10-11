@@ -437,7 +437,7 @@ trait DocumentCleaner {
             node: Node,
             txt: &mut String,
             cleaner: &T,
-            classes: &mut HashSet<String>,
+            mut classes: Vec<String>,
         ) -> bool {
             if cleaner.is_bad_node_name(node) {
                 return false;
@@ -465,23 +465,25 @@ trait DocumentCleaner {
                         txt.push('\n');
                         txt_added |= true;
                     } else if child.is(pre()) {
-                        // extract language tag from pre class if possible
-                        classes.extend(extract_language_classes(child));
+                        dbg!("top level classes", &classes);
+                        // extract language tag from `pre` class and all child classes
+                        // that are `code` tagged
+                        let child_classes = extract_language_classes(child)
+                            .chain(
+                                child
+                                    .children()
+                                    .filter(|c| c.is(code()))
+                                    .map(|c| extract_language_classes(c))
+                                    .flatten(),
+                            )
+                            .collect::<Vec<_>>();
 
-                        // heuristic: sometimes, the language tag is attached to a child tag,
-                        // typically a `code` tag, extract if possible
-                        classes.extend(
-                            child
-                                .children()
-                                .filter(|c| c.is(code()))
-                                .map(|c| extract_language_classes(c))
-                                .flatten(),
-                        );
+                        dbg!("child classes", &child_classes);
 
                         let language = EXT_MAP
                             .keys()
                             .chain(PROPER_CASE_MAP.keys())
-                            .find(|&k| classes.iter().any(|c| c == k));
+                            .find(|&k| child_classes.iter().chain(classes.iter()).any(|c| c == k));
 
                         txt.push_str("\n```");
                         if let Some(language) = language {
@@ -489,7 +491,7 @@ trait DocumentCleaner {
                         }
                         txt.push('\n');
                         txt.push_str(&child.text());
-                        txt.push_str("\n```\n");
+                        txt.push_str("```\n");
                         txt_added |= true;
                     } else if child.is(link()) {
                         let link_text = child.text();
@@ -513,7 +515,7 @@ trait DocumentCleaner {
                         txt_added |= true;
                     } else {
                         let mut a = String::new();
-                        if recur_text(child, &mut a, cleaner, classes) {
+                        if recur_text(child, &mut a, cleaner, classes.clone()) {
                             txt.push_str(&a);
                             txt_added |= true;
                         } else if !cleaner.is_bad_node_name(child) {
@@ -531,8 +533,8 @@ trait DocumentCleaner {
         }
 
         let mut txt = String::new();
-        let mut classes = HashSet::new();
-        recur_text(node, &mut txt, self, &mut classes);
+        let classes = Vec::new();
+        recur_text(node, &mut txt, self, classes);
         txt
     }
 

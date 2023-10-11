@@ -467,8 +467,6 @@ async fn token_counts(
         })
         .collect::<Vec<_>>();
 
-    // let semantic = app.semantic.unwrap();
-    // let qdrant = semantic.qdrant_client();
     let core_bpe = tiktoken_rs::get_bpe_from_model("gpt-4-0613").unwrap();
     let per_doc_file = stream::iter(doc_context)
         .map(|file| async {
@@ -481,29 +479,29 @@ async fn token_counts(
                 .doc
                 .fetch(file.doc_id, &file.relative_url, 9999)
                 .await
-                .map_err(Error::internal)?
-                .into_iter()
-                .filter(|search_result| {
-                    if file.ranges.is_empty() {
-                        true
-                    } else {
-                        file.ranges.contains(&search_result.point_id)
-                    }
+                .map(|search_results| {
+                    search_results
+                        .into_iter()
+                        .filter(|search_result| {
+                            if file.ranges.is_empty() {
+                                true
+                            } else {
+                                file.ranges.contains(&search_result.point_id)
+                            }
+                        })
+                        .map(|sr| sr.text)
+                        .collect::<String>()
                 })
-                .map(|sr| sr.text)
-                .collect::<String>();
+                .ok();
 
-            Ok(Some(content))
+            Ok(content)
         })
         .boxed()
         .buffered(16)
         .try_collect::<Vec<_>>()
         .await?
         .into_par_iter()
-        .map(|data| match data {
-            Some(d) => Some(core_bpe.encode_ordinary(&d).len()),
-            None => Some(0),
-        })
+        .map(|data| data.map(|d| core_bpe.encode_ordinary(&d).len()))
         .collect::<Vec<_>>();
 
     let empty_context = generate_llm_context(app.clone(), &[], &[]).await?;
