@@ -320,7 +320,7 @@ pub(super) async fn delete_by_id(
 /// Synchronize a repo by its id
 pub(super) async fn sync(
     Query(RepoParams { repo }): Query<RepoParams>,
-    State(app): State<Application>,
+    Extension(app): Extension<Application>,
     Extension(user): Extension<User>,
 ) -> Result<impl IntoResponse> {
     // TODO: We can refactor `repo_pool` to also hold queued repos, instead of doing a calculation
