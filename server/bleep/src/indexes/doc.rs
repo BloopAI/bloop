@@ -49,6 +49,8 @@ pub enum Progress {
 pub struct Update {
     url: url::Url,
     discovered_count: usize,
+
+    #[serde(skip)]
     meta: scraper::Meta,
 }
 
@@ -437,6 +439,10 @@ impl Doc {
             .map_err(Error::Qdrant)?
             .result;
 
+        if data.is_empty() {
+            return Err(Error::InvalidDocId(id));
+        }
+
         let mut data = data
             .into_iter()
             .filter_map(|s| SearchResult::from_qdrant(s.id.unwrap(), s.payload))
@@ -600,6 +606,17 @@ impl scraper::Document {
             let favicon = self.meta.icon.as_deref().unwrap_or("");
             let favicon_url = url::Url::parse(&favicon)
                 .unwrap_or_else(|_| normalize_absolute_url(&url, &favicon));
+            let point_id = {
+                let mut bytes = [0; 16];
+                let mut hasher = blake3::Hasher::new();
+                hasher.update(&id.to_le_bytes()); // doc id
+                hasher.update(self.meta.title.as_deref().unwrap_or("").as_bytes()); // title of this page
+                hasher.update(&section.data.as_bytes()); // section data
+                hasher.update(&section.section_range.start.byte.to_le_bytes()); // section start location
+                hasher.update(&section.section_range.end.byte.to_le_bytes()); // section end location
+                bytes.copy_from_slice(&hasher.finalize().as_bytes()[16..32]);
+                uuid::Uuid::from_bytes(bytes).to_string()
+            };
             payload.insert("doc_id".to_owned(), id.into());
             payload.insert("doc_source".to_owned(), url.to_string().into());
             payload.insert("relative_url".to_owned(), self.relative_url(url).into());
@@ -628,7 +645,7 @@ impl scraper::Document {
             payload.insert("doc_favicon".to_owned(), favicon_url.as_str().into());
             PointStruct {
                 id: Some(PointId {
-                    point_id_options: Some(PointIdOptions::Uuid(uuid::Uuid::new_v4().to_string())),
+                    point_id_options: Some(PointIdOptions::Uuid(point_id.to_string())),
                 }),
                 vectors: Some(avg_embedding.into()),
                 payload,
