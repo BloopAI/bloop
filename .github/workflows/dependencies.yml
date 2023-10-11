@@ -24,15 +24,15 @@ jobs:
 
         include:	
           - target: x86_64-unknown-linux-gnu	
-            os: ubuntu-latest	
-            cross: false	
+            os: ubuntu-latest
+            cross: false
 
           - target: x86_64-apple-darwin	
-            os: macos-11	
-            cross: false	
+            os: macos-11
+            cross: false
 
           - target: aarch64-apple-darwin	
-            os: macos-11	
+            os: macos-11
             cross: true
             
           - target: x86_64-pc-windows-msvc
@@ -44,7 +44,7 @@ jobs:
       - name: Install Rust stable	
         uses: dtolnay/rust-toolchain@stable
         with:	
-          toolchain: stable	
+          toolchain: 1.70.0
           target: ${{ matrix.target }}	
 
       - name: Install Protoc
@@ -54,9 +54,9 @@ jobs:
 
       - name: Build qdrant	
         env:	
-          VERSION: 1.5.1
+          VERSION: 1.6.0
         run: |	
-          cargo install --target ${{ matrix.target }} --git https://github.com/qdrant/qdrant --tag v${{ env.VERSION }} --locked --root . qdrant	
+          cargo install --target ${{ matrix.target }} --git https://github.com/qdrant/qdrant --tag v${{ env.VERSION }} --root . qdrant	
       - name: Upload binaries	
         uses: actions/upload-artifact@v3	
         with:	
