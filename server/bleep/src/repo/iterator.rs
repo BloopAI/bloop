@@ -89,17 +89,19 @@ pub struct RepoFile {
     pub path: String,
     /// Branches which include the file
     pub branches: Vec<String>,
+    /// Length of the buffer
+    pub len: u64,
     /// Lazily loaded buffer that contains the file contents
     buffer: Box<dyn Fn() -> std::io::Result<String> + Send + Sync>,
 }
 
 impl RepoFile {
     pub fn should_index(&self) -> bool {
-        should_index_path(&self.path)
-            && std::fs::metadata(&self.path)
-                .map(|m| m.len())
-                .unwrap_or_default()
-                < MAX_FILE_LEN
+        should_index_path(&self.path) && self.len < MAX_FILE_LEN
+    }
+
+    pub fn buffer(&self) -> std::io::Result<String> {
+        (self.buffer)()
     }
 }
 

@@ -49,16 +49,17 @@ impl FileSource for FileWalker {
                 .into_par_iter()
                 .filter_map(|entry_disk_path| {
                     if entry_disk_path.is_file() {
-                        let buffer =
-                            Box::new(move || match std::fs::read_to_string(&entry_disk_path) {
-                                Err(err) => {
-                                    warn!(%err, ?entry_disk_path, "read failed; skipping");
-                                    return Err(err);
-                                }
-                                Ok(buffer) => Ok(buffer),
-                            });
+                        let path = entry_disk_path.clone();
+                        let buffer = Box::new(move || match std::fs::read_to_string(&path) {
+                            Err(err) => {
+                                warn!(%err, entry_disk_path=?path, "read failed; skipping");
+                                Err(err)
+                            }
+                            Ok(buffer) => Ok(buffer),
+                        });
                         Some(RepoDirEntry::File(RepoFile {
                             buffer,
+                            len: entry_disk_path.metadata().ok()?.len(),
                             path: entry_disk_path.to_string_lossy().to_string(),
                             branches: vec![self.branch.clone()],
                         }))
