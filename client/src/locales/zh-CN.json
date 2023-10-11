@@ -420,5 +420,6 @@
 	"Select section": "选择部分",
 	"Clear selection": "清空选项",
 	"Search docs or paste a URL to index": "搜索文档或将URL粘贴到索引",
-	"Search pages": "搜索页"
+	"Search pages": "搜索页",
+	"This page is currently unavailable. Ability to generate will be resumed as soon as this issue is resolved.": "此页面当前不可用。 一旦解决此问题，就会恢复产生的能力。"
 }

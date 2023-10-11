@@ -7,7 +7,13 @@ import {
 } from '../../../types/general';
 import TokensUsageBadge from '../TokensUsageBadge';
 import Button from '../../../components/Button';
-import { Eye, EyeCut, Magazine, TrashCanFilled } from '../../../icons';
+import {
+  Eye,
+  EyeCut,
+  Magazine,
+  TrashCanFilled,
+  WarningSign,
+} from '../../../icons';
 import Tooltip from '../../../components/Tooltip';
 import SectionsBadge from '../DocPanel/SectionsBadge';
 
@@ -64,15 +70,41 @@ const ContextFileRow = ({
       onClick={handleClick}
     >
       <div className={`max-w-full flex gap-2 items-center py-3 px-8`}>
-        <div
-          className={`rounded flex-shrink-0 items-center justify-center p-1 bg-bg-base`}
-        >
-          {doc_icon ? (
-            <img src={doc_icon} alt={doc_title || ''} className="w-5 h-5" />
-          ) : (
-            <Magazine />
-          )}
-        </div>
+        {tokens === null ? (
+          <Tooltip
+            text={
+              <div className="max-w-xs text-left">
+                {t(
+                  'This page is currently unavailable. Ability to generate will be resumed as soon as this issue is resolved.',
+                )}
+              </div>
+            }
+            placement={'top'}
+          >
+            <div
+              className={`rounded flex-shrink-0 items-center justify-center p-1 bg-bg-base relative`}
+            >
+              {doc_icon ? (
+                <img src={doc_icon} alt={doc_title || ''} className="w-5 h-5" />
+              ) : (
+                <Magazine />
+              )}
+              <div className="absolute -bottom-3 -right-2 text-warning-300">
+                <WarningSign raw sizeClassName="w-3.5 h-3.5" />
+              </div>
+            </div>
+          </Tooltip>
+        ) : (
+          <div
+            className={`rounded flex-shrink-0 items-center justify-center p-1 bg-bg-base`}
+          >
+            {doc_icon ? (
+              <img src={doc_icon} alt={doc_title || ''} className="w-5 h-5" />
+            ) : (
+              <Magazine />
+            )}
+          </div>
+        )}
         <div className="flex items-center gap-2 flex-1">
           <p
             className={`body-s-strong text-label-title ellipsis ${
@@ -96,25 +128,27 @@ const ContextFileRow = ({
         )}
         {!isPreviewing && (
           <>
-            <Button
-              variant="tertiary"
-              size="tiny"
-              onlyIcon
-              title={hidden ? t('Show file') : t('Hide file')}
-              className={
-                'opacity-50 group-hover:opacity-100 group-focus:opacity-100'
-              }
-              onClick={(e) => {
-                e.stopPropagation();
-                onDocHide(doc_id, doc_source, relative_url, !hidden);
-              }}
-            >
-              {hidden ? (
-                <EyeCut raw sizeClassName="w-3.5 h-3.5" />
-              ) : (
-                <Eye raw sizeClassName="w-3.5 h-3.5" />
-              )}
-            </Button>
+            {tokens !== null && (
+              <Button
+                variant="tertiary"
+                size="tiny"
+                onlyIcon
+                title={hidden ? t('Show file') : t('Hide file')}
+                className={
+                  'opacity-50 group-hover:opacity-100 group-focus:opacity-100'
+                }
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDocHide(doc_id, doc_source, relative_url, !hidden);
+                }}
+              >
+                {hidden ? (
+                  <EyeCut raw sizeClassName="w-3.5 h-3.5" />
+                ) : (
+                  <Eye raw sizeClassName="w-3.5 h-3.5" />
+                )}
+              </Button>
+            )}
             <Button
               variant="tertiary"
               size="tiny"

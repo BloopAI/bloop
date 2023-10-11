@@ -484,6 +484,7 @@ const ContentContainer = ({
                 isVisible={isAddDocsOpen}
                 onClose={handleAddDocsClose}
                 onSubmit={onDocSelected}
+                refetchCodeStudio={refetchCodeStudio}
               />
             </div>
             <div
@@ -505,9 +506,10 @@ const ContentContainer = ({
                 setIsHistoryOpen={setIsHistoryOpen}
                 isPreviewing={!!previewingState}
                 handleRestore={handleRestore}
-                hasContextError={stateToShow.token_counts?.per_file?.includes(
-                  null,
-                )}
+                hasContextError={
+                  stateToShow.token_counts?.per_file?.includes(null) ||
+                  stateToShow.token_counts?.per_doc_file?.includes(null)
+                }
                 isActiveTab={isActive}
                 isChangeUnsaved={isChangeUnsaved}
               />

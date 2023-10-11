@@ -19,7 +19,11 @@ import {
 import Button from '../../../components/Button';
 import LiteLoaderContainer from '../../../components/Loaders/LiteLoader';
 import { Magazine, Paper, WarningSign } from '../../../icons';
-import { DocSectionType, DocShortType } from '../../../types/api';
+import {
+  CodeStudioType,
+  DocSectionType,
+  DocShortType,
+} from '../../../types/api';
 import StepItem from '../AddContextModal/StepItem';
 import { DeviceContext } from '../../../context/deviceContext';
 import CommandIndicator from './CommandIndicator';
@@ -36,9 +40,15 @@ type Props = {
     title: string,
     selectedSection?: string,
   ) => void;
+  refetchCodeStudio: (keyToUpdate?: keyof CodeStudioType) => Promise<void>;
 };
 
-const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
+const AddDocsModal = ({
+  isVisible,
+  onClose,
+  onSubmit,
+  refetchCodeStudio,
+}: Props) => {
   const { t } = useTranslation();
   const [step, setStep] = useState(0);
   const [selectedProvider, setSelectedProvider] = useState<DocShortType | null>(
@@ -319,6 +329,7 @@ const AddDocsModal = ({ isVisible, onClose, onSubmit }: Props) => {
               filteredDocs={filteredDocs}
               handleLibrarySubmit={handleLibrarySubmit}
               syncDocProvider={syncDocProvider}
+              refetchCodeStudio={refetchCodeStudio}
             />
           ) : selectedProvider ? (
             docsUrl ? (

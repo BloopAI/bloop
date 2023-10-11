@@ -1,6 +1,6 @@
 import { memo, useCallback, MouseEvent, useRef, useEffect } from 'react';
 import { Trans } from 'react-i18next';
-import { DocShortType } from '../../../../types/api';
+import { CodeStudioType, DocShortType } from '../../../../types/api';
 import { Magazine } from '../../../../icons';
 import Button from '../../../../components/Button';
 import { deleteDocProvider } from '../../../../services/api';
@@ -13,6 +13,7 @@ type Props = {
   syncDocProvider: (id: string, isResync: boolean) => void;
   i: number;
   setHighlightedIndex: (i: number) => void;
+  refetchCodeStudio: (keyToUpdate?: keyof CodeStudioType) => Promise<void>;
 };
 
 const IndexedDocRow = ({
@@ -23,6 +24,7 @@ const IndexedDocRow = ({
   syncDocProvider,
   i,
   setHighlightedIndex,
+  refetchCodeStudio,
 }: Props) => {
   const ref = useRef<HTMLAnchorElement>(null);
 
@@ -35,9 +37,13 @@ const IndexedDocRow = ({
   const handleRemove = useCallback(
     (e: MouseEvent) => {
       e.stopPropagation();
-      deleteDocProvider(doc.id).then(() => {
-        refetchDocs();
-      });
+      deleteDocProvider(doc.id)
+        .then(() => {
+          refetchDocs();
+        })
+        .then(() => {
+          refetchCodeStudio('token_counts'); // to check if any page is now unavailable
+        });
     },
     [doc.id],
   );

@@ -1,5 +1,5 @@
 import React, { memo, useCallback, useEffect, useState } from 'react';
-import { DocShortType } from '../../../../types/api';
+import { CodeStudioType, DocShortType } from '../../../../types/api';
 import useKeyboardNavigation from '../../../../hooks/useKeyboardNavigation';
 import { deleteDocProvider } from '../../../../services/api';
 import IndexedDocRow from './IndexedDocRow';
@@ -9,6 +9,7 @@ type Props = {
   handleLibrarySubmit: (doc: DocShortType) => void;
   refetchDocs: () => void;
   syncDocProvider: (id: string, isResync: boolean) => void;
+  refetchCodeStudio: (keyToUpdate?: keyof CodeStudioType) => Promise<void>;
 };
 
 const IndexedDocsList = ({
@@ -16,6 +17,7 @@ const IndexedDocsList = ({
   handleLibrarySubmit,
   refetchDocs,
   syncDocProvider,
+  refetchCodeStudio,
 }: Props) => {
   const [highlightedDocIndex, setHighlightedDocIndex] = useState(0);
 
@@ -29,9 +31,13 @@ const IndexedDocsList = ({
         if (e.key === 'r') {
           syncDocProvider(filteredDocs[highlightedDocIndex].id, true);
         } else if (e.key === 'Backspace') {
-          deleteDocProvider(filteredDocs[highlightedDocIndex].id).then(() => {
-            refetchDocs();
-          });
+          deleteDocProvider(filteredDocs[highlightedDocIndex].id)
+            .then(() => {
+              refetchDocs();
+            })
+            .then(() => {
+              refetchCodeStudio('token_counts'); // to check if any page is now unavailable
+            });
         } else if (e.key === 'Enter') {
           handleLibrarySubmit(filteredDocs[highlightedDocIndex]);
         }
@@ -64,6 +70,7 @@ const IndexedDocsList = ({
             syncDocProvider={syncDocProvider}
             i={i}
             setHighlightedIndex={setHighlightedDocIndex}
+            refetchCodeStudio={refetchCodeStudio}
           />
         );
       })}

@@ -29,7 +29,7 @@ type Props = {
   contextFiles: StudioContextFile[];
   contextDocs: StudioContextDoc[];
   tokensPerFile: (number | null)[];
-  tokensPerDoc: number[];
+  tokensPerDoc: (number | null)[];
   onFileRemove: (
     f:
       | { path: string; repo: string; branch: string | null }
