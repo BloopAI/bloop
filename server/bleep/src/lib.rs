@@ -141,7 +141,7 @@ impl Application {
         let repo_pool = config.source.initialize_pool()?;
 
         // Databases & indexes
-        let sql = Arc::new(db::init(&config).await?);
+        let sql = Arc::new(db::initialize(&config).await?);
         let semantic =
             Semantic::initialize(&config.model_dir, &config.qdrant_url, Arc::clone(&config))
                 .await
