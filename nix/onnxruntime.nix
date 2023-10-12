@@ -7,7 +7,7 @@ stdenv.mkDerivation rec {
     owner = "microsoft";
     repo = "onnxruntime";
     rev = "v${version}";
-    sha256 = "sha256-Lm0AfUdr6EclNL/R3rPiA1o9qfsWH+f1Y0CX3JCFovo=";
+    sha256 = "sha256-cedOy9RIxtRszcpyL6/eX8r2u9nnTkK90/5IWgvZpKg=";
     fetchSubmodules = true;
   };
 
