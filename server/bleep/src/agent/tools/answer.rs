@@ -230,7 +230,7 @@ impl Agent {
 
                 query
                     .into_iter()
-                    .chain(conclusion.into_iter())
+                    .chain(conclusion)
                     .collect::<Vec<_>>()
             })
     }

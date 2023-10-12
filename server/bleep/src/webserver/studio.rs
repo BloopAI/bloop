@@ -666,6 +666,7 @@ pub async fn generate(
     Ok(Sse::new(Box::pin(stream)))
 }
 
+#[allow(clippy::single_range_in_vec_init)]
 async fn generate_llm_context(app: Application, context: &[ContextFile]) -> Result<String> {
     let mut s = String::new();
 
@@ -786,6 +787,7 @@ pub struct Import {
 }
 
 /// Returns a new studio UUID, or the `?studio_id=...` query param if present.
+#[allow(clippy::single_range_in_vec_init)]
 pub async fn import(
     app: Extension<Application>,
     user: Extension<User>,

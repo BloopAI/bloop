@@ -25,7 +25,7 @@ const QUERIES: &[&str] = &[
     r#"/.*/"#,
     r#"/[a-z]{4}/"#,
     r#"/--[a-zA-Z]/"#,
-    r#"/#[clap(short, long, default_value_t = \d{4})]/"#,
+    r"/#[clap(short, long, default_value_t = \d{4})]/",
     r#"symbol:handle"#,
     r#"symbol:res case:ignore"#,
     r#"path:src/comp symbol:handle"#,
