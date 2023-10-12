@@ -110,7 +110,11 @@ pub(crate) async fn sync_github_status(app: Application) {
         };
         debug!("repo list updated");
 
-        let updated = app.credentials.github_updated().unwrap();
+        let updated = match app.credentials.github_updated() {
+            Some(receiver) => receiver,
+            // This is a race condition, let's need to start from scratch.
+            None => continue,
+        };
         let new = github.update_repositories(repos);
 
         // store the updated credentials here
