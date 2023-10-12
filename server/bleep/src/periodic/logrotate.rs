@@ -74,8 +74,7 @@ fn update_branch_filters(
 ) -> Vec<crate::repo::RepoRef> {
     let mut to_sync = vec![];
     map.for_each(|repo, branches| {
-        let Ok(reporef) = repo.parse()
-        else {
+        let Ok(reporef) = repo.parse() else {
             return;
         };
 

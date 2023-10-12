@@ -94,7 +94,7 @@ impl Compiler {
 
             for (field, extractor) in &mut self.extractors {
                 let Some(extraction) = extractor(query) else {
-                    continue
+                    continue;
                 };
 
                 let field_query = match extraction {

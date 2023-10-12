@@ -197,12 +197,12 @@ pub(crate) fn gather_repo_roots(
                 use ignore::WalkState::*;
 
                 let Ok(de) = entry else {
-		    return Continue;
-		};
+                    return Continue;
+                };
 
                 let Some(ft) = de.file_type() else {
-		    return Continue;
-		};
+                    return Continue;
+                };
 
                 if ft.is_dir()
                     && RECOGNIZED_VCS_DIRS.contains(&de.file_name().to_string_lossy().as_ref())

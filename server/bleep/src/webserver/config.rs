@@ -52,8 +52,7 @@ pub(super) async fn get(
     });
 
     let github_user = 'user: {
-        let (Some(login), Some(crab)) = (&user_login, user.github())
-	else {
+        let (Some(login), Some(crab)) = (&user_login, user.github()) else {
             break 'user None;
         };
 

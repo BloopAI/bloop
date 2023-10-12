@@ -109,11 +109,13 @@ fn parse_payload(
     payload: HashMap<String, Value>,
     score: f32,
 ) -> Payload {
-    let Some(PointId { point_id_options: Some(PointIdOptions::Uuid(id)) }) = id
+    let Some(PointId {
+        point_id_options: Some(PointIdOptions::Uuid(id)),
+    }) = id
     else {
-	// unless the db was corrupted/written by someone else,
-	// this shouldn't happen
-	unreachable!("corrupted db");
+        // unless the db was corrupted/written by someone else,
+        // this shouldn't happen
+        unreachable!("corrupted db");
     };
 
     let embedding = match vectors {

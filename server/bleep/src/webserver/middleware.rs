@@ -26,19 +26,17 @@ pub enum User {
 
 impl User {
     pub(crate) fn login(&self) -> Option<&str> {
-        let User::Authenticated { login, .. } = self
-	else {
-	    return None;
-	};
+        let User::Authenticated { login, .. } = self else {
+            return None;
+        };
 
         Some(login)
     }
 
     pub(crate) fn github(&self) -> Option<octocrab::Octocrab> {
-        let User::Authenticated { crab, .. } = self
-	else {
-	    return None;
-	};
+        let User::Authenticated { crab, .. } = self else {
+            return None;
+        };
 
         crab().ok()
     }

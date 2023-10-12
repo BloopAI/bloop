@@ -28,15 +28,13 @@ impl BranchFilterConfig {
         &self,
         old: Option<&BranchFilterConfig>,
     ) -> Option<BranchFilterConfig> {
-        let Some(BranchFilterConfig::Select(ref old_list)) = old
-        else {
-	    return Some(self.clone());
-	};
+        let Some(BranchFilterConfig::Select(ref old_list)) = old else {
+            return Some(self.clone());
+        };
 
-        let BranchFilterConfig::Select(new_list) = self
-        else {
-	    return Some(self.clone());
-	};
+        let BranchFilterConfig::Select(new_list) = self else {
+            return Some(self.clone());
+        };
 
         let mut updated = old_list.iter().collect::<BTreeSet<_>>();
         updated.extend(new_list);
