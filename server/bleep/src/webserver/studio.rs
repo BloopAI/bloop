@@ -13,7 +13,7 @@ use axum::{
     Extension, Json,
 };
 use chrono::NaiveDateTime;
-use futures::{pin_mut, stream, StreamExt, TryStreamExt};
+use futures::{pin_mut, stream, StreamExt, TryFutureExt, TryStreamExt};
 use rayon::prelude::*;
 use reqwest::StatusCode;
 use tracing::{debug, error};
@@ -613,6 +613,7 @@ pub async fn generate(
 
     let tokens = llm_gateway.chat_stream(&llm_messages, None).await?;
 
+    let app2 = (*app).clone();
     let stream = async_stream::try_stream! {
         pin_mut!(tokens);
 
@@ -657,11 +658,18 @@ pub async fn generate(
         async move { ok }
     });
 
-    let event_stream = stream.map_ok(decode::decode).map(|result| {
-        sse::Event::default()
-            .json_data(result.map_err(|e: Error| e.to_string()))
-            .map_err(anyhow::Error::new)
-    });
+    let repo_ref = todo!();
+    let branch = todo!();
+
+    let event_stream = stream
+        .and_then(move |md| {
+            decode::decode(app2.clone(), md, repo_ref, branch).map_err(Error::internal)
+        })
+        .map(|result| {
+            sse::Event::default()
+                .json_data(result.map_err(|e: Error| e.to_string()))
+                .map_err(anyhow::Error::new)
+        });
     let done_stream = stream::once(async { Ok(sse::Event::default().data("[DONE]")) });
 
     let stream = event_stream.chain(done_stream);
@@ -1174,5 +1182,16 @@ mod test {
         output.sort_by_key(|cf| cf.path.clone());
 
         assert_eq!(&expected[..], &output);
+    }
+
+    #[test]
+    fn test_tmp() {
+        panic!(
+            "{}",
+            lazy_regex::regex!("x(.)").replace_all("xaxb", |caps: &regex::Captures| {
+                let n = caps.get(1).unwrap().as_str();
+                format!("x{n}x{}", n.to_ascii_uppercase())
+            })
+        );
     }
 }
