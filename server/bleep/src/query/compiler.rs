@@ -99,7 +99,7 @@ impl Compiler {
 
                 let field_query = match extraction {
                     Extraction::Literal(Literal::Plain(text)) => {
-                        let tokenizer = index
+                        let mut tokenizer = index
                             .tokenizer_for_field(*field)
                             .context("field is missing tokenizer")?;
 
