@@ -18,7 +18,7 @@ use tracing::trace;
 
 use super::Embedding;
 
-#[cfg(feature = "ee")]
+#[cfg(feature = "ee-cloud")]
 pub use crate::ee::embedder::*;
 
 #[derive(Default)]

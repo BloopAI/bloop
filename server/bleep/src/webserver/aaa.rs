@@ -8,7 +8,7 @@ use axum_extra::extract::{
     CookieJar,
 };
 use chrono::{DateTime, Utc};
-use jwt_authorizer::{layer::JwtSource, Authorizer, IntoLayer, JwtAuthorizer};
+use jwt_authorizer::{layer::JwtSource, Authorizer, IntoLayer, JwtAuthorizer, NumericDate};
 use secrecy::{ExposeSecret, SecretString};
 use serde_json::json;
 
@@ -16,7 +16,7 @@ use crate::{webserver::middleware, Application};
 
 use super::prelude::*;
 
-const COOKIE_NAME: &str = "X-Bleep-Cognito";
+pub(super) const COOKIE_NAME: &str = "X-Bleep-Cognito";
 
 #[derive(Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -92,7 +92,15 @@ pub(super) async fn router(router: Router, app: Application) -> Router {
         .route("/auth/refresh_token", get(refresh_token))
 }
 
-pub async fn get_authorizer(app: &Application) -> Authorizer {
+#[derive(Deserialize, Clone, Debug)]
+pub struct TokenClaims {
+    pub exp: NumericDate,
+    pub sub: String,
+    #[serde(rename = "cognito:groups")]
+    pub groups: Vec<String>,
+}
+
+pub async fn get_authorizer(app: &Application) -> Authorizer<TokenClaims> {
     let userpool_id = app.config.cognito_userpool_id.as_ref().expect("bad config");
     let (region, _) = userpool_id.split_once('_').unwrap();
     let url =
@@ -149,24 +157,13 @@ pub(super) async fn refresh_token(
         .map_err(|_| Error::new(ErrorKind::UpstreamService, "invalid token issued"))?
         .claims;
 
-    let sub = claims.sub.ok_or(Error::new(
-        ErrorKind::UpstreamService,
-        "invalid token issued",
-    ))?;
+    app.user_profiles
+        .entry(claims.sub)
+        .or_default()
+        .get_mut()
+        .username = Some(response.username.clone());
 
-    app.user_profiles.entry(sub).or_default().get_mut().username = Some(response.username.clone());
-
-    let now = Utc::now();
-    let exp: DateTime<Utc> = claims
-        .exp
-        .ok_or(Error::new(
-            ErrorKind::UpstreamService,
-            "invalid token issued",
-        ))?
-        .into();
-
-    let max_age = (exp - now).num_seconds();
-
+    let max_age = (DateTime::<Utc>::from(claims.exp) - Utc::now()).num_seconds();
     Ok((
         jar.add(
             Cookie::build(

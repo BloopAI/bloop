@@ -71,37 +71,43 @@ impl From<(&RepoRef, &Repository)> for Repo {
                 break 'branch_list default;
             };
 
-            use gix::bstr::ByteSlice;
-            let mut branches = refs
-                .filter_map(Result::ok)
-                .filter_map(|mut r| {
-                    let name = r.name().shorten().to_str_lossy().to_string();
-                    let last_commit_unix_secs = r
-                        .peel_to_id_in_place()
-                        .ok()?
-                        .object()
-                        .ok()?
-                        .try_into_commit()
-                        .ok()?
-                        .time()
-                        .ok()?
-                        .seconds;
+            let branches = if key.is_local() {
+                vec![]
+            } else {
+                use gix::bstr::ByteSlice;
+                let mut branches = refs
+                    .filter_map(Result::ok)
+                    .filter_map(|mut r| {
+                        let name = r.name().shorten().to_str_lossy().to_string();
+                        let last_commit_unix_secs = r
+                            .peel_to_id_in_place()
+                            .ok()?
+                            .object()
+                            .ok()?
+                            .try_into_commit()
+                            .ok()?
+                            .time()
+                            .ok()?
+                            .seconds;
 
-                    Some(Branch {
-                        name,
-                        last_commit_unix_secs,
+                        Some(Branch {
+                            name,
+                            last_commit_unix_secs,
+                        })
                     })
-                })
-                .filter(|b| {
-                    if key.is_remote() {
-                        b.name != "origin/HEAD" && b.name.starts_with("origin/")
-                    } else {
-                        b.name != "HEAD" && !b.name.starts_with("origin/")
-                    }
-                })
-                .collect::<Vec<_>>();
+                    .filter(|b| {
+                        if key.is_remote() {
+                            b.name != "origin/HEAD" && b.name.starts_with("origin/")
+                        } else {
+                            b.name != "HEAD" && !b.name.starts_with("origin/")
+                        }
+                    })
+                    .collect::<Vec<_>>();
 
-            branches.sort_by_key(|b| b.last_commit_unix_secs);
+                branches.sort_by_key(|b| b.last_commit_unix_secs);
+                branches
+            };
+
             (head, branches)
         };
 
@@ -194,7 +200,7 @@ pub(crate) enum ReposResponse {
     Item(Repo),
     SyncQueue(Vec<QueuedRepoStatus>),
     SyncQueued,
-    #[cfg(feature = "ee")]
+    #[cfg(feature = "ee-pro")]
     Unchanged,
     Deleted,
 }
@@ -207,7 +213,7 @@ pub(super) fn router() -> Router {
 
     let mut indexed = get(indexed).put(set_indexed).delete(delete_by_id);
 
-    #[cfg(feature = "ee")]
+    #[cfg(feature = "ee-pro")]
     {
         indexed = indexed.patch(crate::ee::webserver::patch_repository);
     }
