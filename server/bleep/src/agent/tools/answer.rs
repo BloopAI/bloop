@@ -8,7 +8,7 @@ use tracing::{debug, info, instrument, trace};
 use crate::{
     agent::{
         exchange::{CodeChunk, FocusedChunk, Update},
-        model, prompts, transcoder, Agent,
+        model, transcoder, Agent,
     },
     analytics::EventData,
     llm_gateway,
