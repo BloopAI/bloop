@@ -10,7 +10,7 @@ default = ["dynamic-ort", "ee-pro"]
 debug = ["console-subscriber", "histogram"]
 dynamic-ort = ["ort/load-dynamic"]
 ee-pro = []
-ee-cloud = []
+ee-cloud = ["ee-pro"]
 
 [[bin]]
 name = "bleep"
