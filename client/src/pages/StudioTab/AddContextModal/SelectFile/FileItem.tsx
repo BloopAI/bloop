@@ -1,11 +1,11 @@
-import { memo, useCallback, useEffect, useRef } from 'react';
+import { memo, useCallback, useEffect, useRef, MouseEvent } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import KeyboardChip from '../../KeyboardChip';
 import FileIcon from '../../../../components/FileIcon';
 
 type Props = {
   filename: string;
-  onSubmit: (b: string) => void;
+  onSubmit: (b: string, isMultiSelect?: boolean) => void;
   i: number;
   setHighlightedIndex: (i: number) => void;
   isFocused: boolean;
@@ -29,12 +29,19 @@ const FileItem = ({
 
   const handleMouseOver = useCallback(() => {
     setHighlightedIndex(i);
-  }, []);
+  }, [i]);
+
+  const handleClick = useCallback(
+    (e: MouseEvent) => {
+      onSubmit(filename, e.shiftKey);
+    },
+    [onSubmit, filename],
+  );
 
   return (
     <button
       type="button"
-      onClick={() => onSubmit(filename)}
+      onClick={handleClick}
       ref={ref}
       onMouseOver={handleMouseOver}
       className={`flex h-9 px-3 gap-3 items-center justify-between group rounded-6 cursor-pointer body-s ellipsis ${

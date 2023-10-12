@@ -412,5 +412,6 @@
 	"Clear selection": "明確な選択",
 	"Search docs or paste a URL to index": "ドキュメントを検索するか、URLを貼り付けてインデックスを付けます",
 	"Search pages": "検索ページ",
-	"This page is currently unavailable. Ability to generate will be resumed as soon as this issue is resolved.": "このページは現在利用できません。 生成能力は、この問題が解決されるとすぐに再開されます。"
+	"This page is currently unavailable. Ability to generate will be resumed as soon as this issue is resolved.": "このページは現在利用できません。 生成能力は、この問題が解決されるとすぐに再開されます。",
+	"Hold <1></1> to add multiple files": "<1> </1>を保持して複数のファイルを追加する"
 }

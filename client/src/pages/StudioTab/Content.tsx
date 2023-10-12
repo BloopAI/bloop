@@ -138,13 +138,22 @@ const ContentContainer = ({
   );
 
   const onFileSelected = useCallback(
-    (repo: RepoType, branch: string | null, filePath: string) => {
-      setLeftPanel({
-        type: StudioLeftPanelType.FILE,
-        data: { repo, branch, filePath, isFileInContext: false },
-      });
+    (
+      repo: RepoType,
+      branch: string | null,
+      filePath: string,
+      isMultiSelect?: boolean,
+    ) => {
+      if (isMultiSelect) {
+        onFileAdded(repo.ref, branch, filePath);
+      } else {
+        setLeftPanel({
+          type: StudioLeftPanelType.FILE,
+          data: { repo, branch, filePath, isFileInContext: false },
+        });
+      }
     },
-    [],
+    [onFileAdded],
   );
 
   const onDocSelected = useCallback(

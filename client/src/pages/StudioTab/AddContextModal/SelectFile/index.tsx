@@ -7,7 +7,7 @@ import FileItem from './FileItem';
 type Props = {
   search: string;
   branch: string;
-  onSubmit: (branch: string) => void;
+  onSubmit: (file: string, isMultiSelect?: boolean) => void;
   repo: RepoType;
   filterOutFiles: StudioContextFile[];
 };
@@ -26,7 +26,7 @@ const SelectFile = ({
     (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey) {
         if (e.key === 'Enter') {
-          onSubmit(filesToShow[highlightedIndex]);
+          onSubmit(filesToShow[highlightedIndex], e.shiftKey);
         }
       } else {
         if (e.key === 'ArrowDown') {
