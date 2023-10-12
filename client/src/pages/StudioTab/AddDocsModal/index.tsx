@@ -211,9 +211,9 @@ const AddDocsModal = ({
       <div
         className={`mb-3 mx-auto relative z-10 rounded-full ${
           verifyError || isIndexing ? 'opacity-100 shadow-float' : 'opacity-0'
-        }`}
+        } max-w-[38.75rem]`}
       >
-        <div className="text-center caption flex gap-1.5 items-center py-2 px-2.5 rounded-full bg-bg-shade">
+        <div className="text-center caption flex gap-1.5 items-center py-2 px-2.5 rounded-full bg-bg-shade ellipsis">
           {verifyError ? (
             <>
               <WarningSign
@@ -231,7 +231,7 @@ const AddDocsModal = ({
           ) : isIndexing ? (
             <>
               <LiteLoaderContainer sizeClassName="w-4 h-4" />
-              <p className="text-label-title">
+              <p className="text-label-title ellipsis">
                 {currentlyIndexingUrl ? (
                   <Trans
                     values={{
@@ -242,7 +242,8 @@ const AddDocsModal = ({
                         .join(' > '),
                     }}
                   >
-                    Indexing <span className="text-label-link">#</span>.
+                    Indexing <span className="text-label-link ellipsis">#</span>
+                    .
                   </Trans>
                 ) : (
                   <Trans values={{ url: docsUrl }}>
