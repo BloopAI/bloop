@@ -3,8 +3,9 @@ use anyhow::{Context, Result};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use reqwest::{
-    header::{HeaderMap, USER_AGENT},
-    IntoUrl,
+    header::{HeaderMap, LOCATION, USER_AGENT},
+    redirect::Policy,
+    IntoUrl, StatusCode,
 };
 use select::{
     document::Document,
@@ -385,10 +386,28 @@ impl ArticleBuilder {
 
             reqwest::Client::builder()
                 .default_headers(headers)
+                .redirect(Policy::none())
                 .timeout(timeout)
         };
 
-        let resp = builder.build()?.get(url).send().await?;
+        let client = builder.build()?;
+        let mut resp = client.get(url).send().await?;
+
+        // follow redirects upto 1 time
+        match resp.status() {
+            StatusCode::MOVED_PERMANENTLY
+            | StatusCode::FOUND
+            | StatusCode::TEMPORARY_REDIRECT
+            | StatusCode::PERMANENT_REDIRECT => {
+                let new_location = resp
+                    .headers()
+                    .get(LOCATION)
+                    .ok_or(anyhow::anyhow!("failed to follow redirect"))?
+                    .to_str()?;
+                resp = client.get(dbg!(new_location)).send().await?;
+            }
+            _ => {}
+        }
 
         if !resp.status().is_success() {
             return Err(anyhow::anyhow!(
@@ -465,7 +484,6 @@ trait DocumentCleaner {
                         txt.push('\n');
                         txt_added |= true;
                     } else if child.is(pre()) {
-                        dbg!("top level classes", &classes);
                         // extract language tag from `pre` class and all child classes
                         // that are `code` tagged
                         let child_classes = extract_language_classes(child)
@@ -477,8 +495,6 @@ trait DocumentCleaner {
                                     .flatten(),
                             )
                             .collect::<Vec<_>>();
-
-                        dbg!("child classes", &child_classes);
 
                         let language = EXT_MAP
                             .keys()
