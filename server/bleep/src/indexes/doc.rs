@@ -20,6 +20,7 @@ use crate::{
 
 use std::collections::HashMap;
 
+#[derive(Clone)]
 pub struct Doc {
     sql: SqlDb,
     semantic: Semantic,
@@ -140,22 +141,26 @@ impl Doc {
     }
 
     /// Add a doc source to the index
-    pub fn sync(&self, url: url::Url) -> impl Stream<Item = Result<Progress, Error>> + '_ {
-        try_stream! {
-            // add entry to sqlite
-            let url_string = url.to_string();
-            let id = sqlx::query! {
-                "INSERT INTO docs (url, index_status) VALUES (?, ?)",
-                url_string,
-                STATUS_INDEXING,
-            }
-            .execute(&*self.sql)
-            .await?
-            .last_insert_rowid();
+    pub async fn sync(
+        self,
+        url: url::Url,
+    ) -> Result<impl Stream<Item = Result<Progress, Error>>, Error> {
+        // add entry to sqlite
+        let url_string = url.to_string();
+        let id = sqlx::query! {
+            "INSERT INTO docs (url, index_status) VALUES (?, ?)",
+            url_string,
+            STATUS_INDEXING,
+        }
+        .execute(&*self.sql)
+        .await?
+        .last_insert_rowid();
 
+        let stream = try_stream! {
             let mut is_meta_set = false;
+            let stream = self.clone().insert_into_qdrant(id, url.clone());
 
-            for await progress in self.insert_into_qdrant(id, url.clone()) {
+            for await progress in stream {
                 // populate metadata in sqlite
                 //
                 // the first scraped doc that contains metadata is used to populate
@@ -192,36 +197,36 @@ impl Doc {
 
             self.set_index_status(STATUS_DONE, id).await?;
             yield Progress::Done(id);
-        }
+        };
+
+        Ok(stream)
     }
 
     /// Update documentation in the index - this will rescrape the entire website
-    pub fn resync(&self, id: i64) -> impl Stream<Item = Result<Progress, Error>> + '_ {
-        try_stream! {
-            let url = sqlx::query!("SELECT url FROM docs WHERE id = ?", id)
-                .fetch_optional(&*self.sql)
-                .await?
-                .ok_or(Error::InvalidDocId(id))?
-                .url;
-            let url = url::Url::parse(&url).map_err(|e| Error::UrlParse(url, e))?;
+    pub async fn resync(self, id: i64) -> Result<impl Stream<Item = Progress>, Error> {
+        let url = sqlx::query!("SELECT url FROM docs WHERE id = ?", id)
+            .fetch_optional(&*self.sql)
+            .await?
+            .ok_or(Error::InvalidDocId(id))?
+            .url;
+        let url = url::Url::parse(&url).map_err(|e| Error::UrlParse(url, e))?;
 
-            // delete old docs from qdrant
-            self.delete_from_qdrant(id).await?;
+        // delete old docs from qdrant
+        self.delete_from_qdrant(id).await?;
 
-            sqlx::query! {
-                "UPDATE docs SET modified_at = datetime('now') WHERE id = ?",
-                id,
-            }
-            .execute(&*self.sql)
-            .await?;
-
-            // insert new docs into qdrant
-            for await progress in self.insert_into_qdrant(id, url) {
-                yield Progress::Update(progress);
-            };
-
-            yield Progress::Done(id);
+        sqlx::query! {
+            "UPDATE docs SET modified_at = datetime('now') WHERE id = ?",
+            id,
         }
+        .execute(&*self.sql)
+        .await?;
+
+        let progress_stream = self
+            .insert_into_qdrant(id, url)
+            .map(|progress| Progress::Update(progress));
+        let done_stream = futures::stream::once(async move { Progress::Done(id) });
+
+        Ok(progress_stream.chain(done_stream))
     }
 
     /// Remove this doc source from qdrant and sqlite
@@ -479,7 +484,7 @@ impl Doc {
     }
 
     /// Scrape & insert a doc source into qdrant and return doc metadata if available
-    fn insert_into_qdrant(&self, id: i64, url: url::Url) -> impl Stream<Item = Update> + '_ {
+    fn insert_into_qdrant(self, id: i64, url: url::Url) -> impl Stream<Item = Update> {
         stream! {
             let mut scraper = Scraper::with_config(Config::new(url.clone()));
             let mut stream = Box::pin(scraper.complete());

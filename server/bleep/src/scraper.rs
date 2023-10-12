@@ -82,6 +82,7 @@ impl Scraper {
                         Ok(Ok(mut scraper_result)) => {
                             // insert doc into the stream if any
                             if let Some(d) = scraper_result.doc.take() {
+                                self.visited_links.insert(d.url.to_string());
                                 yield d;
                             }
 
@@ -97,17 +98,17 @@ impl Scraper {
                                     .or_insert(depth);
                                     map
                                 })
-                            .into_iter()
-                                .filter(|(url, depth)| {
-                                    *depth <= self.config.max_depth
-                                        && !self.visited_links.contains(&url.to_string())
-                                        && self.is_permitted(url)
+                                .into_iter()
+                                    .filter(|(url, depth)| {
+                                        *depth <= self.config.max_depth
+                                            && !self.visited_links.contains(&url.to_string())
+                                            && self.is_permitted(url)
+                                    })
+                                .map(|(url, depth)| ScraperRequest {
+                                    url,
+                                    depth,
                                 })
-                            .map(|(url, depth)| ScraperRequest {
-                                url,
-                                depth,
-                            })
-                            .collect::<Vec<_>>();
+                                .collect::<Vec<_>>();
 
                             debug!("{} new urls collected", new_urls.len());
 
@@ -220,6 +221,7 @@ async fn visit(ScraperRequest { url, depth }: ScraperRequest) -> Result<ScraperR
 
     // fetch and parse article
     let article = Article::builder(url.clone())?.get().await?;
+    let url = article.url; // in the case of a redirect - we store the updated url
 
     // scrape all relative links from this doc and add onto stack
     let html = article.doc;

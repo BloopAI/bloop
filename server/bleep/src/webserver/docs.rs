@@ -1,4 +1,3 @@
-use async_stream::try_stream;
 use axum::{
     extract::{Json, Path, Query, State},
     response::{sse::Event, Sse},
@@ -59,31 +58,32 @@ pub async fn delete(State(app): State<Application>, Path(id): Path<i64>) -> Resu
 pub async fn sync(
     State(app): State<Application>,
     Query(params): Query<Sync>,
-) -> Sse<Pin<Box<dyn Stream<Item = Result<Event, Infallible>> + Send>>> {
-    let s = try_stream! {
-        let mut sync = Box::pin(app.indexes.doc.sync(params.url));
-        while let Some(result) = sync.next().await {
-            yield Event::default()
-                .json_data(result.as_ref().map_err(ToString::to_string))
-                .unwrap();
-        }
-    };
-    Sse::new(Box::pin(s))
+) -> Result<Sse<Pin<Box<dyn Stream<Item = Result<Event, Infallible>> + Send>>>> {
+    Ok(Sse::new(Box::pin(
+        app.indexes
+            .doc
+            .clone()
+            .sync(params.url)
+            .await?
+            .map(|result| {
+                Ok(Event::default()
+                    .json_data(result.as_ref().map_err(ToString::to_string))
+                    .unwrap())
+            }),
+    )))
 }
 
 pub async fn resync(
     State(app): State<Application>,
     Path(id): Path<i64>,
-) -> Sse<Pin<Box<dyn Stream<Item = Result<Event, Infallible>> + Send>>> {
-    let s = try_stream! {
-        let mut sync = Box::pin(app.indexes.doc.resync(id));
-        while let Some(result) = sync.next().await {
-            yield Event::default()
-                .json_data(result.as_ref().map_err(ToString::to_string))
-                .unwrap();
-            }
-    };
-    Sse::new(Box::pin(s))
+) -> Result<Sse<Pin<Box<dyn Stream<Item = Result<Event, Infallible>> + Send>>>> {
+    Ok(Sse::new(Box::pin(
+        app.indexes.doc.clone().resync(id).await?.map(|progress| {
+            Ok(Event::default()
+                .json_data(Ok::<_, String>(progress))
+                .unwrap())
+        }),
+    )))
 }
 
 pub async fn search(
