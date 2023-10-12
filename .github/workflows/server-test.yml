@@ -4,6 +4,7 @@ on:
   pull_request:
     branches: [main]
     paths:
+      - "flake.*"
       - "server/**"
       - ".github/workflows/server**"
 
