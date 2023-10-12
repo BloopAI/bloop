@@ -562,7 +562,7 @@ pub(crate) fn make_kv_keyword_filter(key: &str, value: &str) -> FieldCondition {
 }
 
 // Substring match filter
-fn make_kv_text_filter(key: &str, value: &str) -> FieldCondition {
+pub(crate) fn make_kv_text_filter(key: &str, value: &str) -> FieldCondition {
     let key = key.to_owned();
     let value = value.to_owned();
     FieldCondition {

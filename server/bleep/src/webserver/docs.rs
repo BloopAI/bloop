@@ -26,7 +26,7 @@ pub struct List {
 #[derive(serde::Deserialize)]
 pub struct Search {
     pub q: Option<String>,
-    pub limit: u64,
+    pub limit: u32,
 }
 
 #[derive(serde::Deserialize)]
@@ -91,7 +91,7 @@ pub async fn search(
     Query(params): Query<Search>,
 ) -> Result<Json<Vec<doc::Record>>> {
     Ok(Json(match params.q {
-        Some(q) => app.indexes.doc.search(q, params.limit).await?,
+        Some(q) => app.indexes.doc.search(q, params.limit as u64).await?,
         None => app.indexes.doc.list().await?,
     }))
 }
@@ -150,7 +150,7 @@ impl From<doc::Error> for Error {
             | doc::Error::Qdrant(_)
             | doc::Error::UrlParse(..)
             | doc::Error::Initialize(_) => Self::internal(value),
-            doc::Error::InvalidUrl(..) => Self::user(value),
+            doc::Error::InvalidUrl(..) | doc::Error::DuplicateUrl(..) => Self::user(value),
             doc::Error::InvalidDocId(_) => Self::not_found(value),
         }
     }
