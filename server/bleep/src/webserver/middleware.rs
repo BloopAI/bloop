@@ -42,9 +42,8 @@ impl User {
     }
 
     pub(crate) async fn paid_features(&self, app: &Application) -> bool {
-        let User::Authenticated { api_token, ..} = self
-        else {
-	    return false;
+        let User::Authenticated { api_token, .. } = self else {
+            return false;
         };
 
         let Ok(response) = reqwest::Client::new()
@@ -52,10 +51,10 @@ impl User {
             .bearer_auth(api_token)
             .send()
             .await
-	else {
-	    error!("failed to get quota for user");
-	    return false;
-	};
+        else {
+            error!("failed to get quota for user");
+            return false;
+        };
 
         if response.status().is_success() {
             let response: serde_json::Value =

@@ -538,9 +538,11 @@ mod tests {
         assert_eq!(observed[0].line_count(), 2);
         assert_eq!(
             observed[1].data,
-            [r#"pub const INTO: [&str; 4] = ["core", "slice", "<impl [T]>", "iter"];"#,
+            [
+                r#"pub const INTO: [&str; 4] = ["core", "slice", "<impl [T]>", "iter"];"#,
                 r#"pub const SLICE_ITER: [&str; 4] = ["core", "slice", "iter", "Iter"];"#,
-                ""]
+                ""
+            ]
             .join("\n")
         );
         assert_eq!(observed[1].line_count(), 2);

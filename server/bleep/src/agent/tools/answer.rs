@@ -228,10 +228,7 @@ impl Agent {
                     }
                 });
 
-                query
-                    .into_iter()
-                    .chain(conclusion)
-                    .collect::<Vec<_>>()
+                query.into_iter().chain(conclusion).collect::<Vec<_>>()
             })
     }
 
