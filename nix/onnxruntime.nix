@@ -1,7 +1,7 @@
 { pkgs, stdenv }:
 stdenv.mkDerivation rec {
   pname = "onnxruntime";
-  version = "1.14.0";
+  version = "1.14.1";
 
   src = pkgs.fetchFromGitHub {
     owner = "microsoft";
