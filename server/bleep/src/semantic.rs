@@ -27,7 +27,6 @@ pub use embedder::Embedder;
 use embedder::LocalEmbedder;
 use schema::{create_collection, EMBEDDING_DIM};
 pub use schema::{Embedding, Payload};
-use tracing_subscriber::field::debug;
 
 #[derive(Error, Debug)]
 pub enum SemanticError {
@@ -185,44 +184,33 @@ async fn create_indexes(collection_name: &str, qdrant: &QdrantClient) -> anyhow:
 }
 
 impl Semantic {
+    #[tracing::instrument(fields(collection=%config.collection_name, %qdrant_url), skip_all)]
     pub async fn initialize(
         model_dir: &Path,
         qdrant_url: &str,
         config: Arc<Configuration>,
     ) -> Result<Self, SemanticError> {
-        debug!(qdrant_url, "initializing qdrant client");
         let qdrant = QdrantClient::new(Some(QdrantClientConfig::from_url(qdrant_url))).unwrap();
+        debug!("initialized client");
 
         match qdrant.has_collection(&config.collection_name).await {
             Ok(false) => {
-                debug!(name = config.collection_name, "creating qdrant collection");
-
                 let CollectionOperationResponse { result, time } =
                     create_collection(&config.collection_name, &qdrant)
                         .await
                         .unwrap();
 
-                debug!(
-                    time,
-                    created = result,
-                    name = config.collection_name,
-                    "created qdrant collection"
-                );
-
+                debug!(time, created = result, "collection created");
                 assert!(result);
             }
             Ok(true) => {
-                debug!(
-                    name = config.collection_name,
-                    "qdrant collection already exists"
-                );
+                debug!("collection already exists");
             }
             Err(_) => return Err(SemanticError::QdrantInitializationError),
         }
 
         create_indexes(&config.collection_name, &qdrant).await?;
-
-        debug!(name = config.collection_name, "qdrant indexes created");
+        debug!("indexes created");
 
         if let Some(dylib_dir) = config.dylib_dir.as_ref() {
             init_ort_dylib(dylib_dir);
@@ -234,15 +222,18 @@ impl Semantic {
 
         #[cfg(feature = "ee")]
         let embedder: Arc<dyn Embedder> = if let Some(ref url) = config.embedding_server_url {
-            Arc::new(embedder::RemoteEmbedder::new(url.clone(), model_dir)?)
+            let embedder = Arc::new(embedder::RemoteEmbedder::new(url.clone(), model_dir)?);
+            debug!("using remote embedder");
+            embedder
         } else {
-            Arc::new(LocalEmbedder::new(model_dir)?)
+            let embedder = Arc::new(LocalEmbedder::new(model_dir)?);
+            debug!("using local embedder");
+            embedder
         };
 
         #[cfg(not(feature = "ee"))]
         let embedder: Arc<dyn Embedder> = Arc::new(LocalEmbedder::new(model_dir)?);
-
-        debug!("initialized embedder");
+        debug!("using local embedder");
 
         Ok(Self {
             qdrant: qdrant.into(),
