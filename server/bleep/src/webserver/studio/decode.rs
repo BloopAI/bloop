@@ -1,8 +1,11 @@
 use anyhow::{Context, Result};
 use comrak::nodes::NodeValue;
 use lazy_regex::regex;
+use tracing::debug;
 
-use crate::{repo::RepoRef, Application};
+use crate::Application;
+
+use super::ContextFile;
 
 #[derive(serde::Deserialize)]
 struct SourcedBlockInfo {
@@ -12,13 +15,26 @@ struct SourcedBlockInfo {
     source_end_line: i32,
 }
 
-pub async fn decode(
+pub(super) async fn decode(
     app: Application,
     markdown: String,
-    repo_ref: &RepoRef,
-    branch: Option<&str>,
+    context: Vec<ContextFile>,
+) -> String {
+    match decode_inner(app, markdown.clone(), context).await {
+        Ok(decoded) => decoded,
+        Err(e) => {
+            debug!("decoding failed: {e}");
+            markdown
+        }
+    }
+}
+
+pub(super) async fn decode_inner(
+    app: Application,
+    markdown: String,
+    context: Vec<ContextFile>,
 ) -> Result<String> {
-    let document = fixup_tags(markdown);
+    let document = dbg!(fixup_tags(dbg!(markdown)));
 
     // The `comrak` crate has a very unusual API which makes this logic difficult to follow. It
     // favours arena allocation instead of a tree-based AST, and requires `Write`rs to regenerate
@@ -26,31 +42,33 @@ pub async fn decode(
     //
     // There are quirks to the parsing logic, comments have been added for clarity.
 
+    // We don't have an easy built-in way to generate a string with `comrak`, so we encapsulate
+    // that logic here.
+    let comrak_to_string = |node| {
+        let mut out = Vec::<u8>::new();
+        comrak::format_commonmark(node, &Default::default(), &mut out).unwrap();
+        String::from_utf8_lossy(&out)
+            .trim()
+            .replace("\n\n<!-- end list -->", "")
+    };
+
     // We have to collect this beforehand as comrak uses non-Send internal reference types.
     // There is no way to hold an await point in the loop because of this.
-    let mut block_info = Vec::new();
+    let mut code_blocks = Vec::new();
     {
         let arena = comrak::Arena::new();
-
-        // We don't have an easy built-in way to generate a string with `comrak`, so we encapsulate
-        // that logic here.
-        let comrak_to_string = |node| {
-            let mut out = Vec::<u8>::new();
-            comrak::format_commonmark(node, &Default::default(), &mut out).unwrap();
-            String::from_utf8_lossy(&out)
-                .trim()
-                .replace("\n\n<!-- end list -->", "")
-        };
-
         let root = comrak::parse_document(&arena, &document, &Default::default());
         let mut children = root.children();
 
         for block in &mut children {
             if let NodeValue::CodeBlock(block) = &mut block.data.borrow_mut().value {
-                let fields = block
-                    .info
-                    .split(",")
-                    .map(|pair| pair.split_once(":").context("found key without value"))
+                let fields = dbg!(&block.info)
+                    .split(',')
+                    .map(|pair| {
+                        dbg!(pair)
+                            .split_once(':')
+                            .context("found key without value")
+                    })
                     .collect::<Result<Vec<_>>>()?
                     .into_iter()
                     .map(|(k, v)| {
@@ -68,24 +86,75 @@ pub async fn decode(
                 let info: SourcedBlockInfo =
                     serde_json::from_value(fields).context("invalid param format")?;
 
-                block_info.push(info);
+                code_blocks.push((info, block.literal.clone()));
             }
         }
     }
 
-    for info in block_info {
-        app.indexes
+    let mut diffs = Vec::new();
+    for (info, body) in code_blocks {
+        let context_file = context
+            .iter()
+            .find(|file| file.path == info.path)
+            .context("unknown file in source block")?;
+
+        let file_body = app
+            .indexes
             .file
-            .by_path(repo_ref, &info.path, branch)
-            .await?;
+            .by_path(
+                &context_file.repo,
+                &info.path,
+                context_file.branch.as_deref(),
+            )
+            .await?
+            .context("file not found")?;
+
+        let mut buf = String::new();
+
+        buf += &file_body
+            .content
+            .lines()
+            .take(info.source_start_line as usize - 1)
+            .collect::<Vec<_>>()
+            .join("\n");
+        buf.push('\n');
+        buf += body.trim();
+        buf.push('\n');
+        buf += &file_body
+            .content
+            .lines()
+            .skip(info.source_end_line as usize)
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        let diff = unified_diff::diff(
+            file_body.content.as_bytes(),
+            &file_body.relative_path,
+            buf.as_bytes(),
+            &file_body.relative_path,
+            3,
+        );
+        diffs.push((info.lang, String::from_utf8_lossy(&diff).into_owned()));
     }
 
-    todo!()
+    let arena = comrak::Arena::new();
+    let root = comrak::parse_document(&arena, &document, &Default::default());
+    let mut children = root.children();
+
+    for block in &mut children {
+        if let NodeValue::CodeBlock(block) = &mut block.data.borrow_mut().value {
+            let (_info, diff) = diffs.remove(0);
+            block.info = "diff".to_owned();
+            block.literal = diff;
+        }
+    }
+
+    Ok(comrak_to_string(root))
 }
 
 pub fn fixup_tags(markdown: String) -> String {
     let regex = regex!(
-        r"^````(\w+)\n(.*?)^````(path:[^\n,]*,source_start_line:[^\n,]*,source_end_line:[^\n,]*)?$"sm
+        r"^````*(\w+)\n(.*?)^````*(?:\n)?(path:[^\n,]*,source_start_line:[^\n,]*,source_end_line:[^\n,]*)?$"sm
     );
 
     regex
@@ -215,6 +284,49 @@ fn bar() -> i32 {
 ````
 
 Another paragraph.";
+
+        assert_eq!(expected, fixup_tags(input.to_owned()));
+    }
+
+    #[test]
+    fn test_triple_backtick() {
+        let input = "Here is the modified `Query` struct with `branch` renamed to `tag`:
+
+```rust
+#[derive(Default, Clone, Debug, PartialEq, Eq)]
+pub struct Query<'a> {
+    pub open: Option<bool>,
+    pub case_sensitive: Option<bool>,
+    pub global_regex: Option<bool>,
+
+    pub org: Option<Literal<'a>>,
+    pub repo: Option<Literal<'a>>,
+    pub path: Option<Literal<'a>>,
+    pub lang: Option<Cow<'a, str>>,
+    pub tag: Option<Literal<'a>>,  // renamed from branch
+    pub target: Option<Target<'a>>,
+}
+```path:server/bleep/src/query/parser.rs,source_start_line:7,source_end_line:18
+Please note that this change will require updates in other parts of the code where `branch` is used.";
+
+        let expected = "Here is the modified `Query` struct with `branch` renamed to `tag`:
+
+````lang:rust,path:server/bleep/src/query/parser.rs,source_start_line:7,source_end_line:18
+#[derive(Default, Clone, Debug, PartialEq, Eq)]
+pub struct Query<'a> {
+    pub open: Option<bool>,
+    pub case_sensitive: Option<bool>,
+    pub global_regex: Option<bool>,
+
+    pub org: Option<Literal<'a>>,
+    pub repo: Option<Literal<'a>>,
+    pub path: Option<Literal<'a>>,
+    pub lang: Option<Cow<'a, str>>,
+    pub tag: Option<Literal<'a>>,  // renamed from branch
+    pub target: Option<Target<'a>>,
+}
+````
+Please note that this change will require updates in other parts of the code where `branch` is used.";
 
         assert_eq!(expected, fixup_tags(input.to_owned()));
     }

@@ -153,6 +153,7 @@ relative-path = "1.9.0"
 semver = { version = "1", features = ["serde"] }
 scc = { version= "1.9.1", features = ["serde"] }
 thread-priority = "0.13.1"
+unified-diff = "0.2.1"
 
 [dev-dependencies]
 criterion = { version = "0.5.1", features = ["async_tokio"] }

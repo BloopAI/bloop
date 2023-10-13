@@ -13,7 +13,7 @@ use axum::{
     Extension, Json,
 };
 use chrono::NaiveDateTime;
-use futures::{pin_mut, stream, StreamExt, TryFutureExt, TryStreamExt};
+use futures::{pin_mut, stream, FutureExt, StreamExt, TryStreamExt};
 use rayon::prelude::*;
 use reqwest::StatusCode;
 use tracing::{debug, error};
@@ -137,6 +137,15 @@ enum Message {
     Assistant(String),
 }
 
+impl Message {
+    async fn decode(self, app: Application, context: Vec<ContextFile>) -> Self {
+        match self {
+            m @ Self::User(..) => m,
+            Self::Assistant(m) => Self::Assistant(decode::decode(app, m, context).await),
+        }
+    }
+}
+
 impl From<&Message> for llm_gateway::api::Message {
     fn from(value: &Message) -> Self {
         match value {
@@ -179,15 +188,20 @@ pub async fn get(
 
     let context: Vec<ContextFile> =
         serde_json::from_str(&row.context).context("failed to deserialize context")?;
-    let messages: Vec<Message> =
+    let raw_messages: Vec<Message> =
         serde_json::from_str(&row.messages).context("failed to deserialize message list")?;
+
+    let decoded_messages = stream::iter(raw_messages.iter().cloned())
+        .then(|m| m.decode((*app).clone(), context.clone()))
+        .collect::<Vec<_>>()
+        .await;
 
     Ok(Json(Studio {
         modified_at: row.modified_at,
         name: row.name.unwrap_or_else(default_studio_name),
-        token_counts: token_counts((*app).clone(), &messages, &context).await?,
+        token_counts: token_counts((*app).clone(), &raw_messages, &context).await?,
         context,
-        messages,
+        messages: decoded_messages,
     }))
 }
 
@@ -658,13 +672,8 @@ pub async fn generate(
         async move { ok }
     });
 
-    let repo_ref = todo!();
-    let branch = todo!();
-
     let event_stream = stream
-        .and_then(move |md| {
-            decode::decode(app2.clone(), md, repo_ref, branch).map_err(Error::internal)
-        })
+        .and_then(move |md| decode::decode(app2.clone(), md, context.clone()).map(Ok))
         .map(|result| {
             sse::Event::default()
                 .json_data(result.map_err(|e: Error| e.to_string()))
@@ -1182,16 +1191,5 @@ mod test {
         output.sort_by_key(|cf| cf.path.clone());
 
         assert_eq!(&expected[..], &output);
-    }
-
-    #[test]
-    fn test_tmp() {
-        panic!(
-            "{}",
-            lazy_regex::regex!("x(.)").replace_all("xaxb", |caps: &regex::Captures| {
-                let n = caps.get(1).unwrap().as_str();
-                format!("x{n}x{}", n.to_ascii_uppercase())
-            })
-        );
     }
 }

@@ -18,6 +18,3 @@ inherits = "release"
 debug = true
 split-debuginfo = "unpacked"
 strip = "none"
-
-[patch.crates-io]
-esaxx-rs = { git = "https://github.com/bloopai/esaxx-rs" }
