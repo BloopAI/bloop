@@ -56,10 +56,7 @@ impl SegmentCollector for FrequencySegmentCollector {
         self.reader.ords().values_for_doc(doc).for_each(|ord| {
             self.reader.ord_to_bytes(ord, &mut k).unwrap();
         });
-        self.freqs
-            .entry(k.to_owned())
-            .and_modify(|v| *v += 1)
-            .or_insert(1);
+        self.freqs.entry(k).and_modify(|v| *v += 1).or_insert(1);
     }
 
     fn harvest(self) -> <Self as SegmentCollector>::Fruit {
