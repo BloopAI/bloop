@@ -36,7 +36,7 @@ pub async fn initialize(config: &Configuration) -> Result<SqlitePool> {
 
 #[tracing::instrument()]
 async fn connect(url: &str) -> Result<SqlitePool> {
-    let pool = SqlitePool::connect(&url).await?;
+    let pool = SqlitePool::connect(url).await?;
 
     if let Err(e) = sqlx::migrate!().run(&pool).await {
         // We manually close the pool here to ensure file handles are properly cleaned up on
