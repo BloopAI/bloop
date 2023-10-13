@@ -77,6 +77,8 @@
             appimagekit
             gdk-pixbuf
           ] ++ lib.optionals stdenv.isDarwin [
+            darwin.apple_sdk.frameworks.MetalKit
+            darwin.apple_sdk.frameworks.MetalPerformanceShaders
             darwin.apple_sdk.frameworks.Carbon
             darwin.apple_sdk.frameworks.WebKit
             darwin.apple_sdk.frameworks.AppKit

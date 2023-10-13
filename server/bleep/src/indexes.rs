@@ -238,7 +238,7 @@ impl<T: Indexable> Indexer<T> {
         index.set_multithread_executor(threads)?;
         index
             .tokenizers()
-            .register("default", NgramTokenizer::new(1, 3, false));
+            .register("default", NgramTokenizer::new(1, 3, false).unwrap());
 
         Ok(index)
     }
