@@ -18,6 +18,7 @@ pub(super) struct ConfigResponse {
     bloop_version: String,
     bloop_commit: String,
     credentials_upgrade: bool,
+    paid: bool,
 }
 
 impl super::ApiResponse for ConfigResponse {}
@@ -51,8 +52,7 @@ pub(super) async fn get(
     });
 
     let github_user = 'user: {
-        let (Some(login), Some(crab)) = (&user_login, user.github())
-	else {
+        let (Some(login), Some(crab)) = (&user_login, user.github()) else {
             break 'user None;
         };
 
@@ -68,6 +68,7 @@ pub(super) async fn get(
         bloop_commit: git_version::git_version!(fallback = "unknown").into(),
         bloop_user_profile: user_profile,
         credentials_upgrade: app.config.source.exists("credentials.json"),
+        paid: user.paid_features(&app).await,
         user_login,
         github_user,
         device_id,

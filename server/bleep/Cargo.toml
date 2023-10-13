@@ -6,14 +6,15 @@ default-run = "bleep"
 build = "build.rs"
 
 [features]
-default = ["metal"]
+default = ["metal", "ee-pro"]
 debug = ["console-subscriber", "histogram"]
 onnx = ["dep:ort", "dep:ndarray"]
 dynamic-ort = ["onnx", "ort?/load-dynamic"]
 ggml = ["llm/metal"]
 metal = ["ggml"]
 cublas = ["llm/cublas"]
-ee = []
+ee-pro = []
+ee-cloud = ["ee-pro"]
 
 [[bin]]
 name = "bleep"

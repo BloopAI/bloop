@@ -4,6 +4,7 @@ on:
   pull_request:
     branches: [main]
     paths:
+      - "flake.*"
       - "server/**"
       - ".github/workflows/server**"
 
@@ -49,7 +50,7 @@ jobs:
         run: cargo --locked fmt -p bleep -- --check
 
       - name: Clippy
-        run: cargo --locked clippy -p bleep --features=ee
+        run: cargo --locked clippy -p bleep --features=ee-pro,ee-cloud
 
       - name: Tests
         run: cargo --locked test -p bleep --release

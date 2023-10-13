@@ -27,7 +27,7 @@ COPY server server
 COPY apps/desktop/src-tauri apps/desktop/src-tauri
 COPY Cargo.lock Cargo.toml .
 RUN --mount=target=/root/.cache/sccache,type=cache --mount=target=/build/target,type=cache \
-    cargo --locked build -p bleep --release --features=ee && \
+    cargo --locked build -p bleep --release --features=ee-cloud && \
     cp /build/target/release/bleep / && \
     sccache --show-stats && \
     mkdir /dylib && \

@@ -63,9 +63,9 @@ impl RepoDirEntry {
         }
     }
 
-    pub fn buffer(&self) -> Option<&str> {
+    pub fn buffer(&self) -> Option<String> {
         match self {
-            Self::File(file) => Some(file.buffer.as_str()),
+            Self::File(file) => (file.buffer)().ok(),
             _ => None,
         }
     }
@@ -85,9 +85,24 @@ pub struct RepoDir {
 }
 
 pub struct RepoFile {
+    /// Path to file
     pub path: String,
-    pub buffer: String,
+    /// Branches which include the file
     pub branches: Vec<String>,
+    /// Length of the buffer
+    pub len: u64,
+    /// Lazily loaded buffer that contains the file contents
+    buffer: Box<dyn Fn() -> std::io::Result<String> + Send + Sync>,
+}
+
+impl RepoFile {
+    pub fn should_index(&self) -> bool {
+        should_index_path(&self.path) && self.len < MAX_FILE_LEN
+    }
+
+    pub fn buffer(&self) -> std::io::Result<String> {
+        (self.buffer)()
+    }
 }
 
 #[derive(Hash, Eq, PartialEq)]
@@ -97,7 +112,7 @@ pub enum FileType {
     Other,
 }
 
-pub(crate) fn should_index<P: AsRef<Path> + ?Sized>(p: &P) -> bool {
+fn should_index_path<P: AsRef<Path> + ?Sized>(p: &P) -> bool {
     let path = p.as_ref();
 
     // TODO: Make this more robust
@@ -191,7 +206,7 @@ mod test {
         ];
 
         for (path, index) in tests {
-            assert_eq!(should_index(&Path::new(path)), index);
+            assert_eq!(should_index_path(&Path::new(path)), index);
         }
     }
 }

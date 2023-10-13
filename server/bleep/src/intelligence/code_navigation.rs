@@ -153,8 +153,8 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
                     .filter(|doc| doc.relative_path != source_doc.relative_path)
                     .filter(|doc| {
                         let Some(scope_graph) = doc.symbol_locations.scope_graph() else {
-                        return false;
-                    };
+                            return false;
+                        };
                         let content = doc.content.as_bytes();
                         scope_graph
                             .graph
@@ -217,7 +217,7 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
                 .or(imports)
                 .into_iter()
                 .chain(repo_wide_definitions)
-                .chain(local_references.into_iter())
+                .chain(local_references)
                 .chain(repo_wide_references)
                 .collect()
         } else if self.is_import() {

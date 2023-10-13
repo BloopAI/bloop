@@ -6,6 +6,7 @@ use axum::{
 use crate::{
     repo::FilterUpdate,
     webserver::{
+        middleware::User,
         prelude::*,
         repos::{RepoParams, ReposResponse},
     },
@@ -17,8 +18,9 @@ use crate::{
 //
 pub(crate) async fn patch_repository(
     Query(RepoParams { repo }): Query<RepoParams>,
+    user: Extension<User>,
     State(app): State<Application>,
-    Json(patch): Json<FilterUpdate>,
+    Json(mut patch): Json<FilterUpdate>,
 ) -> impl IntoResponse {
     if let Some(ref file_filter) = patch.file_filter {
         _ = crate::repo::iterator::FileFilter::from(file_filter);
@@ -26,6 +28,10 @@ pub(crate) async fn patch_repository(
 
     if let Some(ref branch_filter) = patch.branch_filter {
         _ = crate::repo::iterator::BranchFilter::from(branch_filter);
+    }
+
+    if !user.paid_features(&app).await {
+        patch.branch_filter = None;
     }
 
     if patch.file_filter.is_some() || patch.branch_filter.is_some() {

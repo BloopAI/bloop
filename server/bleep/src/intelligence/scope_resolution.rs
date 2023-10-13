@@ -861,7 +861,7 @@ mod tests {
         let foo = definition(0, 3);
         let foo_ref = reference(5, 8);
 
-        let src = r#"foo\nfoo"#.as_bytes();
+        let src = r"foo\nfoo".as_bytes();
 
         s.insert_local_def(foo);
         s.insert_ref(foo_ref, src);

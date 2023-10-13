@@ -12,7 +12,7 @@ use tokenizers::Tokenizer;
 
 use super::Embedding;
 
-#[cfg(feature = "ee")]
+#[cfg(feature = "ee-cloud")]
 pub use crate::ee::embedder::*;
 
 #[derive(Default)]
@@ -23,10 +23,9 @@ pub struct EmbedQueue {
 
 impl EmbedQueue {
     pub fn pop(&self) -> Option<EmbedChunk> {
-        let Some(val) = self.log.pop()
-	else {
-	    return None;
-	};
+        let Some(val) = self.log.pop() else {
+            return None;
+        };
 
         // wrapping shouldn't happen, because only decrements when
         // `log` is non-empty.

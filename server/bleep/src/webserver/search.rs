@@ -12,15 +12,8 @@ use tracing::error;
 
 pub(super) async fn semantic_code(
     Query(args): Query<ApiQuery>,
-    Extension(semantic): Extension<Option<Semantic>>,
+    Extension(semantic): Extension<Semantic>,
 ) -> impl IntoResponse {
-    let Some(semantic) = semantic else {
-        return Err(Error::new(
-            ErrorKind::Configuration,
-            "Qdrant not configured",
-        ));
-    };
-
     match parser::parse_nl(&args.q.clone()) {
         Ok(q) => semantic::execute::execute(semantic, q, args)
             .await

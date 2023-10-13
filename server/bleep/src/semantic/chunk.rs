@@ -209,8 +209,7 @@ pub fn by_tokens<'s>(
     if src.len() < min_tokens {
         return Vec::new();
     }
-    let Ok(encoding) = tokenizer.encode(src, true)
-    else {
+    let Ok(encoding) = tokenizer.encode(src, true) else {
         warn!("Could not encode \"{}\"", src);
         return by_lines(src, 15);
     };
@@ -385,8 +384,8 @@ mod tests {
             .standard_filters(true)
             .filter_entry(|de| {
                 let Some(ft) = de.file_type() else {
-		    return false;
-		};
+                    return false;
+                };
 
                 // pretty crude, but do ignore generated files
                 if ft.is_dir() && de.file_name() == "target" {
@@ -405,7 +404,9 @@ mod tests {
             if file.metadata().unwrap().is_dir() {
                 continue;
             }
-            let Ok(src) = std::fs::read_to_string(file.path()) else { continue };
+            let Ok(src) = std::fs::read_to_string(file.path()) else {
+                continue;
+            };
             let chunks = super::by_tokens(
                 "bloop",
                 &file.path().to_string_lossy(),

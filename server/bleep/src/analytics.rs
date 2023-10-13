@@ -137,6 +137,7 @@ pub struct UserState {
 }
 
 impl RudderHub {
+    #[tracing::instrument(skip_all)]
     pub fn new_with_options(
         state: &StateSource,
         device_id: impl Into<Option<String>>,
@@ -145,6 +146,8 @@ impl RudderHub {
         options: impl Into<Option<HubOptions>>,
     ) -> anyhow::Result<Arc<Self>> {
         let client = RudderAnalytics::load(key, data_plane);
+        tracing::debug!("client initialized");
+
         Ok(Self {
             client,
             options: options.into(),

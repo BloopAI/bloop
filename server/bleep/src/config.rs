@@ -218,8 +218,8 @@ impl Configuration {
             .config_file
             .as_ref()
             .context("no config file specified")
-            .and_then(Self::read) else
-        {
+            .and_then(Self::read)
+        else {
             return Ok(cli);
         };
 

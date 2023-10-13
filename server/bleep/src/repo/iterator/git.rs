@@ -167,17 +167,14 @@ impl FileSource for GitWalker {
                         return None;
                     };
 
-                    if object.data.len() as u64 > MAX_FILE_LEN {
-                        return None;
-                    }
-
                     let entry = match kind {
                         FileType::File => {
                             let buffer = String::from_utf8_lossy(&object.data).to_string();
                             RepoDirEntry::File(RepoFile {
                                 path,
+                                len: buffer.len() as u64,
                                 branches: branches.into_iter().collect(),
-                                buffer,
+                                buffer: Box::new(move || Ok(buffer.clone())),
                             })
                         }
                         FileType::Dir => RepoDirEntry::Dir(RepoDir {

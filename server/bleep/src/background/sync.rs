@@ -324,8 +324,8 @@ impl SyncHandle {
             Some(creds) => creds,
             None => {
                 let Some(path) = repo.local_path() else {
-		    return Err(SyncError::NoKeysForBackend(backend));
-		};
+                    return Err(SyncError::NoKeysForBackend(backend));
+                };
 
                 if !self.app.allow_path(&path) {
                     return Err(SyncError::PathNotAllowed(path));

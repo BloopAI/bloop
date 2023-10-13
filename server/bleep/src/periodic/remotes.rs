@@ -5,7 +5,7 @@ use std::{
 };
 
 use anyhow::Context;
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use notify_debouncer_mini::{
     new_debouncer_opt,
     notify::{Config, RecommendedWatcher, RecursiveMode},
@@ -110,7 +110,11 @@ pub(crate) async fn sync_github_status(app: Application) {
         };
         debug!("repo list updated");
 
-        let updated = app.credentials.github_updated().unwrap();
+        let updated = match app.credentials.github_updated() {
+            Some(receiver) => receiver,
+            // This is a race condition, let's need to start from scratch.
+            None => continue,
+        };
         let new = github.update_repositories(repos);
 
         // store the updated credentials here
@@ -160,13 +164,7 @@ async fn update_credentials(app: &Application) {
         let verifier = crate::webserver::aaa::get_authorizer(app).await;
         let rotate_access_key = match verifier.check_auth(&creds.access_token).await {
             Ok(jsonwebtoken::TokenData { claims, .. }) => {
-                let Some(exp) = claims.exp
-                else {
-                    return;
-                };
-
-                let expiry_time = UNIX_EPOCH + Duration::from_secs(i64::from(exp) as u64);
-                expiry_time - Duration::from_secs(600) < SystemTime::now()
+                DateTime::<Utc>::from(claims.exp) - Duration::from_secs(600) < Utc::now()
             }
             Err(err) => {
                 warn!(?err, "failed to validate access token; rotating");

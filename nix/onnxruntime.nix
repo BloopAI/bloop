@@ -1,13 +1,13 @@
 { pkgs, stdenv }:
 stdenv.mkDerivation rec {
   pname = "onnxruntime";
-  version = "1.14.0";
+  version = "1.14.1";
 
   src = pkgs.fetchFromGitHub {
     owner = "microsoft";
     repo = "onnxruntime";
     rev = "v${version}";
-    sha256 = "sha256-Lm0AfUdr6EclNL/R3rPiA1o9qfsWH+f1Y0CX3JCFovo=";
+    sha256 = "sha256-cedOy9RIxtRszcpyL6/eX8r2u9nnTkK90/5IWgvZpKg=";
     fetchSubmodules = true;
   };
 

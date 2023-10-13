@@ -110,11 +110,13 @@ fn parse_payload(
     payload: HashMap<String, Value>,
     score: f32,
 ) -> Payload {
-    let Some(PointId { point_id_options: Some(PointIdOptions::Uuid(id)) }) = id
+    let Some(PointId {
+        point_id_options: Some(PointIdOptions::Uuid(id)),
+    }) = id
     else {
-	// unless the db was corrupted/written by someone else,
-	// this shouldn't happen
-	unreachable!("corrupted db");
+        // unless the db was corrupted/written by someone else,
+        // this shouldn't happen
+        unreachable!("corrupted db");
     };
 
     let embedding = match vectors {
@@ -185,12 +187,14 @@ async fn create_indexes(collection_name: &str, qdrant: &QdrantClient) -> anyhow:
 }
 
 impl Semantic {
+    #[tracing::instrument(fields(collection=%config.collection_name, %qdrant_url), skip_all)]
     pub async fn initialize(
         model_dir: &Path,
         qdrant_url: &str,
         config: Arc<Configuration>,
     ) -> Result<Self, SemanticError> {
         let qdrant = QdrantClient::new(Some(QdrantClientConfig::from_url(qdrant_url))).unwrap();
+        debug!("initialized client");
 
         match qdrant.has_collection(&config.collection_name).await {
             Ok(false) => {
@@ -199,34 +203,40 @@ impl Semantic {
                         .await
                         .unwrap();
 
-                debug!(
-                    time,
-                    created = result,
-                    name = config.collection_name,
-                    "created qdrant collection"
-                );
-
+                debug!(time, created = result, "collection created");
                 assert!(result);
             }
-            Ok(true) => {}
+            Ok(true) => {
+                debug!("collection already exists");
+            }
             Err(_) => return Err(SemanticError::QdrantInitializationError),
         }
 
         create_indexes(&config.collection_name, &qdrant).await?;
+        debug!("indexes created");
 
         if let Some(dylib_dir) = config.dylib_dir.as_ref() {
             init_ort_dylib(dylib_dir);
+            debug!(
+                dylib_dir = dylib_dir.to_string_lossy().as_ref(),
+                "initialized ORT dylib"
+            );
         }
 
-        #[cfg(feature = "ee")]
+        #[cfg(feature = "ee-cloud")]
         let embedder: Arc<dyn Embedder> = if let Some(ref url) = config.embedding_server_url {
-            Arc::new(embedder::RemoteEmbedder::new(url.clone(), model_dir)?)
+            let embedder = Arc::new(embedder::RemoteEmbedder::new(url.clone(), model_dir)?);
+            debug!("using remote embedder");
+            embedder
         } else {
-            Arc::new(LocalEmbedder::new(model_dir)?)
+            let embedder = Arc::new(LocalEmbedder::new(model_dir)?);
+            debug!("using local embedder");
+            embedder
         };
 
-        #[cfg(not(feature = "ee"))]
-        let embedder = Arc::new(LocalEmbedder::new(model_dir)?);
+        #[cfg(not(feature = "ee-cloud"))]
+        let embedder: Arc<dyn Embedder> = Arc::new(LocalEmbedder::new(model_dir)?);
+        debug!("using local embedder");
 
         Ok(Self {
             qdrant: qdrant.into(),
