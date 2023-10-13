@@ -18,18 +18,9 @@ jobs:
       fail-fast: false
       matrix:
         target:
-          [x86_64-unknown-linux-gnu, x86_64-apple-darwin, aarch64-apple-darwin]
+          [aarch64-apple-darwin]
 
         include:
-          - target: x86_64-unknown-linux-gnu
-            name: ubuntu-latest
-
-          - target: x86_64-apple-darwin
-            name: macos-11
-
-          - target: aarch64-apple-darwin
-            name: macos-11
-
           - target: aarch64-apple-darwin
             name: macos-11-metal
 
