@@ -128,9 +128,9 @@ pub(super) async fn decode_inner(
             .join("\n");
 
         let diff = unified_diff::diff(
-            file_body.content.as_bytes(),
+            file_body.content.trim().as_bytes(),
             &file_body.relative_path,
-            buf.as_bytes(),
+            buf.trim().as_bytes(),
             &file_body.relative_path,
             3,
         );
