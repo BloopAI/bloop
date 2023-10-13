@@ -16,7 +16,7 @@ use tantivy::{
 };
 use tokenizers as _;
 use tokio::runtime::Handle;
-use tracing::{info, trace, warn};
+use tracing::{error, info, trace, warn};
 
 pub use super::schema::File;
 
@@ -658,7 +658,7 @@ impl RepoDir {
 impl RepoFile {
     #[allow(clippy::too_many_arguments)]
     fn build_document(
-        mut self,
+        self,
         schema: &File,
         workload: &Workload<'_>,
         cache_keys: &CacheKeys,
@@ -681,19 +681,19 @@ impl RepoFile {
         let relative_path_str = relative_path_str.replace('\\', "/");
 
         let branches = self.branches.join("\n");
-        let lang_str = repo_metadata
-            .langs
-            .get(normalized_path, self.buffer.as_ref())
-            .unwrap_or_else(|| {
-                warn!(?normalized_path, "Path not found in language map");
-                ""
-            });
-
         let indexed = file_filter
             .is_allowed(relative_path)
-            .unwrap_or_else(|| should_index(relative_path));
+            .unwrap_or_else(|| self.should_index());
 
         if !indexed {
+            let lang_str = repo_metadata
+                .langs
+                .get(normalized_path, b"")
+                .unwrap_or_else(|| {
+                    warn!(?normalized_path, "Path not found in language map");
+                    ""
+                });
+
             return Some(doc!(
                 schema.raw_content => vec![],
                 schema.content => "",
@@ -716,9 +716,24 @@ impl RepoFile {
             ));
         }
 
+        let mut buffer = match self.buffer() {
+            Ok(b) => b,
+            Err(err) => {
+                error!(?err, "failed to open file buffer; skipping file");
+                return None;
+            }
+        };
+        let lang_str = repo_metadata
+            .langs
+            .get(normalized_path, buffer.as_ref())
+            .unwrap_or_else(|| {
+                warn!(?normalized_path, "Path not found in language map");
+                ""
+            });
+
         let symbol_locations = {
             // build a syntax aware representation of the file
-            let scope_graph = TreeSitterFile::try_build(self.buffer.as_bytes(), lang_str)
+            let scope_graph = TreeSitterFile::try_build(buffer.as_bytes(), lang_str)
                 .and_then(TreeSitterFile::scope_graph);
 
             match scope_graph {
@@ -733,19 +748,18 @@ impl RepoFile {
         let symbols = symbol_locations
             .list()
             .iter()
-            .map(|sym| self.buffer[sym.range.start.byte..sym.range.end.byte].to_owned())
+            .map(|sym| buffer[sym.range.start.byte..sym.range.end.byte].to_owned())
             .collect::<HashSet<_>>()
             .into_iter()
             .collect::<Vec<_>>()
             .join("\n");
 
         // add an NL if this file is not NL-terminated
-        if !self.buffer.ends_with('\n') {
-            self.buffer += "\n";
+        if !buffer.ends_with('\n') {
+            buffer += "\n";
         }
 
-        let line_end_indices = self
-            .buffer
+        let line_end_indices = buffer
             .match_indices('\n')
             .flat_map(|(i, _)| u32::to_le_bytes(i as u32))
             .collect::<Vec<_>>();
@@ -756,7 +770,7 @@ impl RepoFile {
             return None;
         }
 
-        let lines_avg = self.buffer.len() as f64 / self.buffer.lines().count() as f64;
+        let lines_avg = buffer.len() as f64 / buffer.lines().count() as f64;
 
         tokio::task::block_in_place(|| {
             Handle::current().block_on(async {
@@ -766,7 +780,7 @@ impl RepoFile {
                         repo_name,
                         repo_ref,
                         &relative_path_str,
-                        &self.buffer,
+                        &buffer,
                         lang_str,
                         &self.branches,
                     )
@@ -775,7 +789,7 @@ impl RepoFile {
         });
 
         Some(doc!(
-            schema.raw_content => self.buffer.as_bytes(),
+            schema.raw_content => buffer.as_bytes(),
             schema.raw_repo_name => repo_name.as_bytes(),
             schema.raw_relative_path => relative_path_str.as_bytes(),
             schema.unique_hash => cache_keys.tantivy(),
@@ -783,7 +797,7 @@ impl RepoFile {
             schema.relative_path => relative_path_str,
             schema.repo_ref => repo_ref.to_string(),
             schema.repo_name => *repo_name,
-            schema.content => self.buffer,
+            schema.content => buffer,
             schema.line_end_indices => line_end_indices,
             schema.lang => lang_str.to_ascii_lowercase().as_bytes(),
             schema.avg_line_length => lines_avg,
