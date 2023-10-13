@@ -22,7 +22,7 @@ jobs:
 
         include:
           - target: aarch64-apple-darwin
-            name: macos-11-metal
+            name: macos-11
 
     runs-on: ${{ matrix.name }}
     env:
