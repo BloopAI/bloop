@@ -132,6 +132,10 @@ impl File {
             histogram: Arc::new(Histogram::builder().build().unwrap().into()),
         }
     }
+
+    pub fn schema(&self) -> Schema {
+        self.schema.clone()
+    }
 }
 
 impl Default for File {
