@@ -9,13 +9,15 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    nixpkgs2305.url = "github:nixos/nixpkgs/nixos-23.05";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
+  outputs = { self, nixpkgs, nixpkgs2305, flake-utils }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs { inherit system; };
+        pkgsStable = import nixpkgs2305 { inherit system; };
         pkgsStatic = pkgs.pkgsStatic;
         lib = pkgs.lib;
 
@@ -146,8 +148,8 @@
           }).overrideAttrs (old: envVars);
 
         onnxruntime14 = import ./nix/onnxruntime.nix {
-          inherit pkgs;
           inherit (llvm) stdenv;
+          pkgs = pkgsStable;
         };
 
         frontend = (pkgs.buildNpmPackage rec {

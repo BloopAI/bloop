@@ -809,7 +809,7 @@ mod tests {
                       "end": 56,
                     }],
                     "symbols": [],
-                    "data": r#"        mut writer: IndexWriter,\n        _threads: usize,\n    ) -> Result<()> {"#,
+                    "data": r"        mut writer: IndexWriter,\n        _threads: usize,\n    ) -> Result<()> {",
                     "line_range": {
                       "start": 49,
                       "end": 51
@@ -845,7 +845,7 @@ mod tests {
                 repo_ref: "/User/bloop/bleep".into(),
                 lang: Some("Rust".into()),
                 snippets: vec![Snippet {
-                    data: r#"        mut writer: IndexWriter,\n        _threads: usize,\n    ) -> Result<()> {"#.to_owned(),
+                    data: r"        mut writer: IndexWriter,\n        _threads: usize,\n    ) -> Result<()> {".to_owned(),
                     line_range: 49..51,
                     highlights: vec![51..56],
                     symbols: vec![],

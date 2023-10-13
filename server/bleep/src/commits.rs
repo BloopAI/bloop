@@ -62,10 +62,9 @@ impl<'a> Iterator for CommitIterator<'a> {
     type Item = DiffStat;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let Some(parent_id) = self.parent
-	else {
-	    return None;
-	};
+        let Some(parent_id) = self.parent else {
+            return None;
+        };
 
         let parent_commit = parent_id.object().unwrap().into_commit();
         let mut stats = DiffStat {
@@ -456,9 +455,8 @@ pub async fn generate_tutorial_questions(
     }
 
     debug!(%reporef, "generating tutorial questions");
-    let Ok(llm_gateway) = llm_gateway
-    else {
-	bail!("badly configured llm gw");
+    let Ok(llm_gateway) = llm_gateway else {
+        bail!("badly configured llm gw");
     };
 
     // Due to `Send` issues on the gix side, we need to split this off quite brutally.

@@ -26,27 +26,24 @@ pub enum User {
 
 impl User {
     pub(crate) fn login(&self) -> Option<&str> {
-        let User::Authenticated { login, .. } = self
-	else {
-	    return None;
-	};
+        let User::Authenticated { login, .. } = self else {
+            return None;
+        };
 
         Some(login)
     }
 
     pub(crate) fn github(&self) -> Option<octocrab::Octocrab> {
-        let User::Authenticated { crab, .. } = self
-	else {
-	    return None;
-	};
+        let User::Authenticated { crab, .. } = self else {
+            return None;
+        };
 
         crab().ok()
     }
 
     pub(crate) async fn paid_features(&self, app: &Application) -> bool {
-        let User::Authenticated { api_token, ..} = self
-        else {
-	    return false;
+        let User::Authenticated { api_token, .. } = self else {
+            return false;
         };
 
         let Ok(response) = reqwest::Client::new()
@@ -54,10 +51,10 @@ impl User {
             .bearer_auth(api_token)
             .send()
             .await
-	else {
-	    error!("failed to get quota for user");
-	    return false;
-	};
+        else {
+            error!("failed to get quota for user");
+            return false;
+        };
 
         if response.status().is_success() {
             let response: serde_json::Value =

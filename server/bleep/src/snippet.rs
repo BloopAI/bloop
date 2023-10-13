@@ -531,16 +531,14 @@ mod tests {
         assert_eq!(observed.len(), 2);
         assert_eq!(
             observed[0].data,
-            vec![
-                r#"pub const SLICE_FROM_RAW_PARTS: [&str; 4] = ["core", "slice", "raw", "from_raw_parts"];"#,
+            [r#"pub const SLICE_FROM_RAW_PARTS: [&str; 4] = ["core", "slice", "raw", "from_raw_parts"];"#,
                 r#"pub const SLICE_FROM_RAW_PARTS_MUT: [&str; 4] = ["core", "slice", "raw", "from_raw_parts_mut"];"#,
-                r#"pub const GET: [&str; 4] = ["core", "slice", "<impl [T]>", "get"];"#,
-            ].join("\n")
+                r#"pub const GET: [&str; 4] = ["core", "slice", "<impl [T]>", "get"];"#].join("\n")
         );
         assert_eq!(observed[0].line_count(), 2);
         assert_eq!(
             observed[1].data,
-            vec![
+            [
                 r#"pub const INTO: [&str; 4] = ["core", "slice", "<impl [T]>", "iter"];"#,
                 r#"pub const SLICE_ITER: [&str; 4] = ["core", "slice", "iter", "Iter"];"#,
                 ""
