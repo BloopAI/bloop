@@ -38,7 +38,7 @@ pub const EXT_BLACKLIST: &[&str] = &[
     // compression
     "tar", "gz", "bz2", "xz", "7z", "bin", "apk", "deb", "rpm", "rar", "zip",
     // binary
-    "pkg", "pyd", "pyz", "lib", "h", "pack", "idx", "dylib", "so",
+    "pkg", "pyd", "pyz", "lib", "pack", "idx", "dylib", "so",
     // executable
     "com", "exe", "out", "coff", "obj", "dll", "app", "class",
     // misc.
