@@ -26,7 +26,7 @@ pub const MAX_FILE_LEN: u64 = AVG_LINE_LEN * MAX_LINE_COUNT;
 pub const EXT_BLACKLIST: &[&str] = &[
     // graphics
     "png", "jpg", "jpeg", "ico", "bmp", "bpg", "eps", "pcx", "ppm", "tga", "tiff", "wmf", "xpm",
-    "svg", "riv",
+    "svg", "riv", "gif",
     // fonts
     "ttf", "woff2", "fnt", "fon", "otf",
     // documents
@@ -36,7 +36,9 @@ pub const EXT_BLACKLIST: &[&str] = &[
     // compiled
     "jar", "pyc", "war", "ear",
     // compression
-    "tar", "gz", "bz2", "xz", "7z", "bin", "apk", "deb", "rpm",
+    "tar", "gz", "bz2", "xz", "7z", "bin", "apk", "deb", "rpm", "rar", "zip",
+    // binary
+    "pkg", "pyd", "pyz", "lib", "h", "pack", "idx", "dylib", "so",
     // executable
     "com", "exe", "out", "coff", "obj", "dll", "app", "class",
     // misc.
