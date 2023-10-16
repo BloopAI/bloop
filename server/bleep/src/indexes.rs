@@ -50,9 +50,9 @@ impl<'a> GlobalWriteHandle<'a> {
         Ok(())
     }
 
-    pub(crate) async fn commit(self) -> Result<()> {
+    pub(crate) fn commit(self) -> Result<()> {
         for mut handle in self.handles {
-            handle.commit().await?
+            handle.commit()?
         }
 
         Ok(())
@@ -185,7 +185,7 @@ impl<'a> IndexWriteHandle<'a> {
             .await
     }
 
-    pub async fn commit(&mut self) -> Result<()> {
+    pub fn commit(&mut self) -> Result<()> {
         self.writer.commit()?;
         self.reader.reload()?;
 

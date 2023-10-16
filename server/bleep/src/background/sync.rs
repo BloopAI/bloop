@@ -281,7 +281,7 @@ impl SyncHandle {
 
         match indexed {
             Ok(_) => {
-                writers.commit().await.map_err(SyncError::Tantivy)?;
+                writers.commit().map_err(SyncError::Tantivy)?;
                 indexed.map_err(SyncError::Indexing)
             }
             Err(_) if self.pipes.is_removed() => self.delete_repo(&repo, writers).await,
@@ -306,7 +306,7 @@ impl SyncHandle {
 
         let deleted = self.delete_repo_indexes(repo, &writers).await;
         if deleted.is_ok() {
-            writers.commit().await.map_err(SyncError::Tantivy)?;
+            writers.commit().map_err(SyncError::Tantivy)?;
             self.app
                 .config
                 .source
