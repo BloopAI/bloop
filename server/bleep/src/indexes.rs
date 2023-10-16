@@ -86,7 +86,7 @@ pub struct Indexes {
 }
 
 impl Indexes {
-    pub async fn new(config: &Configuration) -> Result<Self> {
+    pub fn new(config: &Configuration) -> Result<Self> {
         Ok(Self {
             repo: Indexer::create(
                 Repo::new(),
@@ -234,7 +234,6 @@ impl<T: Indexable> Indexer<T> {
         let mut index =
             tantivy::Index::open_or_create(tantivy::directory::MmapDirectory::open(path)?, schema)?;
 
-        index.set_default_multithread_executor()?;
         index.set_multithread_executor(threads)?;
         index
             .tokenizers()
