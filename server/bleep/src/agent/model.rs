@@ -1,5 +1,5 @@
-use std::str::FromStr;
 use crate::agent::prompts;
+use std::str::FromStr;
 
 #[derive(Debug, Copy, Clone)]
 pub struct AnswerModel {
