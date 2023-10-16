@@ -208,8 +208,7 @@ impl Indexer<File> {
         limit: usize,
     ) -> impl Iterator<Item = FileDocument> + '_ {
         // lifted from query::compiler
-        let reader = self.reader.read().await;
-        let searcher = reader.searcher();
+        let searcher = self.reader.searcher();
         let collector = TopDocs::with_limit(5 * limit); // TODO: tune this
         let file_source = &self.source;
 
@@ -315,8 +314,7 @@ impl Indexer<File> {
         branch: Option<&str>,
         limit: usize,
     ) -> impl Iterator<Item = FileDocument> + '_ {
-        let reader = self.reader.read().await;
-        let searcher = reader.searcher();
+        let searcher = self.reader.searcher();
         let file_source = &self.source;
 
         let repo_ref_term = Box::new(TermQuery::new(
@@ -405,8 +403,7 @@ impl Indexer<File> {
         relative_path: &str,
         branch: Option<&str>,
     ) -> Result<Option<ContentDocument>> {
-        let reader = self.reader.read().await;
-        let searcher = reader.searcher();
+        let searcher = self.reader.searcher();
 
         let file_index = searcher.index();
 
@@ -478,8 +475,7 @@ impl Indexer<File> {
         langs: impl Iterator<Item = S>,
         branch: Option<&str>,
     ) -> Vec<ContentDocument> {
-        let reader = self.reader.read().await;
-        let searcher = reader.searcher();
+        let searcher = self.reader.searcher();
 
         let mut query = vec![];
 
