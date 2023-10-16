@@ -94,9 +94,9 @@ impl LocalEmbedder {
         let session = SessionBuilder::new(&environment)?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
             .with_intra_threads(threads)?
-            .with_model_from_file(model_dir.join("model.onnx"))?;
+            .with_model_from_file(model_dir.join("gtr").join("model.onnx"))?;
 
-        let tokenizer = Tokenizer::from_file(model_dir.join("tokenizer.json")).unwrap();
+        let tokenizer = Tokenizer::from_file(model_dir.join("gtr").join("tokenizer.json")).unwrap();
 
         Ok(Self { session, tokenizer })
     }
@@ -118,20 +118,8 @@ impl Embedder for LocalEmbedder {
             input_ids.iter().map(|&x| x as i64).collect(),
         )?;
 
-        let attention_mask_array = ndarray::Array::from_shape_vec(
-            (1, length),
-            attention_mask.iter().map(|&x| x as i64).collect(),
-        )?;
-
-        let token_type_ids_array = ndarray::Array::from_shape_vec(
-            (1, length),
-            token_type_ids.iter().map(|&x| x as i64).collect(),
-        )?;
-
         let outputs = self.session.run([
-            InputTensor::from_array(inputs_ids_array.into_dyn()),
-            InputTensor::from_array(attention_mask_array.into_dyn()),
-            InputTensor::from_array(token_type_ids_array.into_dyn()),
+            InputTensor::from_array(inputs_ids_array.into_dyn())
         ])?;
 
         let output_tensor: OrtOwnedTensor<f32, _> = outputs[0].try_extract().unwrap();

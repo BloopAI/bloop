@@ -9,7 +9,7 @@ use qdrant_client::{
     },
 };
 
-pub(super) const EMBEDDING_DIM: usize = 384;
+pub(super) const EMBEDDING_DIM: usize = 768;
 pub type Embedding = Vec<f32>;
 
 #[derive(Default, Clone, Debug, serde::Deserialize, serde::Serialize)]
