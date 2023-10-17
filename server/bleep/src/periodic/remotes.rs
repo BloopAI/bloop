@@ -52,7 +52,12 @@ async fn sleep_systime(duration: Duration) {
 
     loop {
         tokio::time::sleep(Duration::from_secs(2)).await;
-        if start.elapsed().unwrap() >= duration {
+        let Ok(elapsed) = start.elapsed() else {
+            // There was a drift in system time probably because of
+            // sleep.
+            return;
+        };
+        if elapsed >= duration {
             return;
         }
     }
@@ -75,15 +80,19 @@ pub(crate) async fn sync_github_status(app: Application) {
                 },
                 result = handle.recv_async() => {
                     let now = SystemTime::now();
-                    match result {
-                        Ok(_) if now.duration_since(last_poll).unwrap() > POLL_PERIOD => {
+                    let elapsed = now.duration_since(last_poll);
+                    match (elapsed, result) {
+                        (Ok(elapsed),Ok( _)) if elapsed > POLL_PERIOD => {
                             debug!("github credentials changed; refreshing repositories");
                             return now;
                         }
-                        Ok(_) => {
+                        (Ok(_), Ok(_)) => {
                             continue;
                         }
-                        Err(flume::RecvError::Disconnected) => {
+                        (_, Err(flume::RecvError::Disconnected)) => {
+                            return SystemTime::now();
+                        }
+                        (Err(_), _) => {
                             return SystemTime::now();
                         }
                     };
