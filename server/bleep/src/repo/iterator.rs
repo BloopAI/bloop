@@ -53,15 +53,13 @@ pub trait FileSource {
 pub enum RepoDirEntry {
     Dir(RepoDir),
     File(RepoFile),
-    Other,
 }
 
 impl RepoDirEntry {
-    pub fn path(&self) -> Option<&str> {
+    pub fn path(&self) -> &str {
         match self {
-            Self::File(file) => Some(file.path.as_str()),
-            Self::Dir(dir) => Some(dir.path.as_str()),
-            Self::Other => None,
+            Self::File(file) => file.path.as_str(),
+            Self::Dir(dir) => dir.path.as_str(),
         }
     }
 
@@ -72,11 +70,10 @@ impl RepoDirEntry {
         }
     }
 
-    pub fn branches(&self) -> Option<&[String]> {
+    pub fn branches(&self) -> &[String] {
         match self {
-            RepoDirEntry::Dir(d) => Some(&d.branches),
-            RepoDirEntry::File(f) => Some(&f.branches),
-            RepoDirEntry::Other => None,
+            RepoDirEntry::Dir(d) => &d.branches,
+            RepoDirEntry::File(f) => &f.branches,
         }
     }
 }

@@ -2,7 +2,7 @@ use crate::background;
 
 use super::*;
 
-use tracing::warn;
+use tracing::{debug, warn};
 
 use std::path::{Path, PathBuf};
 
@@ -69,7 +69,8 @@ impl FileSource for FileWalker {
                             branches: vec![self.branch.clone()],
                         }))
                     } else {
-                        Some(RepoDirEntry::Other)
+                        debug!(?entry_disk_path, "skipping entry, not a file or directory");
+                        None
                     }
                 })
                 .take_any_while(|_| !pipes.is_cancelled())

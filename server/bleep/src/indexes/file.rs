@@ -65,7 +65,7 @@ impl<'a> Workload<'a> {
         };
 
         let tantivy_hash = {
-            let branch_list = dir_entry.branches().unwrap_or_default();
+            let branch_list = dir_entry.branches();
             let mut hash = blake3::Hasher::new();
             hash.update(semantic_hash.as_ref());
             hash.update(branch_list.join("\n").as_bytes());
@@ -101,7 +101,7 @@ impl Indexable for File {
                 let completed = processed.fetch_add(1, Ordering::Relaxed);
                 pipes.index_percent(((completed as f32 / count as f32) * 100f32) as u8);
 
-                let entry_disk_path = dir_entry.path().unwrap().to_owned();
+                let entry_disk_path = dir_entry.path().to_owned();
                 let relative_path = {
                     let entry_srcpath = PathBuf::from(&entry_disk_path);
                     entry_srcpath
@@ -575,7 +575,6 @@ impl File {
 
                 trace!("file document written");
             }
-            RepoDirEntry::Other => anyhow::bail!("dir entry was neither a file nor a directory"),
         }
 
         #[cfg(feature = "debug")]
