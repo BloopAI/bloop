@@ -103,11 +103,11 @@ impl Indexes {
         })
     }
 
-    pub async fn reset_databases(config: &Configuration) -> Result<()> {
+    pub fn reset_databases(config: &Configuration) -> Result<()> {
         // we don't support old schemas, and tantivy will hard
         // error if we try to open a db with a different schema.
-        tokio::fs::remove_dir_all(config.index_path("repo")).await?;
-        tokio::fs::remove_dir_all(config.index_path("content")).await?;
+        std::fs::remove_dir_all(config.index_path("repo"))?;
+        std::fs::remove_dir_all(config.index_path("content"))?;
         Ok(())
     }
 
