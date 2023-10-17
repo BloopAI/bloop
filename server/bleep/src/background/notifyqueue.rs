@@ -23,6 +23,14 @@ impl Default for NotifyQueue {
 }
 
 impl NotifyQueue {
+    pub(crate) async fn push_front(&self, item: Arc<SyncHandle>) {
+        let mut q = self.queue.write().await;
+
+        self.available.add_permits(1);
+
+        q.push_front(item);
+    }
+
     pub(crate) async fn push(&self, item: Arc<SyncHandle>) {
         let mut q = self.queue.write().await;
 
@@ -58,10 +66,11 @@ impl NotifyQueue {
             .any(|h| &h.reporef == reporef)
     }
 
-    #[allow(unused)]
     pub(super) async fn remove(&self, reporef: RepoRef) {
         let mut q = self.queue.write().await;
-        self.available.acquire().await.expect("fatal").forget();
+        if let Ok(ticket) = self.available.try_acquire() {
+            ticket.forget();
+        }
         q.retain(|item| item.reporef != reporef);
     }
 }

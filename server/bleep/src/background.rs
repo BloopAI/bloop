@@ -280,12 +280,17 @@ impl BoundSyncQueue {
             .await;
 
         if active.is_none() {
+            // Re-queue to the front, so clean any currently queued refs
+            self.1.queue.remove(reporef.clone()).await;
+
             self.0
                 .repo_pool
                 .update_async(&reporef, |_k, v| v.mark_removed())
                 .await?;
 
-            self.enqueue_sync(vec![reporef]).await;
+            let handle =
+                SyncHandle::new(self.0.clone(), reporef, self.1.progress.clone(), None).await;
+            self.1.queue.push_front(handle).await;
         }
 
         Some(())
