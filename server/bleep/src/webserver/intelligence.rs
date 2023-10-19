@@ -413,8 +413,7 @@ async fn search_nav(
         BooleanQuery::intersection(terms)
     };
     let collector = TopDocs::with_limit(500);
-    let reader = indexes.file.reader.read().await;
-    let searcher = reader.searcher();
+    let searcher = indexes.file.reader.searcher();
     let results = searcher
         .search(&query, &collector)
         .expect("failed to search index");

@@ -150,7 +150,7 @@ impl Application {
         if config.source.index_version_mismatch() {
             debug!("schema version mismatch, resetting state");
 
-            Indexes::reset_databases(&config).await?;
+            Indexes::reset_databases(&config)?;
             debug!("tantivy indexes deleted");
 
             cache::FileCache::new(sql.clone(), semantic.clone())
@@ -164,11 +164,11 @@ impl Application {
             debug!("state reset complete");
         }
 
-        debug!("saving index version");
         config.source.save_index_version()?;
+        debug!("index version saved");
 
-        debug!("initializing indexes");
-        let indexes = Indexes::new(&config).await?.into();
+        let indexes = Indexes::new(&config)?.into();
+        debug!("indexes initialized");
 
         // Enforce capabilies and features depending on environment
         let env = if config.bloop_instance_secret.is_some() {

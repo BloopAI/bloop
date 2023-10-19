@@ -262,27 +262,34 @@ pub fn pretty_write_file<T: Serialize + ?Sized>(
     path: impl AsRef<Path>,
     val: &T,
 ) -> Result<(), RepoError> {
-    let tmpfile = path
-        .as_ref()
-        .with_extension(format!("new.{}", rand::thread_rng().gen_range(0..=9999)));
-
-    let file = {
+    let (tmpfile, file) = {
         let mut tries = 0;
         const MAX_TRIES: u8 = 10;
 
         loop {
+            let tmpfile = path
+                .as_ref()
+                .with_extension(format!("new.{}", rand::thread_rng().gen_range(0..=99999)));
+
             let file = std::fs::File::options()
                 .write(true)
                 .create_new(true)
                 .open(&tmpfile);
 
-            if file.is_ok() || tries == MAX_TRIES {
-                break file;
-            }
+            match file {
+                Ok(f) => break (tmpfile, f),
+                Err(e) => {
+                    if tries == MAX_TRIES {
+                        // this will always be an error
+                        // would have broken just before
+                        return Err(e.into());
+                    }
 
-            tries += 1;
+                    tries += 1;
+                }
+            }
         }
-    }?;
+    };
 
     serde_json::to_writer_pretty(file, val)?;
     std::fs::rename(tmpfile, path)?;
