@@ -121,7 +121,7 @@ pub(crate) async fn sync_github_status(app: Application) {
 
         let updated = match app.credentials.github_updated() {
             Some(receiver) => receiver,
-            // This is a race condition, let's need to start from scratch.
+            // This is a race condition, let's start from scratch.
             None => continue,
         };
         let new = github.update_repositories(repos);
@@ -181,6 +181,7 @@ async fn update_credentials(app: &Application) {
             }
         };
 
+        debug!(?rotate_access_key, "continue with rotating access key");
         if rotate_access_key {
             let query_url = format!(
                 "{url_base}/refresh_token?refresh_token={token}",
@@ -250,8 +251,9 @@ async fn update_credentials(app: &Application) {
             info!("new bloop access keys saved");
         }
 
-        let github_expired = if let Some(github) = app.credentials.github() {
+        if let Some(github) = app.credentials.github() {
             let username = github.validate().await;
+
             if let Ok(Some(ref user)) = username {
                 debug!(?user, "updated user");
                 app.credentials.set_user(user.into()).await;
@@ -259,16 +261,7 @@ async fn update_credentials(app: &Application) {
                     error!(?err, "failed to save user credentials");
                 }
             }
-
-            username.is_err()
-        } else {
-            true
         };
-
-        if github_expired && app.credentials.remove(&Backend::Github).is_some() {
-            app.credentials.store().unwrap();
-            debug!("github oauth is invalid; credentials removed");
-        }
     }
 }
 
