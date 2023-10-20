@@ -68,7 +68,7 @@ pub(crate) async fn sync_github_status(app: Application) {
     const LIVENESS: Duration = Duration::from_secs(1);
 
     let timeout = || async {
-        sleep_systime(LIVENESS).await;
+        tokio::time::sleep(LIVENESS).await;
     };
 
     let timeout_or_update = |last_poll: SystemTime, handle: flume::Receiver<()>| async move {
@@ -133,7 +133,7 @@ pub(crate) async fn sync_github_status(app: Application) {
         update_credentials(&app).await;
 
         // swallow the event that's generated from this update
-        _ = updated.recv_async().await;
+        _ = updated.try_recv();
         last_poll = timeout_or_update(last_poll, updated).await;
     }
 }
