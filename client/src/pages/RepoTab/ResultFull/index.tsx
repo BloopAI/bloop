@@ -29,10 +29,9 @@ import { Sparkles } from '../../../icons';
 import { ChatContext } from '../../../context/chatContext';
 import { UIContext } from '../../../context/uiContext';
 import AddStudioContext from '../../../components/AddStudioContext';
-import { SyncStatus } from '../../../types/general';
+import { RepoType, SyncStatus } from '../../../types/general';
 import { RepositoriesContext } from '../../../context/repositoriesContext';
 import LiteLoaderContainer from '../../../components/Loaders/LiteLoader';
-import { DeviceContext } from '../../../context/deviceContext';
 
 type Props = {
   data: any;
@@ -69,9 +68,8 @@ const ResultFull = ({
     setThreadId,
     setIsHistoryTab,
   } = useContext(ChatContext.Setters);
-  const { repositories } = useContext(RepositoriesContext);
+  const { repositories, setRepositories } = useContext(RepositoriesContext);
   const { tab } = useContext(UIContext.Tab);
-  const { isSelfServe } = useContext(DeviceContext);
   const [indexRequested, setIndexRequested] = useState(false);
   const [isIndexing, setIsIndexing] = useState(false);
 
@@ -82,6 +80,15 @@ const ResultFull = ({
     );
   }, [repositories, tab.repoRef]);
 
+  const markRepoIndexing = useCallback(() => {
+    setRepositories((prev) => {
+      const newRepos: RepoType[] = JSON.parse(JSON.stringify(prev)) || [];
+      const repoInd = newRepos.findIndex((r) => r.ref === tab.repoRef);
+      newRepos[repoInd].sync_status = SyncStatus.Indexing;
+      return newRepos;
+    });
+  }, [tab.repoRef]);
+
   useEffect(() => {
     if (
       [
@@ -89,18 +96,15 @@ const ResultFull = ({
         SyncStatus.Queued,
         SyncStatus.Syncing,
         SyncStatus.Indexing,
-      ].includes(repoStatus) &&
-      indexRequested
+      ].includes(repoStatus)
     ) {
       setIsIndexing(true);
-    } else {
-      if (isIndexing) {
-        setTimeout(() => {
-          refetchFile();
-          setIsIndexing(false);
-          setIndexRequested(false);
-        }, 500);
-      }
+    } else if (isIndexing && repoStatus === SyncStatus.Done) {
+      setTimeout(() => {
+        refetchFile();
+        setIsIndexing(false);
+        setIndexRequested(false);
+      }, 500);
     }
   }, [repoStatus, isIndexing, refetchFile]);
 
@@ -108,6 +112,7 @@ const ResultFull = ({
     (e: React.MouseEvent) => {
       e.stopPropagation();
       if (data?.data?.[0]?.data?.relative_path) {
+        markRepoIndexing();
         forceFileToBeIndexed(tab.repoRef, data?.data?.[0]?.data?.relative_path);
         setIndexRequested(true);
         setTimeout(() => refetchFile(), 1000);
@@ -312,7 +317,7 @@ const ResultFull = ({
                         excluded file type.
                       </Trans>
                     </p>
-                    {!indexRequested && isSelfServe ? (
+                    {!indexRequested ? (
                       <Button
                         variant="secondary"
                         className="mt-6"
@@ -320,11 +325,11 @@ const ResultFull = ({
                       >
                         <Trans>Force index</Trans>
                       </Button>
-                    ) : indexRequested ? (
+                    ) : (
                       <div className="text-bg-main mt-6">
                         <LiteLoaderContainer sizeClassName="w-8 h-8" />
                       </div>
-                    ) : null}
+                    )}
                   </div>
                 </div>
               )}

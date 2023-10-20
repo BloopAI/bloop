@@ -1,11 +1,4 @@
-import React, {
-  memo,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { Trans } from 'react-i18next';
 import { ChevronRightFilled, EyeCut, FolderClosed } from '../../icons';
 import FileIcon from '../FileIcon';
@@ -14,7 +7,6 @@ import Button from '../Button';
 import { forceFileToBeIndexed } from '../../services/api';
 import { SyncStatus } from '../../types/general';
 import LiteLoaderContainer from '../Loaders/LiteLoader';
-import { DeviceContext } from '../../context/deviceContext';
 
 type Props = {
   name: string;
@@ -29,6 +21,7 @@ type Props = {
   repoRef: string;
   repoStatus: SyncStatus;
   refetchParentFolder: () => void;
+  markRepoIndexing: () => void;
 };
 
 const DirEntry = ({
@@ -44,11 +37,11 @@ const DirEntry = ({
   repoRef,
   repoStatus,
   refetchParentFolder,
+  markRepoIndexing,
 }: Props) => {
   const [isOpen, setOpen] = useState(
     defaultOpen || (currentPath && currentPath.startsWith(fullPath)),
   );
-  const { isSelfServe } = useContext(DeviceContext);
   const [indexRequested, setIndexRequested] = useState(false);
   const [isIndexing, setIsIndexing] = useState(false);
   const [subItems, setSubItems] = useState<DirectoryEntry[] | null>(null);
@@ -62,24 +55,32 @@ const DirEntry = ({
         SyncStatus.Syncing,
         SyncStatus.Indexing,
       ].includes(repoStatus) &&
-      subItems?.some(
+      ((subItems?.some(
         (si) => si.entry_data !== 'Directory' && !si.entry_data.File.indexed,
       ) &&
-      isOpen
+        isOpen) ||
+        (!isDirectory && !indexed))
     ) {
       setIsIndexing(true);
-    } else {
-      if (isIndexing) {
-        if (!isOpen) {
+    } else if (isIndexing && repoStatus === SyncStatus.Done) {
+      setTimeout(() => {
+        if (!isOpen || !isDirectory) {
           refetchParentFolder();
         } else {
           refetchFolderFiles();
         }
         setIsIndexing(false);
         setIndexRequested(false);
-      }
+      }, 500);
     }
-  }, [repoStatus, isIndexing, refetchParentFolder, subItems, isOpen]);
+  }, [
+    repoStatus,
+    isIndexing,
+    refetchParentFolder,
+    subItems,
+    isOpen,
+    isDirectory,
+  ]);
 
   useEffect(() => {
     if (currentPath && currentPath.startsWith(fullPath)) {
@@ -113,8 +114,9 @@ const DirEntry = ({
       e.stopPropagation();
       forceFileToBeIndexed(repoRef, fullPath);
       setIndexRequested(true);
+      markRepoIndexing();
     },
-    [fullPath, repoRef],
+    [fullPath, repoRef, markRepoIndexing],
   );
 
   return (
@@ -156,7 +158,7 @@ const DirEntry = ({
           <EyeCut />
         )}
         {isDirectory ? name.slice(0, -1) : name}
-        {!indexed && !indexRequested && isSelfServe && (
+        {!indexed && !indexRequested && (
           <Button
             variant="secondary"
             size="tiny"
@@ -196,6 +198,7 @@ const DirEntry = ({
               repoRef={repoRef}
               repoStatus={repoStatus}
               refetchParentFolder={refetchFolderFiles}
+              markRepoIndexing={markRepoIndexing}
             />
           ))}
         </div>
