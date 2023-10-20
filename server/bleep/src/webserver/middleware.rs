@@ -1,7 +1,7 @@
 use super::{aaa, prelude::*};
-use crate::{remotes::CognitoGithubTokenBundle, Application};
+use crate::{llm_gateway, Application};
 
-use anyhow::Context;
+use anyhow::{bail, Context};
 use axum::{
     extract::State,
     http::Request,
@@ -17,20 +17,29 @@ use tracing::error;
 pub enum User {
     Unknown,
     Authenticated {
+        org_name: Option<String>,
+        api_token: Option<String>,
         login: String,
-        api_token: String,
         #[serde(skip)]
         crab: Arc<dyn Fn() -> anyhow::Result<octocrab::Octocrab> + Send + Sync>,
     },
 }
 
 impl User {
-    pub(crate) fn login(&self) -> Option<&str> {
+    pub fn login(&self) -> Option<&str> {
         let User::Authenticated { login, .. } = self else {
             return None;
         };
 
         Some(login)
+    }
+
+    pub(crate) fn org_name(&self) -> Option<&str> {
+        let User::Authenticated { org_name, .. } = self else {
+            return None;
+        };
+
+        org_name.as_deref()
     }
 
     pub(crate) fn github(&self) -> Option<octocrab::Octocrab> {
@@ -41,8 +50,20 @@ impl User {
         crab().ok()
     }
 
-    pub(crate) async fn paid_features(&self, app: &Application) -> bool {
+    pub(crate) fn llm_gateway(&self, app: &Application) -> anyhow::Result<llm_gateway::Client> {
         let User::Authenticated { api_token, .. } = self else {
+            bail!("user not logged in");
+        };
+
+        Ok(llm_gateway::Client::new(&app.config.answer_api_url).bearer(api_token.to_owned()))
+    }
+
+    pub(crate) async fn paid_features(&self, app: &Application) -> bool {
+        let User::Authenticated {
+            api_token: Some(api_token),
+            ..
+        } = self
+        else {
             return false;
         };
 
@@ -114,35 +135,7 @@ async fn local_user_mw<B>(
     mut request: Request<B>,
     next: Next<B>,
 ) -> Response {
-    request.extensions_mut().insert(
-        app.credentials
-            .user()
-            .zip(app.credentials.github())
-            .map(|(user, gh)| {
-                use crate::remotes::github::{Auth, State};
-                let api_token = match gh {
-                    State {
-                        auth:
-                            Auth::OAuth(CognitoGithubTokenBundle {
-                                access_token: ref token,
-                                ..
-                            }),
-                        ..
-                    } => token.clone(),
-                    _ => {
-                        panic!("invalid configuration");
-                    }
-                };
-
-                User::Authenticated {
-                    api_token,
-                    login: user,
-                    crab: Arc::new(move || Ok(gh.client()?)),
-                }
-            })
-            .unwrap_or_else(|| User::Unknown),
-    );
-
+    request.extensions_mut().insert(app.user());
     next.run(request).await
 }
 
@@ -160,9 +153,16 @@ pub async fn cloud_user_layer_mw<B>(
             .flatten()
             .unwrap_or_default();
 
+        let org_name = app.credentials.github().and_then(|state| match state.auth {
+            crate::remotes::github::Auth::App { org, .. } => Some(org),
+            _ => None,
+        });
+
         User::Authenticated {
             login,
-            api_token: jar.get(super::aaa::COOKIE_NAME).unwrap().to_string(),
+            org_name,
+            // not doing an `ok()` here to ensure this exists, or blow up
+            api_token: Some(jar.get(super::aaa::COOKIE_NAME).unwrap().to_string()),
             crab: Arc::new(move || {
                 let gh = app.credentials.github().context("no github")?;
                 Ok(gh.client()?)

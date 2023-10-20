@@ -232,12 +232,7 @@ impl RudderHub {
         }
     }
 
-    pub fn track_synced_repos(
-        &self,
-        count: usize,
-        username: Option<&str>,
-        org_name: Option<String>,
-    ) {
+    pub fn track_synced_repos(&self, count: usize, username: Option<&str>, org_name: Option<&str>) {
         self.send(Message::Track(Track {
             user_id: Some(self.tracking_id(username)),
             event: "track_synced_repos".into(),

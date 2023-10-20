@@ -573,8 +573,8 @@ pub async fn generate(
 
     let snapshot_id = latest_snapshot_id(studio_id, &*app.sql, &user_id).await?;
 
-    let llm_gateway = app
-        .llm_gateway_client()
+    let llm_gateway = user
+        .llm_gateway(&app)
         .map_err(|e| Error::user(e).with_status(StatusCode::UNAUTHORIZED))?
         .quota_gated(!app.env.is_cloud_instance())
         .model(LLM_GATEWAY_MODEL)
@@ -750,8 +750,8 @@ async fn populate_studio_name(
     .await
     .map(|r| (r.context, r.messages))?;
 
-    let llm_gateway = app
-        .llm_gateway_client()
+    let llm_gateway = user
+        .llm_gateway(&app)
         .map_err(|e| Error::user(e).with_status(StatusCode::UNAUTHORIZED))?
         .model("gpt-3.5-turbo-16k-0613")
         .temperature(0.0);
@@ -843,8 +843,7 @@ pub async fn import(
     }))
     .collect::<Vec<_>>();
 
-    let new_context =
-        extract_relevant_chunks((*app).clone(), &exchanges, &imported_context).await?;
+    let new_context = extract_relevant_chunks(&user, &app, &exchanges, &imported_context).await?;
 
     let context = canonicalize_context(new_context.clone().into_iter().chain(old_context.clone()))
         .collect::<Vec<_>>();
@@ -897,14 +896,15 @@ pub async fn import(
 }
 
 async fn extract_relevant_chunks(
-    app: Application,
+    user: &User,
+    app: &Application,
     exchanges: &[Exchange],
     context: &[ContextFile],
 ) -> webserver::Result<Vec<ContextFile>> {
     let context_json = serde_json::to_string(&context).unwrap();
 
-    let llm_gateway = app
-        .llm_gateway_client()
+    let llm_gateway = user
+        .llm_gateway(app)
         .map_err(|e| Error::user(e).with_status(StatusCode::UNAUTHORIZED))?
         .model(LLM_GATEWAY_MODEL)
         .temperature(0.0);

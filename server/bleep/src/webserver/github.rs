@@ -182,7 +182,7 @@ async fn poll_for_oauth_token(code: String, app: Application) {
         analytics.send(Message::Identify(Identify {
             user_id: Some(tracking_id.clone()),
             traits: Some(serde_json::json!({
-                "org_name": app.org_name(),
+                "org_name": app.user().org_name(),
                 "device_id": analytics.device_id(),
                 "is_self_serve": app.env.is_cloud_instance(),
                 "github_username": username,

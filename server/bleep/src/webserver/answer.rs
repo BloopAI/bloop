@@ -1,4 +1,3 @@
-use secrecy::ExposeSecret;
 use std::{panic::AssertUnwindSafe, time::Duration};
 
 use anyhow::{anyhow, Context, Result};
@@ -26,7 +25,6 @@ use crate::{
     },
     analytics::{EventData, QueryEvent},
     db::QueryLog,
-    llm_gateway,
     query::parser::{self, Literal},
     repo::RepoRef,
     Application,
@@ -207,14 +205,9 @@ async fn try_execute_agent(
 > {
     QueryLog::new(&app.sql).insert(&params.q).await?;
 
-    let answer_api_token = app
-        .answer_api_token()
-        .map_err(|e| super::Error::user(e).with_status(StatusCode::UNAUTHORIZED))?
-        .map(|s| s.expose_secret().clone());
-
-    let llm_gateway = llm_gateway::Client::new(&app.config.answer_api_url)
+    let llm_gateway = user
+        .llm_gateway(&app)?
         .temperature(0.0)
-        .bearer(answer_api_token)
         .session_reference_id(conversation_id.to_string());
 
     // confirm client compatibility with answer-api

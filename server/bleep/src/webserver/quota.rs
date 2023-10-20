@@ -38,7 +38,11 @@ async fn get_request<T: for<'a> Deserialize<'a>>(
     Extension(user): Extension<User>,
     endpoint: &str,
 ) -> super::Result<Json<T>> {
-    let User::Authenticated { api_token, .. } = user else {
+    let User::Authenticated {
+        api_token: Some(api_token),
+        ..
+    } = user
+    else {
         return Err(Error::unauthorized("answer API token was not present"));
     };
 
