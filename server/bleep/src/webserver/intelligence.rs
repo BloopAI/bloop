@@ -359,7 +359,8 @@ async fn search_nav(
     };
 
     // produce search based results here
-    let target = regex::Regex::new(&format!(r"\b{hovered_text}\b")).expect("failed to build regex");
+    let regex_str = regex::escape(hovered_text);
+    let target = regex::Regex::new(&format!(r"\b{regex_str}\b")).expect("failed to build regex");
     // perform a text search for hovered_text
     let file_source = &indexes.file.source;
     let indexer = &indexes.file;
