@@ -181,7 +181,7 @@ async fn update_credentials(app: &Application) {
             }
         };
 
-        debug!(?rotate_access_key, "continue with rotating access key");
+        debug!(rotate_access_key, "continue with rotating access key");
         if rotate_access_key {
             let query_url = format!(
                 "{url_base}/refresh_token?refresh_token={token}",
