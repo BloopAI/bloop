@@ -10,7 +10,7 @@
     "start-web": "npm --prefix client run dev",
     "lfs:install": "git lfs install",
     "lfs:pull": "git lfs pull",
-    "build-app": "npm --prefix apps/desktop run tauri build -- --verbose",
+    "build-app": "npm --prefix apps/desktop run tauri build -- --debug --verbose",
     "build-web": "npm --prefix client run build",
     "tauri": "npm --prefix apps/desktop run tauri",
     "lint": "eslint client/src apps/**/src --ext ts --ext tsx --ext js --ext jsx --ext html",

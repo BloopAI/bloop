@@ -141,6 +141,20 @@ jobs:
           path: target/${{ matrix.target }}/release/bundle
           retention-days: 5
 
+      - name: Setup Sentry CLI
+        uses: mathieu-bour/setup-sentry-cli@v1.3.0
+        with:
+          token: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          organization: ${{ secrets.SENTRY_ORG }}
+          project: ${{ secrets.SENTRY_PROJECT }}
+      
+      - name: (MacOS) Upload source maps to Sentry
+        if: matrix.name == 'macos-11'
+        run: |
+          sentry-cli debug-files upload \
+          --include-sources \
+          target/${{ matrix.target }}/debug/bloop.dSYM
+
       - name: Rename tar.gz in macos
         if: matrix.name == 'macos-11'
         run: |
