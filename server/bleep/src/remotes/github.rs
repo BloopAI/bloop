@@ -130,10 +130,13 @@ impl Auth {
             Ok(details) => details,
         };
 
-        Ok(repo
-            .private
-            .map(|private| if private { Some(self.git_cred()) } else { None })
-            .unwrap_or_else(|| Some(self.git_cred())))
+        Ok(match repo.private {
+            // No credentials for public repos
+            Some(false) => None,
+            // Not sure there's a reason GitHub API wouldn't return a value,
+            // but provide credentials by default to be on the safe side.
+            _ => Some(self.git_cred()),
+        })
     }
 
     fn git_cred(&self) -> GitCreds {
