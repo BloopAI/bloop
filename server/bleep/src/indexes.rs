@@ -106,8 +106,14 @@ impl Indexes {
     pub fn reset_databases(config: &Configuration) -> Result<()> {
         // we don't support old schemas, and tantivy will hard
         // error if we try to open a db with a different schema.
-        std::fs::remove_dir_all(config.index_path("repo"))?;
-        std::fs::remove_dir_all(config.index_path("content"))?;
+        if config.index_path("repo").as_ref().exists() {
+            std::fs::remove_dir_all(config.index_path("repo"))?;
+            debug!("removed index repo dir")
+        }
+        if config.index_path("content").as_ref().exists() {
+            std::fs::remove_dir_all(config.index_path("content"))?;
+            debug!("removed index content dir")
+        }
         Ok(())
     }
 
