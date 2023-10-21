@@ -128,25 +128,29 @@ macro_rules! creds_callback(($auth:ident) => {{
     }
 }});
 
-async fn git_clone(auth: GitCreds, url: &str, target: &Path) -> Result<()> {
+async fn git_clone(auth: Option<GitCreds>, url: &str, target: &Path) -> Result<()> {
     let url = url.to_owned();
     let target = target.to_owned();
 
     tokio::task::spawn_blocking(move || {
-        let clone = gix::prepare_clone_bare(url, target)?;
-        let (_repo, _outcome) = clone
-            .configure_connection(move |con| {
-                con.set_credentials(creds_callback!(auth));
-                Ok(())
-            })
-            .fetch_only(gix::progress::Discard, &false.into())?;
+        let mut clone = {
+            let c = gix::prepare_clone_bare(url, target)?;
+            match auth {
+                Some(auth) => c.configure_connection(move |con| {
+                    con.set_credentials(creds_callback!(auth));
+                    Ok(())
+                }),
+                None => c,
+            }
+        };
 
+        let (_repo, _outcome) = clone.fetch_only(gix::progress::Discard, &false.into())?;
         Ok(())
     })
     .await?
 }
 
-async fn git_pull(auth: GitCreds, repo: &Repository) -> Result<()> {
+async fn git_pull(auth: Option<GitCreds>, repo: &Repository) -> Result<()> {
     use gix::remote::Direction;
 
     let disk_path = repo.disk_path.to_owned();
@@ -155,9 +159,16 @@ async fn git_pull(auth: GitCreds, repo: &Repository) -> Result<()> {
         let remote = repo
             .find_default_remote(Direction::Fetch)
             .context("no remote found")??;
-        remote
-            .connect(Direction::Fetch)?
-            .with_credentials(creds_callback!(auth))
+
+        let connection = {
+            let c = remote.connect(Direction::Fetch)?;
+            match auth {
+                Some(auth) => c.with_credentials(creds_callback!(auth)),
+                None => c,
+            }
+        };
+
+        connection
             .prepare_fetch(gix::progress::Discard, Default::default())?
             .receive(gix::progress::Discard, &false.into())?;
 

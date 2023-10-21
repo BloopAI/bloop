@@ -96,16 +96,16 @@ impl From<Auth> for State {
 
 impl Auth {
     pub(crate) async fn clone_repo(&self, repo: &Repository) -> Result<()> {
-        self.check_repo(repo).await?;
-        git_clone(self.git_cred(), &repo.remote.to_string(), &repo.disk_path).await
+        let creds = self.creds_for_private_repos(repo).await?;
+        git_clone(creds, &repo.remote.to_string(), &repo.disk_path).await
     }
 
     pub(crate) async fn pull_repo(&self, repo: &Repository) -> Result<()> {
-        self.check_repo(repo).await?;
-        git_pull(self.git_cred(), repo).await
+        let creds = self.creds_for_private_repos(repo).await?;
+        git_pull(creds, repo).await
     }
 
-    pub async fn check_repo(&self, repo: &Repository) -> Result<()> {
+    async fn creds_for_private_repos(&self, repo: &Repository) -> Result<Option<GitCreds>> {
         let RepoRemote::Git(GitRemote { ref address, .. }) = repo.remote else {
             return Err(RemoteError::NotSupported("github without git backend"));
         };
@@ -115,18 +115,28 @@ impl Auth {
             .ok_or(RemoteError::NotSupported("invalid repo address"))?;
 
         let response = self.client()?.repos(org, reponame).get().await;
-        match response {
-            Err(octocrab::Error::GitHub { ref source, .. }) => match source.message.as_str() {
+        let repo = match response {
+            Err(octocrab::Error::GitHub { ref source, .. })
+                if "Not Found" == source.message.as_str() =>
+            {
                 // GitHub API will send 403 for API-level issues, not object-level permissions
                 // A user having had their permissions removed will receive 404.
-                "Not Found" => Err(RemoteError::RemoteNotFound),
-                _ => Ok(response.map(|_| ())?),
-            },
+                return Err(RemoteError::RemoteNotFound);
+            }
             // I'm leaving this here for completeness' sake, this likely isn't exercised
             // Octocrab seems to treat GitHub application-layer errors as higher priority
-            Err(octocrab::Error::Http { .. }) => Err(RemoteError::PermissionDenied),
-            _ => Ok(response.map(|_| ())?),
-        }
+            Err(octocrab::Error::Http { .. }) => return Err(RemoteError::PermissionDenied),
+            Err(err) => return Err(err)?,
+            Ok(details) => details,
+        };
+
+        Ok(match repo.private {
+            // No credentials for public repos
+            Some(false) => None,
+            // Not sure there's a reason GitHub API wouldn't return a value,
+            // but provide credentials by default to be on the safe side.
+            _ => Some(self.git_cred()),
+        })
     }
 
     fn git_cred(&self) -> GitCreds {
