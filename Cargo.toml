@@ -11,6 +11,7 @@ opt-level = 3
 [profile.release]
 debug = 1
 lto = true
+split-debuginfo = "packed"
 
 [profile.profiler]
 inherits = "release"

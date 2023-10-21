@@ -547,7 +547,6 @@ dependencies = [
  "secrecy",
  "semver",
  "sentry 0.31.7",
- "sentry-tracing",
  "serde",
  "serde_json",
  "serde_yaml",
