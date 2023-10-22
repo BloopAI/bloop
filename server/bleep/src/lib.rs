@@ -264,13 +264,7 @@ impl Application {
             joins.spawn(self.write_index().startup_scan());
         } else {
             if !self.config.disable_background {
-                tokio::spawn(periodic::sync_github_status(self.clone()));
-                tokio::spawn(periodic::check_repo_updates(self.clone()));
-                tokio::spawn(periodic::log_and_branch_rotate(self.clone()));
-
-                if !self.env.is_cloud_instance() {
-                    tokio::spawn(periodic::clear_disk_logs(self.clone()));
-                }
+                periodic::start_background_jobs(self.clone());
             }
 
             joins.spawn(webserver::start(self));
