@@ -206,7 +206,8 @@ async fn try_execute_agent(
     QueryLog::new(&app.sql).insert(&params.q).await?;
 
     let llm_gateway = user
-        .llm_gateway(&app)?
+        .llm_gateway(&app)
+        .await?
         .temperature(0.0)
         .session_reference_id(conversation_id.to_string());
 

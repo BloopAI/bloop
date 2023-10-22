@@ -575,6 +575,7 @@ pub async fn generate(
 
     let llm_gateway = user
         .llm_gateway(&app)
+        .await
         .map_err(|e| Error::user(e).with_status(StatusCode::UNAUTHORIZED))?
         .quota_gated(!app.env.is_cloud_instance())
         .model(LLM_GATEWAY_MODEL)
@@ -752,6 +753,7 @@ async fn populate_studio_name(
 
     let llm_gateway = user
         .llm_gateway(&app)
+        .await
         .map_err(|e| Error::user(e).with_status(StatusCode::UNAUTHORIZED))?
         .model("gpt-3.5-turbo-16k-0613")
         .temperature(0.0);
@@ -905,6 +907,7 @@ async fn extract_relevant_chunks(
 
     let llm_gateway = user
         .llm_gateway(app)
+        .await
         .map_err(|e| Error::user(e).with_status(StatusCode::UNAUTHORIZED))?
         .model(LLM_GATEWAY_MODEL)
         .temperature(0.0);

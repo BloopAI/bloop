@@ -64,38 +64,33 @@ async fn sleep_systime(duration: Duration) {
 }
 
 pub(crate) async fn sync_github_status(app: Application) {
-    const POLL_PERIOD: Duration = POLL_INTERVAL_MINUTE[1];
+    const POLL_PERIOD: Duration = POLL_INTERVAL_MINUTE[0];
     const LIVENESS: Duration = Duration::from_secs(1);
 
     let timeout = || async {
-        sleep_systime(LIVENESS).await;
+        tokio::time::sleep(LIVENESS).await;
     };
 
     let timeout_or_update = |last_poll: SystemTime, handle: flume::Receiver<()>| async move {
         loop {
-            tokio::select! {
-                _ = sleep_systime(POLL_PERIOD) => {
-                    debug!("timeout expired; refreshing repositories");
+            let result = tokio::time::timeout(LIVENESS, handle.recv_async()).await;
+
+            let now = SystemTime::now();
+            let elapsed = now.duration_since(last_poll);
+
+            match (result, elapsed) {
+                (_, Ok(elapsed)) if elapsed > POLL_PERIOD => {
+                    debug!("github credentials changed; refreshing repositories");
+                    return now;
+                }
+                (Ok(Err(flume::RecvError::Disconnected)), _) => {
                     return SystemTime::now();
-                },
-                result = handle.recv_async() => {
-                    let now = SystemTime::now();
-                    let elapsed = now.duration_since(last_poll);
-                    match (elapsed, result) {
-                        (Ok(elapsed),Ok( _)) if elapsed > POLL_PERIOD => {
-                            debug!("github credentials changed; refreshing repositories");
-                            return now;
-                        }
-                        (Ok(_), Ok(_)) => {
-                            continue;
-                        }
-                        (_, Err(flume::RecvError::Disconnected)) => {
-                            return SystemTime::now();
-                        }
-                        (Err(_), _) => {
-                            return SystemTime::now();
-                        }
-                    };
+                }
+                (_, Err(_)) => {
+                    return SystemTime::now();
+                }
+                _ => {
+                    continue;
                 }
             }
         }
@@ -133,7 +128,7 @@ pub(crate) async fn sync_github_status(app: Application) {
         update_credentials(&app).await;
 
         // swallow the event that's generated from this update
-        _ = updated.recv_async().await;
+        _ = updated.try_recv();
         last_poll = timeout_or_update(last_poll, updated).await;
     }
 }
@@ -143,7 +138,7 @@ struct RefreshedAccessToken {
     access_token: String,
 }
 
-async fn update_credentials(app: &Application) {
+pub(crate) async fn update_credentials(app: &Application) {
     if app.env.allow(Feature::CloudUserAuth) {
         match app.credentials.github().and_then(|c| c.expiry()) {
             // If we have a valid token, do nothing.
@@ -181,29 +176,31 @@ async fn update_credentials(app: &Application) {
             }
         };
 
-        if rotate_access_key {
-            let query_url = format!(
-                "{url_base}/refresh_token?refresh_token={token}",
-                url_base = app
-                    .config
-                    .cognito_mgmt_url
-                    .as_ref()
-                    .expect("auth not configured"),
-                token = creds.refresh_token
-            );
+        if !rotate_access_key {
+            return;
+        }
 
-            let response = match reqwest::get(&query_url).await {
-                Ok(res) => res.text().await,
-                Err(err) => {
-                    warn!(?err, "refreshing bloop token failed");
-                    return;
-                }
+        let query_url = format!(
+            "{url_base}/refresh_token?refresh_token={token}",
+            url_base = app
+                .config
+                .cognito_mgmt_url
+                .as_ref()
+                .expect("auth not configured"),
+            token = creds.refresh_token
+        );
+
+        let response = match reqwest::get(&query_url).await {
+            Ok(res) => res.text().await,
+            Err(err) => {
+                warn!(?err, "refreshing bloop token failed");
+                return;
             }
-            .context("body");
+        }
+        .context("body");
 
-            let tokens: RefreshedAccessToken = match response
-                .and_then(|r| serde_json::from_str(&r).context(format!("json: {r}")))
-            {
+        let tokens: RefreshedAccessToken =
+            match response.and_then(|r| serde_json::from_str(&r).context(format!("json: {r}"))) {
                 Ok(tokens) => tokens,
                 Err(err) => {
                     // This is sort-of a wild assumption here, BUT hear me out.
@@ -237,18 +234,17 @@ async fn update_credentials(app: &Application) {
                 }
             };
 
-            app.credentials
-                .set_github(github::State::with_auth(Auth::OAuth(
-                    CognitoGithubTokenBundle {
-                        access_token: tokens.access_token,
-                        refresh_token: creds.refresh_token.clone(),
-                        github_access_token: creds.github_access_token.clone(),
-                    },
-                )));
+        app.credentials
+            .set_github(github::State::with_auth(Auth::OAuth(
+                CognitoGithubTokenBundle {
+                    access_token: tokens.access_token,
+                    refresh_token: creds.refresh_token.clone(),
+                    github_access_token: creds.github_access_token.clone(),
+                },
+            )));
 
-            app.credentials.store().unwrap();
-            info!("new bloop access keys saved");
-        }
+        app.credentials.store().unwrap();
+        info!("new bloop access keys saved");
 
         let github_expired = if let Some(github) = app.credentials.github() {
             let username = github.validate().await;

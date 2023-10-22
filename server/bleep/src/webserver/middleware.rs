@@ -50,7 +50,12 @@ impl User {
         crab().ok()
     }
 
-    pub(crate) fn llm_gateway(&self, app: &Application) -> anyhow::Result<llm_gateway::Client> {
+    pub(crate) async fn llm_gateway(
+        &self,
+        app: &Application,
+    ) -> anyhow::Result<llm_gateway::Client> {
+        crate::periodic::update_credentials(app).await;
+
         let User::Authenticated { api_token, .. } = self else {
             bail!("user not logged in");
         };
