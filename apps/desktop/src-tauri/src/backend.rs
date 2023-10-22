@@ -110,11 +110,11 @@ async fn start_backend<R: Runtime>(configuration: Configuration, app: tauri::App
 
     match initialized {
         Ok(backend) => {
+            let auth = backend.user().await;
             sentry::Hub::main().configure_scope(|scope| {
                 let backend = backend.clone();
                 scope.add_event_processor(move |mut event| {
                     event.user = Some(sentry_user()).map(|mut user| {
-                        let auth = backend.user();
                         let username = auth.login();
                         user.id = Some(
                             if let (Some(analytics), Some(username)) =

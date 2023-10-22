@@ -2,7 +2,7 @@ mod logrotate;
 mod remotes;
 
 use logrotate::*;
-use remotes::*;
+pub use remotes::*;
 
 use crate::Application;
 

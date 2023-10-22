@@ -54,8 +54,6 @@ impl User {
         &self,
         app: &Application,
     ) -> anyhow::Result<llm_gateway::Client> {
-        crate::periodic::update_credentials(app).await;
-
         let User::Authenticated { api_token, .. } = self else {
             bail!("user not logged in");
         };
@@ -140,7 +138,7 @@ async fn local_user_mw<B>(
     mut request: Request<B>,
     next: Next<B>,
 ) -> Response {
-    request.extensions_mut().insert(app.user());
+    request.extensions_mut().insert(app.user().await);
     next.run(request).await
 }
 

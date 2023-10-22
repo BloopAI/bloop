@@ -310,7 +310,9 @@ impl Application {
         self.analytics.as_ref().map(f)
     }
 
-    pub fn user(&self) -> User {
+    pub async fn user(&self) -> User {
+        crate::periodic::update_credentials(self).await;
+
         self.credentials
             .user()
             .zip(self.credentials.github())

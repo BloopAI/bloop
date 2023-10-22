@@ -83,11 +83,11 @@ pub(crate) async fn sync_github_status(app: Application) {
                     debug!("github credentials changed; refreshing repositories");
                     return now;
                 }
-                (Ok(Err(flume::RecvError::Disconnected)), _) => {
-                    return SystemTime::now();
+                (Ok(_), _) => {
+                    return now;
                 }
                 (_, Err(_)) => {
-                    return SystemTime::now();
+                    return now;
                 }
                 _ => {
                     continue;
