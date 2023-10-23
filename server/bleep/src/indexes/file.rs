@@ -676,9 +676,8 @@ impl RepoFile {
         let relative_path_str = relative_path_str.replace('\\', "/");
 
         let branches = self.branches.join("\n");
-        let indexed = file_filter
-            .is_allowed(relative_path)
-            .unwrap_or_else(|| self.should_index());
+        let explicitly_allowed = file_filter.is_allowed(relative_path);
+        let indexed = explicitly_allowed.unwrap_or_else(|| self.should_index());
 
         if !indexed {
             let lang_str = repo_metadata
@@ -761,7 +760,9 @@ impl RepoFile {
 
         // Skip files that are too long. This is not necessarily caught in the filesize check, e.g.
         // for a file like `vocab.txt` which has thousands of very short lines.
-        if line_end_indices.len() > MAX_LINE_COUNT as usize {
+        if !matches!(explicitly_allowed, Some(true))
+            && line_end_indices.len() > MAX_LINE_COUNT as usize
+        {
             return None;
         }
 
