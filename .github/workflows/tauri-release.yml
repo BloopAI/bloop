@@ -159,7 +159,7 @@ jobs:
           sentry-cli debug-files upload \
           --log-level debug \
           --include-sources \
-          target/${{ matrix.target }}/debug/bloop.dSYM
+          target/${{ matrix.target }}/release/bloop.dSYM
 
       - name: Rename tar.gz in macos
         if: matrix.name == 'macos-11'
