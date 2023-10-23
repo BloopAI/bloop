@@ -147,6 +147,11 @@ jobs:
           token: ${{ secrets.SENTRY_AUTH_TOKEN }}
           organization: ${{ secrets.SENTRY_ORG }}
           project: ${{ secrets.SENTRY_PROJECT }}
+
+      - name: Create Sentry release
+        run: |
+          sentry-cli releases new "${{ steps.release-version.outputs.RELEASE_VERSION }}"
+          sentry-cli releases set-commits "${{ steps.release-version.outputs.RELEASE_VERSION }}" --auto
       
       - name: (MacOS) Upload source maps to Sentry
         if: matrix.name == 'macos-11'
