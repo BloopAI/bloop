@@ -69,7 +69,12 @@ const FileRow = ({
         </span>
       </span>
       {!indexed && !indexRequested && (
-        <Button onClick={onIndexRequested} variant="secondary" size="tiny">
+        <Button
+          onClick={onIndexRequested}
+          variant="secondary"
+          size="tiny"
+          className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 ease-in-out"
+        >
           <Trans>Index</Trans>
         </Button>
       )}

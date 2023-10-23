@@ -163,7 +163,7 @@ const DirEntry = ({
             variant="secondary"
             size="tiny"
             onClick={onIndexRequested}
-            className="opacity-0 group-hover:opacity-100 transition-opacity ease-in-out duration-150"
+            className="opacity-0 group-hover:opacity-100 transform scale-75 transition-opacity ease-in-out duration-150"
           >
             <Trans>Index</Trans>
           </Button>
