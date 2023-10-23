@@ -156,6 +156,10 @@ pub struct Configuration {
     #[clap(long)]
     pub cognito_mgmt_url: Option<reqwest::Url>,
 
+    /// URL from which to initialize Cognito configuration
+    #[clap(long)]
+    pub cognito_config_url: Option<reqwest::Url>,
+
     //
     // Cloud-based Github App installation-specific values
     //
@@ -224,6 +228,53 @@ impl Configuration {
         };
 
         Ok(Self::merge(file, cli))
+    }
+
+    pub async fn with_remote_cognito_config(mut self) -> Result<Self> {
+        let url = self
+            .cognito_config_url
+            .clone()
+            .context("Invalid config, cognito_config_url missing")?;
+
+        let config: serde_json::Value = reqwest::get(url).await?.json().await?;
+
+        self.cognito_auth_url = Some(
+            config
+                .get("auth_url")
+                .context("bad response")?
+                .as_str()
+                .context("bad response")?
+                .parse()?,
+        );
+
+        self.cognito_mgmt_url = Some(
+            config
+                .get("mgmt_url")
+                .context("bad response")?
+                .as_str()
+                .context("bad response")?
+                .parse()?,
+        );
+
+        self.cognito_client_id = Some(
+            config
+                .get("client_id")
+                .context("bad response")?
+                .as_str()
+                .context("bad response")?
+                .to_owned(),
+        );
+
+        self.cognito_userpool_id = Some(
+            config
+                .get("userpool_id")
+                .context("bad response")?
+                .as_str()
+                .context("bad response")?
+                .to_owned(),
+        );
+
+        Ok(self)
     }
 
     /// Merge 2 configurations with values from `b` taking precedence
@@ -302,6 +353,8 @@ impl Configuration {
             cognito_auth_url: b.cognito_auth_url.or(a.cognito_auth_url),
 
             cognito_mgmt_url: b.cognito_mgmt_url.or(a.cognito_mgmt_url),
+
+            cognito_config_url: b.cognito_config_url.or(a.cognito_config_url),
 
             bloop_instance_secret: b.bloop_instance_secret.or(a.bloop_instance_secret),
 

@@ -65,8 +65,6 @@ pub fn initialize<R: Runtime>(app: &mut tauri::App<R>) -> tauri::plugin::Result<
         initialize_sentry(dsn);
     }
 
-    app.manage(configuration.clone());
-
     tokio::spawn(start_backend(configuration, handle));
 
     Ok(())
@@ -92,6 +90,15 @@ async fn start_backend<R: Runtime>(configuration: Configuration, app: tauri::App
     tracing::info!("booting bleep back-end");
 
     wait_for_qdrant().await;
+
+    let configuration = if let Ok(remote) = configuration.clone().with_remote_cognito_config().await
+    {
+        remote
+    } else {
+        configuration
+    };
+
+    app.manage(configuration.clone());
 
     let initialized = Application::initialize(
         Environment::insecure_local(),
