@@ -352,6 +352,50 @@ impl Doc {
             .collect())
     }
 
+    pub async fn search_pages(
+        &self,
+        q: String,
+        limit: u64,
+        id: i64,
+    ) -> Result<Vec<PageResult>, Error> {
+        let term_embedding = self
+            .semantic
+            .embedder()
+            .embed(q.as_str())
+            .map_err(Error::Embed)?;
+        let data = self
+            .semantic
+            .qdrant_client()
+            .search_groups(&SearchPointGroups {
+                collection_name: COLLECTION_NAME.into(),
+                vector: term_embedding,
+                limit: limit as u32,
+                group_by: "page_id".to_owned(),
+                group_size: 1,
+                filter: Some(Filter {
+                    must: vec![make_kv_int_filter("doc_id", id).into()],
+                    ..Default::default()
+                }),
+                with_payload: Some(WithPayloadSelector {
+                    selector_options: Some(with_payload_selector::SelectorOptions::Enable(true)),
+                }),
+                ..Default::default()
+            })
+            .await
+            .map_err(Error::Qdrant)?
+            .result
+            .ok_or(Error::Qdrant(anyhow::anyhow!("empty search result field")))?;
+
+        let data = data
+            .groups
+            .into_iter()
+            .flat_map(|s| s.hits)
+            .filter_map(|s| PageResult::from_qdrant(s.payload))
+            .collect::<Vec<_>>();
+
+        Ok(data)
+    }
+
     pub async fn list_sections(&self, limit: u32, id: i64) -> Result<Vec<SearchResult>, Error> {
         let data = self
             .semantic
@@ -504,7 +548,7 @@ impl Doc {
                 {
                     handles.push(tokio::task::spawn(async move {
                         let embedder = semantic.embedder();
-                        let points_to_insert = doc.embed(id, &u, embedder);
+                        let points_to_insert = doc.embed_uniform(id, &u, embedder);
                         let _ = semantic
                             .qdrant_client()
                             .upsert_points(COLLECTION_NAME, points_to_insert, None)
@@ -658,6 +702,162 @@ impl scraper::Document {
         })
         .collect::<Vec<_>>()
     }
+
+    fn embed_uniform(
+        &self,
+        id: i64,
+        url: &url::Url,
+        embedder: &dyn crate::semantic::Embedder,
+    ) -> Vec<PointStruct> {
+        info!("inserting points for `{}`", self.url.as_str());
+        crate::semantic::chunk::by_tokens(
+            url.as_str(),             // doc source
+            &self.relative_url(&url), // rel path
+            &self.content,
+            embedder.tokenizer(),
+            50..256,
+            crate::semantic::chunk::OverlapStrategy::Partial(0.0),
+        )
+        .par_iter()
+        .filter_map(|chunk| {
+            Some((
+                chunk,
+                embedder
+                    .embed(&format!(
+                        "{}\t{}\t{}",
+                        url.as_str(),
+                        self.relative_url(&url),
+                        chunk.data,
+                    ))
+                    .ok()?,
+            ))
+        })
+        .map(|(chunk, embedding)| {
+            let mut payload = HashMap::new();
+            let favicon = self.meta.icon.as_deref().unwrap_or("");
+            let favicon_url = url::Url::parse(&favicon)
+                .unwrap_or_else(|_| normalize_absolute_url(&url, &favicon));
+            let point_id = {
+                let mut bytes = [0; 16];
+                let mut hasher = blake3::Hasher::new();
+                hasher.update(&id.to_le_bytes()); // doc id
+                hasher.update(self.meta.title.as_deref().unwrap_or("").as_bytes()); // title of this page
+                hasher.update(&chunk.data.as_bytes()); // section data
+                hasher.update(&chunk.range.start.byte.to_le_bytes()); // section start location
+                hasher.update(&chunk.range.end.byte.to_le_bytes()); // section end location
+                bytes.copy_from_slice(&hasher.finalize().as_bytes()[16..32]);
+                uuid::Uuid::from_bytes(bytes).to_string()
+            };
+
+            // doc id + rel url
+            let page_id = {
+                let mut bytes = [0; 16];
+                let mut hasher = blake3::Hasher::new();
+                hasher.update(&id.to_le_bytes()); // doc id
+                hasher.update(&self.relative_url(&url).as_str().as_bytes()); // doc id
+                bytes.copy_from_slice(&hasher.finalize().as_bytes()[16..32]);
+                uuid::Uuid::from_bytes(bytes).to_string()
+            };
+
+            payload.insert("doc_id".to_owned(), id.into());
+            payload.insert("page_id".to_owned(), page_id.into());
+            payload.insert("doc_source".to_owned(), url.to_string().into());
+            payload.insert("relative_url".to_owned(), self.relative_url(url).into());
+            payload.insert("start".to_owned(), (chunk.range.start.byte as i64).into());
+            payload.insert("end".to_owned(), (chunk.range.end.byte as i64).into());
+            payload.insert("text".to_owned(), chunk.data.into());
+            // doc meta
+            payload.insert(
+                "doc_title".to_owned(),
+                self.meta.title.as_deref().unwrap_or("").into(),
+            );
+            payload.insert(
+                "doc_description".to_owned(),
+                self.meta.description.as_deref().unwrap_or("").into(),
+            );
+            payload.insert("doc_favicon".to_owned(), favicon_url.as_str().into());
+            PointStruct {
+                id: Some(PointId {
+                    point_id_options: Some(PointIdOptions::Uuid(point_id.to_string())),
+                }),
+                vectors: Some(embedding.into()),
+                payload,
+            }
+        })
+        // .map(|(section, chunks)| {
+        //     let embeddings = chunks
+        //         .iter()
+        //         .filter_map(|c| {
+        //             embedder
+        //                 .embed(&format!(
+        //                     "{}\t{}\t{}\n{}",
+        //                     url.as_str(),
+        //                     &self.relative_url(url),
+        //                     section.ancestry_str(),
+        //                     c.data,
+        //                 ))
+        //                 .ok()
+        //         })
+        //         .collect::<Vec<_>>();
+        //     let average_embedding = embeddings.iter().fold(vec![0.; 384], |acc, e| {
+        //         acc.into_iter()
+        //             .zip(e.iter())
+        //             .map(|(acc_elem, e_elem)| acc_elem + e_elem)
+        //             .collect::<Vec<_>>()
+        //     });
+        //     (section, average_embedding)
+        // })
+        // .map(|(section, avg_embedding)| {
+        //     let mut payload = HashMap::new();
+        //     let favicon = self.meta.icon.as_deref().unwrap_or("");
+        //     let favicon_url = url::Url::parse(&favicon)
+        //         .unwrap_or_else(|_| normalize_absolute_url(&url, &favicon));
+        //     let point_id = {
+        //         let mut bytes = [0; 16];
+        //         let mut hasher = blake3::Hasher::new();
+        //         hasher.update(&id.to_le_bytes()); // doc id
+        //         hasher.update(self.meta.title.as_deref().unwrap_or("").as_bytes()); // title of this page
+        //         hasher.update(&section.data.as_bytes()); // section data
+        //         hasher.update(&section.section_range.start.byte.to_le_bytes()); // section start location
+        //         hasher.update(&section.section_range.end.byte.to_le_bytes()); // section end location
+        //         bytes.copy_from_slice(&hasher.finalize().as_bytes()[16..32]);
+        //         uuid::Uuid::from_bytes(bytes).to_string()
+        //     };
+        //     payload.insert("doc_id".to_owned(), id.into());
+        //     payload.insert("doc_source".to_owned(), url.to_string().into());
+        //     payload.insert("relative_url".to_owned(), self.relative_url(url).into());
+        //     payload.insert(
+        //         "start".to_owned(),
+        //         (section.section_range.start.byte as i64).into(),
+        //     );
+        //     payload.insert(
+        //         "end".to_owned(),
+        //         (section.section_range.end.byte as i64).into(),
+        //     );
+        //     payload.insert("text".to_owned(), section.data.into());
+        //     payload.insert("header".to_owned(), section.header.unwrap_or("").into());
+        //     payload.insert("ancestry_text".to_owned(), section.ancestry_str().into());
+        //     payload.insert("ancestry".to_owned(), section.ancestry.into());
+        //     // doc meta
+        //     payload.insert(
+        //         "doc_title".to_owned(),
+        //         self.meta.title.as_deref().unwrap_or("").into(),
+        //     );
+        //     payload.insert(
+        //         "doc_description".to_owned(),
+        //         self.meta.description.as_deref().unwrap_or("").into(),
+        //     );
+        //     payload.insert("doc_favicon".to_owned(), favicon_url.as_str().into());
+        //     PointStruct {
+        //         id: Some(PointId {
+        //             point_id_options: Some(PointIdOptions::Uuid(point_id.to_string())),
+        //         }),
+        //         vectors: Some(avg_embedding.into()),
+        //         payload,
+        //     }
+        // })
+        .collect::<Vec<_>>()
+    }
 }
 
 fn make_kv_int_filter(key: &str, value: i64) -> FieldCondition {
@@ -678,8 +878,8 @@ pub struct SearchResult {
     pub point_id: uuid::Uuid,
     pub doc_source: url::Url,
     pub relative_url: String,
-    pub header: String,
-    pub ancestry: Vec<String>,
+    // pub header: String,
+    // pub ancestry: Vec<String>,
     pub text: String,
     pub section_range: std::ops::Range<usize>,
 }
@@ -704,21 +904,21 @@ impl SearchResult {
         let section_end_byte: usize = payload["end"]
             .as_integer()
             .and_then(|i| i.try_into().ok())?;
-        let header = payload["header"].as_str().map(ToOwned::to_owned)?;
-        let ancestry = payload["ancestry"]
-            .as_list()
-            .map(ToOwned::to_owned)?
-            .into_iter()
-            .map(|item| item.as_str().unwrap().to_owned())
-            .collect();
+        // let header = payload["header"].as_str().map(ToOwned::to_owned)?;
+        // let ancestry = payload["ancestry"]
+        //     .as_list()
+        //     .map(ToOwned::to_owned)?
+        //     .into_iter()
+        //     .map(|item| item.as_str().unwrap().to_owned())
+        //     .collect();
         let text = payload["text"].as_str().map(ToOwned::to_owned)?;
         Some(Self {
             doc_id,
             point_id,
             doc_source,
             relative_url,
-            header,
-            ancestry,
+            // header,
+            // ancestry,
             text,
             section_range: section_start_byte..section_end_byte,
         })

@@ -100,20 +100,15 @@ pub async fn search_with_id(
     State(app): State<Application>,
     Path(id): Path<i64>,
     Query(params): Query<Search>,
-) -> Result<Json<Vec<doc::SearchResult>>> {
+) -> Result<Json<Vec<doc::PageResult>>> {
     Ok(Json(match params.q {
         Some(query) => {
             app.indexes
                 .doc
-                .search_sections(query, params.limit, id)
+                .search_pages(query, params.limit, id)
                 .await?
         }
-        None => {
-            app.indexes
-                .doc
-                .list_sections(params.limit as u32, id)
-                .await?
-        }
+        None => app.indexes.doc.list_pages(params.limit as u32, id).await?,
     }))
 }
 
