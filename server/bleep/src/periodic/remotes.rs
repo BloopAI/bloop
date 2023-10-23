@@ -65,7 +65,7 @@ async fn sleep_systime(duration: Duration) {
 
 pub(crate) async fn sync_github_status(app: Application) {
     const POLL_PERIOD: Duration = POLL_INTERVAL_MINUTE[0];
-    const LIVENESS: Duration = Duration::from_secs(1);
+    const LIVENESS: Duration = Duration::from_secs(2);
 
     let timeout = || async {
         tokio::time::sleep(LIVENESS).await;
@@ -80,7 +80,7 @@ pub(crate) async fn sync_github_status(app: Application) {
 
             match (result, elapsed) {
                 (_, Ok(elapsed)) if elapsed > POLL_PERIOD => {
-                    debug!("github credentials changed; refreshing repositories");
+                    debug!(?elapsed, "credential timeout, checking");
                     return now;
                 }
                 (Ok(_), _) => {
@@ -108,11 +108,20 @@ pub(crate) async fn sync_github_status(app: Application) {
         };
         debug!("credentials exist");
 
-        let Ok(repos) = github.current_repo_list().await else {
-            timeout().await;
-            continue;
+        let repos = match github.current_repo_list().await {
+            Ok(repos) => {
+                debug!("fetched new repo list");
+                repos
+            }
+            Err(err) => {
+                debug!(?err, "failed to update repo list");
+                timeout().await;
+                continue;
+            }
         };
-        debug!("repo list updated");
+
+        // then retrieve username & other maintenance
+        update_credentials(&app).await;
 
         let updated = match app.credentials.github_updated() {
             Some(receiver) => receiver,
@@ -124,11 +133,11 @@ pub(crate) async fn sync_github_status(app: Application) {
         // store the updated credentials here
         app.credentials.set_github(new);
 
-        // then retrieve username & other maintenance
-        update_credentials(&app).await;
-
         // swallow the event that's generated from this update
-        _ = updated.try_recv();
+        tokio::time::sleep(LIVENESS).await;
+        for _item in updated.drain() {
+            // we just want to remove all events
+        }
         last_poll = timeout_or_update(last_poll, updated).await;
     }
 }

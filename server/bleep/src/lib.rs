@@ -310,7 +310,11 @@ impl Application {
         self.analytics.as_ref().map(f)
     }
 
-    pub async fn user(&self) -> User {
+    pub fn username(&self) -> Option<String> {
+        self.credentials.user().clone()
+    }
+
+    pub(crate) async fn user(&self) -> User {
         crate::periodic::update_credentials(self).await;
 
         self.credentials
