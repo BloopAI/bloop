@@ -316,9 +316,9 @@ impl Application {
         self.credentials
             .user()
             .zip(self.credentials.github())
-            .map(|(user, gh)| {
+            .and_then(|(user, gh)| {
                 use crate::remotes::github::{Auth, State};
-                let api_token = match gh {
+                match gh {
                     State {
                         auth:
                             Auth::OAuth(CognitoGithubTokenBundle {
@@ -326,23 +326,12 @@ impl Application {
                                 ..
                             }),
                         ..
-                    } => Some(token.clone()),
+                    } => Some(User::Desktop {
+                        api_token: token.clone(),
+                        login: user,
+                        crab: Arc::new(move || Ok(gh.client()?)),
+                    }),
                     _ => None,
-                };
-
-                let org_name = match gh {
-                    State {
-                        auth: Auth::App { ref org, .. },
-                        ..
-                    } => Some(org.to_owned()),
-                    _ => None,
-                };
-
-                User::Authenticated {
-                    api_token,
-                    org_name,
-                    login: user,
-                    crab: Arc::new(move || Ok(gh.client()?)),
                 }
             })
             .unwrap_or_else(|| User::Unknown)

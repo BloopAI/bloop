@@ -16,9 +16,15 @@ use tracing::error;
 #[derive(Serialize, Clone)]
 pub enum User {
     Unknown,
-    Authenticated {
-        org_name: Option<String>,
-        api_token: Option<String>,
+    Desktop {
+        api_token: String,
+        login: String,
+        #[serde(skip)]
+        crab: Arc<dyn Fn() -> anyhow::Result<octocrab::Octocrab> + Send + Sync>,
+    },
+    Cloud {
+        org_name: String,
+        api_token: String,
         login: String,
         #[serde(skip)]
         crab: Arc<dyn Fn() -> anyhow::Result<octocrab::Octocrab> + Send + Sync>,
@@ -27,47 +33,56 @@ pub enum User {
 
 impl User {
     pub fn login(&self) -> Option<&str> {
-        let User::Authenticated { login, .. } = self else {
-            return None;
-        };
-
-        Some(login)
+        match self {
+            User::Desktop { login, .. } => Some(login),
+            User::Cloud { login, .. } => Some(login),
+            _ => None,
+        }
     }
 
     pub(crate) fn org_name(&self) -> Option<&str> {
-        let User::Authenticated { org_name, .. } = self else {
+        let User::Cloud { org_name, .. } = self else {
             return None;
         };
 
-        org_name.as_deref()
+        Some(org_name.as_ref())
     }
 
     pub(crate) fn github(&self) -> Option<octocrab::Octocrab> {
-        let User::Authenticated { crab, .. } = self else {
-            return None;
+        let crab = match self {
+            User::Unknown => return None,
+            User::Desktop { crab, .. } => crab,
+            User::Cloud { crab, .. } => crab,
         };
 
         crab().ok()
+    }
+
+    pub(crate) fn api_token(&self) -> Option<&str> {
+        match self {
+            User::Unknown => None,
+            User::Desktop { api_token, .. } => Some(api_token),
+            User::Cloud { api_token, .. } => Some(api_token),
+        }
     }
 
     pub(crate) async fn llm_gateway(
         &self,
         app: &Application,
     ) -> anyhow::Result<llm_gateway::Client> {
-        let User::Authenticated { api_token, .. } = self else {
-            bail!("user not logged in");
-        };
+        if let User::Unknown = self {
+            bail!("user unauthenticated");
+        }
 
-        Ok(llm_gateway::Client::new(&app.config.answer_api_url).bearer(api_token.to_owned()))
+        let api_token = self.api_token().map(str::to_owned);
+        Ok(llm_gateway::Client::new(&app.config.answer_api_url).bearer(api_token))
     }
 
     pub(crate) async fn paid_features(&self, app: &Application) -> bool {
-        let User::Authenticated {
-            api_token: Some(api_token),
-            ..
-        } = self
-        else {
-            return false;
+        let api_token = match self {
+            User::Desktop { api_token, .. } => api_token,
+            User::Cloud { .. } => return true,
+            _ => return false,
         };
 
         let Ok(response) = reqwest::Client::new()
@@ -156,16 +171,20 @@ pub async fn cloud_user_layer_mw<B>(
             .flatten()
             .unwrap_or_default();
 
-        let org_name = app.credentials.github().and_then(|state| match state.auth {
-            crate::remotes::github::Auth::App { org, .. } => Some(org),
-            _ => None,
-        });
+        let org_name = app
+            .credentials
+            .github()
+            .and_then(|state| match state.auth {
+                crate::remotes::github::Auth::App { org, .. } => Some(org),
+                _ => None,
+            })
+            .expect("misconfigured instance");
 
-        User::Authenticated {
+        User::Cloud {
             login,
             org_name,
             // not doing an `ok()` here to ensure this exists, or blow up
-            api_token: Some(jar.get(super::aaa::COOKIE_NAME).unwrap().to_string()),
+            api_token: jar.get(super::aaa::COOKIE_NAME).unwrap().to_string(),
             crab: Arc::new(move || {
                 let gh = app.credentials.github().context("no github")?;
                 Ok(gh.client()?)
