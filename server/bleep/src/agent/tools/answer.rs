@@ -11,7 +11,7 @@ use crate::{
         model, prompts, transcoder, Agent,
     },
     analytics::EventData,
-    llm_gateway,
+    llm_gateway::{self, api},
 };
 
 const CHUNK_MERGE_DISTANCE: usize = 20;
@@ -61,6 +61,7 @@ impl Agent {
             self.llm_gateway
                 .clone()
                 .model(self.model.model_name)
+                .provider(api::Provider::GoogleVertex)
                 .frequency_penalty(if self.model.model_name == "gpt-3-finetuned" {
                     Some(0.2)
                 } else {

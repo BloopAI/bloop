@@ -96,6 +96,7 @@ pub mod api {
     pub enum Provider {
         OpenAi,
         Anthropic,
+        GoogleVertex,
     }
 
     #[derive(Debug, Copy, Clone, serde::Serialize, serde::Deserialize)]
@@ -235,6 +236,11 @@ impl Client {
             self.model = Some(model.to_owned());
         }
 
+        self
+    }
+
+    pub fn provider(mut self, provider: api::Provider) -> Self {
+        self.provider = provider.into();
         self
     }
 
