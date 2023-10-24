@@ -391,6 +391,7 @@ const Chat = () => {
         queryIdToEdit={queryIdToEdit}
         openHistoryItem={openHistoryItem}
         setOpenHistoryItem={setOpenHistoryItem}
+        setInputValue={setInputValue}
       />
       <ChatFooter
         isLoading={isLoading}
@@ -403,7 +404,6 @@ const Chat = () => {
         openHistoryItem={openHistoryItem}
         isHistoryOpen={isHistoryTab}
         setHistoryOpen={setIsHistoryTab}
-        repoRef={tab.repoRef}
       />
       <DeprecatedClientModal
         isOpen={showPopup}
