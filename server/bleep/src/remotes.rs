@@ -243,8 +243,6 @@ pub(crate) fn gather_repo_roots(
 
 struct BackendEntry {
     inner: BackendCredential,
-    updated: flume::Receiver<()>,
-    updated_tx: flume::Sender<()>,
 }
 
 impl Serialize for BackendEntry {
@@ -268,12 +266,7 @@ impl<'de> Deserialize<'de> for BackendEntry {
 
 impl From<BackendCredential> for BackendEntry {
     fn from(inner: BackendCredential) -> Self {
-        let (updated_tx, updated) = flume::unbounded();
-        BackendEntry {
-            inner,
-            updated_tx,
-            updated,
-        }
+        BackendEntry { inner }
     }
 }
 
@@ -321,14 +314,8 @@ impl Backends {
             .entry(Backend::Github)
             .and_modify(|existing| {
                 existing.inner = BackendCredential::Github(gh.clone());
-                _ = existing.updated_tx.send(());
             })
             .or_insert_with(|| BackendCredential::Github(gh).into());
-    }
-
-    pub(crate) fn github_updated(&self) -> Option<flume::Receiver<()>> {
-        self.backends
-            .read(&Backend::Github, |_, v| v.updated.clone())
     }
 
     pub(crate) async fn remove_user(&self) {

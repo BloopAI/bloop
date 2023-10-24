@@ -1,7 +1,7 @@
 use std::{
     ops::Not,
     sync::Arc,
-    time::{Duration, SystemTime, UNIX_EPOCH},
+    time::{Duration, SystemTime},
 };
 
 use anyhow::Context;
@@ -65,80 +65,34 @@ async fn sleep_systime(duration: Duration) {
 
 pub(crate) async fn sync_github_status(app: Application) {
     const POLL_PERIOD: Duration = POLL_INTERVAL_MINUTE[0];
-    const LIVENESS: Duration = Duration::from_secs(2);
-
-    let timeout = || async {
-        tokio::time::sleep(LIVENESS).await;
-    };
-
-    let timeout_or_update = |last_poll: SystemTime, handle: flume::Receiver<()>| async move {
-        loop {
-            let result = tokio::time::timeout(LIVENESS, handle.recv_async()).await;
-
-            let now = SystemTime::now();
-            let elapsed = now.duration_since(last_poll);
-
-            match (result, elapsed) {
-                (_, Ok(elapsed)) if elapsed > POLL_PERIOD => {
-                    debug!(?elapsed, "credential timeout, checking");
-                    return now;
-                }
-                (Ok(_), _) => {
-                    return now;
-                }
-                (_, Err(_)) => {
-                    return now;
-                }
-                _ => {
-                    continue;
-                }
-            }
-        }
-    };
 
     // In case this is a GitHub App installation, we get the
     // credentials from CLI/config
     update_credentials(&app).await;
 
-    let mut last_poll = UNIX_EPOCH;
     loop {
-        let Some(github) = app.credentials.github() else {
-            timeout().await;
-            continue;
-        };
-        debug!("credentials exist");
-
-        let repos = match github.current_repo_list().await {
-            Ok(repos) => {
-                debug!("fetched new repo list");
-                repos
-            }
-            Err(err) => {
-                debug!(?err, "failed to update repo list");
-                timeout().await;
-                continue;
-            }
-        };
-
         // then retrieve username & other maintenance
         update_credentials(&app).await;
 
-        let updated = match app.credentials.github_updated() {
-            Some(receiver) => receiver,
-            // This is a race condition, let's need to start from scratch.
-            None => continue,
-        };
-        let new = github.update_repositories(repos);
+        'repo_list: {
+            if let Some(gh) = app.credentials.github() {
+                let repos = match gh.current_repo_list().await {
+                    Ok(repos) => {
+                        debug!("fetched new repo list");
+                        repos
+                    }
+                    Err(err) => {
+                        debug!(?err, "failed to update repo list");
+                        break 'repo_list;
+                    }
+                };
 
-        // store the updated credentials here
-        app.credentials.set_github(new);
-
-        // swallow the event that's generated from this update
-        tokio::time::sleep(LIVENESS).await;
-        for _item in updated.drain() {
-            // we just want to remove all events
+                let new = gh.update_repositories(repos);
+                app.credentials.set_github(new);
+            }
         }
-        last_poll = timeout_or_update(last_poll, updated).await;
+
+        sleep_systime(POLL_PERIOD).await;
     }
 }
 
