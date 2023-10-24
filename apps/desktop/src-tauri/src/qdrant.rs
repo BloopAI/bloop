@@ -122,7 +122,7 @@ fn run_command(command: &Path, qdrant_dir: &Path, stdout: &Path, stderr: &Path) 
 
     match getrlimit(Resource::RLIMIT_NOFILE) {
         Ok((current_soft, current_hard)) if current_hard < 2048 => {
-            if let Err(err) = setrlimit(Resource::RLIMIT_NOFILE, 1, 2) {
+            if let Err(err) = setrlimit(Resource::RLIMIT_NOFILE, 1024, 2048) {
                 error!(
                     ?err,
                     new_soft = 1024,
