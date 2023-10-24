@@ -668,7 +668,7 @@ impl<'a> ChunkCache<'a> {
         tx: &mut sqlx::Transaction<'_, Sqlite>,
     ) -> Result<usize, anyhow::Error> {
         let mut update_size = 0;
-        let mut qdrant_updates = vec![];
+        let mut qdrant_updates = tokio::task::JoinSet::new();
 
         let mut next = self.update.first_occupied_entry();
         while let Some(entry) = next {
@@ -698,24 +698,19 @@ impl<'a> ChunkCache<'a> {
                 [("branches".to_string(), branches_list.to_owned().into())].into(),
             );
 
-            qdrant_updates.push(async move {
-                self.semantic
+            let semantic = self.semantic.clone();
+            qdrant_updates.spawn(async move {
+                semantic
                     .qdrant_client()
-                    .set_payload(self.semantic.collection_name(), &id, payload, None)
+                    .set_payload(semantic.collection_name(), &id, payload, None)
                     .await
             });
             next = entry.next();
         }
 
-        // Note these actions aren't actually parallel, merely
-        // concurrent.
-        //
-        // This should be fine since the number of updates would be
-        // reasonably small.
-        futures::future::join_all(qdrant_updates.into_iter())
-            .await
-            .into_iter()
-            .collect::<Result<Vec<_>, _>>()?;
+        while let Some(success) = qdrant_updates.join_next().await {
+            _ = success?;
+        }
 
         Ok(update_size)
     }

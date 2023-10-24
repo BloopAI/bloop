@@ -307,7 +307,7 @@ pub(super) async fn delete_by_id(
     let num_deleted = if found { 1 } else { 0 };
 
     app.with_analytics(|analytics| {
-        analytics.track_synced_repos(num_repos - num_deleted, user.login(), app.org_name());
+        analytics.track_synced_repos(num_repos - num_deleted, user.username(), user.org_name());
     });
 
     if found {
@@ -329,7 +329,7 @@ pub(super) async fn sync(
     let num_queued = app.write_index().enqueue_sync(vec![repo]).await;
 
     app.with_analytics(|analytics| {
-        analytics.track_synced_repos(num_repos + num_queued, user.login(), app.org_name());
+        analytics.track_synced_repos(num_repos + num_queued, user.username(), user.org_name());
     });
 
     Ok(json(ReposResponse::SyncQueued))
@@ -402,7 +402,7 @@ pub(super) async fn set_indexed(
     let mut repo_list = new_list.indexed.into_iter().collect::<HashSet<_>>();
 
     app.with_analytics(|analytics| {
-        analytics.track_synced_repos(repo_list.len(), user.login(), app.org_name());
+        analytics.track_synced_repos(repo_list.len(), user.username(), user.org_name());
     });
 
     app.repo_pool

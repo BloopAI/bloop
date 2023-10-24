@@ -121,15 +121,18 @@ async fn start_backend<R: Runtime>(configuration: Configuration, app: tauri::App
                 let backend = backend.clone();
                 scope.add_event_processor(move |mut event| {
                     event.user = Some(sentry_user()).map(|mut user| {
-                        let auth = backend.user();
+                        let username = backend.username();
+
                         user.id = Some(
-                            if let (Some(analytics), Some(username)) = (&backend.analytics, &auth) {
+                            if let (Some(analytics), Some(username)) =
+                                (&backend.analytics, &username)
+                            {
                                 analytics.tracking_id(Some(username))
                             } else {
                                 get_device_id()
                             },
                         );
-                        user.username = auth;
+                        user.username = username;
                         user
                     });
 
