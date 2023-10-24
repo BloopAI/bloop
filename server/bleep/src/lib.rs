@@ -331,7 +331,7 @@ impl Application {
                             }),
                         ..
                     } => Some(User::Desktop {
-                        api_token: token.clone(),
+                        access_token: token.clone(),
                         login: user,
                         crab: Arc::new(move || Ok(gh.client()?)),
                     }),

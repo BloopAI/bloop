@@ -17,14 +17,14 @@ use tracing::error;
 pub enum User {
     Unknown,
     Desktop {
-        api_token: String,
+        access_token: String,
         login: String,
         #[serde(skip)]
         crab: Arc<dyn Fn() -> anyhow::Result<octocrab::Octocrab> + Send + Sync>,
     },
     Cloud {
         org_name: String,
-        api_token: String,
+        access_token: String,
         login: String,
         #[serde(skip)]
         crab: Arc<dyn Fn() -> anyhow::Result<octocrab::Octocrab> + Send + Sync>,
@@ -48,7 +48,7 @@ impl User {
         Some(org_name.as_ref())
     }
 
-    pub(crate) fn github(&self) -> Option<octocrab::Octocrab> {
+    pub(crate) fn github_client(&self) -> Option<octocrab::Octocrab> {
         let crab = match self {
             User::Unknown => return None,
             User::Desktop { crab, .. } => crab,
@@ -58,11 +58,11 @@ impl User {
         crab().ok()
     }
 
-    pub(crate) fn api_token(&self) -> Option<&str> {
+    pub(crate) fn access_token(&self) -> Option<&str> {
         match self {
             User::Unknown => None,
-            User::Desktop { api_token, .. } => Some(api_token),
-            User::Cloud { api_token, .. } => Some(api_token),
+            User::Desktop { access_token, .. } => Some(access_token),
+            User::Cloud { access_token, .. } => Some(access_token),
         }
     }
 
@@ -74,20 +74,20 @@ impl User {
             bail!("user unauthenticated");
         }
 
-        let api_token = self.api_token().map(str::to_owned);
-        Ok(llm_gateway::Client::new(&app.config.answer_api_url).bearer(api_token))
+        let access_token = self.access_token().map(str::to_owned);
+        Ok(llm_gateway::Client::new(&app.config.answer_api_url).bearer(access_token))
     }
 
     pub(crate) async fn paid_features(&self, app: &Application) -> bool {
-        let api_token = match self {
-            User::Desktop { api_token, .. } => api_token,
+        let access_token = match self {
+            User::Desktop { access_token, .. } => access_token,
             User::Cloud { .. } => return true,
             _ => return false,
         };
 
         let Ok(response) = reqwest::Client::new()
             .get(format!("{}/v2/get-usage-quota", app.config.answer_api_url))
-            .bearer_auth(api_token)
+            .bearer_auth(access_token)
             .send()
             .await
         else {
@@ -184,7 +184,7 @@ pub async fn cloud_user_layer_mw<B>(
             login,
             org_name,
             // not doing an `ok()` here to ensure this exists, or blow up
-            api_token: jar.get(super::aaa::COOKIE_NAME).unwrap().to_string(),
+            access_token: jar.get(super::aaa::COOKIE_NAME).unwrap().to_string(),
             crab: Arc::new(move || {
                 let gh = app.credentials.github().context("no github")?;
                 Ok(gh.client()?)

@@ -309,17 +309,10 @@ async fn periodic_repo_poll(app: Application, reporef: RepoRef) -> Option<()> {
             )
         }
 
-        let timeout = sleep_systime(poller.jittery_interval());
-        tokio::select!(
-            _ = timeout => {
-                debug!(?reporef, "reindexing");
-                continue;
-            },
-            _ = poller.git_change() => {
-                debug!(?reporef, "git changes triggered reindexing");
-                continue;
-            }
-        );
+        match tokio::time::timeout(poller.jittery_interval(), poller.git_change()).await {
+            Ok(_) => debug!(?reporef, "git changes triggered reindexing"),
+            Err(_) => debug!(?reporef, "timeout; reindexing"),
+        }
     }
 }
 
