@@ -202,6 +202,14 @@ macro_rules! right_if_default {
     };
 }
 
+#[derive(Deserialize)]
+struct RemoteConfig {
+    auth_url: reqwest::Url,
+    mgmt_url: reqwest::Url,
+    client_id: String,
+    userpool_id: String,
+}
+
 impl Configuration {
     pub fn read(file: impl AsRef<Path>) -> Result<Self> {
         let file = std::fs::File::open(file)?;
@@ -236,43 +244,12 @@ impl Configuration {
             .clone()
             .context("Invalid config, cognito_config_url missing")?;
 
-        let config: serde_json::Value = reqwest::get(url).await?.json().await?;
+        let config: RemoteConfig = reqwest::get(url).await?.json().await?;
 
-        self.cognito_auth_url = Some(
-            config
-                .get("auth_url")
-                .context("bad response")?
-                .as_str()
-                .context("bad response")?
-                .parse()?,
-        );
-
-        self.cognito_mgmt_url = Some(
-            config
-                .get("mgmt_url")
-                .context("bad response")?
-                .as_str()
-                .context("bad response")?
-                .parse()?,
-        );
-
-        self.cognito_client_id = Some(
-            config
-                .get("client_id")
-                .context("bad response")?
-                .as_str()
-                .context("bad response")?
-                .to_owned(),
-        );
-
-        self.cognito_userpool_id = Some(
-            config
-                .get("userpool_id")
-                .context("bad response")?
-                .as_str()
-                .context("bad response")?
-                .to_owned(),
-        );
+        self.cognito_auth_url = Some(config.auth_url);
+        self.cognito_mgmt_url = Some(config.mgmt_url);
+        self.cognito_client_id = Some(config.client_id);
+        self.cognito_userpool_id = Some(config.userpool_id);
 
         Ok(self)
     }
