@@ -1,12 +1,12 @@
 import React, { FormEvent, useCallback, useState } from 'react';
 import axios from 'axios';
 import { Trans, useTranslation } from 'react-i18next';
-import DialogText from '../DialogText';
-import Button from '../../../components/Button';
-import { ArrowRight, Globe2 } from '../../../icons';
+import DialogText from '../../../../components/SeparateOnboardingStep/DialogText';
+import Button from '../../../../components/Button';
+import { ArrowRight, Globe2 } from '../../../../icons';
 import GoBackButton from '../GoBackButton';
-import TextInput from '../../../components/TextInput';
-import { syncRepo } from '../../../services/api';
+import TextInput from '../../../../components/TextInput';
+import { syncRepo } from '../../../../services/api';
 
 type Props = {
   handleNext: (e?: any) => void;

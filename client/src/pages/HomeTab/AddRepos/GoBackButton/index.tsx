@@ -1,5 +1,5 @@
-import Button from '../../../components/Button';
-import { ArrowLeft } from '../../../icons';
+import Button from '../../../../components/Button';
+import { ArrowLeft } from '../../../../icons';
 
 type Props = {
   handleBack: (e: any) => void;

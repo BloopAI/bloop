@@ -8,7 +8,7 @@ import React, {
 import { Trans, useTranslation } from 'react-i18next';
 import { CloseSign, PlusSignInCircle } from '../../icons';
 import SeparateOnboardingStep from '../SeparateOnboardingStep';
-import DialogText from '../../pages/Onboarding/DialogText';
+import DialogText from '../SeparateOnboardingStep/DialogText';
 import SearchableRepoList from '../RepoList/SearchableRepoList';
 import Button from '../Button';
 import {

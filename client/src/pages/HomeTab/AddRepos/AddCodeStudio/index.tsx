@@ -7,10 +7,10 @@ import React, {
   useState,
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import TextInput from '../../../components/TextInput';
-import DialogText from '../../Onboarding/DialogText';
-import { CodeStudioIcon } from '../../../icons';
-import Button from '../../../components/Button';
+import TextInput from '../../../../components/TextInput';
+import DialogText from '../../../../components/SeparateOnboardingStep/DialogText';
+import { CodeStudioIcon } from '../../../../icons';
+import Button from '../../../../components/Button';
 
 type Props = {
   handleSubmit: (name: string) => void;

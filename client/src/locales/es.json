@@ -394,5 +394,6 @@
 	"Unlimited usage and premium features are activated.": "Se activan el uso ilimitado y las características premium.",
 	"You've upgraded your account!": "¡Has actualizado tu cuenta!",
 	"Let's go": "Vamos",
-	"Token limit reached, this answer may be incomplete. To generate a full answer, please reduce the number of tokens used and regenerate.": "Límite de token alcanzado, esta respuesta puede estar incompleta. Para generar una respuesta completa, reduzca el número de tokens utilizados y regenerados."
+	"Token limit reached, this answer may be incomplete. To generate a full answer, please reduce the number of tokens used and regenerate.": "Límite de token alcanzado, esta respuesta puede estar incompleta. Para generar una respuesta completa, reduzca el número de tokens utilizados y regenerados.",
+	"Let’s get you started with bloop!": "¡Vamos a comenzar con Bloop!"
 }

@@ -1,9 +1,9 @@
 import React, { useCallback } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import Button from '../../../components/Button';
-import { ChatBubble, PointClick, CodeStudioIcon } from '../../../icons';
-import DialogText from '../DialogText';
-import GoBackButton from '../GoBackButton';
+import Button from '../../../../components/Button';
+import { ChatBubble, PointClick, CodeStudioIcon } from '../../../../icons';
+import DialogText from '../../../../components/SeparateOnboardingStep/DialogText';
+import GoBackButton from '../../../HomeTab/AddRepos/GoBackButton';
 import Feature from './Feature';
 
 type Props = {
