@@ -81,9 +81,11 @@ where
                 Ok(Some(status)) if status.success() => {
                     // do nothing? not sure if this gets called at all _after_ killing is done
                     sentry::capture_message(
-                        &"qdrant finished running; status={status:?}",
+                        &format!("qdrant finished running; status={status:?}"),
                         Level::Info,
                     );
+                    // don't fire again
+                    _ = self.child.take();
                 }
                 Ok(Some(status)) => {
                     // log error in sentry also by reading the log file
@@ -95,6 +97,9 @@ where
                         ),
                         Level::Error,
                     );
+
+                    // don't fire again
+                    _ = self.child.take();
                 }
                 Ok(None) => {
                     // all is normal, this is what we want
