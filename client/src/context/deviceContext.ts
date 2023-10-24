@@ -30,6 +30,11 @@ export type DeviceContextType = {
   envConfig: EnvConfig;
   setEnvConfig: Dispatch<SetStateAction<EnvConfig>>;
   showNativeMessage: (m: string, options?: any) => Promise<void> | void;
+  openWindow: (
+    conf:
+      | { type: 'repo'; repoRef: string; branch?: string }
+      | { type: 'studio'; id: string; name: string },
+  ) => void;
 };
 
 export const DeviceContext = createContext<DeviceContextType>({
@@ -53,5 +58,6 @@ export const DeviceContext = createContext<DeviceContextType>({
   isSelfServe: false,
   envConfig: {},
   setEnvConfig: () => {},
+  openWindow: () => {},
   showNativeMessage: () => Promise.resolve(),
 });

@@ -11,9 +11,10 @@ import { open } from '@tauri-apps/api/shell';
 import { homeDir } from '@tauri-apps/api/path';
 import { relaunch } from '@tauri-apps/api/process';
 import { message, open as openDialog } from '@tauri-apps/api/dialog';
-import { listen } from '@tauri-apps/api/event';
+import { listen, once } from '@tauri-apps/api/event';
 import * as tauriOs from '@tauri-apps/api/os';
 import { getVersion } from '@tauri-apps/api/app';
+import { WebviewWindow } from '@tauri-apps/api/window';
 import { BrowserRouter } from 'react-router-dom';
 import ClientApp from '../../../client/src/App';
 import '../../../client/src/index.css';
@@ -58,6 +59,21 @@ import SplashScreen from './SplashScreen';
 //     }
 //   },
 // );
+once('conf', (payload) => {
+  console.log('conf', payload);
+  const conf = payload.payload as
+    | { type: 'repo'; repoRef: string; branch?: string }
+    | { type: 'studio'; id: string; name: string };
+  if (conf.type === 'repo') {
+    window.location.pathname = `/${encodeURIComponent(
+      conf?.repoRef || '',
+    )}/${encodeURIComponent(conf?.branch || 'all')}/repo`;
+  } else {
+    window.location.pathname = `/studio/${encodeURIComponent(
+      conf.id,
+    )}/${encodeURIComponent(conf.name)}`;
+  }
+});
 
 // const checkUpdateAndInstall = async (currentVersion: string) => {
 //   try {
@@ -206,6 +222,31 @@ function App() {
       setEnvConfig,
       showNativeMessage: message,
       relaunch,
+      openWindow: async (
+        conf:
+          | { type: 'repo'; repoRef: string; branch?: string }
+          | { type: 'studio'; id: string; name: string },
+      ) => {
+        const label =
+          conf.type === 'repo'
+            ? conf.repoRef.replace(/[^a-z0-9]/gi, '')
+            : conf.id.toString();
+        const existingWindow = WebviewWindow.getByLabel(label);
+        if (existingWindow) {
+          existingWindow.show();
+          existingWindow.setFocus();
+        } else {
+          const webview = new WebviewWindow(label, {
+            maximized: true,
+          });
+          webview.once('tauri://created', function () {
+            setTimeout(() => webview.emit('conf', conf), 1000);
+          });
+          webview.once('tauri://error', function (e) {
+            console.error('error creating window', e);
+          });
+        }
+      },
     }),
     [homeDirectory, indexFolder, os, release, envConfig],
   );

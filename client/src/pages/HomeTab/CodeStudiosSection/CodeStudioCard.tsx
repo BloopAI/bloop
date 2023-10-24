@@ -18,6 +18,7 @@ import { deleteCodeStudio } from '../../../services/api';
 import FileIcon from '../../../components/FileIcon';
 import { PersonalQuotaContext } from '../../../context/personalQuotaContext';
 import Tooltip from '../../../components/Tooltip';
+import { DeviceContext } from '../../../context/deviceContext';
 
 type Props = {
   modified_at: string;
@@ -40,9 +41,11 @@ const CodeStudioCard = ({
   const { locale } = useContext(LocaleContext);
   const { handleAddStudioTab, handleRemoveTab } = useContext(TabsContext);
   const { refetchQuota } = useContext(PersonalQuotaContext.Handlers);
+  const { openWindow } = useContext(DeviceContext);
 
   const handleClick = useCallback(() => {
-    handleAddStudioTab(name, id);
+    // handleAddStudioTab(name, id);
+    openWindow({ type: 'studio', id, name });
     refetchQuota();
   }, [name, handleAddStudioTab, refetchQuota]);
 
