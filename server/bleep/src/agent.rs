@@ -221,7 +221,7 @@ impl Agent {
             Action::Proc { query, paths } => self.process_files(query, paths).await?,
         };
 
-        if self.exchanges.len() >= MAX_STEPS {
+        if self.last_exchange().search_steps.len() >= MAX_STEPS {
             return Ok(Some(Action::Answer {
                 paths: self.paths().enumerate().map(|(i, _)| i).collect(),
             }));
