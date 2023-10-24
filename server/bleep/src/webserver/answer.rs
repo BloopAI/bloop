@@ -95,7 +95,7 @@ pub(super) async fn answer(
 
     let conversation_id = ConversationId {
         user_id: user
-            .login()
+            .username()
             .ok_or_else(|| super::Error::user("didn't have user ID"))?
             .to_string(),
         thread_id: params.thread_id,
@@ -394,7 +394,7 @@ pub async fn explain(
     let conversation_id = ConversationId {
         thread_id: params.thread_id,
         user_id: user
-            .login()
+            .username()
             .ok_or_else(|| super::Error::user("didn't have user ID"))?
             .to_string(),
     };

@@ -74,7 +74,7 @@ pub async fn create(
 ) -> webserver::Result<String> {
     let mut transaction = app.sql.begin().await?;
 
-    let user_id = user.login().ok_or_else(no_user_id)?.to_string();
+    let user_id = user.username().ok_or_else(no_user_id)?.to_string();
 
     let studio_id: i64 = sqlx::query! {
         "INSERT INTO studios (user_id, name) VALUES (?, ?) RETURNING id",
@@ -155,7 +155,7 @@ pub async fn get(
     Path(id): Path<i64>,
     Query(params): Query<Get>,
 ) -> webserver::Result<Json<Studio>> {
-    let user_id = user.login().ok_or_else(no_user_id)?.to_string();
+    let user_id = user.username().ok_or_else(no_user_id)?.to_string();
 
     let snapshot_id = match params.snapshot_id {
         Some(id) => id,
@@ -204,7 +204,7 @@ pub async fn patch(
     Path(studio_id): Path<i64>,
     Json(patch): Json<Patch>,
 ) -> webserver::Result<Json<TokenCounts>> {
-    let user_id = user.login().ok_or_else(no_user_id)?.to_string();
+    let user_id = user.username().ok_or_else(no_user_id)?.to_string();
 
     let mut transaction = app.sql.begin().await?;
 
@@ -297,7 +297,7 @@ pub async fn delete(
     user: Extension<User>,
     Path(id): Path<i64>,
 ) -> webserver::Result<()> {
-    let user_id = user.login().ok_or_else(no_user_id)?.to_string();
+    let user_id = user.username().ok_or_else(no_user_id)?.to_string();
 
     sqlx::query!(
         "DELETE FROM studios WHERE id = ? AND user_id = ? RETURNING id",
@@ -323,7 +323,7 @@ pub async fn list(
     app: Extension<Application>,
     user: Extension<User>,
 ) -> webserver::Result<Json<Vec<ListItem>>> {
-    let user_id = user.login().ok_or_else(no_user_id)?.to_string();
+    let user_id = user.username().ok_or_else(no_user_id)?.to_string();
 
     let studios = sqlx::query!(
         "SELECT
@@ -569,7 +569,7 @@ pub async fn generate(
     user: Extension<User>,
     Path(studio_id): Path<i64>,
 ) -> webserver::Result<Sse<Pin<Box<dyn tokio_stream::Stream<Item = Result<sse::Event>> + Send>>>> {
-    let user_id = user.login().ok_or_else(no_user_id)?.to_string();
+    let user_id = user.username().ok_or_else(no_user_id)?.to_string();
 
     let snapshot_id = latest_snapshot_id(studio_id, &*app.sql, &user_id).await?;
 
@@ -728,7 +728,7 @@ async fn populate_studio_name(
     user: Extension<User>,
     studio_id: i64,
 ) -> webserver::Result<()> {
-    let user_id = user.login().ok_or_else(no_user_id)?.to_string();
+    let user_id = user.username().ok_or_else(no_user_id)?.to_string();
 
     let snapshot_id = latest_snapshot_id(studio_id, &*app.sql, &user_id).await?;
     let needs_name = sqlx::query! {
@@ -797,7 +797,7 @@ pub async fn import(
 ) -> webserver::Result<String> {
     let mut transaction = app.sql.begin().await?;
 
-    let user_id = user.login().ok_or_else(no_user_id)?.to_string();
+    let user_id = user.username().ok_or_else(no_user_id)?.to_string();
 
     let thread_id = params.thread_id.to_string();
 
@@ -1022,7 +1022,7 @@ pub async fn list_snapshots(
     user: Extension<User>,
     Path(studio_id): Path<i64>,
 ) -> webserver::Result<Json<Vec<Snapshot>>> {
-    let user_id = user.login().ok_or_else(no_user_id)?.to_string();
+    let user_id = user.username().ok_or_else(no_user_id)?.to_string();
 
     sqlx::query! {
         "SELECT ss.id as 'id!', ss.modified_at, ss.context, ss.messages
@@ -1054,7 +1054,7 @@ pub async fn delete_snapshot(
     user: Extension<User>,
     Path((studio_id, snapshot_id)): Path<(i64, i64)>,
 ) -> webserver::Result<()> {
-    let user_id = user.login().ok_or_else(no_user_id)?.to_string();
+    let user_id = user.username().ok_or_else(no_user_id)?.to_string();
 
     sqlx::query! {
         "DELETE FROM studio_snapshots

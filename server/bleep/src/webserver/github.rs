@@ -58,7 +58,7 @@ pub(super) async fn logout(
     Extension(user): Extension<User>,
     State(app): State<Application>,
 ) -> impl IntoResponse {
-    if let Some(login) = user.login() {
+    if let Some(login) = user.username() {
         app.user_profiles.remove(login);
         app.user_profiles.store().unwrap();
         app.credentials.remove_user().await;

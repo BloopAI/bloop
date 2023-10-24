@@ -439,7 +439,7 @@ impl Agent {
         let conversation = (self.repo_ref.clone(), self.exchanges.clone());
         let conversation_id = self
             .user
-            .login()
+            .username()
             .context("didn't have user ID")
             .map(|user_id| ConversationId {
                 thread_id: self.thread_id,

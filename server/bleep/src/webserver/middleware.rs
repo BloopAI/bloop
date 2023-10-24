@@ -32,7 +32,7 @@ pub enum User {
 }
 
 impl User {
-    pub fn login(&self) -> Option<&str> {
+    pub fn username(&self) -> Option<&str> {
         match self {
             User::Desktop { login, .. } => Some(login),
             User::Cloud { login, .. } => Some(login),
@@ -132,7 +132,7 @@ async fn sentry_layer_mw<B>(
     next: Next<B>,
 ) -> Response {
     let hub = Hub::with(|hub| Hub::new_from_top(hub));
-    let username = user.login().map(str::to_owned);
+    let username = user.username().map(str::to_owned);
 
     hub.configure_scope(move |scope| {
         scope.add_event_processor(move |mut event| {
