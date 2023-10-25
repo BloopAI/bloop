@@ -133,8 +133,9 @@ async fn poll_for_oauth_token(code: String, app: Application) {
         let response = match reqwest::get(&query_url).await {
             Ok(res) => res.json().await,
             Err(err) => {
-                warn!(?err, "github authorization failed");
-                return;
+                warn!(?err, "github authorization query failed");
+                clock.tick().await;
+                continue;
             }
         };
 
