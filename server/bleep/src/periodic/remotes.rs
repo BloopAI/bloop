@@ -51,7 +51,7 @@ async fn sleep_systime(duration: Duration) {
     let start = SystemTime::now();
 
     loop {
-        tokio::time::sleep(Duration::from_secs(2)).await;
+        tokio::time::sleep(Duration::from_secs(1)).await;
         let Ok(elapsed) = start.elapsed() else {
             // There was a drift in system time probably because of
             // sleep.
@@ -68,31 +68,29 @@ pub(crate) async fn sync_github_status(app: Application) {
 
     // In case this is a GitHub App installation, we get the
     // credentials from CLI/config
-    update_credentials(&app).await;
-
     loop {
         // then retrieve username & other maintenance
         update_credentials(&app).await;
-
-        'repo_list: {
-            if let Some(gh) = app.credentials.github() {
-                let repos = match gh.current_repo_list().await {
-                    Ok(repos) => {
-                        debug!("fetched new repo list");
-                        repos
-                    }
-                    Err(err) => {
-                        debug!(?err, "failed to update repo list");
-                        break 'repo_list;
-                    }
-                };
-
-                let new = gh.update_repositories(repos);
-                app.credentials.set_github(new);
-            }
-        }
-
+        update_repo_list(&app).await;
         sleep_systime(POLL_PERIOD).await;
+    }
+}
+
+pub(crate) async fn update_repo_list(app: &Application) {
+    if let Some(gh) = app.credentials.github() {
+        let repos = match gh.current_repo_list().await {
+            Ok(repos) => {
+                debug!("fetched new repo list");
+                repos
+            }
+            Err(err) => {
+                debug!(?err, "failed to update repo list");
+                return;
+            }
+        };
+
+        let new = gh.update_repositories(repos);
+        app.credentials.set_github(new);
     }
 }
 
@@ -122,7 +120,7 @@ pub(crate) async fn update_credentials(app: &Application) {
     if app.env.allow(Feature::DesktopUserAuth) {
         let Some(github::State {
             auth: github::Auth::OAuth(ref creds),
-            ..
+            repositories,
         }) = app.credentials.github()
         else {
             return;
@@ -197,37 +195,42 @@ pub(crate) async fn update_credentials(app: &Application) {
                 }
             };
 
-        app.credentials
-            .set_github(github::State::with_auth(Auth::OAuth(
-                CognitoGithubTokenBundle {
-                    access_token: tokens.access_token,
-                    refresh_token: creds.refresh_token.clone(),
-                    github_access_token: creds.github_access_token.clone(),
-                },
-            )));
+        app.credentials.set_github(github::State {
+            repositories,
+            auth: Auth::OAuth(CognitoGithubTokenBundle {
+                access_token: tokens.access_token,
+                refresh_token: creds.refresh_token.clone(),
+                github_access_token: creds.github_access_token.clone(),
+            }),
+        });
 
         app.credentials.store().unwrap();
         info!("new bloop access keys saved");
 
-        let github_expired = if let Some(github) = app.credentials.github() {
-            let username = github.validate().await;
-            if let Ok(Some(ref user)) = username {
-                debug!(?user, "updated user");
-                app.credentials.set_user(user.into()).await;
-                if let Err(err) = app.credentials.store() {
-                    error!(?err, "failed to save user credentials");
-                }
+        validate_github_credentials(app).await;
+    }
+}
+
+pub(crate) async fn validate_github_credentials(app: &Application) {
+    let github_expired = if let Some(github) = app.credentials.github() {
+        let username = github.validate().await;
+        if let Ok(Some(ref user)) = username {
+            debug!(?user, "updated user");
+            app.credentials.set_user(user.into()).await;
+            if let Err(err) = app.credentials.store() {
+                error!(?err, "failed to save user credentials");
             }
-
-            username.is_err()
-        } else {
-            true
-        };
-
-        if github_expired && app.credentials.remove(&Backend::Github).is_some() {
-            app.credentials.store().unwrap();
-            debug!("github oauth is invalid; credentials removed");
         }
+
+        username.is_err()
+    } else {
+        error!("failed to create github client?");
+        true
+    };
+
+    if github_expired && app.credentials.remove(&Backend::Github).is_some() {
+        app.credentials.store().unwrap();
+        debug!("github oauth is invalid; credentials removed");
     }
 }
 
