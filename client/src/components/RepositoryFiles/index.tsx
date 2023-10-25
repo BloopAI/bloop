@@ -22,6 +22,7 @@ type Props = {
   maxInitialFiles?: number;
   noRepoName?: boolean;
   repoStatus: SyncStatus;
+  markRepoIndexing: () => void;
 };
 
 const RepositoryFiles = ({
@@ -32,6 +33,7 @@ const RepositoryFiles = ({
   maxInitialFiles,
   noRepoName,
   repoStatus,
+  markRepoIndexing,
 }: Props) => {
   const { tab } = useContext(UIContext.Tab);
   const pathParts = useMemo<PathParts[]>(() => {
@@ -66,8 +68,9 @@ const RepositoryFiles = ({
   const onFileIndexRequested = useCallback(
     (filePath: string) => {
       forceFileToBeIndexed(tab.repoRef, filePath);
+      markRepoIndexing();
     },
-    [tab.repoRef],
+    [tab.repoRef, markRepoIndexing],
   );
 
   return (

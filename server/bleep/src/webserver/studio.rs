@@ -74,7 +74,7 @@ pub async fn create(
 ) -> webserver::Result<String> {
     let mut transaction = app.sql.begin().await?;
 
-    let user_id = user.login().ok_or_else(no_user_id)?.to_string();
+    let user_id = user.username().ok_or_else(no_user_id)?.to_string();
 
     let studio_id: i64 = sqlx::query! {
         "INSERT INTO studios (user_id, name) VALUES (?, ?) RETURNING id",
@@ -155,7 +155,7 @@ pub async fn get(
     Path(id): Path<i64>,
     Query(params): Query<Get>,
 ) -> webserver::Result<Json<Studio>> {
-    let user_id = user.login().ok_or_else(no_user_id)?.to_string();
+    let user_id = user.username().ok_or_else(no_user_id)?.to_string();
 
     let snapshot_id = match params.snapshot_id {
         Some(id) => id,
@@ -204,7 +204,7 @@ pub async fn patch(
     Path(studio_id): Path<i64>,
     Json(patch): Json<Patch>,
 ) -> webserver::Result<Json<TokenCounts>> {
-    let user_id = user.login().ok_or_else(no_user_id)?.to_string();
+    let user_id = user.username().ok_or_else(no_user_id)?.to_string();
 
     let mut transaction = app.sql.begin().await?;
 
@@ -297,7 +297,7 @@ pub async fn delete(
     user: Extension<User>,
     Path(id): Path<i64>,
 ) -> webserver::Result<()> {
-    let user_id = user.login().ok_or_else(no_user_id)?.to_string();
+    let user_id = user.username().ok_or_else(no_user_id)?.to_string();
 
     sqlx::query!(
         "DELETE FROM studios WHERE id = ? AND user_id = ? RETURNING id",
@@ -323,7 +323,7 @@ pub async fn list(
     app: Extension<Application>,
     user: Extension<User>,
 ) -> webserver::Result<Json<Vec<ListItem>>> {
-    let user_id = user.login().ok_or_else(no_user_id)?.to_string();
+    let user_id = user.username().ok_or_else(no_user_id)?.to_string();
 
     let studios = sqlx::query!(
         "SELECT
@@ -569,12 +569,13 @@ pub async fn generate(
     user: Extension<User>,
     Path(studio_id): Path<i64>,
 ) -> webserver::Result<Sse<Pin<Box<dyn tokio_stream::Stream<Item = Result<sse::Event>> + Send>>>> {
-    let user_id = user.login().ok_or_else(no_user_id)?.to_string();
+    let user_id = user.username().ok_or_else(no_user_id)?.to_string();
 
     let snapshot_id = latest_snapshot_id(studio_id, &*app.sql, &user_id).await?;
 
-    let llm_gateway = app
-        .llm_gateway_client()
+    let llm_gateway = user
+        .llm_gateway(&app)
+        .await
         .map_err(|e| Error::user(e).with_status(StatusCode::UNAUTHORIZED))?
         .quota_gated(!app.env.is_cloud_instance())
         .model(LLM_GATEWAY_MODEL)
@@ -727,7 +728,7 @@ async fn populate_studio_name(
     user: Extension<User>,
     studio_id: i64,
 ) -> webserver::Result<()> {
-    let user_id = user.login().ok_or_else(no_user_id)?.to_string();
+    let user_id = user.username().ok_or_else(no_user_id)?.to_string();
 
     let snapshot_id = latest_snapshot_id(studio_id, &*app.sql, &user_id).await?;
     let needs_name = sqlx::query! {
@@ -750,8 +751,9 @@ async fn populate_studio_name(
     .await
     .map(|r| (r.context, r.messages))?;
 
-    let llm_gateway = app
-        .llm_gateway_client()
+    let llm_gateway = user
+        .llm_gateway(&app)
+        .await
         .map_err(|e| Error::user(e).with_status(StatusCode::UNAUTHORIZED))?
         .model("gpt-3.5-turbo-16k-0613")
         .temperature(0.0);
@@ -795,7 +797,7 @@ pub async fn import(
 ) -> webserver::Result<String> {
     let mut transaction = app.sql.begin().await?;
 
-    let user_id = user.login().ok_or_else(no_user_id)?.to_string();
+    let user_id = user.username().ok_or_else(no_user_id)?.to_string();
 
     let thread_id = params.thread_id.to_string();
 
@@ -843,8 +845,7 @@ pub async fn import(
     }))
     .collect::<Vec<_>>();
 
-    let new_context =
-        extract_relevant_chunks((*app).clone(), &exchanges, &imported_context).await?;
+    let new_context = extract_relevant_chunks(&user, &app, &exchanges, &imported_context).await?;
 
     let context = canonicalize_context(new_context.clone().into_iter().chain(old_context.clone()))
         .collect::<Vec<_>>();
@@ -897,14 +898,16 @@ pub async fn import(
 }
 
 async fn extract_relevant_chunks(
-    app: Application,
+    user: &User,
+    app: &Application,
     exchanges: &[Exchange],
     context: &[ContextFile],
 ) -> webserver::Result<Vec<ContextFile>> {
     let context_json = serde_json::to_string(&context).unwrap();
 
-    let llm_gateway = app
-        .llm_gateway_client()
+    let llm_gateway = user
+        .llm_gateway(app)
+        .await
         .map_err(|e| Error::user(e).with_status(StatusCode::UNAUTHORIZED))?
         .model(LLM_GATEWAY_MODEL)
         .temperature(0.0);
@@ -1019,7 +1022,7 @@ pub async fn list_snapshots(
     user: Extension<User>,
     Path(studio_id): Path<i64>,
 ) -> webserver::Result<Json<Vec<Snapshot>>> {
-    let user_id = user.login().ok_or_else(no_user_id)?.to_string();
+    let user_id = user.username().ok_or_else(no_user_id)?.to_string();
 
     sqlx::query! {
         "SELECT ss.id as 'id!', ss.modified_at, ss.context, ss.messages
@@ -1051,7 +1054,7 @@ pub async fn delete_snapshot(
     user: Extension<User>,
     Path((studio_id, snapshot_id)): Path<(i64, i64)>,
 ) -> webserver::Result<()> {
-    let user_id = user.login().ok_or_else(no_user_id)?.to_string();
+    let user_id = user.username().ok_or_else(no_user_id)?.to_string();
 
     sqlx::query! {
         "DELETE FROM studio_snapshots

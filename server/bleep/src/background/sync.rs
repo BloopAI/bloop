@@ -171,7 +171,6 @@ impl SyncHandle {
                     }
                 }
                 Err(err) => {
-                    error!(?err, ?self.reporef, "failed to sync repository");
                     self.set_status(|_| SyncStatus::Error {
                         message: err.to_string(),
                     })
@@ -195,7 +194,7 @@ impl SyncHandle {
 
         let tutorial_questions = if repository.last_index_unix_secs == 0 {
             let db = self.app.sql.clone();
-            let llm_gateway = self.app.llm_gateway_client();
+            let llm_gateway = self.app.user().await.llm_gateway(&self.app).await;
             let repo_pool = self.app.repo_pool.clone();
             let reporef = self.reporef.clone();
 
@@ -225,12 +224,9 @@ impl SyncHandle {
                 self.set_status(|_| SyncStatus::Done)
             }
             Err(SyncError::Cancelled) => self.set_status(|_| SyncStatus::Cancelled),
-            Err(err) => {
-                error!(?err, ?self.reporef, "failed to index repository");
-                self.set_status(|_| SyncStatus::Error {
-                    message: err.to_string(),
-                })
-            }
+            Err(err) => self.set_status(|_| SyncStatus::Error {
+                message: err.to_string(),
+            }),
         };
 
         Ok(status.expect("failed to update repo status"))
@@ -446,7 +442,11 @@ impl SyncHandle {
             repo.sync_status.clone()
         })?;
 
-        debug!(?self.reporef, ?new_status, "new status");
+        if let SyncStatus::Error { ref message } = new_status {
+            error!(?self.reporef, err=?message, "indexing failed");
+        } else {
+            debug!(?self.reporef, ?new_status, "new status");
+        }
         self.pipes.status(new_status.clone());
         Some(new_status)
     }

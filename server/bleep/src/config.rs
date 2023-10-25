@@ -156,6 +156,10 @@ pub struct Configuration {
     #[clap(long)]
     pub cognito_mgmt_url: Option<reqwest::Url>,
 
+    /// URL from which to initialize Cognito configuration
+    #[clap(long)]
+    pub cognito_config_url: Option<reqwest::Url>,
+
     //
     // Cloud-based Github App installation-specific values
     //
@@ -198,6 +202,14 @@ macro_rules! right_if_default {
     };
 }
 
+#[derive(Deserialize)]
+struct RemoteConfig {
+    auth_url: reqwest::Url,
+    mgmt_url: reqwest::Url,
+    client_id: String,
+    userpool_id: String,
+}
+
 impl Configuration {
     pub fn read(file: impl AsRef<Path>) -> Result<Self> {
         let file = std::fs::File::open(file)?;
@@ -224,6 +236,22 @@ impl Configuration {
         };
 
         Ok(Self::merge(file, cli))
+    }
+
+    pub async fn with_remote_cognito_config(mut self) -> Result<Self> {
+        let url = self
+            .cognito_config_url
+            .clone()
+            .context("Invalid config, cognito_config_url missing")?;
+
+        let config: RemoteConfig = reqwest::get(url).await?.json().await?;
+
+        self.cognito_auth_url = Some(config.auth_url);
+        self.cognito_mgmt_url = Some(config.mgmt_url);
+        self.cognito_client_id = Some(config.client_id);
+        self.cognito_userpool_id = Some(config.userpool_id);
+
+        Ok(self)
     }
 
     /// Merge 2 configurations with values from `b` taking precedence
@@ -302,6 +330,8 @@ impl Configuration {
             cognito_auth_url: b.cognito_auth_url.or(a.cognito_auth_url),
 
             cognito_mgmt_url: b.cognito_mgmt_url.or(a.cognito_mgmt_url),
+
+            cognito_config_url: b.cognito_config_url.or(a.cognito_config_url),
 
             bloop_instance_secret: b.bloop_instance_secret.or(a.bloop_instance_secret),
 

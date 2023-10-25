@@ -20,14 +20,13 @@ use git_version as _;
 #[cfg(all(feature = "debug", not(tokio_unstable)))]
 use console_subscriber as _;
 
-use secrecy::{ExposeSecret, SecretString};
 use state::PersistedState;
 use std::fs::canonicalize;
 use user::UserProfile;
 
 use crate::{
     background::SyncQueue, indexes::Indexes, remotes::CognitoGithubTokenBundle, semantic::Semantic,
-    state::RepositoryPool,
+    state::RepositoryPool, webserver::middleware::User,
 };
 use anyhow::{bail, Context, Result};
 use axum::extract::FromRef;
@@ -252,10 +251,6 @@ impl Application {
         LOGGER_INSTALLED.set(true).unwrap();
     }
 
-    pub fn user(&self) -> Option<String> {
-        self.credentials.user()
-    }
-
     pub async fn run(self) -> Result<()> {
         Self::install_logging(&self.config);
 
@@ -265,13 +260,7 @@ impl Application {
             joins.spawn(self.write_index().startup_scan());
         } else {
             if !self.config.disable_background {
-                tokio::spawn(periodic::sync_github_status(self.clone()));
-                tokio::spawn(periodic::check_repo_updates(self.clone()));
-                tokio::spawn(periodic::log_and_branch_rotate(self.clone()));
-
-                if !self.env.is_cloud_instance() {
-                    tokio::spawn(periodic::clear_disk_logs(self.clone()));
-                }
+                periodic::start_background_jobs(self.clone());
             }
 
             joins.spawn(webserver::start(self));
@@ -300,13 +289,13 @@ impl Application {
         false
     }
 
-    fn track_query(&self, user: &webserver::middleware::User, event: &analytics::QueryEvent) {
+    fn track_query(&self, user: &User, event: &analytics::QueryEvent) {
         if let Some(analytics) = self.analytics.as_ref() {
             analytics.track_query(user, event.clone());
         }
     }
 
-    fn track_studio(&self, user: &webserver::middleware::User, event: analytics::StudioEvent) {
+    fn track_studio(&self, user: &User, event: analytics::StudioEvent) {
         if let Some(analytics) = self.analytics.as_ref() {
             analytics.track_studio(user, event);
         }
@@ -317,49 +306,39 @@ impl Application {
         self.analytics.as_ref().map(f)
     }
 
-    fn org_name(&self) -> Option<String> {
+    pub fn username(&self) -> Option<String> {
+        self.credentials.user().clone()
+    }
+
+    pub(crate) async fn user(&self) -> User {
+        crate::periodic::update_credentials(self).await;
+
         self.credentials
-            .github()
-            .and_then(|state| match state.auth {
-                remotes::github::Auth::App { org, .. } => Some(org),
-                _ => None,
+            .user()
+            .zip(self.credentials.github())
+            .and_then(|(user, gh)| {
+                use crate::remotes::github::{Auth, State};
+                match gh {
+                    State {
+                        auth:
+                            Auth::OAuth(CognitoGithubTokenBundle {
+                                access_token: ref token,
+                                ..
+                            }),
+                        ..
+                    } => Some(User::Desktop {
+                        access_token: token.clone(),
+                        login: user,
+                        crab: Arc::new(move || Ok(gh.client()?)),
+                    }),
+                    _ => None,
+                }
             })
+            .unwrap_or_else(|| User::Unknown)
     }
 
     fn write_index(&self) -> background::BoundSyncQueue {
         self.sync_queue.bind(self.clone())
-    }
-
-    fn answer_api_token(&self) -> Result<Option<SecretString>> {
-        Ok(if self.env.allow(env::Feature::DesktopUserAuth) {
-            let Some(cred) = self.credentials.github() else {
-                bail!("missing Github token");
-            };
-
-            use remotes::github::{Auth, State};
-            match cred {
-                State {
-                    auth:
-                        Auth::OAuth(CognitoGithubTokenBundle {
-                            access_token: token,
-                            ..
-                        }),
-                    ..
-                } => Some(token.into()),
-
-                _ => {
-                    bail!("cannot connect to answer API");
-                }
-            }
-        } else {
-            None
-        })
-    }
-
-    fn llm_gateway_client(&self) -> Result<llm_gateway::Client> {
-        let answer_api_token = self.answer_api_token()?.map(|s| s.expose_secret().clone());
-
-        Ok(llm_gateway::Client::new(&self.config.answer_api_url).bearer(answer_api_token))
     }
 
     fn seal_auth_state(&self, payload: serde_json::Value) -> String {
