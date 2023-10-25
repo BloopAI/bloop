@@ -97,19 +97,24 @@ pub enum ExchangeState {
 impl Drop for Agent {
     fn drop(&mut self) {
         match self.exchange_state {
-            ExchangeState::Pending if !std::thread::panicking() => {
-                self.last_exchange_mut().apply_update(Update::Cancel);
+            ExchangeState::Failed => {}
+            ExchangeState::Pending => {
+                if std::thread::panicking() {
+                    self.track_query(
+                        EventData::output_stage("cancelled")
+                            .with_payload("message", "request panicked"),
+                    );
+                } else {
+                    self.last_exchange_mut().apply_update(Update::Cancel);
 
-                self.track_query(
-                    EventData::output_stage("cancelled")
-                        .with_payload("message", "request was cancelled"),
-                );
+                    self.track_query(
+                        EventData::output_stage("cancelled")
+                            .with_payload("message", "request was cancelled"),
+                    );
 
-                tokio::spawn(self.store());
+                    tokio::spawn(self.store());
+                }
             }
-
-            // If something failed or we're panicking, don't store the conversation.
-            ExchangeState::Failed | ExchangeState::Pending => {}
 
             ExchangeState::Complete => {
                 tokio::spawn(self.store());
