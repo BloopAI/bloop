@@ -116,12 +116,6 @@ pub struct HubOptions {
     pub package_metadata: Option<PackageMetadata>,
 }
 
-impl HubOptions {
-    pub fn enable_telemetry(&self) -> bool {
-        true
-    }
-}
-
 #[derive(Serialize, Deserialize)]
 pub struct DeviceId(String);
 
@@ -187,10 +181,6 @@ impl RudderHub {
 
     pub fn track_query(&self, user: &crate::webserver::middleware::User, event: QueryEvent) {
         if let Some(options) = &self.options {
-            if !options.enable_telemetry() {
-                return;
-            }
-
             self.send(Message::Track(Track {
                 user_id: Some(self.tracking_id(user.login())),
                 event: "openai query".to_owned(),

@@ -51,16 +51,6 @@ fn main() {
 }
 
 #[tauri::command]
-fn enable_telemetry() {
-    // noop, for background compatibility
-}
-
-#[tauri::command]
-fn disable_telemetry() {
-    // noop, for background compatibility
-}
-
-#[tauri::command]
 fn show_folder_in_finder(path: String) {
     let path = PathBuf::from(path).canonicalize().unwrap();
 
