@@ -413,7 +413,7 @@ impl Semantic {
             .search_with(
                 parsed_query,
                 vector.clone(),
-                if retrieve_more { limit * 2 } else { limit }, // Retrieve double `limit` and deduplicate
+                if retrieve_more { limit * 4 } else { limit }, // Retrieve 4x `limit` and deduplicate
                 offset,
                 threshold,
             )
@@ -423,7 +423,8 @@ impl Semantic {
                     .map(Payload::from_qdrant)
                     .collect::<Vec<_>>()
             })?;
-        Ok(deduplicate_snippets(results, vector, limit))
+            let deduplicated_snippets = deduplicate_snippets(results, vector, if retrieve_more { limit * 2 } else { limit });
+            Ok(rerank(deduplicated_snippets,  &query, limit))
     }
 
     pub async fn batch_search<'a>(
@@ -465,7 +466,8 @@ impl Semantic {
         // deduplicate with mmr with respect to the mean of query vectors
         // TODO: implement a more robust multi-vector deduplication strategy
         let target_vector = mean_pool(vectors);
-        Ok(deduplicate_snippets(results, target_vector, limit))
+        let deduplicated_snippets = deduplicate_snippets(results, target_vector, limit);
+        Ok(deduplicated_snippets)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -784,6 +786,73 @@ fn filter_overlapping_snippets(mut snippets: Vec<Payload>) -> Vec<Payload> {
 
     snippets.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap());
     snippets
+}
+
+pub fn rerank(
+    all_snippets: Vec<Payload>,
+    query: &str,
+    output_count: u64,
+
+) -> Vec<Payload> {
+    let reranked_indices = rerank_indices(all_snippets.clone(), query, output_count as i32);
+    let mut reranked_payload: Vec<Payload> = Vec::new();
+    for &index in &reranked_indices {
+        if let Some(payload) = all_snippets.get(index as usize){
+            reranked_payload.push(payload.clone())
+        }
+    }
+    reranked_payload
+}
+
+pub fn rerank_indices(
+    all_snippets: Vec<Payload>,
+    query: &str,
+    top_n: i32,
+) -> Vec<i32> {
+    let request = CohereRequest{
+        return_documents: false,
+        max_chunks_per_doc: 10,
+        model: "rerank-english-v2.0".to_string(),
+        query: query.to_string(),
+        documents: all_snippets.into_iter().map(|x| x.text).collect(),
+        top_n: top_n,
+    };
+
+    let client = reqwest::blocking::Client::new();
+
+    let url = "https://api.cohere.ai/v1/rerank";
+    let token = env::var("COHERE_API_TOKEN").expect("Cohere token not set");
+
+    let response: CohereResponse = client
+        .post(url)
+        .bearer_auth(token)
+        .json(&request) 
+        .send().expect("Cohere request failed").json().expect("Cohere fail to deserialize");
+
+    response.results.into_iter().map(|x| x.index).collect()
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct CohereRequest {
+    pub return_documents: bool,
+    pub max_chunks_per_doc: i32,
+    pub model: String,
+    pub query: String,
+    pub documents: Vec<String>,
+    pub top_n: i32,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct CohereResponse {
+    pub id: String,
+    pub results: Vec<CohereResult>,
+    pub meta: serde_json::Value,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct CohereResult {
+    pub index: i32,
+    pub relevance_score: f32,
 }
 
 pub fn deduplicate_snippets(
