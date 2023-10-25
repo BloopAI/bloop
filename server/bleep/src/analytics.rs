@@ -199,10 +199,6 @@ impl RudderHub {
 
     pub fn track_studio(&self, user: &crate::webserver::middleware::User, event: StudioEvent) {
         if let Some(options) = &self.options {
-            if !options.enable_telemetry() {
-                return;
-            }
-
             self.send(Message::Track(Track {
                 user_id: Some(self.tracking_id(user.login())),
                 event: "code studio".to_owned(),

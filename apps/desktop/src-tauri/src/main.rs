@@ -42,8 +42,6 @@ fn main() {
         .setup(backend::initialize)
         .invoke_handler(tauri::generate_handler![
             show_folder_in_finder,
-            enable_telemetry,
-            disable_telemetry,
             backend::get_last_log_file,
         ])
         .run(tauri::generate_context!())
