@@ -209,25 +209,30 @@ pub(crate) async fn update_credentials(app: &Application) {
         app.credentials.store().unwrap();
         info!("new bloop access keys saved");
 
-        let github_expired = if let Some(github) = app.credentials.github() {
-            let username = github.validate().await;
-            if let Ok(Some(ref user)) = username {
-                debug!(?user, "updated user");
-                app.credentials.set_user(user.into()).await;
-                if let Err(err) = app.credentials.store() {
-                    error!(?err, "failed to save user credentials");
-                }
+        validate_github_credentials(app).await;
+    }
+}
+
+pub(crate) async fn validate_github_credentials(app: &Application) {
+    let github_expired = if let Some(github) = app.credentials.github() {
+        let username = github.validate().await;
+        if let Ok(Some(ref user)) = username {
+            debug!(?user, "updated user");
+            app.credentials.set_user(user.into()).await;
+            if let Err(err) = app.credentials.store() {
+                error!(?err, "failed to save user credentials");
             }
-
-            username.is_err()
-        } else {
-            true
-        };
-
-        if github_expired && app.credentials.remove(&Backend::Github).is_some() {
-            app.credentials.store().unwrap();
-            debug!("github oauth is invalid; credentials removed");
         }
+
+        username.is_err()
+    } else {
+        println!("failed to create github client?");
+        true
+    };
+
+    if github_expired && app.credentials.remove(&Backend::Github).is_some() {
+        app.credentials.store().unwrap();
+        debug!("github oauth is invalid; credentials removed");
     }
 }
 

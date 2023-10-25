@@ -159,6 +159,8 @@ async fn poll_for_oauth_token(code: String, app: Application) {
 
     debug!("acquired credentials");
     app.credentials.set_github(github::Auth::OAuth(auth));
+    crate::periodic::validate_github_credentials(&app).await;
+
     let username = app
         .credentials
         .github()
