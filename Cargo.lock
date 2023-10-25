@@ -1709,8 +1709,8 @@ dependencies = [
 
 [[package]]
 name = "esaxx-rs"
-version = "0.1.8"
-source = "git+https://github.com/bloopai/esaxx-rs#76222cfd485e7c5dbccefb7f836b0fa5497dc03b"
+version = "0.1.10"
+source = "git+https://github.com/bloopai/esaxx-rs#1b762f607f82ca83fc3eda6a365b80d5932f563b"
 dependencies = [
  "cc",
 ]
