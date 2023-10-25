@@ -13,7 +13,7 @@ use axum::{
     Extension, Json,
 };
 use chrono::NaiveDateTime;
-use futures::{pin_mut, stream, FutureExt, StreamExt, TryStreamExt};
+use futures::{pin_mut, stream, StreamExt, TryStreamExt};
 use rayon::prelude::*;
 use reqwest::StatusCode;
 use tracing::{debug, error};
@@ -27,8 +27,6 @@ use crate::{
     repo::RepoRef,
     webserver, Application,
 };
-
-mod decode;
 
 const LLM_GATEWAY_MODEL: &str = "gpt-4-0613";
 
@@ -137,15 +135,6 @@ enum Message {
     Assistant(String),
 }
 
-impl Message {
-    async fn decode(self, app: Application, context: Vec<ContextFile>) -> Self {
-        match self {
-            m @ Self::User(..) => m,
-            Self::Assistant(m) => Self::Assistant(decode::decode(app, m, context).await),
-        }
-    }
-}
-
 impl From<&Message> for llm_gateway::api::Message {
     fn from(value: &Message) -> Self {
         match value {
@@ -188,20 +177,15 @@ pub async fn get(
 
     let context: Vec<ContextFile> =
         serde_json::from_str(&row.context).context("failed to deserialize context")?;
-    let raw_messages: Vec<Message> =
+    let messages: Vec<Message> =
         serde_json::from_str(&row.messages).context("failed to deserialize message list")?;
-
-    let decoded_messages = stream::iter(raw_messages.iter().cloned())
-        .then(|m| m.decode((*app).clone(), context.clone()))
-        .collect::<Vec<_>>()
-        .await;
 
     Ok(Json(Studio {
         modified_at: row.modified_at,
         name: row.name.unwrap_or_else(default_studio_name),
-        token_counts: token_counts((*app).clone(), &raw_messages, &context).await?,
+        token_counts: token_counts((*app).clone(), &messages, &context).await?,
         context,
-        messages: decoded_messages,
+        messages,
     }))
 }
 
@@ -627,7 +611,6 @@ pub async fn generate(
 
     let tokens = llm_gateway.chat_stream(&llm_messages, None).await?;
 
-    let app2 = (*app).clone();
     let stream = async_stream::try_stream! {
         pin_mut!(tokens);
 
@@ -672,13 +655,11 @@ pub async fn generate(
         async move { ok }
     });
 
-    let event_stream = stream
-        .and_then(move |md| decode::decode(app2.clone(), md, context.clone()).map(Ok))
-        .map(|result| {
-            sse::Event::default()
-                .json_data(result.map_err(|e: Error| e.to_string()))
-                .map_err(anyhow::Error::new)
-        });
+    let event_stream = stream.map(|result| {
+        sse::Event::default()
+            .json_data(result.map_err(|e: Error| e.to_string()))
+            .map_err(anyhow::Error::new)
+    });
     let done_stream = stream::once(async { Ok(sse::Event::default().data("[DONE]")) });
 
     let stream = event_stream.chain(done_stream);

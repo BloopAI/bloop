@@ -234,7 +234,7 @@ println!("hello world!");
 
 pub fn studio_article_prompt(context: &str) -> String {
     format!(
-        r#"{context}Your job is to answer a query about a codebase using the information above. You can generate, quote, and modify code.
+        r#"{context}Your job is to answer a query about a codebase using the information above.
 
 You must use the following formatting rules at all times:
 - Provide only as much information and code as is necessary to answer the query and be concise
@@ -242,155 +242,31 @@ You must use the following formatting rules at all times:
 - When referring to code, you must provide an example in a code block
 - Keep number of quoted lines of code to a minimum when possible
 - When outputting code blocks, you MUST use four backticks for the outer block!
-- You may use two types of markdown blocks: Generated and Modify
-  - You MUST use four backticks for the outer block!
-  - Generated code blocks have no effect
-  - Modify blocks prompt to create a replacement of the users' input code
-  - When generating example code, use a Generated block
-  - When modifying code, use a Modify block with modified contents
-  - Modify blocks MUST be appended with an additional info string after the final closing backticks, that is a comma-separated list of the format `path:PATH,source_start_line:X,source_end_line:Y`
-- Basic markdown is otherwise allowed
+  - For example, to generate code which includes doc comments:
+    ````rust
+    /** Foos the bar
 
-Here is an example answer. First, the example context:
-
-> ##### PATHS #####
-> src/userService.js
->
-> ##### CODE CHUNKS #####
->
-> ### src/userService.js ###
-> 1 import {{ renderPremiumProfile, renderBasicProfile }} from '../profiles';
-> 2
-> 3 // Fetch the user
-> 4 fetch('/api/user')
-> 5     .then(response => response.json())
-> 6     .then(user => {{
-> 7         if (user.premium) {{
-> 8             document.getElementById('profile').innerHTML = renderPremiumProfile(user);
-> 9         }} else {{
-> 10             document.getElementById('profile').innerHTML = renderBasicProfile(user);
-> 11         }}
-> 12     }})
-> 13     .catch(error => console.error('Error fetching user data:', error));
-> 14
-> 15 console.log("loaded")
-
-The query was "deduplicate rendering in the user service", which you responded with:
-
-> In `src/userService.js`, we fetch user data and update the UI accordingly, using two separate rendering functions (`renderPremiumProfile` and `renderBasicProfile`) depending on whether the user has a premium account.
->
-> A more elegant approach might involve creating a helper function that takes the user data as input and returns the appropriate rendering function. Here's an example:
->
-> ````javascript
-> function selectProfileRenderer(user) {{
->     return user.premium ? renderPremiumProfile : renderBasicProfile;
-> }}
-> ````
->
-> With this idea in mind, let's refactor the original code block to utilize this helper function, improving readability and maintainability.
->
-> ````javascript
-> // Fetch the user
-> fetch('/api/user')
->     .then(response => response.json())
->     .then(user => {{
->         // Select the appropriate renderer based on user status
->         const renderProfile = selectProfileRenderer(user);
->         document.getElementById('profile').innerHTML = renderProfile(user);
->     }})
->     .catch(error => console.error('Error fetching user data:', error));
->
-> // A helper function to choose the appropriate profile rendering function
-> function selectProfileRenderer(user) {{
->     return user.premium ? renderPremiumProfile : renderBasicProfile;
-> }}
-> ````path:src/userService.js,source_start_line:3,source_end_line:13
->
-> With this refactoring, the `updateUserProfile` function becomes more concise and its main purpose (fetching user data and updating the UI) becomes clearer. The decision logic about which profile to render is now encapsulated in the `selectProfileRenderer` helper function, adhering to the single responsibility principle and making the code easier to understand and manage.
-
-It is CRITICAL that the source_start_line in the Modify block is correct! If you are off by one, this will NOT work!
-
-Some example Modify blocks showcasing correct line numbers:
-
-1. Include annotations - the Modify block starts at line 3
-    > ```
-    > 1 use std::collections::HashMap;
-    > 2
-    > 3 #[derive(Clone)]
-    > 4 struct Foo {{
-    > 5     foo: String,
-    > 6 }}
-    > ```
-
-    The Modify block you may want to generate:
-
-    > ````rust
-    > #[derive(Clone)]
-    > struct Foo {{
-    >     foo: u32,
-    > }}
-    > ````path:src/foo.rs,source_start_line:3,source_end_line:6
-2. Include comments - the Modify block starts at line 3
-    > 1 use std::collections::HashMap;
-    > 2
-    > 3 // Foos the bar.
-    > 4 struct Foo {{
-    > 5     foo: String,
-    > 6 }}
-
-    The Modify block you may want to generate:
-
-    > ````rust
-    > // Foos the bar.
-    > struct Foo {{
-    >     foo: u32,
-    > }}
-    > ````path:src/foo.rs,source_start_line:3,source_end_line:6
-3. Ignoring documentation - the Modify block starts at line 4.
-    > 1 use std::collections::HashMap;
-    > 2
-    > 3 /// Foos the bar.
-    > 4 struct Foo {{
-    > 5     foo: String,
-    > 6 }}
-
-    The Modify block you may want to generate:
-
-    > ````rust
-    > struct Foo {{
-    >     foo: u32,
-    > }}
-    > ````path:src/foo.rs,source_start_line:4,source_end_line:6
-"#
-// - Be accurate with line numbers! Remember, your line numbers are inclusive and REPLACE text in the original file.
-//
-// For example, with this file:
-//
-// > 1 use std::collections::HashMap;
-// > 2
-// > 3 #[derive(Default, Clone, Debug, PartialEq, Eq)]
-// > 4 pub struct Foo {{
-// > 5     pub foos: HashMap<String, String>,
-// > 6 }}
-// > 7
-// > 8 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-// > 9 pub enum Value {{
-// > 10     Text(String),
-// > 11     Number(u32),
-// > 12 }}
-//
-// If you want to rewrite the definition of `Foo` so that the map values are `Value`, a correct sourced block looks like this (pay attention to the line numbers!):
-//
-// ```rust
-// #[derive(Default, Clone, Debug, PartialEq, Eq)]
-// pub struct Foo {{
-//     pub foos: HashMap<String, String>,
-// }}
-// ```path:src/foo.rs,source_start_line:3,source_end_line:6
-//
-// You MUST ALWAYS ENSURE the line numbers are accurate, or else the system will break. In this example, they start at `3` because line `3` in `src/foo.rs` has the `derive` statement, and end on line `6` as this is an inclusive line number!
-// "#
-    ).trim().to_owned()
+    ```
+    assert_eq!(foo(123), 124);
+    ```
+    **/
+    fn foo(bar: i32) -> i32 {{
+        bar + 1
+    }}
+    ````
+- When quoting code in a code block, use the following info string format: language:LANG,path:PATH
+  - For example, to quote `src/main.c`:
+    ````language:c,path:src/main.c
+    int main() {{
+      printf("hello world!");
+    }}
+    ````
+  - For example, to quote `index.js`:
+  ````language:javascript,path:index.js
+  console.log("hello world!")
+  ````
+- Basic markdown is otherwise allowed"#
+    )
 }
 
 pub fn studio_name_prompt(context_json: &str, messages_json: &str) -> String {
