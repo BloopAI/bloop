@@ -71,12 +71,12 @@ pub(crate) async fn sync_github_status(app: Application) {
     loop {
         // then retrieve username & other maintenance
         update_credentials(&app).await;
-
+        update_repo_list(&app).await;
         sleep_systime(POLL_PERIOD).await;
     }
 }
 
-async fn update_repo_list(app: &Application) {
+pub(crate) async fn update_repo_list(app: &Application) {
     if let Some(gh) = app.credentials.github() {
         let repos = match gh.current_repo_list().await {
             Ok(repos) => {
@@ -224,7 +224,7 @@ pub(crate) async fn validate_github_credentials(app: &Application) {
 
         username.is_err()
     } else {
-        println!("failed to create github client?");
+        error!("failed to create github client?");
         true
     };
 
@@ -232,8 +232,6 @@ pub(crate) async fn validate_github_credentials(app: &Application) {
         app.credentials.store().unwrap();
         debug!("github oauth is invalid; credentials removed");
     }
-
-    update_repo_list(app).await;
 }
 
 pub(crate) async fn check_repo_updates(app: Application) {
