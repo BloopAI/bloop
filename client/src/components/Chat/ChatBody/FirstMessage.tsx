@@ -45,14 +45,14 @@ const FirstMessage = ({
             <span className="font-bold">#repo</span>?
           </Trans>
         </p>
-        {isEmptyConversation && (
+        {isEmptyConversation && !!tutorials.length && (
           <p className="body-s text-label-title">
             <Trans>
               Below are a few questions you can ask me to get started:
             </Trans>
           </p>
         )}
-        {isEmptyConversation && (
+        {isEmptyConversation && !!tutorials.length && (
           <div className="flex flex-wrap gap-2">
             {tutorials.map((t, i) => (
               <button
