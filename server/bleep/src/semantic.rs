@@ -424,7 +424,10 @@ impl Semantic {
                     .collect::<Vec<_>>()
             })?;
             let deduplicated_snippets = deduplicate_snippets(results, vector, if retrieve_more { limit * 2 } else { limit });
-            Ok(rerank(deduplicated_snippets,  &query, limit))
+            if deduplicated_snippets.is_empty(){
+                Ok(deduplicated_snippets)
+            } else {
+            Ok(rerank(deduplicated_snippets,  &query, limit).await)}
     }
 
     pub async fn batch_search<'a>(
@@ -788,13 +791,14 @@ fn filter_overlapping_snippets(mut snippets: Vec<Payload>) -> Vec<Payload> {
     snippets
 }
 
-pub fn rerank(
+pub async fn rerank(
     all_snippets: Vec<Payload>,
     query: &str,
     output_count: u64,
 
 ) -> Vec<Payload> {
-    let reranked_indices = rerank_indices(all_snippets.clone(), query, output_count as i32);
+    let reranked_indices = rerank_indices(all_snippets.clone(), query, output_count as i32).await;
+    dbg!(reranked_indices.clone());
     let mut reranked_payload: Vec<Payload> = Vec::new();
     for &index in &reranked_indices {
         if let Some(payload) = all_snippets.get(index as usize){
@@ -804,7 +808,7 @@ pub fn rerank(
     reranked_payload
 }
 
-pub fn rerank_indices(
+pub async fn rerank_indices(
     all_snippets: Vec<Payload>,
     query: &str,
     top_n: i32,
@@ -818,16 +822,23 @@ pub fn rerank_indices(
         top_n: top_n,
     };
 
-    let client = reqwest::blocking::Client::new();
+    dbg!("Create client");
+
+    
 
     let url = "https://api.cohere.ai/v1/rerank";
     let token = env::var("COHERE_API_TOKEN").expect("Cohere token not set");
 
+    let client = reqwest::Client::new();
+
     let response: CohereResponse = client
-        .post(url)
-        .bearer_auth(token)
-        .json(&request) 
-        .send().expect("Cohere request failed").json().expect("Cohere fail to deserialize");
+                .post(url)
+                .bearer_auth(token)
+                .json(&request) 
+                .send().await.expect("Cohere request error").json().await.expect("failed to deserialize Cohere");
+
+    
+    dbg!("API call");
 
     response.results.into_iter().map(|x| x.index).collect()
 }
