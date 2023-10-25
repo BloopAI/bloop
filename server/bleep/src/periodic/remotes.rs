@@ -51,7 +51,7 @@ async fn sleep_systime(duration: Duration) {
     let start = SystemTime::now();
 
     loop {
-        tokio::time::sleep(Duration::from_secs(2)).await;
+        tokio::time::sleep(Duration::from_secs(1)).await;
         let Ok(elapsed) = start.elapsed() else {
             // There was a drift in system time probably because of
             // sleep.
@@ -68,31 +68,29 @@ pub(crate) async fn sync_github_status(app: Application) {
 
     // In case this is a GitHub App installation, we get the
     // credentials from CLI/config
-    update_credentials(&app).await;
-
     loop {
         // then retrieve username & other maintenance
         update_credentials(&app).await;
 
-        'repo_list: {
-            if let Some(gh) = app.credentials.github() {
-                let repos = match gh.current_repo_list().await {
-                    Ok(repos) => {
-                        debug!("fetched new repo list");
-                        repos
-                    }
-                    Err(err) => {
-                        debug!(?err, "failed to update repo list");
-                        break 'repo_list;
-                    }
-                };
-
-                let new = gh.update_repositories(repos);
-                app.credentials.set_github(new);
-            }
-        }
-
         sleep_systime(POLL_PERIOD).await;
+    }
+}
+
+async fn update_repo_list(app: &Application) {
+    if let Some(gh) = app.credentials.github() {
+        let repos = match gh.current_repo_list().await {
+            Ok(repos) => {
+                debug!("fetched new repo list");
+                repos
+            }
+            Err(err) => {
+                debug!(?err, "failed to update repo list");
+                return;
+            }
+        };
+
+        let new = gh.update_repositories(repos);
+        app.credentials.set_github(new);
     }
 }
 
@@ -234,6 +232,8 @@ pub(crate) async fn validate_github_credentials(app: &Application) {
         app.credentials.store().unwrap();
         debug!("github oauth is invalid; credentials removed");
     }
+
+    update_repo_list(app).await;
 }
 
 pub(crate) async fn check_repo_updates(app: Application) {
