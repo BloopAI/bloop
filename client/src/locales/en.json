@@ -393,5 +393,6 @@
 	"You've upgraded your account!": "You've upgraded your account!",
 	"Unlimited usage and premium features are activated.": "Unlimited usage and premium features are activated.",
 	"Let's go": "Let's go",
-	"Token limit reached, this answer may be incomplete. To generate a full answer, please reduce the number of tokens used and regenerate.": "Token limit reached, this answer may be incomplete. To generate a full answer, please reduce the number of tokens used and regenerate."
+	"Token limit reached, this answer may be incomplete. To generate a full answer, please reduce the number of tokens used and regenerate.": "Token limit reached, this answer may be incomplete. To generate a full answer, please reduce the number of tokens used and regenerate.",
+	"<0></0><1></1> to navigate.": "<0></0><1></1> to navigate."
 }
