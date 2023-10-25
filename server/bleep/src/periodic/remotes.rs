@@ -122,7 +122,7 @@ pub(crate) async fn update_credentials(app: &Application) {
     if app.env.allow(Feature::DesktopUserAuth) {
         let Some(github::State {
             auth: github::Auth::OAuth(ref creds),
-            ..
+            repositories,
         }) = app.credentials.github()
         else {
             return;
@@ -197,14 +197,14 @@ pub(crate) async fn update_credentials(app: &Application) {
                 }
             };
 
-        app.credentials
-            .set_github(github::State::with_auth(Auth::OAuth(
-                CognitoGithubTokenBundle {
-                    access_token: tokens.access_token,
-                    refresh_token: creds.refresh_token.clone(),
-                    github_access_token: creds.github_access_token.clone(),
-                },
-            )));
+        app.credentials.set_github(github::State {
+            repositories,
+            auth: Auth::OAuth(CognitoGithubTokenBundle {
+                access_token: tokens.access_token,
+                refresh_token: creds.refresh_token.clone(),
+                github_access_token: creds.github_access_token.clone(),
+            }),
+        });
 
         app.credentials.store().unwrap();
         info!("new bloop access keys saved");
