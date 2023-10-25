@@ -58,7 +58,7 @@ pub(super) async fn logout(
     Extension(user): Extension<User>,
     State(app): State<Application>,
 ) -> impl IntoResponse {
-    if let Some(login) = user.login() {
+    if let Some(login) = user.username() {
         app.user_profiles.remove(login);
         app.user_profiles.store().unwrap();
         app.credentials.remove_user().await;
@@ -177,12 +177,14 @@ async fn poll_for_oauth_token(code: String, app: Application) {
         .map(|a| a.tracking_id(Some(&username)))
         .unwrap_or_default();
 
+    let user = app.user().await;
+
     app.with_analytics(|analytics| {
         use rudderanalytics::message::{Identify, Message};
         analytics.send(Message::Identify(Identify {
             user_id: Some(tracking_id.clone()),
             traits: Some(serde_json::json!({
-                "org_name": app.org_name(),
+                "org_name": user.org_name(),
                 "device_id": analytics.device_id(),
                 "is_self_serve": app.env.is_cloud_instance(),
                 "github_username": username,

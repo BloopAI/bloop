@@ -28,11 +28,11 @@ pub(super) async fn get(
     Extension(user): Extension<User>,
 ) -> impl IntoResponse {
     let user_profile = user
-        .login()
+        .username()
         .and_then(|login| app.user_profiles.read(login, |_, v| v.clone()))
         .unwrap_or_default();
 
-    let user_login = user.login().map(str::to_owned);
+    let user_login = user.username().map(str::to_owned);
 
     let tracking_id = app
         .analytics
@@ -52,7 +52,7 @@ pub(super) async fn get(
     });
 
     let github_user = 'user: {
-        let (Some(login), Some(crab)) = (&user_login, user.github()) else {
+        let (Some(login), Some(crab)) = (&user_login, user.github_client()) else {
             break 'user None;
         };
 
@@ -87,7 +87,7 @@ pub(super) async fn put(
     Extension(user): Extension<User>,
     Json(update): Json<ConfigUpdate>,
 ) -> impl IntoResponse {
-    let user = user.login().expect("authentication required").to_owned();
+    let user = user.username().expect("authentication required").to_owned();
     app.user_profiles
         .entry_async(user)
         .await

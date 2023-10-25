@@ -11,9 +11,8 @@ import { UIContext } from '../../context/uiContext';
 import { search } from '../../services/api';
 import { buildRepoQuery } from '../../utils';
 import { SearchContext } from '../../context/searchContext';
-import { SyncStatus } from '../../types/general';
+import { RepoType, SyncStatus } from '../../types/general';
 import { RepositoriesContext } from '../../context/repositoriesContext';
-import { DeviceContext } from '../../context/deviceContext';
 import NavigationPanel from './NavigationPanel';
 import DirEntry from './DirEntry';
 
@@ -23,7 +22,7 @@ const IdeNavigation = () => {
   const { selectedBranch } = useContext(SearchContext.SelectedBranch);
   const [files, setFiles] = useState<DirectoryEntry[]>([]);
   const { navigateFullResult } = useContext(AppNavigationContext);
-  const { repositories } = useContext(RepositoriesContext);
+  const { repositories, setRepositories } = useContext(RepositoriesContext);
 
   const fetchFiles = useCallback(
     async (path?: string) => {
@@ -66,6 +65,15 @@ const IdeNavigation = () => {
     [tab.repoName, navigateFullResult],
   );
 
+  const markRepoIndexing = useCallback(() => {
+    setRepositories((prev) => {
+      const newRepos: RepoType[] = JSON.parse(JSON.stringify(prev)) || [];
+      const repoInd = newRepos.findIndex((r) => r.ref === tab.repoRef);
+      newRepos[repoInd].sync_status = SyncStatus.Indexing;
+      return newRepos;
+    });
+  }, [tab.repoRef]);
+
   return (
     <NavigationPanel repoName={tab.repoName}>
       {files.map((f) => (
@@ -84,6 +92,7 @@ const IdeNavigation = () => {
           repoRef={tab.repoRef}
           repoStatus={repoStatus}
           refetchParentFolder={refetchParentFolder}
+          markRepoIndexing={markRepoIndexing}
         />
       ))}
     </NavigationPanel>

@@ -76,6 +76,7 @@ const FolderChip = ({ onClick, path, repoName, selectedBranch }: Props) => {
             repoRef={''}
             repoStatus={SyncStatus.Done}
             refetchParentFolder={() => {}}
+            markRepoIndexing={() => {}}
           />
         </OverflowTracker>
       </div>

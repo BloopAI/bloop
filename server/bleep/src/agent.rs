@@ -221,7 +221,7 @@ impl Agent {
             Action::Proc { query, paths } => self.process_files(query, paths).await?,
         };
 
-        if self.exchanges.len() >= MAX_STEPS {
+        if self.last_exchange().search_steps.len() >= MAX_STEPS {
             return Ok(Some(Action::Answer {
                 paths: self.paths().enumerate().map(|(i, _)| i).collect(),
             }));
@@ -439,7 +439,7 @@ impl Agent {
         let conversation = (self.repo_ref.clone(), self.exchanges.clone());
         let conversation_id = self
             .user
-            .login()
+            .username()
             .context("didn't have user ID")
             .map(|user_id| ConversationId {
                 thread_id: self.thread_id,

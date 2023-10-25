@@ -1,5 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
+    panic::AssertUnwindSafe,
     path::{Path, PathBuf},
     sync::atomic::{AtomicU64, Ordering},
 };
@@ -97,7 +98,7 @@ impl Indexable for File {
 
         let file_worker = |count: usize| {
             let cache = &cache;
-            move |dir_entry: RepoDirEntry| {
+            let callback = move |dir_entry: RepoDirEntry| {
                 let completed = processed.fetch_add(1, Ordering::Relaxed);
                 pipes.index_percent(((completed as f32 / count as f32) * 100f32) as u8);
 
@@ -129,6 +130,16 @@ impl Indexable for File {
 
                 if let Err(err) = cache.parent().process_embedding_queue() {
                     warn!(?err, "failed to commit embeddings");
+                }
+            };
+
+            move |dir_entry: RepoDirEntry| {
+                let result = std::panic::catch_unwind(AssertUnwindSafe(|| (callback)(dir_entry)));
+                if let Err(err) = result {
+                    error!(
+                        ?err,
+                        "Indexing crashed. This is bad. Please send these logs to support!"
+                    );
                 }
             }
         };
@@ -676,9 +687,8 @@ impl RepoFile {
         let relative_path_str = relative_path_str.replace('\\', "/");
 
         let branches = self.branches.join("\n");
-        let indexed = file_filter
-            .is_allowed(relative_path)
-            .unwrap_or_else(|| self.should_index());
+        let explicitly_allowed = file_filter.is_allowed(relative_path);
+        let indexed = explicitly_allowed.unwrap_or_else(|| self.should_index());
 
         if !indexed {
             let lang_str = repo_metadata
@@ -761,7 +771,9 @@ impl RepoFile {
 
         // Skip files that are too long. This is not necessarily caught in the filesize check, e.g.
         // for a file like `vocab.txt` which has thousands of very short lines.
-        if line_end_indices.len() > MAX_LINE_COUNT as usize {
+        if !matches!(explicitly_allowed, Some(true))
+            && line_end_indices.len() > MAX_LINE_COUNT as usize
+        {
             return None;
         }
 
