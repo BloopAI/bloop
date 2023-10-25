@@ -306,16 +306,26 @@ const CodeFull = ({
 
   const calculatePopupPosition = useCallback(
     (top: number, left: number) => {
+      let isInModal = true;
       let container = findElementInCurrentTab('.code-modal-container');
       if (!container) {
         container = findElementInCurrentTab('#result-full-code-container');
+        isInModal = false;
       }
       if (!container) {
         return null;
       }
       const containerRect = container?.getBoundingClientRect();
       if (currentSelection.length !== 0) {
-        return calculatePopupPositionInsideContainer(top, left, containerRect);
+        const fixedPositionInsideContainer =
+          calculatePopupPositionInsideContainer(top, left, containerRect);
+        if (isInModal) {
+          fixedPositionInsideContainer.top =
+            fixedPositionInsideContainer.top - containerRect.top / 2;
+          fixedPositionInsideContainer.left =
+            fixedPositionInsideContainer.left - containerRect.left;
+        }
+        return fixedPositionInsideContainer;
       }
       return null;
     },
