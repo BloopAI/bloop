@@ -4,20 +4,13 @@
 )]
 
 mod backend;
+mod config;
 mod qdrant;
 
-use once_cell::sync::Lazy;
 use sysinfo::{ProcessExt, ProcessRefreshKind, RefreshKind, Signal, System, SystemExt};
 pub use tauri::{plugin, App, Manager, Runtime};
 
-use std::{
-    path::PathBuf,
-    sync::{Arc, RwLock},
-    thread,
-    time::Duration,
-};
-
-pub static TELEMETRY: Lazy<Arc<RwLock<bool>>> = Lazy::new(|| Arc::new(RwLock::new(false)));
+use std::{path::PathBuf, thread, time::Duration};
 
 // the payload type must implement `Serialize` and `Clone`.
 #[derive(Clone, serde::Serialize)]
@@ -39,9 +32,10 @@ fn relative_command_path(command: impl AsRef<str>) -> Option<PathBuf> {
         .filter(|path| path.is_file())
 }
 
-#[tokio::main]
-async fn main() {
+fn main() {
     cleanup_old_processes();
+
+    _ = color_eyre::install();
 
     tauri::Builder::default()
         .plugin(qdrant::QdrantSupervisor::default())
@@ -58,14 +52,12 @@ async fn main() {
 
 #[tauri::command]
 fn enable_telemetry() {
-    let mut guard = TELEMETRY.write().unwrap();
-    *guard = true;
+    // noop, for background compatibility
 }
 
 #[tauri::command]
 fn disable_telemetry() {
-    let mut guard = TELEMETRY.write().unwrap();
-    *guard = false;
+    // noop, for background compatibility
 }
 
 #[tauri::command]

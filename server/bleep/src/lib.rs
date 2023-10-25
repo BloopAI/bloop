@@ -22,7 +22,7 @@ use console_subscriber as _;
 
 use secrecy::{ExposeSecret, SecretString};
 use state::PersistedState;
-use std::{fs::canonicalize, sync::RwLock};
+use std::fs::canonicalize;
 use user::UserProfile;
 
 use crate::{
@@ -247,10 +247,6 @@ impl Application {
 
         if !tracing_subscribe(config) {
             warn!("Failed to install tracing_subscriber. There's probably one already...");
-        };
-
-        if color_eyre::install().is_err() {
-            warn!("Failed to install color-eyre. Oh well...");
         };
 
         LOGGER_INSTALLED.set(true).unwrap();
@@ -492,7 +488,6 @@ fn initialize_analytics(
     };
 
     let options = options.into().unwrap_or_else(|| analytics::HubOptions {
-        enable_telemetry: Arc::new(RwLock::new(true)),
         package_metadata: Some(analytics::PackageMetadata {
             name: env!("CARGO_CRATE_NAME"),
             version: env!("CARGO_PKG_VERSION"),

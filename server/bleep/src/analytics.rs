@@ -1,7 +1,4 @@
-use std::{
-    fmt::Debug,
-    sync::{Arc, RwLock},
-};
+use std::{fmt::Debug, sync::Arc};
 
 use crate::{
     repo::RepoRef,
@@ -116,13 +113,12 @@ pub struct RudderHub {
 
 #[derive(Default)]
 pub struct HubOptions {
-    pub enable_telemetry: Arc<RwLock<bool>>,
     pub package_metadata: Option<PackageMetadata>,
 }
 
 impl HubOptions {
     pub fn enable_telemetry(&self) -> bool {
-        *self.enable_telemetry.read().unwrap()
+        true
     }
 }
 

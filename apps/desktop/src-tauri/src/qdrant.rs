@@ -30,6 +30,10 @@ where
         app: &tauri::AppHandle<R>,
         _config: serde_json::Value,
     ) -> tauri::plugin::Result<()> {
+        // initialize the system configuration, including sentry &
+        // other possible dependencies
+        let _initialize_config = crate::config::init(app);
+
         let data_dir = app.path_resolver().app_data_dir().unwrap();
         let qdrant_dir = data_dir.join("qdrant");
         let qd_config_dir = qdrant_dir.join("config");
