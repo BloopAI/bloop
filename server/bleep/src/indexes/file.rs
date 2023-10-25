@@ -563,7 +563,7 @@ impl File {
             }
             RepoDirEntry::Dir(dir) => {
                 trace!("writing dir document");
-                let doc = dir.build_document(self, &workload, last_commit, &cache_keys);
+                let doc = dir.build_document(self, &workload, last_commit as u64, &cache_keys);
                 writer.add_document(doc)?;
                 trace!("dir document written");
             }
@@ -574,7 +574,7 @@ impl File {
                         self,
                         &workload,
                         &cache_keys,
-                        last_commit,
+                        last_commit as u64,
                         workload.cache.parent(),
                     )
                     .ok_or(anyhow::anyhow!("failed to build document"))?;

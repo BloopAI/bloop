@@ -99,7 +99,7 @@ notify-debouncer-mini = { version = "0.3.0", default-features = false }
 
 # git
 git-version = "0.3.5"
-gix = { version="0.47.0", features = ["blocking-http-transport-reqwest-rust-tls", "pack-cache-lru-static"] }
+gix = { git = "https://github.com/BloopAI/gitoxide", version="0.55.2", features = ["blocking-http-transport-reqwest-rust-tls-no-trust-dns", "pack-cache-lru-static"] }
 
 # semantic
 rake = "0.1"
