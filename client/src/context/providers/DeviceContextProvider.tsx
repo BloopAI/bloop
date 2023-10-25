@@ -10,7 +10,6 @@ type Props = {
 export const DeviceContextProvider = memo(
   ({ children, deviceContextValue }: PropsWithChildren<Props>) => {
     useEffect(() => {
-      deviceContextValue.invokeTauriCommand('enable_telemetry');
       if (deviceContextValue.envConfig.sentry_dsn_fe) {
         initializeSentry(
           deviceContextValue.envConfig,
@@ -22,10 +21,7 @@ export const DeviceContextProvider = memo(
           client.close();
         }
       }
-    }, [
-      deviceContextValue.invokeTauriCommand,
-      deviceContextValue.envConfig.sentry_dsn_fe,
-    ]);
+    }, [deviceContextValue.envConfig.sentry_dsn_fe]);
 
     return (
       <DeviceContext.Provider value={deviceContextValue}>
