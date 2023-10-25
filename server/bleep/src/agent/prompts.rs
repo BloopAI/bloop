@@ -298,6 +298,20 @@ And here is the serialized conversation:
     )
 }
 
+pub fn studio_diff_prompt(context_formatted: &str) -> String {
+    format!(
+        r#"Below are files from a codebase. Your job is to write a Unified Format patch to complete a provided task. To write a unified format patch, surround it in a code block: ```diff
+
+Follow these rules strictly:
+- You MUST only return a single diff block, no additional commentary.
+- Keep hunks concise only include a short context for each hunk. 
+
+#####
+
+{context_formatted}"#
+    )
+}
+
 pub fn hypothetical_document_prompt(query: &str) -> String {
     format!(
         r#"Write a code snippet that could hypothetically be returned by a code search engine as the answer to the query: {query}

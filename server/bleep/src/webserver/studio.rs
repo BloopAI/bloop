@@ -28,6 +28,8 @@ use crate::{
     webserver, Application,
 };
 
+mod diff;
+
 const LLM_GATEWAY_MODEL: &str = "gpt-4-0613";
 
 fn no_user_id() -> Error {
@@ -718,6 +720,71 @@ async fn generate_llm_context(app: Application, context: &[ContextFile]) -> Resu
     }
 
     Ok(s)
+}
+
+pub async fn diff(
+    app: Extension<Application>,
+    user: Extension<User>,
+    Path(studio_id): Path<i64>,
+) -> webserver::Result<String> {
+    let user_id = user.username().ok_or_else(no_user_id)?.to_string();
+
+    let snapshot_id = latest_snapshot_id(studio_id, &*app.sql, &user_id).await?;
+
+    let llm_gateway = user
+        .llm_gateway(&app)
+        .await
+        .map_err(|e| Error::user(e).with_status(StatusCode::UNAUTHORIZED))?
+        .quota_gated(!app.env.is_cloud_instance())
+        .model(LLM_GATEWAY_MODEL)
+        .temperature(0.0);
+
+    let (messages_json, context_json) = sqlx::query!(
+        "SELECT messages, context FROM studio_snapshots WHERE id = ?",
+        snapshot_id,
+    )
+    .fetch_optional(&*app.sql)
+    .await?
+    .map(|row| (row.messages, row.context))
+    .ok_or_else(studio_not_found)?;
+
+    let messages = serde_json::from_str::<Vec<Message>>(&messages_json).map_err(Error::internal)?;
+
+    let context =
+        serde_json::from_str::<Vec<ContextFile>>(&context_json).map_err(Error::internal)?;
+
+    let user_message = messages.iter().rev().find_map(|msg| match msg {
+        Message::User(m) => Some(m),
+        Message::Assistant(..) => None,
+    })
+    .context("studio did not contain a user message")?;
+
+    let assistant_message = messages.iter().rev().find_map(|msg| match msg {
+        Message::User(..) => None,
+        Message::Assistant(m) => Some(m),
+    })
+    .context("studio did not contain an assistant message")?;
+
+    app.track_studio(
+        &user,
+        StudioEvent::new(studio_id, "diff")
+            .with_payload("context", &context)
+            .with_payload("user_message", &user_message)
+            .with_payload("assistant_message", &assistant_message),
+    );
+
+    let system_prompt = prompts::studio_diff_prompt(&generate_llm_context((*app).clone(), &context).await?);
+    let user_message = format!("Create a patch for the task \"{user_message}\".\n\n\nHere is the solution:\n\n{assistant_message}");
+
+    let messages = vec![
+        llm_gateway::api::Message::system(&system_prompt),
+        llm_gateway::api::Message::user(&user_message),
+    ];
+
+    let response = llm_gateway.chat(&messages, None).await?;
+    let patched_diff = diff::extract((*app).clone(), response).await?;
+
+    Ok(patched_diff)
 }
 
 /// If a given studio's name is `NULL`, try to auto-generate a name.

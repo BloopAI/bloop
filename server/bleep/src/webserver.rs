@@ -88,6 +88,7 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         )
         .route("/studio/import", post(studio::import))
         .route("/studio/:studio_id/generate", get(studio::generate))
+        .route("/studio/:studio_id/diff", get(studio::diff))
         .route("/studio/:studio_id/snapshots", get(studio::list_snapshots))
         .route(
             "/studio/:studio_id/snapshots/:snapshot_id",
