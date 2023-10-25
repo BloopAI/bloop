@@ -68,11 +68,11 @@ fn run_command(command: &Path, qdrant_dir: &Path) -> Child {
     use tracing::{error, info};
     match getrlimit(Resource::RLIMIT_NOFILE) {
         Ok((current_soft, current_hard)) if current_hard < 2048 => {
-            if let Err(err) = setrlimit(Resource::RLIMIT_NOFILE, 1024, 2048) {
+            if let Err(err) = setrlimit(Resource::RLIMIT_NOFILE, 10000, 10000) {
                 error!(
                     ?err,
-                    new_soft = 1024,
-                    new_hard = 2048,
+                    new_soft = 10000,
+                    new_hard = 10000,
                     current_soft,
                     current_hard,
                     "failed to set rlimit/nofile"
