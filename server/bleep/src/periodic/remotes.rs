@@ -397,7 +397,7 @@ impl Poller {
     }
 }
 
-fn check_repo(app: &Application, reporef: &RepoRef) -> Option<(u64, SyncStatus)> {
+fn check_repo(app: &Application, reporef: &RepoRef) -> Option<(i64, SyncStatus)> {
     app.repo_pool.read(reporef, |_, repo| {
         (repo.last_commit_unix_secs, repo.sync_status.clone())
     })
