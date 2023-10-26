@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useContext, useState } from 'react';
+import React, { memo, useCallback, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { FileTreeFileType } from '../../types';
 import { EyeCut, FolderFilled } from '../../icons';
@@ -6,7 +6,6 @@ import FileIcon from '../FileIcon';
 import Button from '../Button';
 import { SyncStatus } from '../../types/general';
 import LiteLoaderContainer from '../Loaders/LiteLoader';
-import { DeviceContext } from '../../context/deviceContext';
 
 type Props = {
   path: string;
@@ -28,7 +27,6 @@ const FileRow = ({
   onFileIndexRequested,
 }: Props) => {
   useTranslation();
-  const { isSelfServe } = useContext(DeviceContext);
   const [indexRequested, setIndexRequested] = useState(false);
   const onIndexRequested = useCallback(
     (e: React.MouseEvent) => {
@@ -70,8 +68,13 @@ const FileRow = ({
           {name}
         </span>
       </span>
-      {!indexed && !indexRequested && isSelfServe && (
-        <Button onClick={onIndexRequested} variant="secondary" size="tiny">
+      {!indexed && !indexRequested && (
+        <Button
+          onClick={onIndexRequested}
+          variant="secondary"
+          size="tiny"
+          className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 ease-in-out"
+        >
           <Trans>Index</Trans>
         </Button>
       )}

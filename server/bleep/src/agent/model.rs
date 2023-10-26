@@ -1,3 +1,4 @@
+use crate::agent::prompts;
 use std::str::FromStr;
 
 #[derive(Debug, Copy, Clone)]
@@ -16,6 +17,9 @@ pub struct AnswerModel {
 
     /// The number of tokens reserved for history
     pub history_headroom: usize,
+
+    /// The system prompt to be used
+    pub system_prompt: fn(&str) -> String,
 }
 
 pub const GPT_3_5_TURBO_FINETUNED: AnswerModel = AnswerModel {
@@ -24,6 +28,7 @@ pub const GPT_3_5_TURBO_FINETUNED: AnswerModel = AnswerModel {
     answer_headroom: 512,
     prompt_headroom: 1600,
     history_headroom: 1024,
+    system_prompt: prompts::answer_article_prompt_finetuned,
 };
 
 pub const GPT_4: AnswerModel = AnswerModel {
@@ -32,6 +37,7 @@ pub const GPT_4: AnswerModel = AnswerModel {
     answer_headroom: 1024,
     prompt_headroom: 2500,
     history_headroom: 2048,
+    system_prompt: prompts::answer_article_prompt,
 };
 
 impl FromStr for AnswerModel {

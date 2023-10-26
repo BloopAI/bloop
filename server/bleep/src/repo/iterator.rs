@@ -26,7 +26,7 @@ pub const MAX_FILE_LEN: u64 = AVG_LINE_LEN * MAX_LINE_COUNT;
 pub const EXT_BLACKLIST: &[&str] = &[
     // graphics
     "png", "jpg", "jpeg", "ico", "bmp", "bpg", "eps", "pcx", "ppm", "tga", "tiff", "wmf", "xpm",
-    "svg", "riv",
+    "svg", "riv", "gif",
     // fonts
     "ttf", "woff2", "fnt", "fon", "otf",
     // documents
@@ -36,7 +36,9 @@ pub const EXT_BLACKLIST: &[&str] = &[
     // compiled
     "jar", "pyc", "war", "ear",
     // compression
-    "tar", "gz", "bz2", "xz", "7z", "bin", "apk", "deb", "rpm",
+    "tar", "gz", "bz2", "xz", "7z", "bin", "apk", "deb", "rpm", "rar", "zip",
+    // binary
+    "pkg", "pyd", "pyz", "lib", "pack", "idx", "dylib", "so",
     // executable
     "com", "exe", "out", "coff", "obj", "dll", "app", "class",
     // misc.
@@ -51,15 +53,13 @@ pub trait FileSource {
 pub enum RepoDirEntry {
     Dir(RepoDir),
     File(RepoFile),
-    Other,
 }
 
 impl RepoDirEntry {
-    pub fn path(&self) -> Option<&str> {
+    pub fn path(&self) -> &str {
         match self {
-            Self::File(file) => Some(file.path.as_str()),
-            Self::Dir(dir) => Some(dir.path.as_str()),
-            Self::Other => None,
+            Self::File(file) => file.path.as_str(),
+            Self::Dir(dir) => dir.path.as_str(),
         }
     }
 
@@ -70,11 +70,10 @@ impl RepoDirEntry {
         }
     }
 
-    pub fn branches(&self) -> Option<&[String]> {
+    pub fn branches(&self) -> &[String] {
         match self {
-            RepoDirEntry::Dir(d) => Some(&d.branches),
-            RepoDirEntry::File(f) => Some(&f.branches),
-            RepoDirEntry::Other => None,
+            RepoDirEntry::Dir(d) => &d.branches,
+            RepoDirEntry::File(f) => &f.branches,
         }
     }
 }

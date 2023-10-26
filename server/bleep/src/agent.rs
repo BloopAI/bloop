@@ -99,14 +99,21 @@ impl Drop for Agent {
         match self.exchange_state {
             ExchangeState::Failed => {}
             ExchangeState::Pending => {
-                self.last_exchange_mut().apply_update(Update::Cancel);
+                if std::thread::panicking() {
+                    self.track_query(
+                        EventData::output_stage("cancelled")
+                            .with_payload("message", "request panicked"),
+                    );
+                } else {
+                    self.last_exchange_mut().apply_update(Update::Cancel);
 
-                self.track_query(
-                    EventData::output_stage("cancelled")
-                        .with_payload("message", "request was cancelled"),
-                );
+                    self.track_query(
+                        EventData::output_stage("cancelled")
+                            .with_payload("message", "request was cancelled"),
+                    );
 
-                tokio::spawn(self.store());
+                    tokio::spawn(self.store());
+                }
             }
 
             ExchangeState::Complete => {
@@ -221,7 +228,7 @@ impl Agent {
             Action::Proc { query, paths } => self.process_files(query, paths).await?,
         };
 
-        if self.exchanges.len() >= MAX_STEPS {
+        if self.last_exchange().search_steps.len() >= MAX_STEPS {
             return Ok(Some(Action::Answer {
                 paths: self.paths().enumerate().map(|(i, _)| i).collect(),
             }));
@@ -439,7 +446,7 @@ impl Agent {
         let conversation = (self.repo_ref.clone(), self.exchanges.clone());
         let conversation_id = self
             .user
-            .login()
+            .username()
             .context("didn't have user ID")
             .map(|user_id| ConversationId {
                 thread_id: self.thread_id,

@@ -48,7 +48,9 @@ pub(in crate::webserver) async fn list(
     State(app): State<Application>,
 ) -> webserver::Result<impl IntoResponse> {
     let db = app.sql.as_ref();
-    let user_id = user.login().ok_or_else(|| Error::user("missing user ID"))?;
+    let user_id = user
+        .username()
+        .ok_or_else(|| Error::user("missing user ID"))?;
 
     let conversations = if let Some(repo_ref) = query.repo_ref {
         let repo_ref = repo_ref.to_string();
@@ -91,7 +93,9 @@ pub(in crate::webserver) async fn delete(
     State(app): State<Application>,
 ) -> webserver::Result<()> {
     let db = app.sql.as_ref();
-    let user_id = user.login().ok_or_else(|| Error::user("missing user ID"))?;
+    let user_id = user
+        .username()
+        .ok_or_else(|| Error::user("missing user ID"))?;
 
     let result = sqlx::query! {
         "DELETE FROM conversations WHERE user_id = ? AND thread_id = ?",
@@ -115,7 +119,7 @@ pub(in crate::webserver) async fn thread(
     State(app): State<Application>,
 ) -> webserver::Result<impl IntoResponse> {
     let user_id = user
-        .login()
+        .username()
         .ok_or_else(|| Error::user("missing user ID"))?
         .to_owned();
 

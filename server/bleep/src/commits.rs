@@ -290,8 +290,7 @@ pub fn latest_commits(
     } else {
         repo.head()
             .context("invalid branch name")?
-            .into_fully_peeled_id()
-            .context("git error")?
+            .into_peeled_id()
             .context("git error")?
             .object()
             .context("git error")?

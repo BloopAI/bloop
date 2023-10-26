@@ -14,7 +14,6 @@ type Props = {
   refetchStudios: () => void;
   handleNewStudio: () => void;
   handleRename: (studio: CodeStudioShortType) => void;
-  repositories?: RepoType[];
 };
 
 const LIMIT = 7;
@@ -26,7 +25,6 @@ const CodeStudiosSection = ({
   showAll,
   refetchStudios,
   handleRename,
-  repositories,
   handleNewStudio,
 }: Props) => {
   return (
@@ -48,15 +46,6 @@ const CodeStudiosSection = ({
               {...cs}
               refetchStudios={refetchStudios}
               handleRename={() => handleRename(cs)}
-              isIndexing={
-                !!repositories?.find(
-                  (r) =>
-                    cs.repos.includes(
-                      r.ref.replace(/^(local\/)|(github\.com\/)/, ''),
-                    ) &&
-                    (!r.last_index || r.last_index === '1970-01-01T00:00:00Z'),
-                )
-              }
             />
           ),
         )}

@@ -38,9 +38,14 @@ const md = new Remarkable({
 type Props = {
   repository: Repository;
   repoStatus: SyncStatus;
+  markRepoIndexing: () => void;
 };
 
-const RepositoryOverview = ({ repository, repoStatus }: Props) => {
+const RepositoryOverview = ({
+  repository,
+  repoStatus,
+  markRepoIndexing,
+}: Props) => {
   const [sortedFiles, setSortedFiles] = useState(repository.files);
   const { openLink } = useContext(DeviceContext);
   const { selectedBranch } = useContext(SearchContext.SelectedBranch);
@@ -111,6 +116,7 @@ const RepositoryOverview = ({ repository, repoStatus }: Props) => {
           repositoryName={cleanRepoName(repository.name)}
           currentPath={repository.currentPath.slice(0, -1)}
           repoStatus={repoStatus}
+          markRepoIndexing={markRepoIndexing}
         />
       </div>
       {readme ? (

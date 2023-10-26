@@ -147,7 +147,6 @@ const HomePage = ({ randomKey }: { randomKey?: any }) => {
               showAll={() => setFilterType('studios')}
               refetchStudios={refreshCodeStudios}
               handleRename={handleRename}
-              repositories={repositories}
               handleNewStudio={handleNewStudio}
             />
           )}

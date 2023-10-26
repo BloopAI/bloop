@@ -9,7 +9,6 @@ use tantivy::{
     tokenizer::NgramTokenizer,
     DocAddress, Document, IndexReader, IndexWriter, Score,
 };
-use tokio::sync::RwLock;
 
 pub mod file;
 pub mod reader;
@@ -51,9 +50,9 @@ impl<'a> GlobalWriteHandle<'a> {
         Ok(())
     }
 
-    pub(crate) async fn commit(self) -> Result<()> {
+    pub(crate) fn commit(self) -> Result<()> {
         for mut handle in self.handles {
-            handle.commit().await?
+            handle.commit()?
         }
 
         Ok(())
@@ -66,14 +65,9 @@ impl<'a> GlobalWriteHandle<'a> {
     ) -> Result<Arc<RepoMetadata>, RepoError> {
         let metadata = repo.get_repo_metadata().await;
 
-        futures::future::join_all(
-            self.handles
-                .iter()
-                .map(|handle| handle.index(sync_handle, repo, &metadata)),
-        )
-        .await
-        .into_iter()
-        .collect::<Result<Vec<_>, _>>()?;
+        for h in &self.handles {
+            h.index(sync_handle, repo, &metadata).await?;
+        }
 
         Ok(metadata)
     }
@@ -86,7 +80,7 @@ pub struct Indexes {
 }
 
 impl Indexes {
-    pub async fn new(config: &Configuration) -> Result<Self> {
+    pub fn new(config: &Configuration) -> Result<Self> {
         Ok(Self {
             repo: Indexer::create(
                 Repo::new(),
@@ -104,11 +98,17 @@ impl Indexes {
         })
     }
 
-    pub async fn reset_databases(config: &Configuration) -> Result<()> {
+    pub fn reset_databases(config: &Configuration) -> Result<()> {
         // we don't support old schemas, and tantivy will hard
         // error if we try to open a db with a different schema.
-        tokio::fs::remove_dir_all(config.index_path("repo")).await?;
-        tokio::fs::remove_dir_all(config.index_path("content")).await?;
+        if config.index_path("repo").as_ref().exists() {
+            std::fs::remove_dir_all(config.index_path("repo"))?;
+            debug!("removed index repo dir")
+        }
+        if config.index_path("content").as_ref().exists() {
+            std::fs::remove_dir_all(config.index_path("content"))?;
+            debug!("removed index content dir")
+        }
         Ok(())
     }
 
@@ -166,17 +166,11 @@ pub trait DocumentRead: Send + Sync {
 
 pub struct IndexWriteHandle<'a> {
     source: &'a dyn Indexable,
-    index: &'a tantivy::Index,
-    reader: &'a RwLock<IndexReader>,
+    reader: &'a IndexReader,
     writer: IndexWriter,
 }
 
 impl<'a> IndexWriteHandle<'a> {
-    pub async fn refresh_reader(&self) -> Result<()> {
-        *self.reader.write().await = self.index.reader()?;
-        Ok(())
-    }
-
     pub fn delete(&self, repo: &Repository) {
         self.source.delete_by_repo(&self.writer, repo)
     }
@@ -192,9 +186,9 @@ impl<'a> IndexWriteHandle<'a> {
             .await
     }
 
-    pub async fn commit(&mut self) -> Result<()> {
+    pub fn commit(&mut self) -> Result<()> {
         self.writer.commit()?;
-        self.refresh_reader().await?;
+        self.reader.reload()?;
 
         Ok(())
     }
@@ -211,7 +205,7 @@ impl<'a> IndexWriteHandle<'a> {
 pub struct Indexer<T> {
     pub source: T,
     pub index: tantivy::Index,
-    pub reader: RwLock<IndexReader>,
+    pub reader: IndexReader,
     pub reindex_buffer_size: usize,
     pub reindex_threads: usize,
 }
@@ -220,7 +214,6 @@ impl<T: Indexable> Indexer<T> {
     fn write_handle(&self) -> Result<IndexWriteHandle<'_>> {
         Ok(IndexWriteHandle {
             source: &self.source,
-            index: &self.index,
             reader: &self.reader,
             writer: self
                 .index
@@ -234,11 +227,10 @@ impl<T: Indexable> Indexer<T> {
         let mut index =
             tantivy::Index::open_or_create(tantivy::directory::MmapDirectory::open(path)?, schema)?;
 
-        index.set_default_multithread_executor()?;
         index.set_multithread_executor(threads)?;
         index
             .tokenizers()
-            .register("default", NgramTokenizer::new(1, 3, false).unwrap());
+            .register("default", NgramTokenizer::new(1, 3, false)?);
 
         Ok(index)
     }
@@ -246,7 +238,7 @@ impl<T: Indexable> Indexer<T> {
     /// Create an index using `source` at the specified path.
     pub fn create(source: T, path: &Path, buffer_size: usize, threads: usize) -> Result<Self> {
         let index = Self::init_index(source.schema(), path, threads)?;
-        let reader = index.reader()?.into();
+        let reader = index.reader()?;
         let instance = Self {
             reader,
             index,
@@ -269,7 +261,7 @@ impl<T: Indexable> Indexer<T> {
         C: Collector<Fruit = (Vec<(Score, DocAddress)>, MultiFruit)>,
         R: DocumentRead<Schema = T>,
     {
-        let searcher = self.reader.read().await.searcher();
+        let searcher = self.reader.searcher();
         let queries = queries
             .filter(|q| doc_reader.query_matches(q))
             .collect::<SmallVec<[_; 2]>>();

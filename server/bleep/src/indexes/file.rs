@@ -1,5 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
+    panic::AssertUnwindSafe,
     path::{Path, PathBuf},
     sync::atomic::{AtomicU64, Ordering},
 };
@@ -65,7 +66,7 @@ impl<'a> Workload<'a> {
         };
 
         let tantivy_hash = {
-            let branch_list = dir_entry.branches().unwrap_or_default();
+            let branch_list = dir_entry.branches();
             let mut hash = blake3::Hasher::new();
             hash.update(semantic_hash.as_ref());
             hash.update(branch_list.join("\n").as_bytes());
@@ -97,11 +98,11 @@ impl Indexable for File {
 
         let file_worker = |count: usize| {
             let cache = &cache;
-            move |dir_entry: RepoDirEntry| {
+            let callback = move |dir_entry: RepoDirEntry| {
                 let completed = processed.fetch_add(1, Ordering::Relaxed);
                 pipes.index_percent(((completed as f32 / count as f32) * 100f32) as u8);
 
-                let entry_disk_path = dir_entry.path().unwrap().to_owned();
+                let entry_disk_path = dir_entry.path().to_owned();
                 let relative_path = {
                     let entry_srcpath = PathBuf::from(&entry_disk_path);
                     entry_srcpath
@@ -129,6 +130,16 @@ impl Indexable for File {
 
                 if let Err(err) = cache.parent().process_embedding_queue() {
                     warn!(?err, "failed to commit embeddings");
+                }
+            };
+
+            move |dir_entry: RepoDirEntry| {
+                let result = std::panic::catch_unwind(AssertUnwindSafe(|| (callback)(dir_entry)));
+                if let Err(err) = result {
+                    error!(
+                        ?err,
+                        "Indexing crashed. This is bad. Please send these logs to support!"
+                    );
                 }
             }
         };
@@ -208,8 +219,7 @@ impl Indexer<File> {
         limit: usize,
     ) -> impl Iterator<Item = FileDocument> + '_ {
         // lifted from query::compiler
-        let reader = self.reader.read().await;
-        let searcher = reader.searcher();
+        let searcher = self.reader.searcher();
         let collector = TopDocs::with_limit(5 * limit); // TODO: tune this
         let file_source = &self.source;
 
@@ -315,8 +325,7 @@ impl Indexer<File> {
         branch: Option<&str>,
         limit: usize,
     ) -> impl Iterator<Item = FileDocument> + '_ {
-        let reader = self.reader.read().await;
-        let searcher = reader.searcher();
+        let searcher = self.reader.searcher();
         let file_source = &self.source;
 
         let repo_ref_term = Box::new(TermQuery::new(
@@ -405,8 +414,7 @@ impl Indexer<File> {
         relative_path: &str,
         branch: Option<&str>,
     ) -> Result<Option<ContentDocument>> {
-        let reader = self.reader.read().await;
-        let searcher = reader.searcher();
+        let searcher = self.reader.searcher();
 
         let file_index = searcher.index();
 
@@ -478,8 +486,7 @@ impl Indexer<File> {
         langs: impl Iterator<Item = S>,
         branch: Option<&str>,
     ) -> Vec<ContentDocument> {
-        let reader = self.reader.read().await;
-        let searcher = reader.searcher();
+        let searcher = self.reader.searcher();
 
         let mut query = vec![];
 
@@ -556,7 +563,7 @@ impl File {
             }
             RepoDirEntry::Dir(dir) => {
                 trace!("writing dir document");
-                let doc = dir.build_document(self, &workload, last_commit, &cache_keys);
+                let doc = dir.build_document(self, &workload, last_commit as u64, &cache_keys);
                 writer.add_document(doc)?;
                 trace!("dir document written");
             }
@@ -567,7 +574,7 @@ impl File {
                         self,
                         &workload,
                         &cache_keys,
-                        last_commit,
+                        last_commit as u64,
                         workload.cache.parent(),
                     )
                     .ok_or(anyhow::anyhow!("failed to build document"))?;
@@ -575,7 +582,6 @@ impl File {
 
                 trace!("file document written");
             }
-            RepoDirEntry::Other => anyhow::bail!("dir entry was neither a file nor a directory"),
         }
 
         #[cfg(feature = "debug")]
@@ -681,9 +687,8 @@ impl RepoFile {
         let relative_path_str = relative_path_str.replace('\\', "/");
 
         let branches = self.branches.join("\n");
-        let indexed = file_filter
-            .is_allowed(relative_path)
-            .unwrap_or_else(|| self.should_index());
+        let explicitly_allowed = file_filter.is_allowed(relative_path);
+        let indexed = explicitly_allowed.unwrap_or_else(|| self.should_index());
 
         if !indexed {
             let lang_str = repo_metadata
@@ -766,7 +771,9 @@ impl RepoFile {
 
         // Skip files that are too long. This is not necessarily caught in the filesize check, e.g.
         // for a file like `vocab.txt` which has thousands of very short lines.
-        if line_end_indices.len() > MAX_LINE_COUNT as usize {
+        if !matches!(explicitly_allowed, Some(true))
+            && line_end_indices.len() > MAX_LINE_COUNT as usize
+        {
             return None;
         }
 

@@ -359,7 +359,8 @@ async fn search_nav(
     };
 
     // produce search based results here
-    let target = regex::Regex::new(&format!(r"\b{hovered_text}\b")).expect("failed to build regex");
+    let regex_str = regex::escape(hovered_text);
+    let target = regex::Regex::new(&format!(r"\b{regex_str}\b")).expect("failed to build regex");
     // perform a text search for hovered_text
     let file_source = &indexes.file.source;
     let indexer = &indexes.file;
@@ -413,8 +414,7 @@ async fn search_nav(
         BooleanQuery::intersection(terms)
     };
     let collector = TopDocs::with_limit(500);
-    let reader = indexes.file.reader.read().await;
-    let searcher = reader.searcher();
+    let searcher = indexes.file.reader.searcher();
     let results = searcher
         .search(&query, &collector)
         .expect("failed to search index");
