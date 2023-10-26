@@ -12,3 +12,6 @@ export const findAllElementsInCurrentTab = <
 ): NodeListOf<T> | null => {
   return document.querySelectorAll(`[data-active="true"] ${selector}`);
 };
+
+export const isFocusInInput = () =>
+  ['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName || '');
