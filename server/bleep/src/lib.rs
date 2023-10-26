@@ -346,7 +346,6 @@ impl Application {
     }
 
     fn seal_auth_state(&self, payload: serde_json::Value) -> String {
-        use base64::Engine;
         use rand::RngCore;
 
         let privkey = {
@@ -378,19 +377,20 @@ impl Application {
                 .expect("encryption failed");
 
             (
-                base64::engine::general_purpose::URL_SAFE.encode(serialized),
-                base64::engine::general_purpose::URL_SAFE.encode(tag),
+                data_encoding::BASE64.encode(serialized.as_ref()),
+                data_encoding::BASE64.encode(tag.as_ref()),
             )
         };
 
-        base64::engine::general_purpose::URL_SAFE.encode(
+        data_encoding::BASE64URL.encode(
             serde_json::to_vec(&serde_json::json!({
             "org": self.config.bloop_instance_org.as_ref().expect("bad config"),
             "n": nonce_str,
             "enc": enc,
             "tag": tag
             }))
-            .expect("bad encoding"),
+            .expect("bad encoding")
+            .as_ref(),
         )
     }
 }
