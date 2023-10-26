@@ -14,7 +14,7 @@ ggml = ["llm/metal"]
 metal = ["ggml"]
 cublas = ["llm/cublas"]
 ee-pro = []
-ee-cloud = ["ee-pro"]
+ee-cloud = ["ee-pro", "color-eyre"]
 
 [[bin]]
 name = "bleep"

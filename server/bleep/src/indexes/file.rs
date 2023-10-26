@@ -724,7 +724,7 @@ impl RepoFile {
         let mut buffer = match self.buffer() {
             Ok(b) => b,
             Err(err) => {
-                error!(?err, "failed to open file buffer; skipping file");
+                warn!(?err, "failed to open file buffer; skipping file");
                 return None;
             }
         };

@@ -13,6 +13,10 @@
 #[cfg(all(feature = "onnx", feature = "ggml"))]
 compile_error!("cannot enable `onnx` and `ggml` at the same time");
 
+// only used in the binary
+#[cfg(feature = "color-eyre")]
+use color_eyre as _;
+
 #[cfg(any(bench, test))]
 use criterion as _;
 

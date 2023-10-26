@@ -21,6 +21,7 @@ import { DropdownWithIcon } from '../Dropdown';
 import { ContextMenuItem } from '../ContextMenu';
 import { MenuItemType } from '../../types/general';
 import useKeyboardNavigation from '../../hooks/useKeyboardNavigation';
+import { isFocusInInput } from '../../utils/domUtils';
 import BranchSelector from './BranchSelector';
 import RepoHomeBtn from './RepoHomeBtn';
 import Separator from './Separator';
@@ -139,7 +140,7 @@ const Subheader = () => {
 
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey) {
+      if ((e.metaKey || e.ctrlKey) && !isFocusInInput()) {
         if (e.key === 'ArrowLeft' && navigationHistory.length > 1) {
           e.preventDefault();
           navigateBack('auto');

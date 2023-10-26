@@ -1,5 +1,4 @@
-import React, { useContext } from 'react';
-import { Trans } from 'react-i18next';
+import React, { Dispatch, SetStateAction, useContext } from 'react';
 import {
   ChatMessage,
   ChatMessageAuthor,
@@ -8,6 +7,7 @@ import {
 import useScrollToBottom from '../../../hooks/useScrollToBottom';
 import { AppNavigationContext } from '../../../context/appNavigationContext';
 import Message from './ConversationMessage';
+import FirstMessage from './FirstMessage';
 
 type Props = {
   conversation: ChatMessage[];
@@ -17,6 +17,7 @@ type Props = {
   isLoading?: boolean;
   isHistory?: boolean;
   onMessageEdit: (queryId: string, i: number) => void;
+  setInputValue: Dispatch<SetStateAction<string>>;
 };
 
 const Conversation = ({
@@ -27,6 +28,7 @@ const Conversation = ({
   isHistory,
   repoName,
   onMessageEdit,
+  setInputValue,
 }: Props) => {
   const { messagesRef, handleScroll, scrollToBottom } =
     useScrollToBottom(conversation);
@@ -34,31 +36,17 @@ const Conversation = ({
 
   return (
     <div
-      className={`w-full flex flex-col gap-3 overflow-auto ${
-        isHistory ? 'pb-24' : 'pb-36'
-      }`}
+      className={`w-full flex flex-col gap-3 overflow-auto pb-28`}
       ref={messagesRef}
       onScroll={handleScroll}
     >
       {!isHistory && (
-        <div className="flex items-start gap-3 px-4 py-3 hover:bg-chat-bg-shade">
-          <div className="w-6 h-6 rounded-full bg-chat-bg-border flex-shrink-0 flex items-center justify-center mt-0.5">
-            <img
-              src="/bloopHeadMascot.png"
-              alt="mascot"
-              className="w-4.5 h-4.5"
-            />
-          </div>
-          <p className="body-s text-label-title">
-            <Trans>Hi, I&apos;m bloop.</Trans>{' '}
-            <Trans
-              values={{ repoName: repoName.replace(/^github\.com\//, '') }}
-            >
-              What would you like to know about{' '}
-              <span className="font-bold">#repo</span>?
-            </Trans>
-          </p>
-        </div>
+        <FirstMessage
+          repoName={repoName}
+          setInputValue={setInputValue}
+          repoRef={repoRef}
+          isEmptyConversation={!conversation.length}
+        />
       )}
       {conversation.map((m, i) => (
         <Message
