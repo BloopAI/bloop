@@ -3,27 +3,100 @@ use futures::stream::{Stream, StreamExt};
 use qdrant_client::qdrant::{
     point_id::PointIdOptions, r#match::MatchValue, vectors_config, with_payload_selector,
     CreateCollection, Distance, FieldCondition, FieldType, Filter, Match, PointId, PointStruct,
-    ScrollPoints, SearchPointGroups, SearchPoints, VectorParams, VectorsConfig,
-    WithPayloadSelector,
+    ScrollPoints, SearchPointGroups, VectorParams, VectorsConfig, WithPayloadSelector,
 };
 use rayon::prelude::*;
+use tantivy::{
+    collector::TopDocs,
+    query::{BooleanQuery, BoostQuery, Query, RegexQuery, TermQuery},
+    schema::{
+        Field, IndexRecordOption, Schema, SchemaBuilder, Term, TextFieldIndexing, TextOptions,
+        FAST, INDEXED, STORED, TEXT,
+    },
+    tokenizer::NgramTokenizer,
+    DocId, Score, SegmentReader,
+};
 use thiserror::Error;
+use tokio::sync::Mutex;
 use tracing::info;
 
 pub const COLLECTION_NAME: &str = "web";
 
 use crate::{
     db::SqlDb,
+    query::compiler::{case_permutations, trigrams},
     scraper::{self, Config, Scraper},
     semantic::{make_kv_keyword_filter, Semantic},
 };
 
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 #[derive(Clone)]
 pub struct Doc {
     sql: SqlDb,
     semantic: Semantic,
+    section_index: tantivy::Index,
+    section_schema: SectionSchema,
+}
+
+#[derive(Clone)]
+pub struct SectionSchema {
+    pub(super) schema: Schema,
+
+    pub doc_id: Field,
+    pub point_id: Field,
+    pub doc_source: Field,
+    pub doc_title: Field,
+    pub doc_description: Field,
+    pub relative_url: Field,
+    pub header: Field,
+    pub ancestry: Field,
+    pub text: Field,
+    pub start_byte: Field,
+    pub end_byte: Field,
+    pub section_depth: Field,
+    // pub raw_relative_url: Field,
+}
+
+impl SectionSchema {
+    pub fn new() -> Self {
+        let mut builder = SchemaBuilder::new();
+        let trigram = TextOptions::default().set_stored().set_indexing_options(
+            TextFieldIndexing::default()
+                .set_tokenizer("default")
+                .set_index_option(IndexRecordOption::WithFreqsAndPositions),
+        );
+
+        let doc_id = builder.add_i64_field("doc_id", FAST | STORED | INDEXED);
+        let point_id = builder.add_text_field("point_id", STORED);
+        let doc_source = builder.add_text_field("doc_source", STORED);
+        let doc_title = builder.add_text_field("doc_title", TEXT | STORED);
+        let doc_description = builder.add_text_field("doc_description", TEXT | STORED);
+        let relative_url = builder.add_text_field("relative_url", TEXT | STORED);
+        let header = builder.add_text_field("header", TEXT | STORED);
+        let ancestry = builder.add_text_field("ancestry", TEXT | STORED);
+        let text = builder.add_text_field("text", trigram);
+        let start_byte = builder.add_u64_field("start_byte", STORED);
+        let end_byte = builder.add_u64_field("end_byte", STORED);
+        let section_depth = builder.add_u64_field("section_depth", FAST | STORED);
+
+        Self {
+            doc_id,
+            point_id,
+            doc_source,
+            doc_title,
+            doc_description,
+            relative_url,
+            header,
+            ancestry,
+            text,
+            start_byte,
+            end_byte,
+            section_depth,
+            // raw_relative_url,
+            schema: builder.build(),
+        }
+    }
 }
 
 static STATUS_DONE: &str = "done";
@@ -77,18 +150,65 @@ pub enum Error {
 
     #[error("failed to embed sequence: {0}")]
     Embed(anyhow::Error),
+
+    #[error("io error: {0}")]
+    Io(#[from] std::io::Error),
+
+    #[error("tantivy error: {0}")]
+    Tantivy(#[from] tantivy::error::TantivyError),
 }
 
 impl Doc {
+    fn index_writer(&self) -> Result<tantivy::IndexWriter, Error> {
+        self.section_index
+            .writer(crate::config::default_buffer_size())
+            .map_err(Error::Tantivy)
+    }
+
+    fn index_reader(&self) -> Result<tantivy::IndexReader, Error> {
+        self.section_index.reader().map_err(Error::Tantivy)
+    }
     /// Initialize docs index
-    pub async fn create(sql: SqlDb, semantic: Semantic) -> Result<Self, Error> {
+    pub async fn create(
+        sql: SqlDb,
+        semantic: Semantic,
+        path: &std::path::Path,
+    ) -> Result<Self, Error> {
         if create_indexes(semantic.qdrant_client()).await? {
             info!(%COLLECTION_NAME, "created doc index");
         } else {
             info!(%COLLECTION_NAME, "using existing doc index");
         };
 
-        Ok(Self { sql, semantic })
+        std::fs::create_dir_all(path)?;
+
+        let section_schema = SectionSchema::new();
+        let mut section_index = tantivy::Index::open_or_create(
+            tantivy::directory::MmapDirectory::open(path)
+                .map_err(|e| Error::Initialize(e.to_string()))?,
+            section_schema.schema.clone(),
+        )
+        .map_err(|e| Error::Initialize(e.to_string()))?;
+
+        section_index
+            .set_default_multithread_executor()
+            .map_err(|e| Error::Initialize(e.to_string()))?;
+        section_index
+            .set_multithread_executor(4)
+            .map_err(|e| Error::Initialize(e.to_string()))?;
+
+        section_index
+            .tokenizers()
+            .register("default", NgramTokenizer::new(1, 3, false).unwrap());
+
+        // Ok(index)
+
+        Ok(Self {
+            sql,
+            semantic,
+            section_index,
+            section_schema,
+        })
     }
 
     async fn set_title(&self, title: &str, id: i64) -> Result<(), Error> {
@@ -156,9 +276,13 @@ impl Doc {
         .await?
         .last_insert_rowid();
 
+        let index_writer = Arc::new(Mutex::new(self.index_writer()?));
+
         let stream = try_stream! {
             let mut is_meta_set = false;
-            let stream = self.clone().insert_into_qdrant(id, url.clone());
+            let stream = self.clone().insert_into_qdrant(id, url.clone(), Arc::clone(&index_writer));
+
+            // TODO: handle empty stream error here
 
             for await progress in stream {
                 // populate metadata in sqlite
@@ -214,6 +338,10 @@ impl Doc {
         // delete old docs from qdrant
         self.delete_from_qdrant(id).await?;
 
+        // delete old docs from tantivy
+        self.index_writer()?
+            .delete_term(Term::from_field_i64(self.section_schema.doc_id, id));
+
         sqlx::query! {
             "UPDATE docs SET modified_at = datetime('now') WHERE id = ?",
             id,
@@ -221,8 +349,10 @@ impl Doc {
         .execute(&*self.sql)
         .await?;
 
+        let index_writer = Arc::new(Mutex::new(self.index_writer()?));
+
         let progress_stream = self
-            .insert_into_qdrant(id, url)
+            .insert_into_qdrant(id, url, Arc::clone(&index_writer))
             .map(|progress| Progress::Update(progress));
         let done_stream = futures::stream::once(async move { Progress::Done(id) });
 
@@ -238,7 +368,12 @@ impl Doc {
             .ok_or(Error::InvalidDocId(id))?
             .id;
 
+        // delete entry from qdrant
         self.delete_from_qdrant(id).await?;
+
+        // delete entry from tantivy
+        self.index_writer()?
+            .delete_term(Term::from_field_i64(self.section_schema.doc_id, id));
 
         Ok(id)
     }
@@ -321,34 +456,128 @@ impl Doc {
         limit: u64,
         id: i64,
     ) -> Result<Vec<SearchResult>, Error> {
-        let term_embedding = self
-            .semantic
-            .embedder()
-            .embed(q.as_str())
-            .map_err(Error::Embed)?;
-        let data = self
-            .semantic
-            .qdrant_client()
-            .search_points(&SearchPoints {
-                collection_name: COLLECTION_NAME.into(),
-                vector: term_embedding,
-                limit,
-                filter: Some(Filter {
-                    must: vec![make_kv_int_filter("doc_id", id).into()],
-                    ..Default::default()
-                }),
-                with_payload: Some(WithPayloadSelector {
-                    selector_options: Some(with_payload_selector::SelectorOptions::Enable(true)),
-                }),
-                ..Default::default()
-            })
-            .await
-            .map_err(Error::Qdrant)?
-            .result;
+        // use the tantivy index for section search
+        let reader = self.index_reader()?;
+        let searcher = reader.searcher();
 
-        Ok(data
+        let doc_id_query = Box::new(TermQuery::new(
+            Term::from_field_i64(self.section_schema.doc_id, id),
+            IndexRecordOption::Basic,
+        ));
+
+        let relative_url_query = Box::new(BoostQuery::new(
+            build_trigram_query(&q, self.section_schema.relative_url),
+            1.5,
+        )) as Box<dyn Query>;
+
+        let title_query = Box::new(BoostQuery::new(
+            build_trigram_query(&q, self.section_schema.doc_title),
+            1.5,
+        )) as Box<dyn Query>;
+
+        let ancestry_query = Box::new(BoostQuery::new(
+            build_trigram_query(&q, self.section_schema.ancestry),
+            1.25,
+        )) as Box<dyn Query>;
+
+        let text_query = build_trigram_query(&q, self.section_schema.text);
+
+        let query = BooleanQuery::intersection(vec![
+            doc_id_query,
+            Box::new(BooleanQuery::union(vec![
+                ancestry_query,
+                title_query,
+                relative_url_query,
+                text_query,
+            ])) as Box<dyn Query>,
+        ]);
+
+        let section_depth_field = (&self.section_schema.schema)
+            .get_field_name(self.section_schema.section_depth)
+            .to_owned();
+        let collector = TopDocs::with_limit(limit as usize).tweak_score(
+            move |segment_reader: &SegmentReader| {
+                let section_depth_reader = segment_reader
+                    .fast_fields()
+                    .u64(section_depth_field.as_str())
+                    .unwrap();
+
+                move |doc: DocId, original_score: Score| {
+                    let section_depth: u64 = section_depth_reader.values.get_val(doc) + 1;
+                    let section_depth_falloff = 2.0_f32.powf(1. / section_depth as f32);
+                    section_depth_falloff * original_score
+                }
+            },
+        );
+        let results = searcher.search(&query, &collector).unwrap();
+
+        Ok(results
             .into_iter()
-            .filter_map(|s| SearchResult::from_qdrant(s.id.unwrap(), s.payload))
+            .map(|(_score, addr)| {
+                let retrieved_doc = searcher
+                    .doc(addr)
+                    .expect("failed to get document by address");
+                SearchResult {
+                    doc_id: retrieved_doc
+                        .get_first(self.section_schema.doc_id)
+                        .unwrap()
+                        .as_i64()
+                        .unwrap(),
+                    point_id: retrieved_doc
+                        .get_first(self.section_schema.point_id)
+                        .unwrap()
+                        .as_text()
+                        .unwrap()
+                        .parse::<uuid::Uuid>()
+                        .unwrap(),
+                    doc_source: retrieved_doc
+                        .get_first(self.section_schema.doc_source)
+                        .unwrap()
+                        .as_text()
+                        .unwrap()
+                        .parse::<url::Url>()
+                        .unwrap(),
+                    ancestry: retrieved_doc
+                        .get_first(self.section_schema.ancestry)
+                        .unwrap()
+                        .as_text()
+                        .map(|t| {
+                            scraper::chunk::Section::ancestry_from_str(t)
+                                .into_iter()
+                                .map(ToOwned::to_owned)
+                                .collect()
+                        })
+                        .unwrap(),
+                    header: retrieved_doc
+                        .get_first(self.section_schema.header)
+                        .unwrap()
+                        .as_text()
+                        .unwrap()
+                        .to_owned(),
+                    relative_url: retrieved_doc
+                        .get_first(self.section_schema.relative_url)
+                        .unwrap()
+                        .as_text()
+                        .unwrap()
+                        .to_owned(),
+                    section_range: retrieved_doc
+                        .get_first(self.section_schema.start_byte)
+                        .unwrap()
+                        .as_u64()
+                        .unwrap() as usize
+                        ..retrieved_doc
+                            .get_first(self.section_schema.end_byte)
+                            .unwrap()
+                            .as_u64()
+                            .unwrap() as usize,
+                    text: retrieved_doc
+                        .get_first(self.section_schema.text)
+                        .unwrap()
+                        .as_text()
+                        .unwrap()
+                        .to_owned(),
+                }
+            })
             .collect())
     }
 
@@ -484,7 +713,12 @@ impl Doc {
     }
 
     /// Scrape & insert a doc source into qdrant and return doc metadata if available
-    fn insert_into_qdrant(self, id: i64, url: url::Url) -> impl Stream<Item = Update> {
+    fn insert_into_qdrant(
+        self,
+        id: i64,
+        url: url::Url,
+        index_writer: Arc<Mutex<tantivy::IndexWriter>>,
+    ) -> impl Stream<Item = Update> {
         stream! {
             let mut scraper = Scraper::with_config(Config::new(url.clone()));
             let mut stream = Box::pin(scraper.complete());
@@ -500,11 +734,19 @@ impl Doc {
                 yield progress;
                 let semantic = self.semantic.clone();
                 let u = url.clone();
+                let section_schema = self.section_schema.clone();
+                let index_writer = Arc::clone(&index_writer);
                 if !self.contains_page(id, doc.relative_url(&url)).await
                 {
                     handles.push(tokio::task::spawn(async move {
                         let embedder = semantic.embedder();
-                        let points_to_insert = doc.embed(id, &u, embedder);
+                        let (tantivy_docs_to_insert, points_to_insert) = doc.embed(id, &u, embedder, section_schema);
+                        let mut lock = index_writer.lock().await;
+                        for d in tantivy_docs_to_insert {
+                            info!("inserting doc into tantivy: `{}` - `{}`", id, u.as_str());
+                            lock.add_document(d);
+                        }
+                        lock.commit();
                         let _ = semantic
                             .qdrant_client()
                             .upsert_points(COLLECTION_NAME, points_to_insert, None)
@@ -571,7 +813,8 @@ impl scraper::Document {
         id: i64,
         url: &url::Url,
         embedder: &dyn crate::semantic::Embedder,
-    ) -> Vec<PointStruct> {
+        schema: SectionSchema,
+    ) -> (Vec<tantivy::Document>, Vec<PointStruct>) {
         info!("inserting points for `{}`", self.url.as_str());
         scraper::chunk::by_section(
             &self.content,           // section content
@@ -607,10 +850,6 @@ impl scraper::Document {
             (section, average_embedding)
         })
         .map(|(section, avg_embedding)| {
-            let mut payload = HashMap::new();
-            let favicon = self.meta.icon.as_deref().unwrap_or("");
-            let favicon_url = url::Url::parse(&favicon)
-                .unwrap_or_else(|_| normalize_absolute_url(&url, &favicon));
             let point_id = {
                 let mut bytes = [0; 16];
                 let mut hasher = blake3::Hasher::new();
@@ -622,6 +861,27 @@ impl scraper::Document {
                 bytes.copy_from_slice(&hasher.finalize().as_bytes()[16..32]);
                 uuid::Uuid::from_bytes(bytes).to_string()
             };
+
+            use tantivy::doc;
+            let tantivy_doc = doc!(
+                schema.doc_id => id,
+                schema.point_id => point_id.as_str(),
+                schema.doc_source => url.as_str(),
+                schema.doc_title => self.meta.title.as_deref().clone().unwrap_or_default(),
+                schema.doc_description => self.meta.description.as_deref().clone().unwrap_or_default(),
+                schema.relative_url => self.relative_url(url).as_str(),
+                schema.header => section.header.as_deref().clone().unwrap_or_default(),
+                schema.ancestry => section.ancestry_str().as_str(),
+                schema.text => section.data,
+                schema.start_byte => section.section_range.start.byte as u64,
+                schema.end_byte => section.section_range.start.byte as u64,
+                schema.section_depth => section.ancestry.len() as u64,
+            );
+
+            let mut payload = HashMap::new();
+            let favicon = self.meta.icon.as_deref().unwrap_or("");
+            let favicon_url = url::Url::parse(&favicon)
+                .unwrap_or_else(|_| normalize_absolute_url(&url, &favicon));
             payload.insert("doc_id".to_owned(), id.into());
             payload.insert("doc_source".to_owned(), url.to_string().into());
             payload.insert("relative_url".to_owned(), self.relative_url(url).into());
@@ -648,15 +908,18 @@ impl scraper::Document {
                 self.meta.description.as_deref().unwrap_or("").into(),
             );
             payload.insert("doc_favicon".to_owned(), favicon_url.as_str().into());
-            PointStruct {
-                id: Some(PointId {
-                    point_id_options: Some(PointIdOptions::Uuid(point_id.to_string())),
-                }),
-                vectors: Some(avg_embedding.into()),
-                payload,
-            }
+            (
+                tantivy_doc,
+                PointStruct {
+                    id: Some(PointId {
+                        point_id_options: Some(PointIdOptions::Uuid(point_id.to_string())),
+                    }),
+                    vectors: Some(avg_embedding.into()),
+                    payload,
+                },
+            )
         })
-        .collect::<Vec<_>>()
+        .unzip()
     }
 }
 
@@ -760,4 +1023,27 @@ fn normalize_absolute_url(base_url: &url::Url, absolute_url: &str) -> url::Url {
     let mut root = base_url.clone();
     root.set_path(&absolute_url);
     root
+}
+
+fn build_trigram_query(query: &str, field: Field) -> Box<dyn Query> {
+    Box::new(BooleanQuery::intersection(
+        trigrams(query)
+            .map(|t| {
+                BooleanQuery::union(
+                    case_permutations(t.as_str())
+                        .map(|s| Term::from_field_text(field, s.as_str()))
+                        .map(|q| TermQuery::new(q, IndexRecordOption::Basic))
+                        .map(Box::new)
+                        .map(|q| q as Box<dyn Query>)
+                        .collect::<Vec<_>>(),
+                )
+            })
+            .map(Box::new)
+            .map(|q| q as Box<dyn Query>)
+            .collect::<Vec<_>>(),
+    )) as Box<dyn Query>
+}
+
+fn build_regex_query(query: &str, field: Field) -> Box<dyn Query> {
+    Box::new(RegexQuery::from_pattern(&regex::escape(query), field).unwrap()) as Box<dyn Query>
 }

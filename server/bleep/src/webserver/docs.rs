@@ -149,7 +149,9 @@ impl From<doc::Error> for Error {
             | doc::Error::Embed(_)
             | doc::Error::Qdrant(_)
             | doc::Error::UrlParse(..)
-            | doc::Error::Initialize(_) => Self::internal(value),
+            | doc::Error::Io(..)
+            | doc::Error::Tantivy(..)
+            | doc::Error::Initialize(_) => Self::internal(value), // TODO: log these to sentry
             doc::Error::InvalidUrl(..) => Self::user(value),
             doc::Error::InvalidDocId(_) => Self::not_found(value),
         }

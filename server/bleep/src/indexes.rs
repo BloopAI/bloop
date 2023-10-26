@@ -101,7 +101,7 @@ impl Indexes {
                 config.buffer_size,
                 config.max_threads,
             )?,
-            doc: Doc::create(sql, semantic).await?,
+            doc: Doc::create(sql, semantic, config.index_path("doc").as_ref()).await?,
             write_mutex: Default::default(),
         })
     }

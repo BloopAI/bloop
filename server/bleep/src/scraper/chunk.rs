@@ -18,6 +18,11 @@ impl<'a> Section<'a> {
     pub fn ancestry_str(&self) -> String {
         self.ancestry.join(" > ")
     }
+
+    /// may not be idempotent
+    pub fn ancestry_from_str(s: &str) -> Vec<&str> {
+        s.split(" > ").collect()
+    }
 }
 
 // - collect non-section child-nodes for the current node
