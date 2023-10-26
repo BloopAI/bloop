@@ -10,6 +10,10 @@
 #![warn(unused_crate_dependencies)]
 #![allow(elided_lifetimes_in_paths)]
 
+// only used in the binary
+#[cfg(feature = "color-eyre")]
+use color_eyre as _;
+
 #[cfg(any(bench, test))]
 use criterion as _;
 
