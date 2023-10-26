@@ -27,6 +27,7 @@ import BreadcrumbsPath from '../../../components/BreadcrumbsPath';
 import KeyboardChip from '../KeyboardChip';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
 import OverflowTracker from '../../../components/OverflowTracker';
+import BlueChip from '../BlueChip';
 
 type Props = {
   setLeftPanel: Dispatch<SetStateAction<StudioLeftPanelDataType>>;
@@ -264,9 +265,19 @@ const FilePanel = ({
               Only the selected lines (# - #) will be used as context.
             </Trans>
           ) : (
-            <Trans>Only the selected ranges will be used as context.</Trans>
+            <>
+              <Trans>Only the selected ranges will be used as context.</Trans>
+            </>
           )}
         </p>
+        {selectedLines?.length > 1 && (
+          <div className="pointer-events-none select-none cursor-default flex gap-1 items-center">
+            <Trans>
+              <BlueChip text="↑" />
+              <BlueChip text="↓" /> to navigate.
+            </Trans>
+          </div>
+        )}
         {!!selectedLines.length && (
           <Button
             variant="tertiary"

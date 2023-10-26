@@ -65,14 +65,9 @@ impl<'a> GlobalWriteHandle<'a> {
     ) -> Result<Arc<RepoMetadata>, RepoError> {
         let metadata = repo.get_repo_metadata().await;
 
-        futures::future::join_all(
-            self.handles
-                .iter()
-                .map(|handle| handle.index(sync_handle, repo, &metadata)),
-        )
-        .await
-        .into_iter()
-        .collect::<Result<Vec<_>, _>>()?;
+        for h in &self.handles {
+            h.index(sync_handle, repo, &metadata).await?;
+        }
 
         Ok(metadata)
     }

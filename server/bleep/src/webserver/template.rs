@@ -17,7 +17,7 @@ pub async fn create(
     params: Json<Create>,
 ) -> webserver::Result<String> {
     let user_id = user
-        .login()
+        .username()
         .ok_or_else(|| super::Error::user("didn't have user ID"))?
         .to_string();
 
@@ -48,7 +48,7 @@ pub async fn list(
     user: Extension<User>,
 ) -> webserver::Result<Json<Vec<Template>>> {
     let user_id = user
-        .login()
+        .username()
         .ok_or_else(|| super::Error::user("didn't have user ID"))?
         .to_string();
 
@@ -71,7 +71,7 @@ pub async fn get(
     Path(id): Path<String>,
 ) -> webserver::Result<Json<Template>> {
     let user_id = user
-        .login()
+        .username()
         .ok_or_else(|| super::Error::user("didn't have user ID"))?
         .to_string();
 
@@ -103,7 +103,7 @@ pub async fn patch(
     Json(patch): Json<Patch>,
 ) -> webserver::Result<String> {
     let user_id = user
-        .login()
+        .username()
         .ok_or_else(|| super::Error::user("didn't have user ID"))?
         .to_string();
 
@@ -166,7 +166,7 @@ pub async fn delete(
     Path(id): Path<i64>,
 ) -> webserver::Result<()> {
     let user_id = user
-        .login()
+        .username()
         .ok_or_else(|| super::Error::user("didn't have user ID"))?
         .to_string();
 
