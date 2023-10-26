@@ -14,6 +14,7 @@ import { Token as TokenType } from '../../../types/prism';
 import { hashCode, mergeRanges } from '../../../utils';
 import { findElementInCurrentTab } from '../../../utils/domUtils';
 import { CODE_LINE_HEIGHT } from '../../../consts/code';
+import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
 import SelectionHandler from './SelectionHandler';
 import SelectionRect from './SelectionRect';
 import LinesContainer from './LazyLinesContainer';
@@ -51,6 +52,7 @@ const CodeContainerSelectable = ({
   const [shouldScroll, setShouldScroll] = useState<'top' | 'bottom' | false>(
     false,
   );
+  const [currentFocusedRange, setCurrentFocusedRange] = useState(-1);
 
   useEffect(() => {
     if (scrollToIndex && ref.current) {
@@ -175,6 +177,48 @@ const CodeContainerSelectable = ({
       return newRanges;
     });
   }, [tokens.length]);
+
+  const handleKeyEvent = useCallback(
+    (e: KeyboardEvent) => {
+      if (
+        !['TEXTAREA', 'INPUT'].includes(
+          document.activeElement?.tagName || '',
+        ) &&
+        !e.shiftKey &&
+        !e.ctrlKey &&
+        !e.metaKey &&
+        !e.altKey &&
+        currentSelection.length > 1
+      ) {
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+          e.preventDefault();
+          setCurrentFocusedRange((prev) => {
+            const newIndex =
+              e.key === 'ArrowDown'
+                ? prev >= currentSelection.length - 1
+                  ? 0
+                  : prev + 1
+                : prev <= 0
+                ? currentSelection.length - 1
+                : prev - 1;
+            const lineNum = currentSelection[newIndex][0];
+            if (lineNum > -1) {
+              const line = findElementInCurrentTab(
+                `[data-line-number="${lineNum}"]`,
+              );
+              line?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start',
+              });
+            }
+            return newIndex;
+          });
+        }
+      }
+    },
+    [currentSelection],
+  );
+  useKeyboardNavigation(handleKeyEvent);
 
   return (
     <div ref={ref} className="relative pb-16">
