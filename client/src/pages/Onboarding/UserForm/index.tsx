@@ -22,6 +22,7 @@ import { themesMap } from '../../../components/Settings/Preferences';
 import { copyToClipboard, previewTheme } from '../../../utils';
 import LanguageSelector from '../../../components/LanguageSelector';
 import Tooltip from '../../../components/Tooltip';
+import { polling } from '../../../utils/requestUtils';
 
 type Props = {
   form: Form;
@@ -85,21 +86,22 @@ const UserForm = ({ form, setForm, onContinue }: Props) => {
     let intervalId: number;
     let timerId: number;
     if (loginUrl && !isGithubConnected) {
-      checkGHAuth();
-      intervalId = window.setInterval(() => {
-        checkGHAuth().then((d) => {
-          if (
-            !!d.user_login &&
-            form.firstName &&
-            form.lastName &&
-            form.email &&
-            !form.emailError &&
-            document.activeElement?.tagName !== 'INPUT'
-          ) {
-            onContinue();
-          }
-        });
-      }, 500);
+      intervalId = polling(
+        () =>
+          checkGHAuth().then((d) => {
+            if (
+              !!d.user_login &&
+              form.firstName &&
+              form.lastName &&
+              form.email &&
+              !form.emailError &&
+              document.activeElement?.tagName !== 'INPUT'
+            ) {
+              onContinue();
+            }
+          }),
+        500,
+      );
       timerId = window.setTimeout(
         () => {
           clearInterval(intervalId);

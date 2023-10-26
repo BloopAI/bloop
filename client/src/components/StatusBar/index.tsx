@@ -15,6 +15,7 @@ import LanguageSelector from '../LanguageSelector';
 import { PersonalQuotaContext } from '../../context/personalQuotaContext';
 import LiteLoaderContainer from '../Loaders/LiteLoader';
 import Tooltip from '../Tooltip';
+import { polling } from '../../utils/requestUtils';
 import StatusItem from './StatusItem';
 
 let intervalId: number;
@@ -46,7 +47,7 @@ const StatusBar = () => {
         if (resp.url) {
           openLink(resp.url);
           clearInterval(intervalId);
-          intervalId = window.setInterval(() => refetchQuota(), 2000);
+          intervalId = polling(() => refetchQuota(), 2000);
           setTimeout(() => clearInterval(intervalId), 10 * 60 * 1000);
         } else {
           setBugReportModalOpen(true);
