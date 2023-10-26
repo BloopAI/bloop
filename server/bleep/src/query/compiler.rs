@@ -99,7 +99,7 @@ impl Compiler {
 
                 let field_query = match extraction {
                     Extraction::Literal(Literal::Plain(text)) => {
-                        let mut tokenizer = index
+                        let tokenizer = index
                             .tokenizer_for_field(*field)
                             .context("field is missing tokenizer")?;
 
@@ -376,7 +376,7 @@ mod tests {
             let (occur, term) = &subquery.clauses()[0];
             let term = term.downcast_ref::<TermQuery>().unwrap();
             assert_eq!(*occur, Occur::Should);
-            assert_eq!(term.term().value().as_str().unwrap(), expected);
+            assert_eq!(term.term().as_str().unwrap(), expected);
         }
     }
 }
