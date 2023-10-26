@@ -27,6 +27,7 @@ import {
   savePlainToStorage,
 } from '../../../client/src/services/storage';
 import { LocaleType } from '../../../client/src/types/general';
+import { polling } from '../../../client/src/utils/requestUtils';
 import TextSearch from './TextSearch';
 import SplashScreen from './SplashScreen';
 
@@ -162,10 +163,7 @@ function App() {
     let intervalId: number;
     if (!Object.keys(envConfig).length) {
       initApi('http://127.0.0.1:7878/api');
-      getConfig().then(setEnvConfig);
-      intervalId = window.setInterval(() => {
-        getConfig().then(setEnvConfig);
-      }, 500);
+      intervalId = polling(() => getConfig().then(setEnvConfig), 500);
     } else {
       // just in case config changed
       setTimeout(() => {

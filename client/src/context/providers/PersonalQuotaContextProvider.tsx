@@ -10,6 +10,7 @@ import React, {
 import { getQuota } from '../../services/api';
 import { PersonalQuotaContext } from '../personalQuotaContext';
 import { DeviceContext } from '../deviceContext';
+import { polling } from '../../utils/requestUtils';
 
 type Props = {};
 
@@ -44,8 +45,7 @@ export const PersonalQuotaContextProvider = memo(
     }, [isSelfServe]);
 
     useEffect(() => {
-      refetchQuota();
-      const intervalId = setInterval(() => refetchQuota(), 10 * 60 * 1000);
+      const intervalId = polling(() => refetchQuota(), 10 * 60 * 1000);
       return () => {
         clearInterval(intervalId);
       };

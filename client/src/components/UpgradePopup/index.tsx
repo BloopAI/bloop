@@ -8,6 +8,7 @@ import { UIContext } from '../../context/uiContext';
 import { getSubscriptionLink } from '../../services/api';
 import { PersonalQuotaContext } from '../../context/personalQuotaContext';
 import useAnalytics from '../../hooks/useAnalytics';
+import { polling } from '../../utils/requestUtils';
 import Countdown from './Countdown';
 import ConversationSvg from './ConversationSvg';
 
@@ -38,7 +39,7 @@ const UpgradePopup = () => {
       openLink(link);
       setWaitingUpgradePopupOpen(true);
       setUpgradePopupOpen(false);
-      let intervalId = window.setInterval(() => refetchQuota(), 2000);
+      let intervalId = polling(() => refetchQuota(), 2000);
       setTimeout(() => clearInterval(intervalId), 10 * 60 * 1000);
     } else {
       setBugReportModalOpen(true);
