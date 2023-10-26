@@ -318,8 +318,6 @@ impl Application {
     }
 
     pub(crate) async fn user(&self) -> User {
-        crate::periodic::update_credentials(self).await;
-
         self.credentials
             .user()
             .zip(self.credentials.github())
