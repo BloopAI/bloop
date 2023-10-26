@@ -12,7 +12,7 @@ use axum::{
 use futures::{future::Either, stream, StreamExt};
 use reqwest::StatusCode;
 use serde_json::json;
-use tracing::{error, warn};
+use tracing::{debug, error, info, warn};
 
 use self::conversations::ConversationId;
 
@@ -91,6 +91,7 @@ pub(super) async fn answer(
     Extension(app): Extension<Application>,
     Extension(user): Extension<User>,
 ) -> super::Result<impl IntoResponse> {
+    info!(?params.q, "handling /answer query");
     let query_id = uuid::Uuid::new_v4();
 
     let conversation_id = ConversationId {
@@ -134,6 +135,8 @@ pub(super) async fn answer(
         .context("user query was not plain text")?
         .clone()
         .into_owned();
+
+    debug!(?query_target, "parsed query target");
 
     let action = Action::Query(query_target);
     exchanges.push(Exchange::new(query_id, query));

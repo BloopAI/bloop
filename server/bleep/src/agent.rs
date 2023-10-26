@@ -256,7 +256,14 @@ impl Agent {
             .try_fold(
                 llm_gateway::api::FunctionCall::default(),
                 |acc, e| async move {
-                    let e: FunctionCall = serde_json::from_str(&e)?;
+                    let e: FunctionCall = serde_json::from_str(&e).map_err(|err| {
+                        tracing::error!(
+                            "Failed to deserialize to FunctionCall: {:?}. Error: {:?}",
+                            e,
+                            err
+                        );
+                        err
+                    })?;
                     Ok(FunctionCall {
                         name: acc.name.or(e.name),
                         arguments: acc.arguments + &e.arguments,
