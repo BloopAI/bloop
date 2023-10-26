@@ -1,7 +1,4 @@
-use std::{
-    fmt::Debug,
-    sync::{Arc, RwLock},
-};
+use std::{fmt::Debug, sync::Arc};
 
 use crate::{
     repo::RepoRef,
@@ -116,14 +113,7 @@ pub struct RudderHub {
 
 #[derive(Default)]
 pub struct HubOptions {
-    pub enable_telemetry: Arc<RwLock<bool>>,
     pub package_metadata: Option<PackageMetadata>,
-}
-
-impl HubOptions {
-    pub fn enable_telemetry(&self) -> bool {
-        *self.enable_telemetry.read().unwrap()
-    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -191,10 +181,6 @@ impl RudderHub {
 
     pub fn track_query(&self, user: &crate::webserver::middleware::User, event: QueryEvent) {
         if let Some(options) = &self.options {
-            if !options.enable_telemetry() {
-                return;
-            }
-
             self.send(Message::Track(Track {
                 user_id: Some(self.tracking_id(user.username())),
                 event: "openai query".to_owned(),
@@ -213,10 +199,6 @@ impl RudderHub {
 
     pub fn track_studio(&self, user: &crate::webserver::middleware::User, event: StudioEvent) {
         if let Some(options) = &self.options {
-            if !options.enable_telemetry() {
-                return;
-            }
-
             self.send(Message::Track(Track {
                 user_id: Some(self.tracking_id(user.username())),
                 event: "code studio".to_owned(),
