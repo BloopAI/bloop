@@ -26,7 +26,7 @@ tasks:
       git lfs install --skip-smudge
 
       # Cache build artifacts
-      nix develop -c cargo build --locked -p bleep
+      nix develop -c cargo build --locked --features=ee-cloud --bin bleep
       nix develop -c npm i
 
       # this is working around a gitpod bug
@@ -41,7 +41,7 @@ tasks:
       git reset --hard
 
       nix develop -c cargo watch -w server -- \
-        cargo run --locked --features=ee-cloud -p bleep -- \
+        cargo run --locked --features=ee-cloud --bin bleep -- \
         \
         --qdrant-url http://localhost:6334 \
         --answer-api-url http://localhost:7879 \
