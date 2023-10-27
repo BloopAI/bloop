@@ -41,7 +41,7 @@ tasks:
       git reset --hard
 
       nix develop -c cargo watch -w server -- \
-        cargo run --locked --features=ee -p bleep -- \
+        cargo run --locked --features=ee-cloud -p bleep -- \
         \
         --qdrant-url http://localhost:6334 \
         --answer-api-url http://localhost:7879 \
@@ -66,7 +66,6 @@ tasks:
   - name: answer-api
     command: |
       cd /workspace/answer-api
-      git checkout nix-cachix
       nix run /workspace/answer-api
     openMode: tab-after
 
