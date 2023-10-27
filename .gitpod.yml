@@ -12,9 +12,9 @@ ports:
     port: 7878
     protocol: http
 
-# additionalRepositories:
-#   - url: https://github.com/bloopai/answer-api
-#     checkoutLocation: answer-api
+additionalRepositories:
+  - url: https://github.com/bloopai/answer-api
+    checkoutLocation: answer-api
 
 tasks:
   - name: Backend
@@ -48,11 +48,7 @@ tasks:
         --model-dir /workspace/bloop/model \
         --frontend-dist /workspace/bloop/client/dist \
         --instance-domain $bloop_url \
-        --github-app-id $BLOOP_GITHUB_APP_ID \
-        --github-app-install-id $BLOOP_GITHUB_APP_INSTALL_ID \
-        --github-client-id $BLOOP_GITHUB_CLIENT_ID \
-        --github-client-secret $BLOOP_GITHUB_CLIENT_SECRET \
-        --github-app-private-key /workspace/github-app-private-key.pem
+        --cognito-config-url https://cloud-auth-staging.bloop.ai/bloop_config
 
     openMode: split-left
 
@@ -67,12 +63,12 @@ tasks:
       nix run nixpkgs#qdrant -- --config-path qdrant/config.yaml
     openMode: tab-after
 
-  # - name: answer-api
-  #   command: |
-  #     cd /workspace/answer-api
-  #     git checkout nix-cachix
-  #     nix run /workspace/answer-api?ref=origin/nix-cachix#
-  #   openMode: tab-after
+  - name: answer-api
+    command: |
+      cd /workspace/answer-api
+      git checkout nix-cachix
+      nix run /workspace/answer-api
+    openMode: tab-after
 
 github:
     prebuilds:
