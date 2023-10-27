@@ -1,67 +1,122 @@
+use std::fmt;
+
 use anyhow::{Context, Result};
+use lazy_regex::regex;
 
-use crate::Application;
-
-pub async fn extract(app: Application, chat_response: String) -> Result<String> {
-    let diff = extract_diff(&chat_response)?;
-    split_chunks(&diff).map(|chunk| {
-    });
-
-    todo!()
+pub fn extract(chat_response: &str) -> Result<impl Iterator<Item = DiffChunk>> {
+    Ok(relaxed_parse(extract_diff(&chat_response)?))
 }
 
-fn extract_diff(chat_response: &str) -> Result<String> {
-    let captures = lazy_regex::regex!(r#"\A.*?^```diff(.*)^```.*\z"#sm)
+fn extract_diff(chat_response: &str) -> Result<&str> {
+    let captures = regex!(r#"\A.*?^```diff(.*)^```.*\z"#sm)
         .captures(&chat_response)
         .context("failed to parse chat response")?;
     let cap = captures
         .get(1)
         .context("diff regex didn't match anything")?;
-    Ok(cap.as_str().trim().to_owned())
+    Ok(cap.as_str().trim())
 }
 
 /// Parse a diff, allowing for some formatting errors.
-fn relaxed_parse(diff: &str) -> Result<String> {
-    todo!()
-}
+fn relaxed_parse(diff: &str) -> impl Iterator<Item = DiffChunk> {
+    split_chunks(diff).map(|mut chunk| {
+        for hunk in &mut chunk.hunks {
+            hunk.src_count = hunk
+                .lines
+                .iter()
+                .map(|l| match l {
+                    Line::Context(_) | Line::Del(_) => 1,
+                    Line::Add(_) => 0,
+                })
+                .sum();
 
-#[derive(Debug, PartialEq, Eq)]
-struct DiffChunk<'a> {
-    src: &'a str,
-    dst: &'a str,
-    hunks: Vec<DiffHunk<'a>>,
-}
+            hunk.dst_count = hunk
+                .lines
+                .iter()
+                .map(|l| match l {
+                    Line::Context(_) | Line::Add(_) => 1,
+                    Line::Del(_) => 0,
+                })
+                .sum();
+        }
 
-fn split_chunks(diff: &str) -> impl Iterator<Item = DiffChunk> {
-    let file_regex =
-        lazy_regex::regex!(r#"(?:^--- (.*)$\n^\+\+\+ (.*)$)\n((?:^$\n?|^[-+@ ].*\n?)+)"#m);
-    file_regex.captures_iter(diff).map(|caps| DiffChunk {
-        src: caps.get(1).unwrap().as_str(),
-        dst: caps.get(2).unwrap().as_str(),
-        hunks: split_hunks(dbg!(caps.get(3).unwrap().as_str())).collect(),
+        chunk
     })
 }
 
-#[derive(Debug, PartialEq, Eq)]
-struct DiffHunk<'a> {
-    src_line: usize,
-    dst_line: usize,
-    src_count: usize,
-    dst_count: usize,
-
-    lines: Vec<Line<'a>>,
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DiffChunk<'a> {
+    pub src: &'a str,
+    pub dst: &'a str,
+    pub hunks: Vec<DiffHunk<'a>>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
-enum Line<'a> {
+fn split_chunks(diff: &str) -> impl Iterator<Item = DiffChunk> {
+    let chunk_regex = regex!(r#"(?: (.*)$\n^\+\+\+ (.*)$)\n((?:^$\n?|^[-+@ ].*\n?)+)"#m);
+
+    regex!("^---"m).split(diff).filter_map(|chunk| {
+        let caps = chunk_regex.captures(chunk)?;
+        Some(DiffChunk {
+            src: caps.get(1).unwrap().as_str(),
+            dst: caps.get(2).unwrap().as_str(),
+            hunks: split_hunks(caps.get(3).unwrap().as_str()).collect(),
+        })
+    })
+}
+
+impl fmt::Display for DiffChunk<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let hunks_str = self
+            .hunks
+            .iter()
+            .map(|h| h.to_string())
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        write!(f, "--- {}\n+++ {}\n{}", self.src, self.dst, hunks_str)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DiffHunk<'a> {
+    pub src_line: usize,
+    pub dst_line: usize,
+    pub src_count: usize,
+    pub dst_count: usize,
+
+    pub lines: Vec<Line<'a>>,
+}
+
+impl fmt::Display for DiffHunk<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "@@ -{},{} +{},{} @@",
+            self.src_line, self.src_count, self.dst_line, self.dst_count
+        )?;
+
+        for line in &self.lines {
+            writeln!(f)?;
+            match line {
+                Line::Context(line) => write!(f, " {line}")?,
+                Line::Add(line) => write!(f, "+{line}")?,
+                Line::Del(line) => write!(f, "-{line}")?,
+            }
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Line<'a> {
     Context(&'a str),
     Add(&'a str),
     Del(&'a str),
 }
 
 fn split_hunks(hunks: &str) -> impl Iterator<Item = DiffHunk> {
-    let hunk_regex =
-        lazy_regex::regex!(r#"@@ -(\d+),(\d+) \+(\d+),(\d+) @@\n((?:^\n|^[-+ ].*\n?)*)"#m);
+    let hunk_regex = regex!(r#"@@ -(\d+),(\d+) \+(\d+),(\d+) @@\n((?:^\n|^[-+ ].*\n?)*)"#m);
 
     hunk_regex.captures_iter(hunks).map(|caps| DiffHunk {
         src_line: caps.get(1).unwrap().as_str().parse().unwrap(),
@@ -126,8 +181,53 @@ foo bar
 +++ foo.rs
 @@ -1,1 +1,1 @@
 -foo
-+bar";
-        assert_eq!(relaxed_parse(s).unwrap(), s);
++bar
+@@ -10,1 +10,1 @@
+ quux
+ quux2
++quux3
+ quux4
+--- bar.rs
++++ bar.rs
+@@ -1,1 +1,1 @@
+-bar
++fred
+@@ -100,1 +100,1 @@
+ baz
+-bar
++thud
+ baz
++thud
+ baz";
+
+        let expected = "\
+--- foo.rs
++++ foo.rs
+@@ -1,1 +1,1 @@
+-foo
++bar
+@@ -10,3 +10,4 @@
+ quux
+ quux2
++quux3
+ quux4
+--- bar.rs
++++ bar.rs
+@@ -1,1 +1,1 @@
+-bar
++fred
+@@ -100,4 +100,5 @@
+ baz
+-bar
++thud
+ baz
++thud
+ baz";
+        let output = relaxed_parse(s)
+            .map(|chunk| chunk.to_string())
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert_eq!(expected, output);
     }
 
     #[test]
@@ -162,11 +262,7 @@ foo bar
                 src_count: 1,
                 dst_line: 10,
                 dst_count: 2,
-                lines: vec![
-                    Line::Del("bar"),
-                    Line::Add("quux"),
-                    Line::Add("quux2"),
-                ],
+                lines: vec![Line::Del("bar"), Line::Add("quux"), Line::Add("quux2")],
             },
         ];
 
@@ -198,38 +294,30 @@ foo bar
             DiffChunk {
                 src: "foo.rs",
                 dst: "foo.rs",
-                hunks: vec![
-                    DiffHunk {
-                        src_line: 1,
-                        src_count: 1,
-                        dst_line: 1,
-                        dst_count: 1,
-                        lines: vec![
-                            Line::Context("context"),
-                            Line::Context("the line right below this one is intentionally empty"),
-                            Line::Context(""),
-                            Line::Del("foo"),
-                            Line::Add("bar"),
-                        ],
-                    },
-                ],
+                hunks: vec![DiffHunk {
+                    src_line: 1,
+                    src_count: 1,
+                    dst_line: 1,
+                    dst_count: 1,
+                    lines: vec![
+                        Line::Context("context"),
+                        Line::Context("the line right below this one is intentionally empty"),
+                        Line::Context(""),
+                        Line::Del("foo"),
+                        Line::Add("bar"),
+                    ],
+                }],
             },
             DiffChunk {
                 src: "bar.rs",
                 dst: "bar.rs",
-                hunks: vec![
-                    DiffHunk {
-                        src_line: 10,
-                        src_count: 1,
-                        dst_line: 10,
-                        dst_count: 2,
-                        lines: vec![
-                            Line::Del("bar"),
-                            Line::Add("quux"),
-                            Line::Add("quux2"),
-                        ],
-                    },
-                ],
+                hunks: vec![DiffHunk {
+                    src_line: 10,
+                    src_count: 1,
+                    dst_line: 10,
+                    dst_count: 2,
+                    lines: vec![Line::Del("bar"), Line::Add("quux"), Line::Add("quux2")],
+                }],
             },
         ];
 

@@ -16,7 +16,7 @@ use chrono::NaiveDateTime;
 use futures::{pin_mut, stream, StreamExt, TryStreamExt};
 use rayon::prelude::*;
 use reqwest::StatusCode;
-use tracing::{debug, error};
+use tracing::{debug, error, warn, info};
 use uuid::Uuid;
 
 use super::{middleware::User, Error};
@@ -753,17 +753,23 @@ pub async fn diff(
     let context =
         serde_json::from_str::<Vec<ContextFile>>(&context_json).map_err(Error::internal)?;
 
-    let user_message = messages.iter().rev().find_map(|msg| match msg {
-        Message::User(m) => Some(m),
-        Message::Assistant(..) => None,
-    })
-    .context("studio did not contain a user message")?;
+    let user_message = messages
+        .iter()
+        .rev()
+        .find_map(|msg| match msg {
+            Message::User(m) => Some(m),
+            Message::Assistant(..) => None,
+        })
+        .context("studio did not contain a user message")?;
 
-    let assistant_message = messages.iter().rev().find_map(|msg| match msg {
-        Message::User(..) => None,
-        Message::Assistant(m) => Some(m),
-    })
-    .context("studio did not contain an assistant message")?;
+    let assistant_message = messages
+        .iter()
+        .rev()
+        .find_map(|msg| match msg {
+            Message::User(..) => None,
+            Message::Assistant(m) => Some(m),
+        })
+        .context("studio did not contain an assistant message")?;
 
     app.track_studio(
         &user,
@@ -773,7 +779,8 @@ pub async fn diff(
             .with_payload("assistant_message", &assistant_message),
     );
 
-    let system_prompt = prompts::studio_diff_prompt(&generate_llm_context((*app).clone(), &context).await?);
+    let system_prompt =
+        prompts::studio_diff_prompt(&generate_llm_context((*app).clone(), &context).await?);
     let user_message = format!("Create a patch for the task \"{user_message}\".\n\n\nHere is the solution:\n\n{assistant_message}");
 
     let messages = vec![
@@ -782,7 +789,42 @@ pub async fn diff(
     ];
 
     let response = llm_gateway.chat(&messages, None).await?;
-    let patched_diff = diff::extract((*app).clone(), response).await?;
+    let diff_chunks = diff::extract(&response)?.collect::<Vec<_>>();
+
+    for (i, chunk) in diff_chunks.iter().enumerate() {
+        let context_file = match context.iter().find(|c| c.path == chunk.src) {
+            Some(cf) => cf,
+            None => {
+                warn!(?chunk.src, "chunk had unknown src file");
+                continue;
+            },
+        };
+
+        let file = app.indexes.file.by_path(&context_file.repo, &context_file.path, context_file.branch.as_deref())
+            .await?
+            .context("path did not exist in the index")?;
+
+        for (j, hunk) in chunk.hunks.iter().enumerate() {
+            let mut singular_chunk = chunk.clone();
+            singular_chunk.hunks = vec![hunk.clone()];
+
+            let patch = singular_chunk.to_string();
+
+            let patch = diffy::Patch::from_str(&patch).context("invalid patch")?;
+
+            match diffy::apply(&file.content, &patch) {
+                Ok(_) => info!("hunk ({i}, {j}) applied successfully"),
+                Err(e) => info!("hunk ({i}, {j}) failed: {e}"),
+            }
+        }
+    }
+
+    // For debugging.
+    let patched_diff = diff_chunks
+        .iter()
+        .map(|chunk| chunk.to_string())
+        .collect::<Vec<_>>()
+        .join("\n");
 
     Ok(patched_diff)
 }
