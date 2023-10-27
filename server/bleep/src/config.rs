@@ -407,11 +407,11 @@ pub const fn minimum_parallelism() -> usize {
 }
 
 const fn default_buffer_size() -> usize {
-    100_000_000
+    500_000_000
 }
 
 const fn default_repo_buffer_size() -> usize {
-    30_000_000
+    200_000_000
 }
 
 const fn default_port() -> u16 {
