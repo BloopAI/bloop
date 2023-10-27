@@ -35,7 +35,6 @@ tasks:
     command: |
       while read -r ts file; do touch -d "@${ts}" "${file}"; done < /workspace/.ts
 
-      echo "$BLOOP_GITHUB_SECRET_KEY" |base64 -d > /workspace/github-app-private-key.pem
       bloop_url=$(gp url 7878 | sed 's;https://;;')
 
       git reset --hard
@@ -48,6 +47,8 @@ tasks:
         --model-dir /workspace/bloop/model \
         --frontend-dist /workspace/bloop/client/dist \
         --instance-domain $bloop_url \
+        --bloop-instance-secret "$BLOOP_INSTANCE_SECRET" \
+        --bloop-instance-org "$BLOOP_INSTANCE_ORG" \
         --cognito-config-url https://cloud-auth-staging.bloop.ai/bloop_config
 
     openMode: split-left
