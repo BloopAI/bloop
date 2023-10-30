@@ -5,8 +5,8 @@ use tracing::instrument;
 
 use crate::{
     agent::{
-        exchange::{SearchStep, Update},
-        Agent,
+        exchange::{RepoPath, SearchStep, Update},
+        Agent, SemanticSearchParams,
     },
     analytics::EventData,
 };
@@ -24,7 +24,10 @@ impl Agent {
         let mut paths = self
             .fuzzy_path_search(query)
             .await
-            .map(|c| c.relative_path)
+            .map(|c| RepoPath {
+                repo: c.repo_ref,
+                path: c.relative_path,
+            })
             .collect::<HashSet<_>>() // TODO: This shouldn't be necessary. Path search should return unique results.
             .into_iter()
             .collect::<Vec<_>>();
@@ -34,10 +37,21 @@ impl Agent {
         // If there are no lexical results, perform a semantic search.
         if paths.is_empty() {
             let semantic_paths = self
-                .semantic_search(query.into(), vec![], 30, 0, 0.0, true)
+                .semantic_search(SemanticSearchParams {
+                    query: query.into(),
+                    paths: vec![],
+                    project: self.project.clone(),
+                    limit: 30,
+                    offset: 0,
+                    threshold: 0.0,
+                    retrieve_more: true,
+                })
                 .await?
                 .into_iter()
-                .map(|chunk| chunk.relative_path)
+                .map(|chunk| RepoPath {
+                    repo: chunk.repo_ref,
+                    path: chunk.relative_path,
+                })
                 .collect::<HashSet<_>>()
                 .into_iter()
                 .collect();
@@ -47,7 +61,7 @@ impl Agent {
 
         let mut paths = paths
             .iter()
-            .map(|p| (self.get_path_alias(p), p.to_string()))
+            .map(|repo_path| (self.get_path_alias(repo_path), repo_path.path.to_string()))
             .collect::<Vec<_>>();
         paths.sort_by(|a: &(usize, String), b| a.0.cmp(&b.0)); // Sort by alias
 

@@ -91,7 +91,7 @@ impl Payload {
         HashMap::from([
             ("lang".into(), self.lang.to_ascii_lowercase().into()),
             ("repo_name".into(), self.repo_name.into()),
-            ("repo_ref".into(), self.repo_ref.into()),
+            ("repo_ref".into(), self.repo_ref.to_string().into()),
             ("relative_path".into(), self.relative_path.into()),
             ("content_hash".into(), self.content_hash.into()),
             ("snippet".into(), self.text.into()),
@@ -396,25 +396,25 @@ impl Semantic {
 
     pub async fn search<'a>(
         &self,
-        parsed_query: &SemanticQuery<'a>,
+        query: &SemanticQuery<'a>,
         limit: u64,
         offset: u64,
         threshold: f32,
         retrieve_more: bool,
     ) -> anyhow::Result<Vec<Payload>> {
-        let Some(query) = parsed_query.target() else {
+        let Some(query_target) = query.target() else {
             anyhow::bail!("no search target for query");
         };
-        let vector = self.embedder.embed(&query).await?;
+        let vector = self.embedder.embed(&query_target).await?;
 
         // TODO: Remove the need for `retrieve_more`. It's here because:
         // In /q `limit` is the maximum number of results returned (the actual number will often be lower due to deduplication)
         // In /answer we want to retrieve `limit` results exactly
         let results = self
             .search_with(
-                parsed_query,
+                query,
                 vector.clone(),
-                if retrieve_more { limit * 2 } else { limit }, // Retrieve double `limit` and deduplicate
+                if retrieve_more { limit * 4 } else { limit }, // Retrieve double `limit` and deduplicate
                 offset,
                 threshold,
             )
@@ -501,7 +501,7 @@ impl Semantic {
             let data = format!("{repo_name}\t{relative_path}\n{}", chunk.data);
             let payload = Payload {
                 repo_name: repo_name.to_owned(),
-                repo_ref: repo_ref.to_owned(),
+                repo_ref: repo_ref.parse().unwrap(),
                 relative_path: relative_path.to_owned(),
                 content_hash: file_cache_key.to_string(),
                 text: chunk.data.to_owned(),
@@ -511,7 +511,9 @@ impl Semantic {
                 end_line: chunk.range.end.line as u64,
                 start_byte: chunk.range.start.byte as u64,
                 end_byte: chunk.range.end.byte as u64,
-                ..Default::default()
+                id: Default::default(),
+                embedding: Default::default(),
+                score: Default::default(),
             };
 
             (data, payload)
@@ -704,18 +706,21 @@ fn mean_pool(embeddings: Vec<Vec<f32>>) -> Vec<f32> {
 //      The value of lambda skews the weightage in favor of either relevance or novelty.
 //    - we add a language diversity factor to the score to encourage a range of languages in the results
 //    - we also add a path diversity factor to the score to encourage a range of paths in the results
+//    - we also add a repo diversity factor to the score to encourage a range of repos in the results
 //  k: the number of embeddings to select
 pub fn deduplicate_with_mmr(
     query_embedding: &[f32],
     embeddings: &[&[f32]],
     languages: &[&str],
     paths: &[&str],
+    repos: &[&str],
     lambda: f32,
     k: usize,
 ) -> Vec<usize> {
     let mut idxs = vec![];
     let mut lang_counts = HashMap::new();
     let mut path_counts = HashMap::new();
+    let mut repo_counts = HashMap::new();
 
     if embeddings.len() < k {
         return (0..embeddings.len()).collect();
@@ -747,6 +752,10 @@ pub fn deduplicate_with_mmr(
             let path_count = path_counts.get(paths[i]).unwrap_or(&0);
             equation_score += 0.75_f32.powi(*path_count);
 
+            // MMR + (3/4)^n where n is the number of times a repo has been selected
+            let repo_count = repo_counts.get(repos[i]).unwrap_or(&0);
+            equation_score += 0.75_f32.powi(*repo_count);
+
             if equation_score > best_score {
                 best_score = equation_score;
                 idx_to_add = Some(i);
@@ -756,6 +765,7 @@ pub fn deduplicate_with_mmr(
             idxs.push(i);
             *lang_counts.entry(languages[i]).or_insert(0) += 1;
             *path_counts.entry(paths[i]).or_insert(0) += 1;
+            *repo_counts.entry(repos[i]).or_insert(0) += 1;
         }
     }
     idxs
@@ -812,11 +822,16 @@ pub fn deduplicate_snippets(
             .iter()
             .map(|s| s.relative_path.as_ref())
             .collect::<Vec<_>>();
+        let repos = all_snippets
+            .iter()
+            .map(|s| s.repo_name.as_ref())
+            .collect::<Vec<_>>();
         deduplicate_with_mmr(
             &query_embedding,
             &embeddings,
             &languages,
             &paths,
+            &repos,
             lambda,
             k as usize,
         )

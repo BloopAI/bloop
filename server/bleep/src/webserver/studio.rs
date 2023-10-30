@@ -1464,9 +1464,9 @@ pub async fn import(
 
     let imported_context = canonicalize_context(exchanges.iter().flat_map(|e| {
         e.code_chunks.iter().map(|c| ContextFile {
-            path: c.path.clone(),
-            hidden: false,
             repo: repo_ref.parse().unwrap(),
+            path: c.repo_path.path.clone(),
+            hidden: false,
             branch: e.query.branch().next().map(Cow::into_owned),
             ranges: vec![c.start_line..c.end_line + 1],
         })

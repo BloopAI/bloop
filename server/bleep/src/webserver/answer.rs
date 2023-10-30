@@ -20,8 +20,8 @@ use super::middleware::User;
 use crate::{
     agent::{
         self,
-        exchange::{CodeChunk, Exchange, FocusedChunk},
-        Action, Agent, ExchangeState,
+        exchange::{CodeChunk, Exchange, FocusedChunk, RepoPath},
+        Action, Agent, ExchangeState, Project,
     },
     analytics::{EventData, QueryEvent},
     db::QueryLog,
@@ -59,7 +59,6 @@ pub(super) async fn vote(
         &QueryEvent {
             query_id: params.query_id,
             thread_id: params.thread_id,
-            repo_ref: params.repo_ref,
             data: EventData::output_stage("vote").with_payload("feedback", params.feedback),
         },
     );
@@ -68,7 +67,7 @@ pub(super) async fn vote(
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct Answer {
     pub q: String,
-    pub repo_ref: RepoRef,
+    pub project: String,
     #[serde(default = "default_model")]
     pub model: agent::model::AnswerModel,
     #[serde(default = "default_thread_id")]
@@ -102,9 +101,9 @@ pub(super) async fn answer(
         thread_id: params.thread_id,
     };
 
-    let (_, mut exchanges) = conversations::load(&app.sql, &conversation_id)
+    let mut exchanges = conversations::load(&app.sql, &conversation_id)
         .await?
-        .unwrap_or_else(|| (params.repo_ref.clone(), Vec::new()));
+        .unwrap_or_default();
 
     let Answer {
         parent_exchange_id,
@@ -184,7 +183,6 @@ async fn execute_agent(
             &QueryEvent {
                 query_id,
                 thread_id: params.thread_id,
-                repo_ref: Some(params.repo_ref),
                 data: EventData::output_stage("error")
                     .with_payload("status", err.status.as_u16())
                     .with_payload("message", err.message()),
@@ -243,18 +241,17 @@ async fn try_execute_agent(
         }
     };
 
+    let project: Project = serde_json::from_str(&params.project).unwrap();
     let Answer {
-        thread_id,
-        repo_ref,
-        model,
-        ..
+        thread_id, model, ..
     } = params.clone();
+
     let stream = async_stream::try_stream! {
         let (exchange_tx, exchange_rx) = tokio::sync::mpsc::channel(10);
 
         let mut agent = Agent {
             app,
-            repo_ref,
+            project,
             exchanges,
             exchange_tx,
             llm_gateway,
@@ -379,6 +376,10 @@ pub async fn explain(
     Extension(user): Extension<User>,
 ) -> super::Result<impl IntoResponse> {
     let query_id = uuid::Uuid::new_v4();
+    let repo_path = RepoPath {
+        repo: params.repo_ref.clone(),
+        path: params.relative_path.clone(),
+    };
 
     // We synthesize a virtual `/answer` request.
     let virtual_req = Answer {
@@ -388,7 +389,7 @@ pub async fn explain(
             params.line_end + 1,
             params.relative_path
         ),
-        repo_ref: params.repo_ref,
+        project: format!("[\"{}\"]", params.repo_ref),
         thread_id: params.thread_id,
         parent_exchange_id: None,
         model: agent::model::GPT_4,
@@ -413,7 +414,8 @@ pub async fn explain(
     let file_content = app
         .indexes
         .file
-        .by_path(&virtual_req.repo_ref, &params.relative_path, None)
+        // this unwrap is ok, because we instantiate the `virtual_req` above
+        .by_path(&params.repo_ref, &params.relative_path, None)
         .await
         .context("file retrieval failed")?
         .context("did not find requested file")?
@@ -427,16 +429,15 @@ pub async fn explain(
         .join("\n");
 
     let mut exchange = Exchange::new(query_id, query);
-
     exchange.focused_chunk = Some(FocusedChunk {
-        file_path: params.relative_path.clone(),
+        repo_path: repo_path.clone(),
         start_line: params.line_start,
         end_line: params.line_end,
     });
 
-    exchange.paths.push(params.relative_path.clone());
+    exchange.paths.push(repo_path.clone());
     exchange.code_chunks.push(CodeChunk {
-        path: params.relative_path.clone(),
+        repo_path: repo_path.clone(),
         alias: 0,
         start_line: params.line_start,
         end_line: params.line_end,
