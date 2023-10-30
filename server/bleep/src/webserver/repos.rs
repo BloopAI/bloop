@@ -230,12 +230,16 @@ pub(super) async fn index_status(Extension(app): Extension<Application>) -> impl
     let mut receiver = app.sync_queue.subscribe();
 
     Sse::new(async_stream::stream! {
-        while let Ok(event) = receiver.recv().await {
-            yield sse::Event::default().json_data(event).map_err(|err| {
-                <_ as Into<Box<dyn std::error::Error + Send + Sync>>>::into(err)
-            });
+        loop {
+            match receiver.recv().await {
+            Ok(event) => {
+                yield sse::Event::default().json_data(event).map_err(|err| {
+                    <_ as Into<Box<dyn std::error::Error + Send + Sync>>>::into(err)
+                });
+            },
+            Err(_) => {},
         }
-    })
+    }})
     .keep_alive(
         sse::KeepAlive::new()
             .interval(Duration::from_secs(5))
