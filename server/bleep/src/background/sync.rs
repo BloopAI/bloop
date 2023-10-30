@@ -340,7 +340,10 @@ impl SyncHandle {
         let mut loop_counter = 0;
         let loop_max = 1;
         let git_err = loop {
-            match creds.git_sync(&self.reporef, repo.clone()).await {
+            match creds
+                .git_sync(&self.reporef, repo.clone(), &self.pipes)
+                .await
+            {
                 Err(
                     err @ RemoteError::GitCloneFetch(gix::clone::fetch::Error::PrepareFetch(
                         gix::remote::fetch::prepare::Error::RefMap(

@@ -95,14 +95,14 @@ impl From<Auth> for State {
 }
 
 impl Auth {
-    pub(crate) async fn clone_repo(&self, repo: &Repository) -> Result<()> {
+    pub(crate) async fn clone_repo(&self, repo: &Repository, pipes: &SyncPipes) -> Result<()> {
         let creds = self.creds_for_private_repos(repo).await?;
-        git_clone(creds, &repo.remote.to_string(), &repo.disk_path).await
+        git_clone(creds, &repo.remote.to_string(), &repo.disk_path, pipes).await
     }
 
-    pub(crate) async fn pull_repo(&self, repo: &Repository) -> Result<()> {
+    pub(crate) async fn pull_repo(&self, repo: &Repository, pipes: &SyncPipes) -> Result<()> {
         let creds = self.creds_for_private_repos(repo).await?;
-        git_pull(creds, repo).await
+        git_pull(creds, repo, pipes).await
     }
 
     async fn creds_for_private_repos(&self, repo: &Repository) -> Result<Option<GitCreds>> {

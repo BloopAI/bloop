@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use tracing::{error, warn};
 
 use crate::{
+    background::SyncPipes,
     remotes,
     repo::{Backend, RepoError, RepoRef, Repository, SyncStatus},
     Application,
@@ -128,9 +129,15 @@ macro_rules! creds_callback(($auth:ident) => {{
     }
 }});
 
-async fn git_clone(auth: Option<GitCreds>, url: &str, target: &Path) -> Result<()> {
+async fn git_clone(
+    auth: Option<GitCreds>,
+    url: &str,
+    target: &Path,
+    pipes: &SyncPipes,
+) -> Result<()> {
     let url = url.to_owned();
     let target = target.to_owned();
+    let git_status = pipes.git_sync_progress();
 
     tokio::task::spawn_blocking(move || {
         let mut clone = {
@@ -144,14 +151,16 @@ async fn git_clone(auth: Option<GitCreds>, url: &str, target: &Path) -> Result<(
             }
         };
 
-        let (_repo, _outcome) = clone.fetch_only(gix::progress::Discard, &false.into())?;
+        let (_repo, _outcome) = clone.fetch_only(git_status, &false.into())?;
         Ok(())
     })
     .await?
 }
 
-async fn git_pull(auth: Option<GitCreds>, repo: &Repository) -> Result<()> {
+async fn git_pull(auth: Option<GitCreds>, repo: &Repository, pipes: &SyncPipes) -> Result<()> {
     use gix::remote::Direction;
+
+    let git_status = pipes.git_sync_progress();
 
     let disk_path = repo.disk_path.to_owned();
     tokio::task::spawn_blocking(move || {
@@ -169,8 +178,8 @@ async fn git_pull(auth: Option<GitCreds>, repo: &Repository) -> Result<()> {
         };
 
         connection
-            .prepare_fetch(gix::progress::Discard, Default::default())?
-            .receive(gix::progress::Discard, &false.into())?;
+            .prepare_fetch(git_status.clone(), Default::default())?
+            .receive(git_status, &false.into())?;
 
         Ok(())
     })
@@ -338,7 +347,12 @@ pub(crate) enum BackendCredential {
 
 impl BackendCredential {
     #[tracing::instrument(fields(repo=%reporef), skip_all)]
-    pub(crate) async fn git_sync(&self, reporef: &RepoRef, repo: Repository) -> Result<SyncStatus> {
+    pub(crate) async fn git_sync(
+        &self,
+        reporef: &RepoRef,
+        repo: Repository,
+        pipes: &SyncPipes,
+    ) -> Result<SyncStatus> {
         use BackendCredential::*;
         let Github(gh) = self;
 
@@ -346,17 +360,17 @@ impl BackendCredential {
             // it is possible syncing was killed, but the repo is
             // intact. pull if the dir exists, then quietly revert
             // to cloning if that fails
-            if let Ok(success) = gh.auth.pull_repo(&repo).await {
+            if let Ok(success) = gh.auth.pull_repo(&repo, pipes).await {
                 Ok(success)
             } else {
-                gh.auth.clone_repo(&repo).await
+                gh.auth.clone_repo(&repo, pipes).await
             }
         } else if repo.last_index_unix_secs == 0 {
-            gh.auth.clone_repo(&repo).await
+            gh.auth.clone_repo(&repo, pipes).await
         } else {
-            let pulled = gh.auth.pull_repo(&repo).await;
+            let pulled = gh.auth.pull_repo(&repo, pipes).await;
             if pulled.is_err() {
-                gh.auth.clone_repo(&repo).await
+                gh.auth.clone_repo(&repo, pipes).await
             } else {
                 pulled
             }

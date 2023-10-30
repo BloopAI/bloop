@@ -1,4 +1,7 @@
-use std::sync::RwLock;
+use std::sync::{
+    atomic::{AtomicUsize, Ordering},
+    Arc, RwLock,
+};
 
 use crate::repo::{FilterUpdate, RepoRef, SyncStatus};
 
@@ -14,9 +17,9 @@ enum ControlEvent {
 
 pub struct SyncPipes {
     reporef: RepoRef,
+    filter_updates: FilterUpdate,
     progress: super::ProgressStream,
     event: RwLock<Option<ControlEvent>>,
-    filter_updates: FilterUpdate,
 }
 
 impl SyncPipes {
@@ -30,6 +33,18 @@ impl SyncPipes {
             progress,
             filter_updates,
             event: Default::default(),
+        }
+    }
+
+    pub(crate) fn git_sync_progress(&self) -> GitSync {
+        GitSync {
+            max: Arc::new(0.into()),
+            cnt: Arc::new(0.into()),
+            id: Default::default(),
+            name: Default::default(),
+            progress: self.progress.clone(),
+            reporef: self.reporef.clone(),
+            filter_updates: self.filter_updates.clone(),
         }
     }
 
@@ -65,5 +80,115 @@ impl SyncPipes {
 
     pub(crate) fn remove(&self) {
         *self.event.write().unwrap() = Some(ControlEvent::Remove);
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct GitSync {
+    max: Arc<AtomicUsize>,
+    cnt: Arc<AtomicUsize>,
+    progress: super::ProgressStream,
+    reporef: RepoRef,
+    filter_updates: FilterUpdate,
+    id: gix::progress::Id,
+    name: String,
+}
+
+impl gix::progress::Progress for GitSync {
+    fn init(
+        &mut self,
+        max: Option<gix::progress::prodash::progress::Step>,
+        _unit: Option<gix::progress::Unit>,
+    ) {
+        let Some(max) = max else {
+            return;
+        };
+
+        self.max.store(max, Ordering::SeqCst);
+        self.cnt.store(0, Ordering::SeqCst);
+    }
+
+    fn set_name(&mut self, name: String) {
+        self.name = name;
+    }
+
+    fn name(&self) -> Option<String> {
+        Some(self.name.clone())
+    }
+
+    fn id(&self) -> gix::progress::Id {
+        self.id.clone()
+    }
+
+    fn message(&self, level: gix::progress::MessageLevel, message: String) {
+        println!("-- {level:?} : {name} {message}", name = self.name);
+    }
+}
+
+impl gix::progress::Count for GitSync {
+    fn set(&self, step: gix::progress::prodash::progress::Step) {
+        self.cnt.store(step, Ordering::SeqCst);
+
+        let current = ((step as f32 / self.max.load(Ordering::SeqCst) as f32) * 100f32) as u8;
+        // println!("-- {step:?} {name}", name = self.name);
+        // println!("set: {name} {}", current, name = self.name,);
+
+        _ = self.progress.send(Progress {
+            reporef: self.reporef.clone(),
+            branch_filter: self.filter_updates.branch_filter.clone(),
+            event: ProgressEvent::IndexPercent(current.min(100)),
+        });
+    }
+
+    fn step(&self) -> gix::progress::prodash::progress::Step {
+        1
+    }
+
+    fn inc_by(&self, step: gix::progress::prodash::progress::Step) {
+        self.cnt.fetch_add(step, Ordering::SeqCst);
+        let current = self.cnt.load(Ordering::SeqCst);
+
+        _ = self.progress.send(Progress {
+            reporef: self.reporef.clone(),
+            branch_filter: self.filter_updates.branch_filter.clone(),
+            event: ProgressEvent::IndexPercent((current % 100) as u8),
+        });
+        // println!("inc: {cnt}, {max}", max = self.max.load(Ordering::SeqCst));
+    }
+
+    fn counter(&self) -> gix::progress::StepShared {
+        self.cnt.clone()
+    }
+}
+
+impl gix::progress::NestedProgress for GitSync {
+    type SubProgress = Self;
+
+    fn add_child(&mut self, name: impl Into<String>) -> Self::SubProgress {
+        GitSync {
+            max: self.max.clone(),
+            cnt: self.cnt.clone(),
+            progress: self.progress.clone(),
+            id: self.id.clone(),
+            filter_updates: self.filter_updates.clone(),
+            reporef: self.reporef.clone(),
+            name: name.into(),
+        }
+    }
+
+    fn add_child_with_id(
+        &mut self,
+        name: impl Into<String>,
+        id: gix::progress::Id,
+    ) -> Self::SubProgress {
+        GitSync {
+            max: self.max.clone(),
+            cnt: self.cnt.clone(),
+            progress: self.progress.clone(),
+            filter_updates: self.filter_updates.clone(),
+            reporef: self.reporef.clone(),
+            name: name.into(),
+            id,
+        }
     }
 }
