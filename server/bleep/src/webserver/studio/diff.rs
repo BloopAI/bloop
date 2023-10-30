@@ -4,12 +4,12 @@ use anyhow::{Context, Result};
 use lazy_regex::regex;
 
 pub fn extract(chat_response: &str) -> Result<impl Iterator<Item = DiffChunk>> {
-    Ok(relaxed_parse(extract_diff(&chat_response)?))
+    Ok(relaxed_parse(extract_diff(chat_response)?))
 }
 
 fn extract_diff(chat_response: &str) -> Result<&str> {
     let captures = regex!(r#"\A.*?^```diff(.*)^```.*\z"#sm)
-        .captures(&chat_response)
+        .captures(chat_response)
         .context("failed to parse chat response")?;
     let cap = captures
         .get(1)
@@ -20,7 +20,34 @@ fn extract_diff(chat_response: &str) -> Result<&str> {
 /// Parse a diff, allowing for some formatting errors.
 fn relaxed_parse(diff: &str) -> impl Iterator<Item = DiffChunk> {
     split_chunks(diff).map(|mut chunk| {
-        for hunk in &mut chunk.hunks {
+        chunk.fixup();
+        chunk
+    })
+}
+
+fn split_chunks(diff: &str) -> impl Iterator<Item = DiffChunk> {
+    let chunk_regex = regex!(r#"(?: (.*)$\n^\+\+\+ (.*)$)\n((?:^$\n?|^[-+@ ].*\n?)+)"#m);
+
+    regex!("^---"m).split(diff).filter_map(|chunk| {
+        let caps = chunk_regex.captures(chunk)?;
+        Some(DiffChunk {
+            src: caps.get(1).unwrap().as_str(),
+            dst: caps.get(2).unwrap().as_str(),
+            hunks: split_hunks(caps.get(3).unwrap().as_str()).collect(),
+        })
+    })
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DiffChunk<'a> {
+    pub src: &'a str,
+    pub dst: &'a str,
+    pub hunks: Vec<DiffHunk<'a>>,
+}
+
+impl DiffChunk<'_> {
+    pub fn fixup(&mut self) {
+        for hunk in &mut self.hunks {
             hunk.src_count = hunk
                 .lines
                 .iter()
@@ -39,29 +66,7 @@ fn relaxed_parse(diff: &str) -> impl Iterator<Item = DiffChunk> {
                 })
                 .sum();
         }
-
-        chunk
-    })
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct DiffChunk<'a> {
-    pub src: &'a str,
-    pub dst: &'a str,
-    pub hunks: Vec<DiffHunk<'a>>,
-}
-
-fn split_chunks(diff: &str) -> impl Iterator<Item = DiffChunk> {
-    let chunk_regex = regex!(r#"(?: (.*)$\n^\+\+\+ (.*)$)\n((?:^$\n?|^[-+@ ].*\n?)+)"#m);
-
-    regex!("^---"m).split(diff).filter_map(|chunk| {
-        let caps = chunk_regex.captures(chunk)?;
-        Some(DiffChunk {
-            src: caps.get(1).unwrap().as_str(),
-            dst: caps.get(2).unwrap().as_str(),
-            hunks: split_hunks(caps.get(3).unwrap().as_str()).collect(),
-        })
-    })
+    }
 }
 
 impl fmt::Display for DiffChunk<'_> {
@@ -75,6 +80,37 @@ impl fmt::Display for DiffChunk<'_> {
 
         write!(f, "--- {}\n+++ {}\n{}", self.src, self.dst, hunks_str)
     }
+}
+
+fn split_hunks(hunks: &str) -> impl Iterator<Item = DiffHunk> {
+    let hunk_regex = regex!(r#"@@ -(\d+),(\d+) \+(\d+),(\d+) @@.*\n((?:^\n|^[-+ ].*\n?)*)"#m);
+
+    hunk_regex.captures_iter(hunks).map(|caps| DiffHunk {
+        src_line: caps.get(1).unwrap().as_str().parse().unwrap(),
+        src_count: caps.get(2).unwrap().as_str().parse().unwrap(),
+        dst_line: caps.get(3).unwrap().as_str().parse().unwrap(),
+        dst_count: caps.get(4).unwrap().as_str().parse().unwrap(),
+        lines: {
+            caps.get(5)
+                .unwrap()
+                .as_str()
+                .lines()
+                .map(|l| {
+                    if !l.is_empty() {
+                        l.split_at(1)
+                    } else {
+                        (" ", "")
+                    }
+                })
+                .map(|(type_, line)| match type_ {
+                    " " => Line::Context(line),
+                    "+" => Line::Add(line),
+                    "-" => Line::Del(line),
+                    _ => unreachable!("unknown character slipped through regex"),
+                })
+                .collect()
+        },
+    })
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -113,37 +149,6 @@ pub enum Line<'a> {
     Context(&'a str),
     Add(&'a str),
     Del(&'a str),
-}
-
-fn split_hunks(hunks: &str) -> impl Iterator<Item = DiffHunk> {
-    let hunk_regex = regex!(r#"@@ -(\d+),(\d+) \+(\d+),(\d+) @@\n((?:^\n|^[-+ ].*\n?)*)"#m);
-
-    hunk_regex.captures_iter(hunks).map(|caps| DiffHunk {
-        src_line: caps.get(1).unwrap().as_str().parse().unwrap(),
-        src_count: caps.get(2).unwrap().as_str().parse().unwrap(),
-        dst_line: caps.get(3).unwrap().as_str().parse().unwrap(),
-        dst_count: caps.get(4).unwrap().as_str().parse().unwrap(),
-        lines: {
-            caps.get(5)
-                .unwrap()
-                .as_str()
-                .lines()
-                .map(|l| {
-                    if l.len() > 0 {
-                        l.split_at(1)
-                    } else {
-                        (" ", "")
-                    }
-                })
-                .map(|(type_, line)| match type_ {
-                    " " => Line::Context(line),
-                    "+" => Line::Add(line),
-                    "-" => Line::Del(line),
-                    _ => unreachable!("unknown character slipped through regex"),
-                })
-                .collect()
-        },
-    })
 }
 
 #[cfg(test)]
@@ -322,6 +327,141 @@ foo bar
         ];
 
         let output = split_chunks(diff).collect::<Vec<_>>();
+
+        assert_eq!(expected, output);
+    }
+
+    #[test]
+    fn test_bug_split() {
+        let chat_response = r#"```diff
+--- server/bleep/src/analytics.rs
++++ server/bleep/src/analytics.rs
+@@ -215,6 +215,22 @@ impl RudderHub {
+             }));
+         }
+     }
++    
++    pub fn track_index_repo(&self, user: &crate::webserver::middleware::User, repo_ref: RepoRef) {
++        if let Some(options) = &self.options {
++            self.send(Message::Track(Track {
++                user_id: Some(self.tracking_id(user.username())),
++                event: "index repo".to_owned(),
++                properties: Some(json!({
++                    "device_id": self.device_id(),
++                    "repo_ref": repo_ref.to_string(),
++                    "package_metadata": options.package_metadata,
++                })),
++                ..Default::default()
++            }));
++        }
++    }
+ }
+ 
+ impl From<Option<String>> for DeviceId {
+
+--- server/bleep/src/indexes.rs
++++ server/bleep/src/indexes.rs
+@@ -61,7 +61,9 @@ impl<'a> GlobalWriteHandle<'a> {
+     }
+ 
+     pub(crate) async fn index(
+-        &self,
++        &self,
++        analytics: &RudderHub,  // Pass in the RudderHub instance
++        user: &crate::webserver::middleware::User,  // Pass in the current user
+         sync_handle: &SyncHandle,
+         repo: &Repository,
+     ) -> Result<Arc<RepoMetadata>, RepoError> {
+@@ -70,6 +72,9 @@ impl<'a> GlobalWriteHandle<'a> {
+ 
+         for h in &self.handles {
+             h.index(sync_handle, repo, &metadata).await?;
++            
++            // Track the repo indexing event
++            analytics.track_index_repo(user, repo.repo_ref.clone());
+         }
+ 
+         Ok(metadata)
+```"#;
+        let expected = vec![
+            DiffChunk {
+                src: "server/bleep/src/analytics.rs",
+                dst: "server/bleep/src/analytics.rs",
+                hunks: vec![DiffHunk {
+                    src_line: 215,
+                    src_count: 7,
+                    dst_line: 215,
+                    dst_count: 22,
+                    lines: vec![
+                        Line::Context("            }));"),
+                        Line::Context("        }"),
+                        Line::Context("    }"),
+                        Line::Add("    "),
+                        Line::Add("    pub fn track_index_repo(&self, user: &crate::webserver::middleware::User, repo_ref: RepoRef) {"),
+                        Line::Add(r#"        if let Some(options) = &self.options {"#),
+                        Line::Add(r#"            self.send(Message::Track(Track {"#),
+                        Line::Add(r#"                user_id: Some(self.tracking_id(user.username())),"#),
+                        Line::Add(r#"                event: "index repo".to_owned(),"#),
+                        Line::Add(r#"                properties: Some(json!({"#),
+                        Line::Add(r#"                    "device_id": self.device_id(),"#),
+                        Line::Add(r#"                    "repo_ref": repo_ref.to_string(),"#),
+                        Line::Add(r#"                    "package_metadata": options.package_metadata,"#),
+                        Line::Add(r#"                })),"#),
+                        Line::Add(r#"                ..Default::default()"#),
+                        Line::Add(r#"            }));"#),
+                        Line::Add(r#"        }"#),
+                        Line::Add(r#"    }"#),
+                        Line::Context("}"),
+                        Line::Context(""),
+                        Line::Context("impl From<Option<String>> for DeviceId {"),
+                        Line::Context(""),
+                    ],
+                }],
+            },
+            DiffChunk {
+                src: "server/bleep/src/indexes.rs",
+                dst: "server/bleep/src/indexes.rs",
+                hunks: vec![
+                    DiffHunk {
+                        src_line: 61,
+                        src_count: 7,
+                        dst_line: 61,
+                        dst_count: 9,
+                        lines: vec![
+                            Line::Context(r#"    }"#),
+                            Line::Context(r#""#),
+                            Line::Context(r#"    pub(crate) async fn index("#),
+                            Line::Del(r#"        &self,"#),
+                            Line::Add(r#"        &self,"#),
+                            Line::Add(r#"        analytics: &RudderHub,  // Pass in the RudderHub instance"#),
+                            Line::Add(r#"        user: &crate::webserver::middleware::User,  // Pass in the current user"#),
+                            Line::Context(r#"        sync_handle: &SyncHandle,"#),
+                            Line::Context(r#"        repo: &Repository,"#),
+                            Line::Context(r#"    ) -> Result<Arc<RepoMetadata>, RepoError> {"#),
+                        ],
+                    },
+                    DiffHunk {
+                        src_line: 70,
+                        src_count: 6,
+                        dst_line: 72,
+                        dst_count: 9,
+                        lines: vec![
+                            Line::Context(r#""#),
+                            Line::Context(r#"        for h in &self.handles {"#),
+                            Line::Context(r#"            h.index(sync_handle, repo, &metadata).await?;"#),
+                            Line::Add(r#"            "#),
+                            Line::Add(r#"            // Track the repo indexing event"#),
+                            Line::Add(r#"            analytics.track_index_repo(user, repo.repo_ref.clone());"#),
+                            Line::Context(r#"        }"#),
+                            Line::Context(r#""#),
+                            Line::Context(r#"        Ok(metadata)"#),
+                        ],
+                    },
+                ],
+            },
+        ];
+
+        let output = extract(chat_response).unwrap().collect::<Vec<_>>();
 
         assert_eq!(expected, output);
     }

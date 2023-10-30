@@ -16,8 +16,10 @@ use chrono::NaiveDateTime;
 use futures::{pin_mut, stream, StreamExt, TryStreamExt};
 use rayon::prelude::*;
 use reqwest::StatusCode;
-use tracing::{debug, error, warn, info};
+use tracing::{debug, error, warn};
 use uuid::Uuid;
+
+use self::diff::DiffChunk;
 
 use super::{middleware::User, Error};
 use crate::{
@@ -779,8 +781,9 @@ pub async fn diff(
             .with_payload("assistant_message", &assistant_message),
     );
 
-    let system_prompt =
-        prompts::studio_diff_prompt(&generate_llm_context((*app).clone(), &context).await?);
+    let llm_context = generate_llm_context((*app).clone(), &context).await?;
+
+    let system_prompt = prompts::studio_diff_prompt(&llm_context);
     let user_message = format!("Create a patch for the task \"{user_message}\".\n\n\nHere is the solution:\n\n{assistant_message}");
 
     let messages = vec![
@@ -791,16 +794,27 @@ pub async fn diff(
     let response = llm_gateway.chat(&messages, None).await?;
     let diff_chunks = diff::extract(&response)?.collect::<Vec<_>>();
 
+    // A map of `(src_file, dst_file) -> chunk`, where each chunk can contain multiple hunks. We
+    // use this to reconstructed a "corrected" diff which can be cleanly applied.
+    let mut resolved_chunk_map = HashMap::new();
+
     for (i, chunk) in diff_chunks.iter().enumerate() {
         let context_file = match context.iter().find(|c| c.path == chunk.src) {
             Some(cf) => cf,
             None => {
                 warn!(?chunk.src, "chunk had unknown src file");
                 continue;
-            },
+            }
         };
 
-        let file = app.indexes.file.by_path(&context_file.repo, &context_file.path, context_file.branch.as_deref())
+        let file = app
+            .indexes
+            .file
+            .by_path(
+                &context_file.repo,
+                &context_file.path,
+                context_file.branch.as_deref(),
+            )
             .await?
             .context("path did not exist in the index")?;
 
@@ -808,20 +822,53 @@ pub async fn diff(
             let mut singular_chunk = chunk.clone();
             singular_chunk.hunks = vec![hunk.clone()];
 
-            let patch = singular_chunk.to_string();
+            let diff = singular_chunk.to_string();
+            let patch = diffy::Patch::from_str(&diff).context("invalid patch")?;
 
-            let patch = diffy::Patch::from_str(&patch).context("invalid patch")?;
+            if diffy::apply(&file.content, &patch).is_err() {
+                singular_chunk.hunks[0].lines.retain(|line| match line {
+                    diff::Line::Add(..) | diff::Line::Del(..) => true,
+                    diff::Line::Context(..) => false,
+                });
+                singular_chunk.fixup();
 
-            match diffy::apply(&file.content, &patch) {
-                Ok(_) => info!("hunk ({i}, {j}) applied successfully"),
-                Err(e) => info!("hunk ({i}, {j}) failed: {e}"),
+                let diff = if singular_chunk.hunks[0]
+                    .lines
+                    .iter()
+                    .all(|l| matches!(l, diff::Line::Add(..)))
+                {
+                    let system_prompt = prompts::studio_diff_regen_hunk_prompt(&llm_context);
+                    let messages = vec![
+                        llm_gateway::api::Message::system(&system_prompt),
+                        llm_gateway::api::Message::user(&singular_chunk.to_string()),
+                    ];
+                    llm_gateway.chat(&messages, None).await?
+                } else {
+                    singular_chunk.to_string()
+                };
+
+                let patch = diffy::Patch::from_str(&diff).context("redacted patch was invalid")?;
+
+                if let Err(e) = diffy::apply(&file.content, &patch) {
+                    error!("hunk ({i}, {j}) failed: {e}");
+                }
             }
+
+            let chunk = resolved_chunk_map
+                .entry((singular_chunk.src, singular_chunk.dst))
+                .or_insert_with(|| DiffChunk {
+                    src: singular_chunk.src,
+                    dst: singular_chunk.dst,
+                    hunks: Vec::new(),
+                });
+
+            chunk.hunks.extend(singular_chunk.hunks);
         }
     }
 
     // For debugging.
-    let patched_diff = diff_chunks
-        .iter()
+    let patched_diff = resolved_chunk_map
+        .into_values()
         .map(|chunk| chunk.to_string())
         .collect::<Vec<_>>()
         .join("\n");
