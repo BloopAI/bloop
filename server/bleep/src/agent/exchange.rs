@@ -1,7 +1,19 @@
-use crate::query::parser::SemanticQuery;
+use crate::{query::parser::SemanticQuery, repo::RepoRef};
 use std::fmt;
 
 use chrono::prelude::{DateTime, Utc};
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Hash, PartialEq, Eq)]
+pub struct RepoPath {
+    pub repo: RepoRef,
+    pub path: String,
+}
+
+impl fmt::Display for RepoPath {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} {}", self.repo, self.path)
+    }
+}
 
 /// A continually updated conversation exchange.
 ///
@@ -13,7 +25,7 @@ pub struct Exchange {
     pub query: SemanticQuery<'static>,
     pub answer: Option<String>,
     pub search_steps: Vec<SearchStep>,
-    pub paths: Vec<String>,
+    pub paths: Vec<RepoPath>,
     pub code_chunks: Vec<CodeChunk>,
 
     /// A specifically chosen "focused" code chunk.
@@ -110,7 +122,7 @@ pub enum SearchStep {
     },
     Proc {
         query: String,
-        paths: Vec<String>,
+        paths: Vec<RepoPath>,
         response: String,
     },
 }
@@ -148,7 +160,7 @@ impl SearchStep {
 
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct CodeChunk {
-    pub path: String,
+    pub repo_path: RepoPath,
     pub alias: usize,
     pub snippet: String,
     #[serde(rename = "start")]
@@ -168,13 +180,17 @@ impl CodeChunk {
 
 impl fmt::Display for CodeChunk {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}: {}\n{}", self.alias, self.path, self.snippet)
+        write!(
+            f,
+            "{}: {}\t{}\n{}",
+            self.alias, self.repo_path.repo, self.repo_path.path, self.snippet
+        )
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct FocusedChunk {
-    pub file_path: String,
+    pub repo_path: RepoPath,
     pub start_line: usize,
     pub end_line: usize,
 }

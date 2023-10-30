@@ -150,7 +150,7 @@ pub struct RepositoryResultData {
 pub struct FileResultData {
     repo_name: String,
     relative_path: HighlightedString,
-    repo_ref: String,
+    repo_ref: RepoRef,
     lang: Option<String>,
     branches: String,
     indexed: bool,
@@ -161,7 +161,7 @@ impl FileResultData {
     pub fn new(
         repo_name: String,
         relative_path: String,
-        repo_ref: String,
+        repo_ref: RepoRef,
         lang: Option<String>,
         branches: String,
         indexed: bool,

@@ -1,9 +1,6 @@
 use std::{fmt::Debug, sync::Arc};
 
-use crate::{
-    repo::RepoRef,
-    state::{PersistedState, StateSource},
-};
+use crate::state::{PersistedState, StateSource};
 
 use rudderanalytics::{
     client::RudderAnalytics,
@@ -18,7 +15,6 @@ use uuid::Uuid;
 pub struct QueryEvent {
     pub query_id: Uuid,
     pub thread_id: Uuid,
-    pub repo_ref: Option<RepoRef>,
     pub data: EventData,
 }
 
@@ -241,7 +237,6 @@ impl RudderHub {
                     "device_id": self.device_id(),
                     "query_id": event.query_id,
                     "thread_id": event.thread_id,
-                    "repo_ref": event.repo_ref.as_ref().map(ToString::to_string),
                     "data": event.data,
                     "package_metadata": options.package_metadata,
                 })),

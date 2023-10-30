@@ -334,6 +334,7 @@ pub async fn get_token_info(
 
     let ctx: CodeNavigationContext<'_, '_> = CodeNavigationContext {
         token: Token {
+            repo: repo_ref.clone(),
             relative_path: params.relative_path.as_str(),
             start_byte: params.start,
             end_byte: params.end,
@@ -512,6 +513,7 @@ async fn search_nav(
 
             data.is_empty().not().then(|| FileSymbols {
                 file: file.clone(),
+                repo: repo_ref.clone(),
                 data,
             })
         })

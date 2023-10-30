@@ -11,14 +11,16 @@ use qdrant_client::{
     },
 };
 
+use crate::repo::RepoRef;
+
 pub(super) const EMBEDDING_DIM: usize = 384;
 pub type Embedding = Vec<f32>;
 
-#[derive(Default, Clone, Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct Payload {
     pub lang: String,
     pub repo_name: String,
-    pub repo_ref: String,
+    pub repo_ref: RepoRef,
     pub relative_path: String,
     pub content_hash: String,
     pub text: String,
