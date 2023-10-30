@@ -8,22 +8,31 @@ use crate::{
     },
     analytics::EventData,
     llm_gateway,
+    query::parser::Literal,
 };
 
 impl Agent {
-    #[instrument(skip(self))]
-    pub async fn code_search(&mut self, query: &String) -> Result<String> {
+    pub async fn code_search(&mut self, query: &str) -> Result<String> {
         const CODE_SEARCH_LIMIT: u64 = 10;
         const MINIMUM_RESULTS: usize = CODE_SEARCH_LIMIT as usize / 2;
 
         self.update(Update::StartStep(SearchStep::Code {
-            query: query.clone(),
+            query: query.to_owned(),
             response: String::new(),
         }))
         .await?;
 
+        let repos = self.paths().map(|r| r.repo.to_string()).collect::<Vec<_>>();
         let mut results = self
-            .semantic_search(query.into(), vec![], CODE_SEARCH_LIMIT, 0, 0.3, true)
+            .semantic_search(
+                Literal::from_into_string(query),
+                vec![],
+                repos.clone(),
+                CODE_SEARCH_LIMIT,
+                0,
+                0.3,
+                true,
+            )
             .await?;
 
         debug!("returned {} results", results.len());
@@ -35,7 +44,7 @@ impl Agent {
             if !hyde_docs.is_empty() {
                 let hyde_doc = hyde_docs.first().unwrap().into();
                 let hyde_results = self
-                    .semantic_search(hyde_doc, vec![], CODE_SEARCH_LIMIT, 0, 0.3, true)
+                    .semantic_search(hyde_doc, vec![], repos, CODE_SEARCH_LIMIT, 0, 0.3, true)
                     .await?;
 
                 debug!("returned {} HyDE results", results.len());
@@ -49,11 +58,13 @@ impl Agent {
         let mut chunks = results
             .into_iter()
             .map(|chunk| {
+                let repo_name = chunk.repo_name;
                 let relative_path = chunk.relative_path;
 
                 CodeChunk {
+                    repo: repo_name.clone(),
                     path: relative_path.clone(),
-                    alias: self.get_path_alias(&relative_path),
+                    alias: self.get_path_alias(&repo_name, &relative_path),
                     snippet: chunk.text,
                     start_line: chunk.start_line as usize,
                     end_line: chunk.end_line as usize,
@@ -79,7 +90,7 @@ impl Agent {
             .join("\n\n");
 
         self.update(Update::ReplaceStep(SearchStep::Code {
-            query: query.clone(),
+            query: query.to_string(),
             response: response.clone(),
         }))
         .await?;

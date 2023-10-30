@@ -178,11 +178,11 @@ pub async fn store(db: &SqlDb, id: ConversationId, conversation: Conversation) -
     Ok(())
 }
 
-pub async fn load(db: &SqlDb, id: &ConversationId) -> Result<Option<Conversation>> {
+pub async fn load(db: &SqlDb, id: &ConversationId) -> Result<Option<Vec<Exchange>>> {
     let (user_id, thread_id) = (id.user_id.clone(), id.thread_id.to_string());
 
     let row = sqlx::query! {
-        "SELECT repo_ref, exchanges FROM conversations \
+        "SELECT exchanges FROM conversations \
          WHERE user_id = ? AND thread_id = ?",
         user_id,
         thread_id,
@@ -195,8 +195,6 @@ pub async fn load(db: &SqlDb, id: &ConversationId) -> Result<Option<Conversation
         None => return Ok(None),
     };
 
-    let repo_ref = RepoRef::from_str(&row.repo_ref).context("failed to parse repo ref")?;
     let exchanges = serde_json::from_str(&row.exchanges)?;
-
-    Ok(Some((repo_ref, exchanges)))
+    Ok(Some(exchanges))
 }

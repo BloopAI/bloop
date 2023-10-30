@@ -12,7 +12,6 @@ use crate::{
 };
 
 impl Agent {
-    #[instrument(skip(self))]
     pub async fn path_search(&mut self, query: &String) -> Result<String> {
         self.update(Update::StartStep(SearchStep::Path {
             query: query.clone(),
@@ -24,7 +23,7 @@ impl Agent {
         let mut paths = self
             .fuzzy_path_search(query)
             .await
-            .map(|c| c.relative_path)
+            .map(|c| (c.repo_name, c.relative_path))
             .collect::<HashSet<_>>() // TODO: This shouldn't be necessary. Path search should return unique results.
             .into_iter()
             .collect::<Vec<_>>();
@@ -34,10 +33,10 @@ impl Agent {
         // If there are no lexical results, perform a semantic search.
         if paths.is_empty() {
             let semantic_paths = self
-                .semantic_search(query.into(), vec![], 30, 0, 0.0, true)
+                .semantic_search(query.into(), vec![], vec![], 30, 0, 0.0, true)
                 .await?
                 .into_iter()
-                .map(|chunk| chunk.relative_path)
+                .map(|chunk| (chunk.repo_name, chunk.relative_path))
                 .collect::<HashSet<_>>()
                 .into_iter()
                 .collect();
@@ -47,7 +46,7 @@ impl Agent {
 
         let mut paths = paths
             .iter()
-            .map(|p| (self.get_path_alias(p), p.to_string()))
+            .map(|p| (self.get_path_alias(&p.0, &p.1), p.0.to_string()))
             .collect::<Vec<_>>();
         paths.sort_by(|a: &(usize, String), b| a.0.cmp(&b.0)); // Sort by alias
 

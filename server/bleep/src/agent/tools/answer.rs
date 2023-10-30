@@ -28,12 +28,13 @@ impl Agent {
                 .context("invalid path alias passed")?;
 
             let doc = self
-                .get_file_content(path)
+                .get_file_content(&path.path)
                 .await?
                 .context("path did not exist")?;
 
             self.update(Update::Focus(FocusedChunk {
-                file_path: path.to_owned(),
+                repo: path.repo.to_owned(),
+                path: path.path.to_owned(),
                 start_line: 0,
                 end_line: doc.content.lines().count(),
             }))
@@ -159,7 +160,7 @@ impl Agent {
                 .map(|(i, line)| format!("{} {line}\n", i + chunk.start_line + 1))
                 .collect::<String>();
 
-            let formatted_snippet = format!("### {} ###\n{snippet}\n\n", chunk.path);
+            let formatted_snippet = format!("### {} {} ###\n{snippet}\n\n", chunk.repo, chunk.path);
 
             let snippet_tokens = bpe.encode_ordinary(&formatted_snippet).len();
 
@@ -256,7 +257,7 @@ impl Agent {
         let mut spans_by_path = HashMap::<_, Vec<_>>::new();
         for c in self.code_chunks().filter(|c| aliases.contains(&c.alias)) {
             spans_by_path
-                .entry(c.path.clone())
+                .entry((c.repo.clone(), c.path.clone()))
                 .or_default()
                 .push(c.start_line..c.end_line);
         }
@@ -265,7 +266,7 @@ impl Agent {
         if spans_by_path.is_empty() {
             if let Some(chunk) = &self.last_exchange().focused_chunk {
                 spans_by_path
-                    .entry(chunk.file_path.clone())
+                    .entry((chunk.repo.clone(), chunk.path.clone()))
                     .or_default()
                     .push(chunk.start_line..chunk.end_line);
             }
@@ -278,9 +279,11 @@ impl Agent {
         let lines_by_file = futures::stream::iter(&mut spans_by_path)
             .then(|(path, spans)| async move {
                 spans.sort_by_key(|c| c.start);
+                let repo = path.0.clone();
+                let path = path.1.clone();
 
                 let lines = self_
-                    .get_file_content(path)
+                    .get_file_content(&path)
                     .await
                     .unwrap()
                     .unwrap_or_else(|| panic!("path did not exist in the index: {path}"))
@@ -289,7 +292,7 @@ impl Agent {
                     .map(str::to_owned)
                     .collect::<Vec<_>>();
 
-                (path.clone(), lines)
+                ((repo.clone(), path.clone()), lines)
             })
             .collect::<HashMap<_, _>>()
             .await;
@@ -329,7 +332,7 @@ impl Agent {
                     .iter_mut()
                     .flat_map(|(path, spans)| spans.iter_mut().map(move |s| (path, s)))
                 {
-                    let file_lines = lines_by_file.get(path.as_str()).unwrap().len();
+                    let file_lines = lines_by_file.get(path).unwrap().len();
 
                     let old_span = span.clone();
 
@@ -375,9 +378,11 @@ impl Agent {
             .flat_map(|(path, spans)| spans.into_iter().map(move |s| (path.clone(), s)))
             .map(|(path, span)| {
                 let snippet = lines_by_file.get(&path).unwrap()[span.clone()].join("\n");
+                let (repo, path) = path;
 
                 CodeChunk {
-                    alias: self.get_path_alias(&path),
+                    alias: self.get_path_alias(&repo, &path),
+                    repo,
                     path,
                     snippet,
                     start_line: span.start,
@@ -394,6 +399,7 @@ impl Agent {
             let num_trimmed_lines = trimmed_snippet.lines().count();
             vec![CodeChunk {
                 alias: chunk.alias,
+                repo: chunk.repo.clone(),
                 path: chunk.path.clone(),
                 snippet: trimmed_snippet.to_string(),
                 start_line: chunk.start_line,

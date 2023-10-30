@@ -7,19 +7,15 @@ use crate::{
         Agent,
     },
     analytics::EventData,
+    query::parser::Literal,
 };
 
 impl Agent {
-    #[instrument(skip(self))]
-    pub async fn process_files(
-        &mut self,
-        query: &String,
-        path_aliases: &[usize],
-    ) -> Result<String> {
-        let paths = path_aliases
+    pub async fn process_files(&mut self, query: &str, aliases: &[usize]) -> Result<String> {
+        let paths = aliases
             .iter()
             .copied()
-            .map(|i| self.paths().nth(i).ok_or(i).map(str::to_owned))
+            .map(|i| self.paths().nth(i).ok_or(i).map(|r| r.clone()))
             .collect::<Result<Vec<_>, _>>()
             .map_err(|i| anyhow!("invalid path alias {i}"))?;
 
@@ -30,18 +26,31 @@ impl Agent {
         }))
         .await?;
 
+        let relative_paths = paths.iter().map(|p| p.path.clone()).collect::<Vec<_>>();
+        let repos = paths.iter().map(|p| p.repo.clone()).collect::<Vec<_>>();
+
         let results = self
-            .semantic_search(query.into(), paths.clone(), 20, 0, 0.0, true)
+            .semantic_search(
+                Literal::from_into_string(query),
+                relative_paths.into(),
+                repos.into(),
+                20,
+                0,
+                0.0,
+                true,
+            )
             .await?;
 
         let mut chunks = results
             .into_iter()
             .map(|chunk| {
+                let repo_name = chunk.repo_name;
                 let relative_path = chunk.relative_path;
 
                 CodeChunk {
+                    repo: repo_name.clone(),
                     path: relative_path.clone(),
-                    alias: self.get_path_alias(&relative_path),
+                    alias: self.get_path_alias(&repo_name, &relative_path),
                     snippet: chunk.text,
                     start_line: chunk.start_line as usize,
                     end_line: chunk.end_line as usize,

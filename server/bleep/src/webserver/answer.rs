@@ -68,7 +68,7 @@ pub(super) async fn vote(
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct Answer {
     pub q: String,
-    pub repo_ref: RepoRef,
+    pub repo_ref: Option<RepoRef>,
     #[serde(default = "default_model")]
     pub model: agent::model::AnswerModel,
     #[serde(default = "default_thread_id")]
@@ -102,9 +102,9 @@ pub(super) async fn answer(
         thread_id: params.thread_id,
     };
 
-    let (_, mut exchanges) = conversations::load(&app.sql, &conversation_id)
+    let mut exchanges = conversations::load(&app.sql, &conversation_id)
         .await?
-        .unwrap_or_else(|| (params.repo_ref.clone(), Vec::new()));
+        .unwrap_or_else(|| Vec::new());
 
     let Answer {
         parent_exchange_id,
@@ -388,7 +388,7 @@ pub async fn explain(
             params.line_end + 1,
             params.relative_path
         ),
-        repo_ref: params.repo_ref,
+        repo_ref: Some(params.repo_ref),
         thread_id: params.thread_id,
         parent_exchange_id: None,
         model: agent::model::GPT_4,
@@ -431,13 +431,15 @@ pub async fn explain(
     let mut exchange = Exchange::new(query_id, query);
 
     exchange.focused_chunk = Some(FocusedChunk {
-        file_path: params.relative_path.clone(),
+        repo: params.repo_ref.clone(),
+        path: params.relative_path.clone(),
         start_line: params.line_start,
         end_line: params.line_end,
     });
 
     exchange.paths.push(params.relative_path.clone());
     exchange.code_chunks.push(CodeChunk {
+        repo: params.repo_ref.clone(),
         path: params.relative_path.clone(),
         alias: 0,
         start_line: params.line_start,
@@ -445,7 +447,7 @@ pub async fn explain(
         snippet,
     });
 
-    let action = Action::Answer { paths: vec![0] };
+    let action = Action::Answer { aliases: vec![0] };
 
     execute_agent(
         virtual_req,

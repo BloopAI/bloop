@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Duration};
+use std::{str::FromStr, sync::Arc, time::Duration};
 
 use anyhow::{anyhow, Context, Result};
 use futures::{Future, TryStreamExt};
@@ -6,6 +6,7 @@ use tokio::sync::mpsc::Sender;
 use tracing::{debug, error, info, instrument};
 
 use crate::{
+    agent::exchange::RepoPath,
     analytics::{EventData, QueryEvent},
     indexes::reader::{ContentDocument, FileDocument},
     llm_gateway::{self, api::FunctionCall},
@@ -48,7 +49,7 @@ pub enum Error {
 
 pub struct Agent {
     pub app: Application,
-    pub repo_ref: RepoRef,
+    pub repo_ref: Option<RepoRef>,
     pub exchanges: Vec<Exchange>,
     pub exchange_tx: Sender<Exchange>,
 
@@ -137,7 +138,7 @@ impl Agent {
         let event = QueryEvent {
             query_id: self.query_id,
             thread_id: self.thread_id,
-            repo_ref: Some(self.repo_ref.clone()),
+            repo_ref: self.repo_ref.map(|r| r.clone()),
             data,
         };
         self.app.track_query(&self.user, &event);
@@ -151,27 +152,27 @@ impl Agent {
         self.exchanges.last_mut().expect("exchange list was empty")
     }
 
-    fn paths(&self) -> impl Iterator<Item = &str> {
-        self.exchanges
-            .iter()
-            .flat_map(|e| e.paths.iter())
-            .map(String::as_str)
+    fn paths(&self) -> impl Iterator<Item = &RepoPath> {
+        self.exchanges.iter().flat_map(|e| e.paths.iter())
     }
 
-    fn get_path_alias(&mut self, path: &str) -> usize {
+    fn get_path_alias(&mut self, repo: &str, path: &str) -> usize {
+        let repo_path = RepoPath {
+            repo: repo.into(),
+            path: path.into(),
+        };
         // This has to be stored a variable due to a Rust NLL bug:
         // https://github.com/rust-lang/rust/issues/51826
-        let pos = self.paths().position(|p| p == path);
+        let pos = self.paths().position(|p| *p == repo_path);
         if let Some(i) = pos {
             i
         } else {
             let i = self.paths().count();
-            self.last_exchange_mut().paths.push(path.to_owned());
+            self.last_exchange_mut().paths.push(repo_path);
             i
         }
     }
 
-    #[instrument(skip(self))]
     pub async fn step(&mut self, action: Action) -> Result<Option<Action>> {
         info!(?action, %self.thread_id, "executing next action");
 
@@ -194,19 +195,19 @@ impl Agent {
                 s.clone()
             }
 
-            Action::Answer { paths } => {
-                self.answer(paths).await.context("answer action failed")?;
+            Action::Answer { aliases } => {
+                self.answer(aliases).await.context("answer action failed")?;
                 return Ok(None);
             }
 
             Action::Path { query } => self.path_search(query).await?,
             Action::Code { query } => self.code_search(query).await?,
-            Action::Proc { query, paths } => self.process_files(query, paths).await?,
+            Action::Proc { query, aliases } => self.process_files(query, aliases).await?,
         };
 
         if self.last_exchange().search_steps.len() >= MAX_STEPS {
             return Ok(Some(Action::Answer {
-                paths: self.paths().enumerate().map(|(i, _)| i).collect(),
+                aliases: self.paths().enumerate().map(|(i, _)| i).collect(),
             }));
         }
 
@@ -343,6 +344,7 @@ impl Agent {
         &self,
         query: parser::Literal<'_>,
         paths: Vec<String>,
+        repos: Vec<String>,
         limit: u64,
         offset: u64,
         threshold: f32,
@@ -350,7 +352,10 @@ impl Agent {
     ) -> Result<Vec<semantic::Payload>> {
         let query = parser::SemanticQuery {
             target: Some(query),
-            repos: [parser::Literal::Plain(self.repo_ref.display_name().into())].into(),
+            repos: repos
+                .iter()
+                .map(|r| parser::Literal::Plain(r.into()))
+                .collect(),
             paths: paths
                 .iter()
                 .map(|p| parser::Literal::Plain(p.into()))
@@ -392,14 +397,14 @@ impl Agent {
             .await
     }
 
-    async fn get_file_content(&self, path: &str) -> Result<Option<ContentDocument>> {
+    async fn get_file_content(&self, repo: &str, path: &str) -> Result<Option<ContentDocument>> {
         let branch = self.last_exchange().query.first_branch();
 
-        debug!(%self.repo_ref, path, ?branch, %self.thread_id, "executing file search");
+        debug!(%repo, path, ?branch, %self.thread_id, "executing file search");
         self.app
             .indexes
             .file
-            .by_path(&self.repo_ref, path, branch.as_deref())
+            .by_path(&RepoRef::from_str(repo).unwrap(), path, branch.as_deref())
             .await
             .with_context(|| format!("failed to read path: {}", path))
     }
@@ -407,6 +412,7 @@ impl Agent {
     async fn fuzzy_path_search<'a>(
         &'a self,
         query: &str,
+        repo: &str,
     ) -> impl Iterator<Item = FileDocument> + 'a {
         let branch = self.last_exchange().query.first_branch();
 
@@ -414,7 +420,7 @@ impl Agent {
         self.app
             .indexes
             .file
-            .fuzzy_path_match(&self.repo_ref, query, branch.as_deref(), 50)
+            .fuzzy_path_match(query, branch.as_deref(), 50)
             .await
     }
 
@@ -504,14 +510,14 @@ pub enum Action {
     },
     #[serde(rename = "none")]
     Answer {
-        paths: Vec<usize>,
+        aliases: Vec<usize>,
     },
     Code {
         query: String,
     },
     Proc {
         query: String,
-        paths: Vec<usize>,
+        aliases: Vec<usize>,
     },
 }
 

@@ -240,7 +240,6 @@ impl Indexer<File> {
     /// If the regex filter fails to build, an empty list is returned.
     pub async fn fuzzy_path_match(
         &self,
-        repo_ref: &RepoRef,
         query_str: &str,
         branch: Option<&str>,
         limit: usize,
@@ -252,7 +251,6 @@ impl Indexer<File> {
 
         // hits is a mapping between a document address and the number of trigrams in it that
         // matched the query
-        let repo_ref_term = Term::from_field_text(self.source.repo_ref, &repo_ref.to_string());
         let branch_term = branch
             .map(|b| {
                 trigrams(b)
@@ -267,13 +265,8 @@ impl Indexer<File> {
             .flat_map(|s| case_permutations(s.as_str()))
             .map(|token| Term::from_field_text(self.source.relative_path, token.as_str()))
             .map(|term| {
-                let mut query: Vec<Box<dyn Query>> = vec![
-                    Box::new(TermQuery::new(term, IndexRecordOption::Basic)),
-                    Box::new(TermQuery::new(
-                        repo_ref_term.clone(),
-                        IndexRecordOption::Basic,
-                    )),
-                ];
+                let mut query: Vec<Box<dyn Query>> =
+                    vec![Box::new(TermQuery::new(term, IndexRecordOption::Basic))];
 
                 if let Some(b) = branch_term.as_ref() {
                     query.push(Box::new(b.clone()));
