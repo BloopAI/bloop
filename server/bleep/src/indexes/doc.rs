@@ -8,13 +8,12 @@ use qdrant_client::qdrant::{
 use rayon::prelude::*;
 use tantivy::{
     collector::TopDocs,
-    query::{BooleanQuery, BoostQuery, Query, RegexQuery, TermQuery},
+    query::{BooleanQuery, Query, TermQuery},
     schema::{
         Field, IndexRecordOption, Schema, SchemaBuilder, Term, TextFieldIndexing, TextOptions,
         FAST, INDEXED, STORED, TEXT,
     },
     tokenizer::NgramTokenizer,
-    DocId, Score, SegmentReader,
 };
 use thiserror::Error;
 use tokio::sync::Mutex;
@@ -58,12 +57,18 @@ pub struct SectionSchema {
     // pub raw_relative_url: Field,
 }
 
+impl Default for SectionSchema {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SectionSchema {
     pub fn new() -> Self {
         let mut builder = SchemaBuilder::new();
         let trigram = TextOptions::default().set_stored().set_indexing_options(
             TextFieldIndexing::default()
-                .set_tokenizer("default")
+                .set_tokenizer("trigram")
                 .set_index_option(IndexRecordOption::WithFreqsAndPositions),
         );
 
@@ -72,9 +77,9 @@ impl SectionSchema {
         let doc_source = builder.add_text_field("doc_source", STORED);
         let doc_title = builder.add_text_field("doc_title", TEXT | STORED);
         let doc_description = builder.add_text_field("doc_description", TEXT | STORED);
-        let relative_url = builder.add_text_field("relative_url", TEXT | STORED);
-        let header = builder.add_text_field("header", TEXT | STORED);
-        let ancestry = builder.add_text_field("ancestry", TEXT | STORED);
+        let relative_url = builder.add_text_field("relative_url", trigram.clone());
+        let header = builder.add_text_field("header", trigram.clone());
+        let ancestry = builder.add_text_field("ancestry", trigram.clone());
         let text = builder.add_text_field("text", trigram);
         let start_byte = builder.add_u64_field("start_byte", STORED);
         let end_byte = builder.add_u64_field("end_byte", STORED);
@@ -199,7 +204,7 @@ impl Doc {
 
         section_index
             .tokenizers()
-            .register("default", NgramTokenizer::new(1, 3, false).unwrap());
+            .register("trigram", NgramTokenizer::new(1, 3, false).unwrap());
 
         // Ok(index)
 
@@ -291,30 +296,28 @@ impl Doc {
                 // metadata in sqlite - this is typically the base_url entered by the user,
                 // if the base_url does not contain any metadata, we move on the the second
                 // scraped url
-                if !progress.meta.is_empty() {
-                    if !is_meta_set {
-                        // set title
-                        if let Some(title) = &progress.meta.title {
-                            self.set_title(title, id).await?;
-                        }
-
-                        // set favicon
-                        if let Some(favicon) = &progress.meta.icon {
-                            let resolved_url = url::Url::parse(&favicon).unwrap_or_else(|_|
-                                normalize_absolute_url(&url, &favicon)
-                            );
-                            self.set_favicon(resolved_url.as_str(), id).await?;
-                        }
-
-                        // set description
-                        if let Some(description) = &progress.meta.description {
-                            self.set_description(description, id).await?;
-
-                        }
-
-                        // do not set meta for this doc provider in subsequent turns
-                        is_meta_set = true;
+                if !progress.meta.is_empty() && !is_meta_set {
+                    // set title
+                    if let Some(title) = &progress.meta.title {
+                        self.set_title(title, id).await?;
                     }
+
+                    // set favicon
+                    if let Some(favicon) = &progress.meta.icon {
+                        let resolved_url = url::Url::parse(favicon).unwrap_or_else(|_|
+                            normalize_absolute_url(&url, favicon)
+                        );
+                        self.set_favicon(resolved_url.as_str(), id).await?;
+                    }
+
+                    // set description
+                    if let Some(description) = &progress.meta.description {
+                        self.set_description(description, id).await?;
+
+                    }
+
+                    // do not set meta for this doc provider in subsequent turns
+                    is_meta_set = true;
                 };
                 yield Progress::Update(progress);
             }
@@ -353,7 +356,7 @@ impl Doc {
 
         let progress_stream = self
             .insert_into_qdrant(id, url, Arc::clone(&index_writer))
-            .map(|progress| Progress::Update(progress));
+            .map(Progress::Update);
         let done_stream = futures::stream::once(async move { Progress::Done(id) });
 
         Ok(progress_stream.chain(done_stream))
@@ -465,55 +468,51 @@ impl Doc {
             IndexRecordOption::Basic,
         ));
 
-        let relative_url_query = Box::new(BoostQuery::new(
-            build_trigram_query(&q, self.section_schema.relative_url),
-            1.5,
+        let terms = q
+            .split(|c: char| c.is_whitespace() || "./-{}[]()?-_".contains(c))
+            .filter(|s| !s.is_empty())
+            .collect::<Vec<_>>();
+
+        println!("{:?}", terms);
+
+        // for each term, build up a trigram query
+        let trigram_queries = Box::new(BooleanQuery::union(
+            terms
+                .iter()
+                .map(|term| build_trigram_query(term, self.section_schema.text))
+                .collect::<Vec<_>>(),
         )) as Box<dyn Query>;
 
-        let title_query = Box::new(BoostQuery::new(
-            build_trigram_query(&q, self.section_schema.doc_title),
-            1.5,
+        let header_trigram_queries = Box::new(BooleanQuery::union(
+            terms
+                .iter()
+                .map(|term| build_trigram_query(term, self.section_schema.header))
+                .collect::<Vec<_>>(),
         )) as Box<dyn Query>;
 
-        let ancestry_query = Box::new(BoostQuery::new(
-            build_trigram_query(&q, self.section_schema.ancestry),
-            1.25,
-        )) as Box<dyn Query>;
+        let matcher = fuzzy_matcher::skim::SkimMatcherV2::default();
 
-        let text_query = build_trigram_query(&q, self.section_schema.text);
+        let tantivy_results = searcher
+            .search(
+                &BooleanQuery::intersection(vec![
+                    // trigram_queries,
+                    Box::new(BooleanQuery::union(vec![
+                        header_trigram_queries,
+                        trigram_queries,
+                        // ancestry_trigram_queries,
+                        // rel_url_trigram_queries,
+                    ])) as Box<dyn Query>,
+                    doc_id_query as Box<dyn Query>,
+                ]),
+                &TopDocs::with_limit(1000),
+            )
+            .expect("failed to search index");
 
-        let query = BooleanQuery::intersection(vec![
-            doc_id_query,
-            Box::new(BooleanQuery::union(vec![
-                ancestry_query,
-                title_query,
-                relative_url_query,
-                text_query,
-            ])) as Box<dyn Query>,
-        ]);
+        println!("tantivy results list: {}", tantivy_results.len());
 
-        let section_depth_field = (&self.section_schema.schema)
-            .get_field_name(self.section_schema.section_depth)
-            .to_owned();
-        let collector = TopDocs::with_limit(limit as usize).tweak_score(
-            move |segment_reader: &SegmentReader| {
-                let section_depth_reader = segment_reader
-                    .fast_fields()
-                    .u64(section_depth_field.as_str())
-                    .unwrap();
-
-                move |doc: DocId, original_score: Score| {
-                    let section_depth: u64 = section_depth_reader.values.get_val(doc) + 1;
-                    let section_depth_falloff = 2.0_f32.powf(1. / section_depth as f32);
-                    section_depth_falloff * original_score
-                }
-            },
-        );
-        let results = searcher.search(&query, &collector).unwrap();
-
-        Ok(results
-            .into_iter()
-            .map(|(_score, addr)| {
+        let mut results = tantivy_results
+            .into_par_iter()
+            .map(move |(_, addr)| {
                 let retrieved_doc = searcher
                     .doc(addr)
                     .expect("failed to get document by address");
@@ -578,7 +577,133 @@ impl Doc {
                         .to_owned(),
                 }
             })
-            .collect())
+            .filter_map(|search_result| {
+                let mut breakup = vec![];
+
+                let term_distances =
+                    terms
+                        .iter()
+                        .fold(Vec::new(), |mut acc: Vec<(&&str, usize)>, x| {
+                            let next = if let Some((term, dist)) = acc.last() {
+                                (x, dist + term.len())
+                            } else {
+                                (x, 0)
+                            };
+                            acc.push(next);
+                            acc
+                        });
+
+                let dq = term_distances
+                    .windows(2)
+                    .map(|window| {
+                        let d1 = window[0].1;
+                        let d2 = window[1].1;
+                        d2.abs_diff(d1).pow(2)
+                    })
+                    .sum::<usize>();
+
+                let dt = |positions: &[Option<usize>], max: usize| {
+                    positions
+                        .windows(2)
+                        .map(|window| {
+                            let d1 = window[0].unwrap_or(max);
+                            let d2 = window[1].unwrap_or(max);
+                            d2.abs_diff(d1).pow(2)
+                        })
+                        .sum::<usize>()
+                };
+
+                let distance_penalty = |dq, dt, terms: &[&str]| {
+                    let total_len = terms.iter().map(|s| s.len()).sum::<usize>();
+                    if terms.is_empty() || dt == 0 {
+                        1.
+                    } else {
+                        (dbg!(dt) as f32 / dbg!(dq) as f32) * (dbg!(total_len) as f32)
+                    }
+                };
+
+                let (mut header_score, mut header_positions) = terms
+                    .iter()
+                    .map(|t| matcher.fuzzy(&search_result.header, t, true))
+                    .map(|t| {
+                        if let Some((s, pos)) = t {
+                            (s, pos.first().cloned())
+                        } else {
+                            (0, None)
+                        }
+                    })
+                    .fold((0, Vec::new()), |mut acc, (s, pos)| {
+                        acc.1.push(pos);
+                        (acc.0 + s, acc.1)
+                    });
+
+                header_positions.sort();
+                header_positions.reverse();
+                let header_hit_distance = dt(header_positions.as_slice(), 9999);
+
+                let header_distance_penalty = distance_penalty(dq, header_hit_distance, &terms);
+
+                breakup.push(("header dist penalty", header_distance_penalty as i64));
+                header_score += 10 * (6 - search_result.ancestry.len()) as i64;
+                header_score -= header_distance_penalty as i64;
+
+                breakup.push(("header score", header_score));
+
+                let (mut text_score, mut text_positions) = terms
+                    .iter()
+                    .map(|t| matcher.fuzzy(&search_result.header, t, true))
+                    .map(|t| {
+                        if let Some((s, pos)) = t {
+                            (s, pos.first().cloned())
+                        } else {
+                            (0, None)
+                        }
+                    })
+                    .fold((0, Vec::new()), |mut acc, (s, pos)| {
+                        acc.1.push(pos);
+                        (acc.0 + s, acc.1)
+                    });
+
+                text_positions.sort();
+                text_positions.reverse();
+
+                let text_hit_distance = dt(text_positions.as_slice(), search_result.text.len());
+
+                let text_distance_penalty = distance_penalty(dq, text_hit_distance, &terms);
+
+                breakup.push(("text dist penalty", text_distance_penalty as i64));
+                text_score -= text_distance_penalty as i64;
+
+                breakup.push(("text score", text_score));
+
+                Some((
+                    search_result,
+                    text_score as f32 + (header_score as f32) * 2.0,
+                    breakup,
+                ))
+            })
+            .collect::<Vec<_>>();
+
+        results.par_sort_by(|(_, a_score, _), (_, b_score, _)| {
+            b_score
+                .partial_cmp(a_score)
+                .unwrap_or(std::cmp::Ordering::Less)
+        });
+
+        Ok(results
+            .into_iter()
+            .inspect(|(doc, score, breakup)| {
+                println!("score: {}", score);
+                println!("breakup: {:?}", breakup);
+                println!("{}", doc.ancestry.join(" > "));
+                println!("{}", doc.header);
+                println!("{}", doc.text);
+                println!("{}", "*".repeat(20));
+                println!("\n\n");
+            })
+            .map(|(doc, _, _)| doc)
+            .take(limit as usize)
+            .collect::<Vec<_>>())
     }
 
     pub async fn list_sections(&self, limit: u32, id: i64) -> Result<Vec<SearchResult>, Error> {
@@ -744,9 +869,9 @@ impl Doc {
                         let mut lock = index_writer.lock().await;
                         for d in tantivy_docs_to_insert {
                             info!("inserting doc into tantivy: `{}` - `{}`", id, u.as_str());
-                            lock.add_document(d);
+                            let _ = lock.add_document(d);
                         }
-                        lock.commit();
+                        let _ = lock.commit();
                         let _ = semantic
                             .qdrant_client()
                             .upsert_points(COLLECTION_NAME, points_to_insert, None)
@@ -855,7 +980,7 @@ impl scraper::Document {
                 let mut hasher = blake3::Hasher::new();
                 hasher.update(&id.to_le_bytes()); // doc id
                 hasher.update(self.meta.title.as_deref().unwrap_or("").as_bytes()); // title of this page
-                hasher.update(&section.data.as_bytes()); // section data
+                hasher.update(section.data.as_bytes()); // section data
                 hasher.update(&section.section_range.start.byte.to_le_bytes()); // section start location
                 hasher.update(&section.section_range.end.byte.to_le_bytes()); // section end location
                 bytes.copy_from_slice(&hasher.finalize().as_bytes()[16..32]);
@@ -867,10 +992,10 @@ impl scraper::Document {
                 schema.doc_id => id,
                 schema.point_id => point_id.as_str(),
                 schema.doc_source => url.as_str(),
-                schema.doc_title => self.meta.title.as_deref().clone().unwrap_or_default(),
-                schema.doc_description => self.meta.description.as_deref().clone().unwrap_or_default(),
+                schema.doc_title => self.meta.title.as_deref().unwrap_or_default(),
+                schema.doc_description => self.meta.description.as_deref().unwrap_or_default(),
                 schema.relative_url => self.relative_url(url).as_str(),
-                schema.header => section.header.as_deref().clone().unwrap_or_default(),
+                schema.header => section.header.unwrap_or_default(),
                 schema.ancestry => section.ancestry_str().as_str(),
                 schema.text => section.data,
                 schema.start_byte => section.section_range.start.byte as u64,
@@ -880,8 +1005,8 @@ impl scraper::Document {
 
             let mut payload = HashMap::new();
             let favicon = self.meta.icon.as_deref().unwrap_or("");
-            let favicon_url = url::Url::parse(&favicon)
-                .unwrap_or_else(|_| normalize_absolute_url(&url, &favicon));
+            let favicon_url =
+                url::Url::parse(favicon).unwrap_or_else(|_| normalize_absolute_url(url, favicon));
             payload.insert("doc_id".to_owned(), id.into());
             payload.insert("doc_source".to_owned(), url.to_string().into());
             payload.insert("relative_url".to_owned(), self.relative_url(url).into());
@@ -1021,16 +1146,16 @@ impl PageResult {
 
 fn normalize_absolute_url(base_url: &url::Url, absolute_url: &str) -> url::Url {
     let mut root = base_url.clone();
-    root.set_path(&absolute_url);
+    root.set_path(absolute_url);
     root
 }
 
 fn build_trigram_query(query: &str, field: Field) -> Box<dyn Query> {
-    Box::new(BooleanQuery::intersection(
-        trigrams(query)
-            .map(|t| {
-                BooleanQuery::union(
-                    case_permutations(t.as_str())
+    Box::new(BooleanQuery::union(
+        case_permutations(query)
+            .map(|q| {
+                BooleanQuery::intersection(
+                    trigrams(q.as_str())
                         .map(|s| Term::from_field_text(field, s.as_str()))
                         .map(|q| TermQuery::new(q, IndexRecordOption::Basic))
                         .map(Box::new)
@@ -1041,9 +1166,5 @@ fn build_trigram_query(query: &str, field: Field) -> Box<dyn Query> {
             .map(Box::new)
             .map(|q| q as Box<dyn Query>)
             .collect::<Vec<_>>(),
-    )) as Box<dyn Query>
-}
-
-fn build_regex_query(query: &str, field: Field) -> Box<dyn Query> {
-    Box::new(RegexQuery::from_pattern(&regex::escape(query), field).unwrap()) as Box<dyn Query>
+    ))
 }

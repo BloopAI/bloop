@@ -139,7 +139,7 @@ pub async fn verify(Query(params): Query<Verify>) -> Result<reqwest::StatusCode>
     reqwest::get(params.url)
         .await
         .map(|r| r.status())
-        .map_err(|e| Error::user(e))
+        .map_err(Error::user)
 }
 
 impl From<doc::Error> for Error {

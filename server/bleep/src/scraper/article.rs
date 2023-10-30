@@ -3,9 +3,9 @@ use anyhow::{Context, Result};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use reqwest::{
-    header::{HeaderMap, LOCATION, USER_AGENT},
+    header::{HeaderMap, USER_AGENT},
     redirect::Policy,
-    IntoUrl, StatusCode,
+    IntoUrl,
 };
 use select::{
     document::Document,
@@ -27,7 +27,7 @@ use std::{
 static RE_BAD_NODES_ATTR: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r###"(?mi)^side$|combx|retweet|mediaarticlerelated|menucontainer|navbar|storytopbar-bucket|utility-bar|inline-share-tools|comment|PopularQuestions|contact|foot(er|note)?|cnn_strycaptiontxt|cnn_html_slideshow|cnn_strylftcntnt|links|meta$|shoutbox|sponsor|tags|socialnetworking|socialNetworking|cnnStryHghLght|cnn_stryspcvbx|^inset$|pagetools|post-attributes|welcome_form|contentTools2|the_answers|communitypromo|runaroundLeft|subscribe|vcard|articleheadings|date|^print$|popup|author-dropdown|tools|socialtools|byline|konafilter|breadcrumbs|^fn$|wp-caption-text|legende|ajoutVideo|timestamp|js_replies|[^-]facebook(-broadcasting)?|google|[^-]twitter|styln-briefing-block|read-more-link|js-body-read-more"###).unwrap()
 });
-const PUNCTUATION: &str = r###",."'!?&-/:;()#$%*+<=>@[\]^_`{|}~"###;
+const PUNCTUATION: &str = r#",."'!?&-/:;()#$%*+<=>@[\]^_`{|}~"#;
 const ARTICLE_BODY_ATTR: &[(&str, &str); 3] = &[
     ("itemprop", "articleBody"),
     ("data-testid", "article-body"),
@@ -360,7 +360,7 @@ impl ArticleBuilder {
     }
 
     pub async fn get(self) -> Result<Article> {
-        self.get_with_extractor(&DefaultExtractor::default()).await
+        self.get_with_extractor(&DefaultExtractor).await
     }
 
     async fn get_with_extractor<TExtract: Extractor>(
@@ -386,28 +386,28 @@ impl ArticleBuilder {
 
             reqwest::Client::builder()
                 .default_headers(headers)
-                .redirect(Policy::none())
+                .redirect(Policy::limited(2))
                 .timeout(timeout)
         };
 
         let client = builder.build()?;
-        let mut resp = client.get(url).send().await?;
+        let resp = client.get(url).send().await?;
 
         // follow redirects upto 1 time
-        match resp.status() {
-            StatusCode::MOVED_PERMANENTLY
-            | StatusCode::FOUND
-            | StatusCode::TEMPORARY_REDIRECT
-            | StatusCode::PERMANENT_REDIRECT => {
-                let new_location = resp
-                    .headers()
-                    .get(LOCATION)
-                    .ok_or(anyhow::anyhow!("failed to follow redirect"))?
-                    .to_str()?;
-                resp = client.get(dbg!(new_location)).send().await?;
-            }
-            _ => {}
-        }
+        // match resp.status() {
+        //     StatusCode::MOVED_PERMANENTLY
+        //     | StatusCode::FOUND
+        //     | StatusCode::TEMPORARY_REDIRECT
+        //     | StatusCode::PERMANENT_REDIRECT => {
+        //         let new_location = resp
+        //             .headers()
+        //             .get(LOCATION)
+        //             .ok_or(anyhow::anyhow!("failed to follow redirect"))?
+        //             .to_str()?;
+        //         resp = client.get(dbg!(new_location)).send().await?;
+        //     }
+        //     _ => {}
+        // }
 
         if !resp.status().is_success() {
             return Err(anyhow::anyhow!(
@@ -491,8 +491,7 @@ trait DocumentCleaner {
                                 child
                                     .children()
                                     .filter(|c| c.is(code()))
-                                    .map(|c| extract_language_classes(c))
-                                    .flatten(),
+                                    .flat_map(extract_language_classes),
                             )
                             .collect::<Vec<_>>();
 
@@ -659,7 +658,7 @@ fn extract_language_classes(node: Node) -> impl Iterator<Item = String> + '_ {
             s.replace("language", "")
                 .replace("source", "")
                 .replace("highlight", "")
-                .replace("-", "")
+                .replace('-', "")
         })
 }
 
