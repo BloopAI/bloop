@@ -6,12 +6,13 @@ use tokio::sync::mpsc::Sender;
 use tracing::{debug, error, info, instrument};
 
 use crate::{
+    agent::exchange::RepoPath,
     analytics::{EventData, QueryEvent},
     indexes::reader::{ContentDocument, FileDocument},
     llm_gateway::{self, api::FunctionCall},
     query::{parser, stopwords::remove_stopwords},
     repo::RepoRef,
-    semantic,
+    semantic::{self, SemanticSearchParams},
     webserver::{
         answer::conversations::{self, ConversationId},
         middleware::User,
@@ -47,9 +48,28 @@ pub enum Error {
     Processing(anyhow::Error),
 }
 
+/// A unified way to track a collection of repositories
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
+pub struct Project(pub Vec<RepoRef>);
+
+impl Project {
+    /// This is a temporary thing to keep backwards compatibility.
+    /// We should have a UUID here to track this stuff consistently.
+    pub fn id(&self) -> String {
+        self.0
+            .get(0)
+            .map(ToString::to_string)
+            .expect("invalid project configuration")
+    }
+
+    pub fn repos(&self) -> impl Iterator<Item = String> + '_ {
+        self.0.iter().map(|r| r.display_name())
+    }
+}
+
 pub struct Agent {
     pub app: Application,
-    pub repo_ref: RepoRef,
+    pub project: Project,
     pub exchanges: Vec<Exchange>,
     pub exchange_tx: Sender<Exchange>,
 
@@ -71,6 +91,13 @@ pub enum ExchangeState {
     Pending,
     Complete,
     Failed,
+}
+
+pub struct AgentSemanticSearchParams<'a> {
+    pub query: parser::Literal<'a>,
+    pub paths: Vec<RepoPath>,
+    pub project: Project,
+    pub semantic_params: SemanticSearchParams,
 }
 
 /// We use a `Drop` implementation to track agent query cancellation.
@@ -139,7 +166,6 @@ impl Agent {
         let event = QueryEvent {
             query_id: self.query_id,
             thread_id: self.thread_id,
-            repo_ref: Some(self.repo_ref.clone()),
             data,
         };
         self.app.track_query(&self.user, &event);
@@ -153,27 +179,23 @@ impl Agent {
         self.exchanges.last_mut().expect("exchange list was empty")
     }
 
-    fn paths(&self) -> impl Iterator<Item = &str> {
-        self.exchanges
-            .iter()
-            .flat_map(|e| e.paths.iter())
-            .map(String::as_str)
+    fn paths(&self) -> impl Iterator<Item = &RepoPath> {
+        self.exchanges.iter().flat_map(|e| e.paths.iter())
     }
 
-    fn get_path_alias(&mut self, path: &str) -> usize {
+    fn get_path_alias(&mut self, repo_path: &RepoPath) -> usize {
         // This has to be stored a variable due to a Rust NLL bug:
         // https://github.com/rust-lang/rust/issues/51826
-        let pos = self.paths().position(|p| p == path);
+        let pos = self.paths().position(|p| p == repo_path);
         if let Some(i) = pos {
             i
         } else {
             let i = self.paths().count();
-            self.last_exchange_mut().paths.push(path.to_owned());
+            self.last_exchange_mut().paths.push(repo_path.clone());
             i
         }
     }
 
-    #[instrument(skip(self))]
     pub async fn step(&mut self, action: Action) -> Result<Option<Action>> {
         info!(?action, %self.thread_id, "executing next action");
 
@@ -341,15 +363,19 @@ impl Agent {
         Ok(history)
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn semantic_search(
         &self,
-        query: parser::Literal<'_>,
-        paths: Vec<String>,
-        params: semantic::SemanticSearchParams,
+        AgentSemanticSearchParams {
+            query,
+            paths,
+            project,
+            semantic_params,
+        }: AgentSemanticSearchParams<'_>,
     ) -> Result<Vec<semantic::Payload>> {
         let paths_set = paths
             .into_iter()
-            .map(|p| parser::Literal::Plain(p.into()))
+            .map(|p| parser::Literal::Plain(p.path.into()))
             .collect::<Vec<_>>();
 
         let paths = if paths_set.is_empty() {
@@ -384,47 +410,29 @@ impl Agent {
 
         let query = parser::SemanticQuery {
             target: Some(query),
-            repos: [parser::Literal::Plain(self.repo_ref.display_name().into())].into(),
+            repos: project
+                .repos()
+                .map(|r| parser::Literal::Plain(r.into()))
+                .collect(),
             paths,
             ..self.last_exchange().query.clone()
         };
 
         debug!(?query, %self.thread_id, "executing semantic query");
-        self.app.semantic.search(&query, params).await
+        self.app.semantic.search(&query, semantic_params).await
     }
 
-    #[allow(dead_code)]
-    async fn batch_semantic_search(
+    async fn get_file_content(
         &self,
-        queries: Vec<parser::Literal<'_>>,
-        params: semantic::SemanticSearchParams,
-    ) -> Result<Vec<semantic::Payload>> {
-        let queries = queries
-            .iter()
-            .map(|q| parser::SemanticQuery {
-                target: Some(q.clone()),
-                repos: [parser::Literal::Plain(self.repo_ref.display_name().into())].into(),
-                ..self.last_exchange().query.clone()
-            })
-            .collect::<Vec<_>>();
-
-        let queries = queries.iter().collect::<Vec<_>>();
-
-        debug!(?queries, %self.thread_id, "executing semantic query");
-        self.app
-            .semantic
-            .batch_search(queries.as_slice(), params)
-            .await
-    }
-
-    async fn get_file_content(&self, path: &str) -> Result<Option<ContentDocument>> {
+        RepoPath { repo, path }: &RepoPath,
+    ) -> Result<Option<ContentDocument>> {
         let branch = self.last_exchange().query.first_branch();
 
-        debug!(%self.repo_ref, path, ?branch, %self.thread_id, "executing file search");
+        debug!(%repo, path, ?branch, %self.thread_id, "executing file search");
         self.app
             .indexes
             .file
-            .by_path(&self.repo_ref, path, branch.as_deref())
+            .by_path(repo, path, branch.as_deref())
             .await
             .with_context(|| format!("failed to read path: {}", path))
     }
@@ -436,11 +444,11 @@ impl Agent {
         let branch = self.last_exchange().query.first_branch();
         let langs = self.last_exchange().query.langs.iter().map(Deref::deref);
 
-        debug!(%self.repo_ref, query, ?branch, %self.thread_id, "executing fuzzy search");
+        debug!(?self.project, query, ?branch, %self.thread_id, "executing fuzzy search");
         self.app
             .indexes
             .file
-            .fuzzy_path_match(&self.repo_ref, query, branch.as_deref(), langs, 50)
+            .fuzzy_path_match(self.project.clone(), branch.as_deref(), query, langs, 50)
             .await
     }
 
@@ -450,7 +458,7 @@ impl Agent {
     // NB: This isn't an `async fn` so as to not capture a lifetime.
     fn store(&mut self) -> impl Future<Output = ()> {
         let sql = Arc::clone(&self.app.sql);
-        let conversation = (self.repo_ref.clone(), self.exchanges.clone());
+        let conversation = (self.project.clone(), self.exchanges.clone());
         let conversation_id = self
             .user
             .username()
