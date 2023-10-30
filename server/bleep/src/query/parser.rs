@@ -314,14 +314,6 @@ impl<'a> Literal<'a> {
         Literal::Regex(format!("{lhs}\\s+{rhs}").into())
     }
 
-    /// This drops position information, as it's not intelligible after the merge
-    #[allow(dead_code)]
-    fn join_as_plain(self, rhs: Self) -> Option<Literal<'static>> {
-        let lhs = self.as_plain()?;
-        let rhs = rhs.as_plain()?;
-        Some(Literal::Plain(format!("{lhs} {rhs}").into()))
-    }
-
     /// Convert this literal into a regex string.
     ///
     /// If this literal is a regex, it is returned as-is. If it is a plain text literal, it is

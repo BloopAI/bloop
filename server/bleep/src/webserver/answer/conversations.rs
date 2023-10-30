@@ -5,18 +5,18 @@ use axum::{
     Extension, Json,
 };
 use reqwest::StatusCode;
-use std::{fmt, str::FromStr};
+use std::fmt;
 use tracing::info;
 
 use crate::{
-    agent::exchange::Exchange,
+    agent::{exchange::Exchange, Project},
     db::SqlDb,
     repo::RepoRef,
     webserver::{self, middleware::User, Error, ErrorKind},
     Application,
 };
 
-type Conversation = (RepoRef, Vec<Exchange>);
+pub type Conversation = (Project, Vec<Exchange>);
 
 #[derive(Hash, PartialEq, Eq, Clone)]
 pub struct ConversationId {
@@ -123,7 +123,7 @@ pub(in crate::webserver) async fn thread(
         .ok_or_else(|| Error::user("missing user ID"))?
         .to_owned();
 
-    let (.., exchanges) = load(&app.sql, &ConversationId { thread_id, user_id })
+    let exchanges = load(&app.sql, &ConversationId { thread_id, user_id })
         .await?
         .ok_or_else(|| Error::new(ErrorKind::NotFound, "thread was not found"))?;
 
@@ -150,8 +150,8 @@ pub async fn store(db: &SqlDb, id: ConversationId, conversation: Conversation) -
     .execute(&mut transaction)
     .await?;
 
-    let (repo_ref, exchanges) = conversation;
-    let repo_ref = repo_ref.to_string();
+    let (project, exchanges) = conversation;
+    let repo_ref = project.id();
     let title = exchanges
         .first()
         .and_then(|list| list.query())
@@ -178,7 +178,7 @@ pub async fn store(db: &SqlDb, id: ConversationId, conversation: Conversation) -
     Ok(())
 }
 
-pub async fn load(db: &SqlDb, id: &ConversationId) -> Result<Option<Conversation>> {
+pub async fn load(db: &SqlDb, id: &ConversationId) -> Result<Option<Vec<Exchange>>> {
     let (user_id, thread_id) = (id.user_id.clone(), id.thread_id.to_string());
 
     let row = sqlx::query! {
@@ -195,8 +195,6 @@ pub async fn load(db: &SqlDb, id: &ConversationId) -> Result<Option<Conversation
         None => return Ok(None),
     };
 
-    let repo_ref = RepoRef::from_str(&row.repo_ref).context("failed to parse repo ref")?;
     let exchanges = serde_json::from_str(&row.exchanges)?;
-
-    Ok(Some((repo_ref, exchanges)))
+    Ok(Some(exchanges))
 }

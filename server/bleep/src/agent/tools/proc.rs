@@ -3,23 +3,20 @@ use tracing::instrument;
 
 use crate::{
     agent::{
-        exchange::{CodeChunk, SearchStep, Update},
-        Agent,
+        exchange::{CodeChunk, RepoPath, SearchStep, Update},
+        Agent, SemanticSearchParams,
     },
     analytics::EventData,
+    query::parser::Literal,
 };
 
 impl Agent {
     #[instrument(skip(self))]
-    pub async fn process_files(
-        &mut self,
-        query: &String,
-        path_aliases: &[usize],
-    ) -> Result<String> {
-        let paths = path_aliases
+    pub async fn process_files(&mut self, query: &str, aliases: &[usize]) -> Result<String> {
+        let paths = aliases
             .iter()
             .copied()
-            .map(|i| self.paths().nth(i).ok_or(i).map(str::to_owned))
+            .map(|i| self.paths().nth(i).ok_or(i).map(Clone::clone))
             .collect::<Result<Vec<_>, _>>()
             .map_err(|i| anyhow!("invalid path alias {i}"))?;
 
@@ -30,21 +27,36 @@ impl Agent {
         }))
         .await?;
 
+        // let relative_paths = paths.iter().map(|p| p.path.clone()).collect::<Vec<_>>();
+        // not sure we need this?
+        // let repos = paths.iter().map(|p| p.repo.clone()).collect::<Vec<_>>();
+
         let results = self
-            .semantic_search(query.into(), paths.clone(), 10, 0, 0.0, true)
+            .semantic_search(SemanticSearchParams {
+                query: Literal::from(&query.to_string()),
+                paths: paths.clone(),
+                project: self.project.clone(),
+                limit: 10,
+                offset: 0,
+                threshold: 0.0,
+                retrieve_more: true,
+            })
             .await?;
 
         let mut chunks = results
             .into_iter()
             .map(|chunk| {
-                let relative_path = chunk.relative_path;
+                let repo_path = RepoPath {
+                    repo: chunk.repo_ref.clone(),
+                    path: chunk.relative_path,
+                };
 
                 CodeChunk {
-                    path: relative_path.clone(),
-                    alias: self.get_path_alias(&relative_path),
+                    alias: self.get_path_alias(&repo_path),
                     snippet: chunk.text,
                     start_line: chunk.start_line as usize,
                     end_line: chunk.end_line as usize,
+                    repo_path,
                 }
             })
             .collect::<Vec<_>>();

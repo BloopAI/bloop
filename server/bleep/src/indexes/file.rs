@@ -32,6 +32,7 @@ use super::{
     DocumentRead, Indexable, Indexer,
 };
 use crate::{
+    agent::Project,
     background::SyncHandle,
     cache::{CacheKeys, FileCache, FileCacheSnapshot},
     intelligence::TreeSitterFile,
@@ -246,9 +247,9 @@ impl Indexer<File> {
     /// If the regex filter fails to build, an empty list is returned.
     pub async fn fuzzy_path_match(
         &self,
-        repo_ref: &RepoRef,
-        query_str: &str,
+        project: Project,
         branch: Option<&str>,
+        query_str: &str,
         langs: impl Iterator<Item = &str>,
         limit: usize,
     ) -> impl Iterator<Item = FileDocument> + '_ {
@@ -257,10 +258,7 @@ impl Indexer<File> {
         let collector = TopDocs::with_limit(5 * limit); // TODO: tune this
         let file_source = &self.source;
 
-        // hits is a mapping between a document address and the number of trigrams in it that
-        // matched the query
-        let repo_ref_term = Term::from_field_text(self.source.repo_ref, &repo_ref.to_string());
-        let branch_term = branch
+        let branch_scope = branch
             .map(|b| {
                 trigrams(b)
                     .map(|token| Term::from_field_text(self.source.branches, token.as_str()))
@@ -270,6 +268,21 @@ impl Indexer<File> {
                     .collect::<Vec<_>>()
             })
             .map(BooleanQuery::intersection);
+
+        let project_scope = BooleanQuery::union(
+            project
+                .repos()
+                .map(|repo| {
+                    Box::new(TermQuery::new(
+                        Term::from_field_text(self.source.repo_name, &repo),
+                        IndexRecordOption::Basic,
+                    )) as Box<dyn Query>
+                })
+                .collect::<Vec<_>>(),
+        );
+
+        // hits is a mapping between a document address and the number of trigrams in it that
+        // matched the query
         let langs_query = BooleanQuery::union(
             langs
                 .map(|l| Term::from_field_bytes(self.source.lang, l.as_bytes()))
@@ -278,28 +291,19 @@ impl Indexer<File> {
                 .map(|q| q as Box<dyn Query>)
                 .collect::<Vec<_>>(),
         );
+
         let mut hits = trigrams(query_str)
             .flat_map(|s| case_permutations(s.as_str()))
             .map(|token| Term::from_field_text(self.source.relative_path, token.as_str()))
-            .map(|term| {
-                let mut query: Vec<Box<dyn Query>> = vec![
-                    Box::new(TermQuery::new(term, IndexRecordOption::Basic)),
-                    Box::new(TermQuery::new(
-                        repo_ref_term.clone(),
-                        IndexRecordOption::Basic,
-                    )),
-                    Box::new(langs_query.clone()),
-                ];
-
-                if let Some(b) = branch_term.as_ref() {
-                    query.push(Box::new(b.clone()));
-                };
-
-                BooleanQuery::intersection(query)
-            })
+            .map(|term| TermQuery::new(term, IndexRecordOption::Basic))
             .flat_map(|query| {
+                let mut q: Vec<Box<dyn Query>> =
+                    vec![Box::new(project_scope.clone()), Box::new(query)];
+                q.extend(branch_scope.clone().map(|q| Box::new(q) as Box<dyn Query>));
+                q.push(Box::new(langs_query.clone()));
+
                 searcher
-                    .search(&query, &collector)
+                    .search(&BooleanQuery::intersection(q), &collector)
                     .expect("failed to search index")
                     .into_iter()
                     .map(move |(_, addr)| addr)
