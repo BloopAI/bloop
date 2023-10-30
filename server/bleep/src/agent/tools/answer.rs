@@ -108,7 +108,7 @@ impl Agent {
                 .with_payload("query_history", &history)
                 .with_payload("response", &response)
                 .with_payload("raw_prompt", &system_prompt)
-                .with_payload("model", &self.model.model_name),
+                .with_payload("model", self.model.model_name),
         );
 
         Ok(())
