@@ -36,7 +36,7 @@ const ReposSection = ({
   isFiltered,
   showAll,
 }: Props) => {
-  const { apiUrl } = useContext(DeviceContext);
+  const { apiUrl, envConfig } = useContext(DeviceContext);
   const { setRepositories } = useContext(RepositoriesContext);
   const [currentlySyncingRepos, setCurrentlySyncingRepos] = useState<Record<
     string,
@@ -45,46 +45,48 @@ const ReposSection = ({
 
   useEffect(() => {
     eventSource?.close();
-    eventSource = new EventSource(
-      `${apiUrl.replace('https:', '')}/repos/status`,
-    );
-    eventSource.onmessage = (ev) => {
-      try {
-        const data = JSON.parse(ev.data);
-        if (data.ev?.status_change) {
-          setRepositories((prev: RepoType[] | undefined) => {
-            if (!prev) {
-              return prev;
-            }
-            const index = prev.findIndex((r) => r.ref === data.ref);
-            const newRepos = [...prev];
-            newRepos[index] = {
-              ...newRepos[index],
-              sync_status: data.ev?.status_change,
-              last_index:
-                data.ev?.status_change === SyncStatus.Done
-                  ? new Date().toISOString()
-                  : '',
-            };
-            return newRepos;
-          });
-        }
-        if (Number.isInteger(data.ev?.index_percent)) {
-          setCurrentlySyncingRepos((prev) => ({
-            ...prev,
-            [data.ref]: data.ev.index_percent,
-          }));
-        }
-      } catch {}
-    };
-    eventSource.onerror = (err) => {
-      console.error('EventSource failed:', err);
-      setCurrentlySyncingRepos(null);
-    };
+    if (envConfig.github_user) {
+      eventSource = new EventSource(
+        `${apiUrl.replace('https:', '')}/repos/status`,
+      );
+      eventSource.onmessage = (ev) => {
+        try {
+          const data = JSON.parse(ev.data);
+          if (data.ev?.status_change) {
+            setRepositories((prev: RepoType[] | undefined) => {
+              if (!prev) {
+                return prev;
+              }
+              const index = prev.findIndex((r) => r.ref === data.ref);
+              const newRepos = [...prev];
+              newRepos[index] = {
+                ...newRepos[index],
+                sync_status: data.ev?.status_change,
+                last_index:
+                  data.ev?.status_change === SyncStatus.Done
+                    ? new Date().toISOString()
+                    : '',
+              };
+              return newRepos;
+            });
+          }
+          if (Number.isInteger(data.ev?.index_percent)) {
+            setCurrentlySyncingRepos((prev) => ({
+              ...prev,
+              [data.ref]: data.ev.index_percent,
+            }));
+          }
+        } catch {}
+      };
+      eventSource.onerror = (err) => {
+        console.error('EventSource failed:', err);
+        setCurrentlySyncingRepos(null);
+      };
+    }
     return () => {
       eventSource?.close();
     };
-  }, []);
+  }, [envConfig.github_user]);
 
   const onDelete = useCallback((ref: string) => {
     setReposToShow((prev) => prev.filter((r) => r.ref !== ref));
