@@ -305,6 +305,31 @@ pub fn studio_diff_prompt(context_formatted: &str) -> String {
 Follow these rules strictly:
 - You MUST only return a single diff block, no additional commentary.
 - Keep hunks concise only include a short context for each hunk. 
+- Only generate diffs that can be applied by `patch`! NO extra information like `git` commands
+
+# Example outputs
+
+```diff
+--- src/index.js
++++ src/index.js
+@@ -10,5 +10,5 @@
+ const maybeHello = () => {{
+     if (Math.random() > 0.5) {{
+-        console.log("hello world!")
++        console.log("hello?")
+     }}
+ }}
+```
+
+```diff
+--- README.md
++++ README.md
+@@ -1,3 +1,3 @@
+ # Bloop AI
+ 
+-bloop is ChatGPT for your code. Ask questions in natural language, search for code and generate patches using your existing codebase as context.
++bloop is ChatGPT for your code. Ask questions in natural language, search for code and generate patches using your existing code base as context.
+```
 
 #####
 

@@ -16,7 +16,7 @@ use chrono::NaiveDateTime;
 use futures::{pin_mut, stream, StreamExt, TryStreamExt};
 use rayon::prelude::*;
 use reqwest::StatusCode;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, warn};
 use uuid::Uuid;
 
 use self::diff::DiffChunk;
@@ -727,6 +727,7 @@ async fn generate_llm_context(app: Application, context: &[ContextFile]) -> Resu
 #[derive(serde::Deserialize, Debug)]
 pub struct Diff {
     /// Apply the generated diff to the filesystem, if this is a local repository.
+    #[serde(default)]
     apply: bool,
 }
 
@@ -834,9 +835,11 @@ pub async fn diff(
             let diff = singular_chunk.to_string();
             let patch = diffy::Patch::from_str(&diff).context("invalid patch")?;
 
-            if diffy::apply(&file_content, &patch).is_err() {
+            if let Ok(t) = diffy::apply(&file_content, &patch) {
+                file_content = t;
+            } else {
                 singular_chunk.hunks[0].lines.retain(|line| match line {
-                    diff::Line::Add(..) | diff::Line::Del(..) => true,
+                    diff::Line::AddLine(..) | diff::Line::DelLine(..) => true,
                     diff::Line::Context(..) => false,
                 });
                 singular_chunk.fixup();
@@ -844,7 +847,7 @@ pub async fn diff(
                 let diff = if singular_chunk.hunks[0]
                     .lines
                     .iter()
-                    .all(|l| matches!(l, diff::Line::Add(..)))
+                    .all(|l| matches!(l, diff::Line::AddLine(..)))
                 {
                     let system_prompt = prompts::studio_diff_regen_hunk_prompt(&llm_context);
                     let messages = vec![
@@ -894,8 +897,7 @@ pub async fn diff(
     let patched_diff = resolved_chunk_map
         .into_values()
         .map(|chunk| chunk.to_string())
-        .collect::<Vec<_>>()
-        .join("\n");
+        .collect::<String>();
 
     Ok(patched_diff)
 }

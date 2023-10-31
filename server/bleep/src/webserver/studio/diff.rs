@@ -52,8 +52,8 @@ impl DiffChunk<'_> {
                 .lines
                 .iter()
                 .map(|l| match l {
-                    Line::Context(_) | Line::Del(_) => 1,
-                    Line::Add(_) => 0,
+                    Line::Context(_) | Line::DelLine(_) => 1,
+                    Line::AddLine(_) => 0,
                 })
                 .sum();
 
@@ -61,8 +61,8 @@ impl DiffChunk<'_> {
                 .lines
                 .iter()
                 .map(|l| match l {
-                    Line::Context(_) | Line::Add(_) => 1,
-                    Line::Del(_) => 0,
+                    Line::Context(_) | Line::AddLine(_) => 1,
+                    Line::DelLine(_) => 0,
                 })
                 .sum();
         }
@@ -71,12 +71,7 @@ impl DiffChunk<'_> {
 
 impl fmt::Display for DiffChunk<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let hunks_str = self
-            .hunks
-            .iter()
-            .map(|h| h.to_string())
-            .collect::<Vec<_>>()
-            .join("\n");
+        let hunks_str = self.hunks.iter().map(|h| h.to_string()).collect::<String>();
 
         write!(f, "--- {}\n+++ {}\n{}", self.src, self.dst, hunks_str)
     }
@@ -104,8 +99,8 @@ fn split_hunks(hunks: &str) -> impl Iterator<Item = DiffHunk> {
                 })
                 .map(|(type_, line)| match type_ {
                     " " => Line::Context(line),
-                    "+" => Line::Add(line),
-                    "-" => Line::Del(line),
+                    "+" => Line::AddLine(line),
+                    "-" => Line::DelLine(line),
                     _ => unreachable!("unknown character slipped through regex"),
                 })
                 .collect()
@@ -125,18 +120,17 @@ pub struct DiffHunk<'a> {
 
 impl fmt::Display for DiffHunk<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
+        writeln!(
             f,
             "@@ -{},{} +{},{} @@",
             self.src_line, self.src_count, self.dst_line, self.dst_count
         )?;
 
         for line in &self.lines {
-            writeln!(f)?;
             match line {
-                Line::Context(line) => write!(f, " {line}")?,
-                Line::Add(line) => write!(f, "+{line}")?,
-                Line::Del(line) => write!(f, "-{line}")?,
+                Line::Context(line) => writeln!(f, " {line}")?,
+                Line::AddLine(line) => writeln!(f, "+{line}")?,
+                Line::DelLine(line) => writeln!(f, "-{line}")?,
             }
         }
 
@@ -147,8 +141,8 @@ impl fmt::Display for DiffHunk<'_> {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Line<'a> {
     Context(&'a str),
-    Add(&'a str),
-    Del(&'a str),
+    AddLine(&'a str),
+    DelLine(&'a str),
 }
 
 #[cfg(test)]
@@ -227,11 +221,11 @@ foo bar
 +thud
  baz
 +thud
- baz";
+ baz
+";
         let output = relaxed_parse(s)
             .map(|chunk| chunk.to_string())
-            .collect::<Vec<_>>()
-            .join("\n");
+            .collect::<String>();
         assert_eq!(expected, output);
     }
 
@@ -258,8 +252,8 @@ foo bar
                     Line::Context("context"),
                     Line::Context("the line right below this one is intentionally empty"),
                     Line::Context(""),
-                    Line::Del("foo"),
-                    Line::Add("bar"),
+                    Line::DelLine("foo"),
+                    Line::AddLine("bar"),
                 ],
             },
             DiffHunk {
@@ -267,7 +261,11 @@ foo bar
                 src_count: 1,
                 dst_line: 10,
                 dst_count: 2,
-                lines: vec![Line::Del("bar"), Line::Add("quux"), Line::Add("quux2")],
+                lines: vec![
+                    Line::DelLine("bar"),
+                    Line::AddLine("quux"),
+                    Line::AddLine("quux2"),
+                ],
             },
         ];
 
@@ -308,8 +306,8 @@ foo bar
                         Line::Context("context"),
                         Line::Context("the line right below this one is intentionally empty"),
                         Line::Context(""),
-                        Line::Del("foo"),
-                        Line::Add("bar"),
+                        Line::DelLine("foo"),
+                        Line::AddLine("bar"),
                     ],
                 }],
             },
@@ -321,7 +319,11 @@ foo bar
                     src_count: 1,
                     dst_line: 10,
                     dst_count: 2,
-                    lines: vec![Line::Del("bar"), Line::Add("quux"), Line::Add("quux2")],
+                    lines: vec![
+                        Line::DelLine("bar"),
+                        Line::AddLine("quux"),
+                        Line::AddLine("quux2"),
+                    ],
                 }],
             },
         ];
@@ -396,21 +398,21 @@ foo bar
                         Line::Context("            }));"),
                         Line::Context("        }"),
                         Line::Context("    }"),
-                        Line::Add("    "),
-                        Line::Add("    pub fn track_index_repo(&self, user: &crate::webserver::middleware::User, repo_ref: RepoRef) {"),
-                        Line::Add(r#"        if let Some(options) = &self.options {"#),
-                        Line::Add(r#"            self.send(Message::Track(Track {"#),
-                        Line::Add(r#"                user_id: Some(self.tracking_id(user.username())),"#),
-                        Line::Add(r#"                event: "index repo".to_owned(),"#),
-                        Line::Add(r#"                properties: Some(json!({"#),
-                        Line::Add(r#"                    "device_id": self.device_id(),"#),
-                        Line::Add(r#"                    "repo_ref": repo_ref.to_string(),"#),
-                        Line::Add(r#"                    "package_metadata": options.package_metadata,"#),
-                        Line::Add(r#"                })),"#),
-                        Line::Add(r#"                ..Default::default()"#),
-                        Line::Add(r#"            }));"#),
-                        Line::Add(r#"        }"#),
-                        Line::Add(r#"    }"#),
+                        Line::AddLine("    "),
+                        Line::AddLine("    pub fn track_index_repo(&self, user: &crate::webserver::middleware::User, repo_ref: RepoRef) {"),
+                        Line::AddLine(r#"        if let Some(options) = &self.options {"#),
+                        Line::AddLine(r#"            self.send(Message::Track(Track {"#),
+                        Line::AddLine(r#"                user_id: Some(self.tracking_id(user.username())),"#),
+                        Line::AddLine(r#"                event: "index repo".to_owned(),"#),
+                        Line::AddLine(r#"                properties: Some(json!({"#),
+                        Line::AddLine(r#"                    "device_id": self.device_id(),"#),
+                        Line::AddLine(r#"                    "repo_ref": repo_ref.to_string(),"#),
+                        Line::AddLine(r#"                    "package_metadata": options.package_metadata,"#),
+                        Line::AddLine(r#"                })),"#),
+                        Line::AddLine(r#"                ..Default::default()"#),
+                        Line::AddLine(r#"            }));"#),
+                        Line::AddLine(r#"        }"#),
+                        Line::AddLine(r#"    }"#),
                         Line::Context("}"),
                         Line::Context(""),
                         Line::Context("impl From<Option<String>> for DeviceId {"),
@@ -431,10 +433,10 @@ foo bar
                             Line::Context(r#"    }"#),
                             Line::Context(r#""#),
                             Line::Context(r#"    pub(crate) async fn index("#),
-                            Line::Del(r#"        &self,"#),
-                            Line::Add(r#"        &self,"#),
-                            Line::Add(r#"        analytics: &RudderHub,  // Pass in the RudderHub instance"#),
-                            Line::Add(r#"        user: &crate::webserver::middleware::User,  // Pass in the current user"#),
+                            Line::DelLine(r#"        &self,"#),
+                            Line::AddLine(r#"        &self,"#),
+                            Line::AddLine(r#"        analytics: &RudderHub,  // Pass in the RudderHub instance"#),
+                            Line::AddLine(r#"        user: &crate::webserver::middleware::User,  // Pass in the current user"#),
                             Line::Context(r#"        sync_handle: &SyncHandle,"#),
                             Line::Context(r#"        repo: &Repository,"#),
                             Line::Context(r#"    ) -> Result<Arc<RepoMetadata>, RepoError> {"#),
@@ -449,9 +451,9 @@ foo bar
                             Line::Context(r#""#),
                             Line::Context(r#"        for h in &self.handles {"#),
                             Line::Context(r#"            h.index(sync_handle, repo, &metadata).await?;"#),
-                            Line::Add(r#"            "#),
-                            Line::Add(r#"            // Track the repo indexing event"#),
-                            Line::Add(r#"            analytics.track_index_repo(user, repo.repo_ref.clone());"#),
+                            Line::AddLine(r#"            "#),
+                            Line::AddLine(r#"            // Track the repo indexing event"#),
+                            Line::AddLine(r#"            analytics.track_index_repo(user, repo.repo_ref.clone());"#),
                             Line::Context(r#"        }"#),
                             Line::Context(r#""#),
                             Line::Context(r#"        Ok(metadata)"#),
