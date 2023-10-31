@@ -16,7 +16,7 @@ use chrono::NaiveDateTime;
 use futures::{pin_mut, stream, StreamExt, TryStreamExt};
 use rayon::prelude::*;
 use reqwest::StatusCode;
-use tracing::{debug, error, warn};
+use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
 use self::diff::DiffChunk;
@@ -724,9 +724,16 @@ async fn generate_llm_context(app: Application, context: &[ContextFile]) -> Resu
     Ok(s)
 }
 
+#[derive(serde::Deserialize, Debug)]
+pub struct Diff {
+    /// Apply the generated diff to the filesystem, if this is a local repository.
+    apply: bool,
+}
+
 pub async fn diff(
     app: Extension<Application>,
     user: Extension<User>,
+    Query(params): Query<Diff>,
     Path(studio_id): Path<i64>,
 ) -> webserver::Result<String> {
     let user_id = user.username().ok_or_else(no_user_id)?.to_string();
@@ -818,6 +825,8 @@ pub async fn diff(
             .await?
             .context("path did not exist in the index")?;
 
+        let mut file_content = file.content;
+
         for (j, hunk) in chunk.hunks.iter().enumerate() {
             let mut singular_chunk = chunk.clone();
             singular_chunk.hunks = vec![hunk.clone()];
@@ -825,7 +834,7 @@ pub async fn diff(
             let diff = singular_chunk.to_string();
             let patch = diffy::Patch::from_str(&diff).context("invalid patch")?;
 
-            if diffy::apply(&file.content, &patch).is_err() {
+            if diffy::apply(&file_content, &patch).is_err() {
                 singular_chunk.hunks[0].lines.retain(|line| match line {
                     diff::Line::Add(..) | diff::Line::Del(..) => true,
                     diff::Line::Context(..) => false,
@@ -849,8 +858,11 @@ pub async fn diff(
 
                 let patch = diffy::Patch::from_str(&diff).context("redacted patch was invalid")?;
 
-                if let Err(e) = diffy::apply(&file.content, &patch) {
-                    error!("hunk ({i}, {j}) failed: {e}");
+                match diffy::apply(&file_content, &patch) {
+                    Ok(t) => file_content = t,
+                    Err(e) => {
+                        error!("hunk ({i}, {j}) failed: {e}");
+                    }
                 }
             }
 
@@ -863,6 +875,18 @@ pub async fn diff(
                 });
 
             chunk.hunks.extend(singular_chunk.hunks);
+        }
+
+        if params.apply {
+            let repo_ref = file.repo_ref.parse::<RepoRef>().unwrap();
+            let Some(repo_path) = repo_ref.local_path() else {
+                error!("cannot apply patch to remote repo");
+                continue;
+            };
+
+            let file_path = repo_path.join(file.relative_path);
+
+            std::fs::write(file_path, file_content).context("failed to patch file on disk")?;
         }
     }
 
