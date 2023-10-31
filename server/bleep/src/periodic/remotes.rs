@@ -272,6 +272,11 @@ async fn periodic_repo_poll(app: Application, reporef: RepoRef) -> Option<()> {
     let mut poller = Poller::start(&app, &reporef)?;
 
     loop {
+        match tokio::time::timeout(poller.jittery_interval(), poller.git_change()).await {
+            Ok(_) => debug!(?reporef, "git changes triggered reindexing"),
+            Err(_) => debug!(?reporef, "timeout; reindexing"),
+        }
+
         use SyncStatus::*;
         let (last_updated, status) = check_repo(&app, &reporef)?;
         if status.indexable().not() {
@@ -311,11 +316,6 @@ async fn periodic_repo_poll(app: Application, reporef: RepoRef) -> Option<()> {
                 "repo updated"
             )
         }
-
-        match tokio::time::timeout(poller.jittery_interval(), poller.git_change()).await {
-            Ok(_) => debug!(?reporef, "git changes triggered reindexing"),
-            Err(_) => debug!(?reporef, "timeout; reindexing"),
-        }
     }
 }
 
@@ -328,7 +328,7 @@ struct Poller {
 
 impl Poller {
     fn start(app: &Application, reporef: &RepoRef) -> Option<Self> {
-        let mut poll_interval_index = 0;
+        let mut poll_interval_index = 2;
         let mut minimum_interval_index = 0;
 
         let (tx, rx) = flume::bounded(10);
