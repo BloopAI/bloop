@@ -3,6 +3,8 @@ use std::sync::{
     Arc, RwLock,
 };
 
+use tracing::debug;
+
 use crate::repo::{FilterUpdate, RepoRef, SyncStatus};
 
 use super::{Progress, ProgressEvent};
@@ -121,17 +123,14 @@ impl gix::progress::Progress for GitSync {
     }
 
     fn message(&self, level: gix::progress::MessageLevel, message: String) {
-        println!("-- {level:?} : {name} {message}", name = self.name);
+        debug!(name = self.name, message, ?level, "git status message");
     }
 }
 
 impl gix::progress::Count for GitSync {
     fn set(&self, step: gix::progress::prodash::progress::Step) {
         self.cnt.store(step, Ordering::SeqCst);
-
         let current = ((step as f32 / self.max.load(Ordering::SeqCst) as f32) * 100f32) as u8;
-        // println!("-- {step:?} {name}", name = self.name);
-        // println!("set: {name} {}", current, name = self.name,);
 
         _ = self.progress.send(Progress {
             reporef: self.reporef.clone(),
@@ -148,7 +147,7 @@ impl gix::progress::Count for GitSync {
         self.cnt.fetch_add(step, Ordering::SeqCst);
         let max = self.max.load(Ordering::SeqCst);
         let current = self.cnt.load(Ordering::SeqCst);
-        println!("inc: {name} {current}/{max}", name = self.name,);
+
         let current = if max > 10000 {
             ((current as f32 / (max * 4 * 1024) as f32) * 100f32) as u8
         } else {
