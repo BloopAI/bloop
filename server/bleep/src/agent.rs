@@ -279,7 +279,8 @@ impl Agent {
                 .with_payload("trimmed_history", &trimmed_history)
                 .with_payload("last_message", history.last())
                 .with_payload("functions", &functions)
-                .with_payload("raw_response", &raw_response),
+                .with_payload("raw_response", &raw_response)
+                .with_payload("model", &self.llm_gateway.model),
         );
 
         let action =
