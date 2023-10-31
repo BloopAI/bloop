@@ -38,10 +38,10 @@ const ReposSection = ({
 }: Props) => {
   const { apiUrl } = useContext(DeviceContext);
   const { setRepositories } = useContext(RepositoriesContext);
-  const [currentlySyncingRepo, setCurrentlySyncingRepo] = useState<{
-    repoRef: string;
-    percentage: number;
-  } | null>(null);
+  const [currentlySyncingRepos, setCurrentlySyncingRepos] = useState<Record<
+    string,
+    number
+  > | null>(null);
 
   useEffect(() => {
     eventSource?.close();
@@ -70,16 +70,16 @@ const ReposSection = ({
           });
         }
         if (Number.isInteger(data.ev?.index_percent)) {
-          setCurrentlySyncingRepo({
-            repoRef: data.ref,
-            percentage: data.ev.index_percent,
-          });
+          setCurrentlySyncingRepos((prev) => ({
+            ...prev,
+            [data.ref]: data.ev.index_percent,
+          }));
         }
       } catch {}
     };
     eventSource.onerror = (err) => {
       console.error('EventSource failed:', err);
-      setCurrentlySyncingRepo(null);
+      setCurrentlySyncingRepos(null);
     };
     return () => {
       eventSource?.close();
@@ -108,9 +108,9 @@ const ReposSection = ({
               lang={r.most_common_lang}
               key={ref + i}
               provider={r.provider}
-              syncStatus={
-                currentlySyncingRepo?.repoRef === ref
-                  ? currentlySyncingRepo
+              syncPercentage={
+                currentlySyncingRepos?.[ref]
+                  ? currentlySyncingRepos?.[ref]
                   : null
               }
               onDelete={onDelete}

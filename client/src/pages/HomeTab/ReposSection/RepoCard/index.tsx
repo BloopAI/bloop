@@ -27,7 +27,7 @@ type Props = {
   lang: string;
   repoRef: string;
   provider: 'local' | 'github';
-  syncStatus?: { percentage: number } | null;
+  syncPercentage?: number | null;
   onDelete: (ref: string) => void;
   indexedBranches?: string[];
 };
@@ -51,7 +51,7 @@ const RepoCard = ({
   last_index,
   lang,
   provider,
-  syncStatus,
+  syncPercentage,
   repoRef,
   onDelete,
   indexedBranches,
@@ -188,14 +188,18 @@ const RepoCard = ({
       </div>
       {(sync_status === SyncStatus.Indexing ||
         sync_status === SyncStatus.Syncing) &&
-      syncStatus ? (
+      syncPercentage !== null &&
+      syncPercentage !== undefined ? (
         <div className="flex flex-col gap-2">
           <p className="body-s text-label-title">
-            <Trans>{ (sync_status === SyncStatus.Indexing && "Indexing" || "Cloning") }...</Trans>
+            <Trans>
+              {sync_status === SyncStatus.Indexing ? 'Indexing' : 'Cloning'}
+            </Trans>
+            ...
           </p>
-          <BarLoader percentage={syncStatus.percentage} />
+          <BarLoader percentage={syncPercentage} />
           <p className="caption text-label-muted">
-            {syncStatus.percentage}% <Trans>complete</Trans>
+            {syncPercentage}% <Trans>complete</Trans>
           </p>
         </div>
       ) : (
