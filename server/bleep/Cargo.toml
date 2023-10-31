@@ -6,15 +6,19 @@ default-run = "bleep"
 build = "build.rs"
 
 [features]
-default = ["metal", "ee-pro"]
+default = ["ee-pro"]
 debug = ["console-subscriber", "histogram"]
-onnx = ["dep:ort", "dep:ndarray"]
-dynamic-ort = ["onnx", "ort?/load-dynamic"]
-ggml = ["llm/metal"]
-metal = ["ggml"]
-cublas = ["llm/cublas"]
+onnx = []
+metal = []
 ee-pro = []
 ee-cloud = ["ee-pro", "color-eyre"]
+
+[target.'cfg(not(all(target_os = "macos", target_arch = "aarch64")))'.dependencies]
+ndarray = { version = "0.15" }
+ort = { git = "https://github.com/bloopai/ort", branch = "env-builder-telemetry", features = ["load-dynamic"] }
+
+[target.aarch64-apple-darwin.dependencies]
+llm = { git = "https://github.com/bloopai/llm", branch = "batch-metal-kernels", default-features = false, features = ["bert", "metal"] }
 
 [[bin]]
 name = "bleep"
@@ -108,11 +112,9 @@ gix = { git = "https://github.com/BloopAI/gitoxide", version="0.55.2", features 
 
 # semantic
 rake = "0.1"
-ndarray = { version = "0.15", optional = true }
 qdrant-client = { version = "1.5.0", default-features = false }
 tiktoken-rs = "0.4.5"
 tokenizers = { version = "0.14.0", default-features = false, features = ["progressbar", "cli", "onig", "esaxx_fast"] }
-ort = { git = "https://github.com/bloopai/ort", branch = "env-builder-telemetry", optional = true }
 
 # answer parsing
 # We use the git version here, so that we can pull in recent changes that make footnotes work. The
@@ -153,7 +155,6 @@ scc = { version= "1.9.1", features = ["serde"] }
 thread-priority = "0.13.1"
 
 # llm = { path = "/home/np/bloop/experimental/llm/crates/llm", default-features = false, features = ["bert"] }
-llm = { git = "https://github.com/bloopai/llm", branch = "batch-metal-kernels", default-features = false, features = ["bert"], optional = true }
 
 [dev-dependencies]
 criterion = { version = "0.5.1", features = ["async_tokio"] }

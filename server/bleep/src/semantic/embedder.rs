@@ -63,12 +63,12 @@ pub trait Embedder: Send + Sync {
     async fn batch_embed(&self, log: Vec<&str>) -> anyhow::Result<Vec<Embedding>>;
 }
 
-#[cfg(not(feature = "metal"))]
+#[cfg(all(not(feature = "metal"), feature = "onnx"))]
 pub use cpu::LocalEmbedder;
-#[cfg(feature = "metal")]
+#[cfg(all(not(feature = "onnx"), feature = "metal"))]
 pub use gpu::LocalEmbedder;
 
-#[cfg(not(feature = "metal"))]
+#[cfg(all(not(feature = "metal"), feature = "onnx"))]
 mod cpu {
     use super::*;
     #[cfg(feature = "ee")]
@@ -168,7 +168,7 @@ mod cpu {
     }
 }
 
-#[cfg(feature = "metal")]
+#[cfg(all(not(feature = "onnx"), feature = "metal"))]
 mod gpu {
     use super::*;
     use tracing::{error, info};
