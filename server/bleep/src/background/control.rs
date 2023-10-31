@@ -38,8 +38,8 @@ impl SyncPipes {
 
     pub(crate) fn git_sync_progress(&self) -> GitSync {
         GitSync {
-            max: 0.into(),
-            cnt: 0.into(),
+            max: Arc::new(0.into()),
+            cnt: Arc::new(0.into()),
             id: Default::default(),
             name: Default::default(),
             progress: self.progress.clone(),
@@ -83,28 +83,15 @@ impl SyncPipes {
     }
 }
 
+#[derive(Clone)]
 pub(crate) struct GitSync {
-    max: AtomicUsize,
-    cnt: AtomicUsize,
+    max: Arc<AtomicUsize>,
+    cnt: Arc<AtomicUsize>,
     progress: super::ProgressStream,
     reporef: RepoRef,
     filter_updates: FilterUpdate,
     id: gix::progress::Id,
     name: String,
-}
-
-impl Clone for GitSync {
-    fn clone(&self) -> Self {
-        GitSync {
-            max: 0.into(),
-            cnt: 0.into(),
-            progress: self.progress.clone(),
-            id: self.id.clone(),
-            filter_updates: self.filter_updates.clone(),
-            reporef: self.reporef.clone(),
-            name: Default::default(),
-        }
-    }
 }
 
 impl gix::progress::Progress for GitSync {
@@ -163,7 +150,7 @@ impl gix::progress::Count for GitSync {
         let current = self.cnt.load(Ordering::SeqCst);
         println!("inc: {name} {current}/{max}", name = self.name,);
         let current = if max > 10000 {
-            ((current as f32 / (max * 3 * 1024) as f32) * 100f32) as u8
+            ((current as f32 / (max * 4 * 1024) as f32) * 100f32) as u8
         } else {
             ((current as f32 / (max) as f32) * 100f32) as u8
         };
@@ -176,7 +163,7 @@ impl gix::progress::Count for GitSync {
     }
 
     fn counter(&self) -> gix::progress::StepShared {
-        Arc::new(self.cnt.load(Ordering::Relaxed).into())
+        self.cnt.clone()
     }
 }
 
@@ -185,8 +172,8 @@ impl gix::progress::NestedProgress for GitSync {
 
     fn add_child(&mut self, name: impl Into<String>) -> Self::SubProgress {
         GitSync {
-            max: 0.into(),
-            cnt: 0.into(),
+            max: self.max.clone(),
+            cnt: self.cnt.clone(),
             progress: self.progress.clone(),
             id: self.id.clone(),
             filter_updates: self.filter_updates.clone(),
@@ -201,8 +188,8 @@ impl gix::progress::NestedProgress for GitSync {
         id: gix::progress::Id,
     ) -> Self::SubProgress {
         GitSync {
-            max: 0.into(),
-            cnt: 0.into(),
+            max: self.max.clone(),
+            cnt: self.cnt.clone(),
             progress: self.progress.clone(),
             filter_updates: self.filter_updates.clone(),
             reporef: self.reporef.clone(),

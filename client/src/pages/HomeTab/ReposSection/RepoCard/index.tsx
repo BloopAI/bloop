@@ -191,7 +191,7 @@ const RepoCard = ({
       syncStatus ? (
         <div className="flex flex-col gap-2">
           <p className="body-s text-label-title">
-            <Trans>Indexing...</Trans>
+            <Trans>{ (sync_status === SyncStatus.Indexing && "Indexing" || "Cloning") }...</Trans>
           </p>
           <BarLoader percentage={syncStatus.percentage} />
           <p className="caption text-label-muted">
