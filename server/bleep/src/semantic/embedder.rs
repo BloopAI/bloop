@@ -267,6 +267,10 @@ mod gpu {
         }
 
         async fn batch_embed(&self, log: Vec<&str>) -> anyhow::Result<Vec<Embedding>> {
+            // do not send empty batches to the model
+            if log.is_empty() {
+                return Ok(vec![]);
+            }
             let mut output_request = llm::OutputRequest {
                 all_logits: None,
                 embeddings: Some(Vec::new()),
