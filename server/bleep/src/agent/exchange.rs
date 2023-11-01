@@ -133,6 +133,9 @@ pub enum SearchStep {
         paths: Vec<String>,
         response: String,
     },
+    Thought {
+        thought: String,
+    },
 }
 
 impl SearchStep {
@@ -154,6 +157,9 @@ impl SearchStep {
                 paths: paths.clone(),
                 response: "[hidden, compressed]".into(),
             },
+            Self::Thought { thought } => Self::Thought {
+                thought: "[hidden, compressed]".into(),
+            },
         }
     }
 
@@ -162,6 +168,7 @@ impl SearchStep {
             Self::Path { response, .. } => response.clone(),
             Self::Code { response, .. } => response.clone(),
             Self::Proc { response, .. } => response.clone(),
+            Self::Thought { thought } => thought.clone(),
         }
     }
 }

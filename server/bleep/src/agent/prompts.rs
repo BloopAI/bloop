@@ -4,13 +4,13 @@ pub fn functions(add_proc: bool, thought: bool) -> serde_json::Value {
             [
             {
                 "name": "thought",
-                "description":  "Reflect on the task and provide some thoughts about what action to answer next.",
+                "description":  "Reflect on the task and respond with some thoughts about the next action to take.",
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "thought": {
                             "type": "string",
-                            "description": "A reflection on the current task"
+                            "description": "A reflection on the current task and the next action to take"
                         }
                     },
                     "required": ["thought"]

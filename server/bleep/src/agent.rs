@@ -226,6 +226,13 @@ impl Agent {
             Action::Path { query } => self.path_search(query).await?,
             Action::Code { query } => self.code_search(query).await?,
             Action::Proc { query, paths } => self.process_files(query, paths).await?,
+            Action::Thought { thought } => {
+                self.update(Update::StartStep(SearchStep::Thought {
+                    thought: thought.into(),
+                }))
+                .await?;
+                "".into()
+            }
         };
 
         if self.last_exchange().search_steps.len() >= MAX_STEPS {
@@ -235,7 +242,10 @@ impl Agent {
         }
 
         let functions = serde_json::from_value::<Vec<llm_gateway::api::Function>>(
-            prompts::functions(self.paths().next().is_some()), // Only add proc if there are paths in context
+            prompts::functions(
+                self.paths().next().is_some(),
+                dbg!(!matches!(action, Action::Thought { thought: _ })),
+            ), // Only add proc if there are paths in context
         )
         .unwrap();
 
@@ -248,10 +258,7 @@ impl Agent {
 
         let raw_response = self
             .llm_gateway
-            .chat_stream(
-                &trim_history(history.clone(), self.model)?,
-                Some(&functions),
-            )
+            .chat_stream(&trimmed_history, Some(&functions))
             .await?
             .try_fold(
                 llm_gateway::api::FunctionCall::default(),
@@ -283,6 +290,8 @@ impl Agent {
                 .with_payload("model", &self.llm_gateway.model),
         );
 
+        dbg!(&raw_response);
+
         let action =
             Action::deserialize_gpt(&raw_response).context("failed to deserialize LLM output")?;
 
@@ -306,8 +315,12 @@ impl Agent {
                     .map(|q| llm_gateway::api::Message::user(&q))
                     .ok_or_else(|| anyhow!("query does not have target"))?;
 
-                let steps = e.search_steps.iter().flat_map(|s| {
+                let steps = e.search_steps.iter().flat_map(|s: &SearchStep| {
                     let (name, arguments) = match s {
+                        SearchStep::Thought { thought } => (
+                            "thought".to_owned(),
+                            format!("{{\n \"thought\": \"{thought}\"\n}}"),
+                        ),
                         SearchStep::Path { query, .. } => (
                             "path".to_owned(),
                             format!("{{\n \"query\": \"{query}\"\n}}"),
@@ -539,6 +552,9 @@ pub enum Action {
     Proc {
         query: String,
         paths: Vec<usize>,
+    },
+    Thought {
+        thought: String,
     },
 }
 

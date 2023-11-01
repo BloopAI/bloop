@@ -23,7 +23,7 @@ impl Agent {
         .await?;
 
         let mut results = self
-            .semantic_search(query.into(), vec![], CODE_SEARCH_LIMIT, 0, 0.3, true)
+            .semantic_search(query.into(), vec![], CODE_SEARCH_LIMIT, 0, 0.1, true)
             .await?;
 
         debug!("returned {} results", results.len());
