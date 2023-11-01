@@ -18,11 +18,18 @@ jobs:
       fail-fast: false
       matrix:
         target:
-          [aarch64-apple-darwin]
+          [x86_64-unknown-linux-gnu, x86_64-apple-darwin, aarch64-apple-darwin]
 
         include:
+          - target: x86_64-unknown-linux-gnu
+            name: ubuntu-latest
+
+          - target: x86_64-apple-darwin
+            name: macos-11
+
           - target: aarch64-apple-darwin
             name: macos-11
+
 
     runs-on: ${{ matrix.name }}
     env:
@@ -105,6 +112,15 @@ jobs:
           field: tauri.bundle.macOS.signingIdentity
           value: ${{ secrets.APPLE_SIGNING_IDENTITY }}
 
+      - name: Remove onnxruntime from aarch64-apple-darwin builds
+        if: matrix.target == 'aarch64-apple-darwin'
+        uses: jossef/action-set-json-field@v2
+        with:
+          file: apps/desktop/src-tauri/tauri.conf.json
+          field: tauri.bundle.macOS.frameworks
+          value: '[]'
+          parse_json: true
+
       - name: get release version
         id: release-version
         run: echo "RELEASE_VERSION=$(cat apps/desktop/src-tauri/tauri.conf.json | jq '.package.version' | tr -d '"')" >> "$GITHUB_OUTPUT"
@@ -126,7 +142,7 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_RELEASE_VERSION: ${{ steps.release-version.outputs.RELEASE_VERSION }}
         with:
-          args: -- --target "${{ matrix.target }}" -v ${{ matrix.name == 'macos-11-metal' && '--no-default-features --features metal' || '' }}
+          args: -- --target "${{ matrix.target }}" -v
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v3

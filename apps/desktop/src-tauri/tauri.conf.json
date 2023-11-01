@@ -59,6 +59,9 @@
       "macOS": {
         "entitlements": null,
         "exceptionDomain": "",
+        "frameworks": [
+            "frameworks/libonnxruntime.dylib"
+        ],
         "providerShortName": null,
         "signingIdentity": null
       },
