@@ -110,11 +110,7 @@ const ReposSection = ({
               lang={r.most_common_lang}
               key={ref + i}
               provider={r.provider}
-              syncPercentage={
-                currentlySyncingRepos?.[ref]
-                  ? currentlySyncingRepos?.[ref]
-                  : null
-              }
+              syncPercentage={currentlySyncingRepos?.[ref]}
               onDelete={onDelete}
               indexedBranches={r.branch_filter?.select}
             />
