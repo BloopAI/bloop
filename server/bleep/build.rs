@@ -112,4 +112,3 @@ fn is_apple_silicon() -> bool {
     let components: Vec<_> = target.split("-").map(|s| s.to_string()).collect();
     components[0] == "aarch64" && components[2] == "darwin"
 }
-
