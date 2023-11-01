@@ -154,8 +154,6 @@ semver = { version = "1", features = ["serde"] }
 scc = { version= "1.9.1", features = ["serde"] }
 thread-priority = "0.13.1"
 
-# llm = { path = "/home/np/bloop/experimental/llm/crates/llm", default-features = false, features = ["bert"] }
-
 [dev-dependencies]
 criterion = { version = "0.5.1", features = ["async_tokio"] }
 pretty_assertions = "1.4.0"
