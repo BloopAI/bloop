@@ -15,6 +15,7 @@ struct Language {
 fn main() {
     set_index_version();
     process_languages();
+    determine_embedder_backend();
     println!("cargo:rerun-if-changed=migrations");
 }
 
@@ -96,4 +97,18 @@ fn process_languages() {
     .unwrap();
 
     println!("cargo:rerun-if-changed=../languages.yml");
+}
+
+fn determine_embedder_backend() {
+    if is_apple_silicon() {
+        println!("cargo:rustc-cfg=feature=\"metal\"")
+    } else {
+        println!("cargo:rustc-cfg=feature=\"onnx\"")
+    }
+}
+
+fn is_apple_silicon() -> bool {
+    let target = env::var("TARGET").unwrap();
+    let components: Vec<_> = target.split("-").map(|s| s.to_string()).collect();
+    components[0] == "aarch64" && components[2] == "darwin"
 }

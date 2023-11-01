@@ -60,7 +60,7 @@
         "entitlements": null,
         "exceptionDomain": "",
         "frameworks": [
-          "frameworks/libonnxruntime.dylib"
+            "frameworks/libonnxruntime.dylib"
         ],
         "providerShortName": null,
         "signingIdentity": null

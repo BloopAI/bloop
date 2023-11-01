@@ -34,6 +34,7 @@ pub enum SemanticError {
     #[error("Qdrant initialization failed. Is Qdrant running on `qdrant-url`?")]
     QdrantInitializationError,
 
+    #[cfg(feature = "onnx")]
     #[error("ONNX runtime error")]
     OnnxRuntimeError {
         #[from]
@@ -404,7 +405,7 @@ impl Semantic {
         let Some(query) = parsed_query.target() else {
             anyhow::bail!("no search target for query");
         };
-        let vector = self.embedder.embed(&query)?;
+        let vector = self.embedder.embed(&query).await?;
 
         // TODO: Remove the need for `retrieve_more`. It's here because:
         // In /q `limit` is the maximum number of results returned (the actual number will often be lower due to deduplication)
@@ -438,10 +439,14 @@ impl Semantic {
             anyhow::bail!("no search target for query");
         };
 
-        let vectors = parsed_queries
-            .iter()
-            .map(|q| self.embedder.embed(&q.target().unwrap()))
-            .collect::<anyhow::Result<Vec<_>>>()?;
+        let vectors = futures::future::join_all(
+            parsed_queries
+                .iter()
+                .map(|q| async { self.embedder.embed(&q.target().unwrap()).await }),
+        )
+        .await
+        .into_iter()
+        .collect::<anyhow::Result<Vec<_>>>()?;
 
         tracing::trace!(?parsed_queries, "performing qdrant batch search");
 

@@ -199,7 +199,9 @@ pub fn by_tokens<'s>(
 ) -> Vec<Chunk<'s>> {
     if tokenizer.get_padding().is_some() || tokenizer.get_truncation().is_some() {
         error!(
-            "This code can panic if padding and truncation are not turned off. Please make sure padding is off."
+            "This code can panic if padding and truncation are not turned off. Please make sure padding is off. p = {}, t = {}",
+            tokenizer.get_padding().is_some(),
+            tokenizer.get_truncation().is_some(),
         );
     }
     let min_tokens = token_bounds.start;
