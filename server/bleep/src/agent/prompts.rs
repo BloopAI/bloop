@@ -1,4 +1,24 @@
-pub fn functions(add_proc: bool) -> serde_json::Value {
+pub fn functions(add_proc: bool, thought: bool) -> serde_json::Value {
+    if thought {
+        return serde_json::json!(
+            [
+            {
+                "name": "thought",
+                "description":  "Reflect on the task and provide some thoughts about what action to answer next.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "thought": {
+                            "type": "string",
+                            "description": "A reflection on the current task"
+                        }
+                    },
+                    "required": ["thought"]
+                }
+            }
+            ]
+        );
+    }
     let mut funcs = serde_json::json!(
         [
             {

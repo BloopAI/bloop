@@ -214,7 +214,7 @@ impl Client {
         Self {
             http: reqwest::Client::new(),
             base_url: base_url.to_owned(),
-            max_retries: 5,
+            max_retries: 1,
 
             bearer_token: None,
             provider: api::Provider::OpenAi,
