@@ -241,18 +241,20 @@ const CodeContainerSelectable = ({
           />
         </Fragment>
       ))}
-      {!!currentlySelectingRange && (
-        <SelectionRect range={currentlySelectingRange} isTemporary />
-      )}
-      <LinesContainer
-        items={tokens}
-        pathHash={pathHash}
-        handleAddRange={handleAddRange}
-        searchTerm={searchTerm}
-        setCurrentlySelectingRange={setCurrentlySelectingRange}
-        modifyingRange={modifyingRange}
-        scrollToIndex={scrollToIndex}
-      />
+      <div className="overflow-x-auto relative">
+        {!!currentlySelectingRange && (
+          <SelectionRect range={currentlySelectingRange} isTemporary />
+        )}
+        <LinesContainer
+          items={tokens}
+          pathHash={pathHash}
+          handleAddRange={handleAddRange}
+          searchTerm={searchTerm}
+          setCurrentlySelectingRange={setCurrentlySelectingRange}
+          modifyingRange={modifyingRange}
+          scrollToIndex={scrollToIndex}
+        />
+      </div>
     </div>
   );
 };
