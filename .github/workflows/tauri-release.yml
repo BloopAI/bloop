@@ -99,14 +99,14 @@ jobs:
         run: du -h apps/desktop/src-tauri/config/config.json
 
       - name: Set providerShortName in tauri.conf.json
-        uses: jossef/action-set-json-field@v2
+        uses: jossef/action-set-json-field@v2.1
         with:
           file: apps/desktop/src-tauri/tauri.conf.json
           field: tauri.bundle.macOS.providerShortName
           value: ${{ secrets.MAC_PROVIDER_SHORT_NAME }}
 
       - name: Set signingIdentity in tauri.conf.json
-        uses: jossef/action-set-json-field@v2
+        uses: jossef/action-set-json-field@v2.1
         with:
           file: apps/desktop/src-tauri/tauri.conf.json
           field: tauri.bundle.macOS.signingIdentity
@@ -114,7 +114,7 @@ jobs:
 
       - name: Remove onnxruntime from aarch64-apple-darwin builds
         if: matrix.target == 'aarch64-apple-darwin'
-        uses: jossef/action-set-json-field@v2
+        uses: jossef/action-set-json-field@v2.1
         with:
           file: apps/desktop/src-tauri/tauri.conf.json
           field: tauri.bundle.macOS.frameworks
