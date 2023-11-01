@@ -1,7 +1,7 @@
 use std::{
     ops::Not,
     sync::Arc,
-    time::{Duration, SystemTime},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 use anyhow::Context;
@@ -272,16 +272,26 @@ async fn periodic_repo_poll(app: Application, reporef: RepoRef) -> Option<()> {
     let mut poller = Poller::start(&app, &reporef)?;
 
     loop {
-        match tokio::time::timeout(poller.jittery_interval(), poller.git_change()).await {
-            Ok(_) => debug!(?reporef, "git changes triggered reindexing"),
-            Err(_) => debug!(?reporef, "timeout; reindexing"),
+        use SyncStatus::*;
+        let (last_index, last_updated, status) = check_repo(&app, &reporef)?;
+        if status.indexable().not() {
+            debug!(?status, "skipping indexing of repo");
+            return None;
         }
 
-        use SyncStatus::*;
-        let (last_updated, status) = check_repo(&app, &reporef)?;
-        if status.indexable().not() {
-            warn!(?status, "skipping indexing of repo");
-            return None;
+        if (UNIX_EPOCH + Duration::from_secs(last_index as u64))
+            > SystemTime::now() - poller.interval()
+        {
+            app.repo_pool
+                .update_async(&reporef, |_, repo| {
+                    repo.pub_sync_status = repo.sync_status.clone();
+                })
+                .await;
+
+            // dividing by 10, because this may actually add up to
+            // quite a few minutes
+            tokio::time::sleep(poller.interval() / 10).await;
+            continue;
         }
 
         debug!("starting sync");
@@ -291,7 +301,7 @@ async fn periodic_repo_poll(app: Application, reporef: RepoRef) -> Option<()> {
         }
 
         debug!("sync done");
-        let (updated, status) = check_repo(&app, &reporef)?;
+        let (_, updated, status) = check_repo(&app, &reporef)?;
         if status.indexable().not() {
             warn!(?status, ?reporef, "terminating monitoring for repo");
             return None;
@@ -315,6 +325,11 @@ async fn periodic_repo_poll(app: Application, reporef: RepoRef) -> Option<()> {
                 ?poll_interval,
                 "repo updated"
             )
+        }
+
+        match tokio::time::timeout(poller.jittery_interval(), poller.git_change()).await {
+            Ok(_) => debug!(?reporef, "git changes triggered reindexing"),
+            Err(_) => debug!(?reporef, "timeout; reindexing"),
         }
     }
 }
@@ -400,9 +415,13 @@ impl Poller {
     }
 }
 
-fn check_repo(app: &Application, reporef: &RepoRef) -> Option<(i64, SyncStatus)> {
+fn check_repo(app: &Application, reporef: &RepoRef) -> Option<(u64, i64, SyncStatus)> {
     app.repo_pool.read(reporef, |_, repo| {
-        (repo.last_commit_unix_secs, repo.sync_status.clone())
+        (
+            repo.last_index_unix_secs,
+            repo.last_commit_unix_secs,
+            repo.sync_status.clone(),
+        )
     })
 }
 

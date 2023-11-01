@@ -16,6 +16,10 @@ use iterator::language;
 
 pub use iterator::{BranchFilter, BranchFilterConfig, FileFilter, FileFilterConfig, FilterUpdate};
 
+#[derive(thiserror::Error, Debug)]
+#[error("repository locked")]
+pub struct RepoLocked;
+
 // Types of repo
 #[derive(Serialize, Deserialize, Hash, PartialEq, Eq, Clone, Debug)]
 #[serde(rename_all = "snake_case")]
@@ -212,6 +216,13 @@ pub struct Repository {
     /// Custom file filter overrides
     #[serde(default)]
     pub file_filter: FileFilterConfig,
+
+    #[serde(skip)]
+    pub locked: bool,
+
+    /// Current user-readable status of syncing
+    #[serde(skip)]
+    pub pub_sync_status: SyncStatus,
 }
 
 impl Repository {
@@ -244,11 +255,13 @@ impl Repository {
 
         Self {
             sync_status: SyncStatus::Queued,
+            pub_sync_status: SyncStatus::Queued,
             last_index_unix_secs: 0,
             last_commit_unix_secs: 0,
             most_common_lang: None,
             branch_filter: None,
             file_filter: Default::default(),
+            locked: false,
             disk_path,
             remote,
         }
@@ -283,6 +296,19 @@ impl Repository {
         self.sync_status = SyncStatus::Queued;
     }
 
+    /// Locks the repository or returns with an error if already locked.
+    ///
+    /// The returned error helps track conflicting sync processes, and
+    /// avoids ambiguity about the lifecycle the repository's in.
+    pub(crate) fn lock(&mut self) -> Result<(), RepoLocked> {
+        if self.locked {
+            Err(RepoLocked)
+        } else {
+            self.locked = true;
+            Ok(())
+        }
+    }
+
     pub(crate) fn sync_done_with(
         &mut self,
         filter_update: &FilterUpdate,
@@ -305,6 +331,7 @@ impl Repository {
         }
 
         self.sync_status = SyncStatus::Done;
+        self.locked = false;
     }
 }
 
@@ -352,6 +379,12 @@ pub enum SyncStatus {
 
     /// Successfully indexed
     Done,
+}
+
+impl Default for SyncStatus {
+    fn default() -> Self {
+        SyncStatus::Queued
+    }
 }
 
 impl SyncStatus {

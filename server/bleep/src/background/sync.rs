@@ -56,6 +56,9 @@ pub(super) enum SyncError {
 
     #[error("cancelled by user")]
     Cancelled,
+
+    #[error("repo removed by the user")]
+    Removed,
 }
 
 impl PartialEq for SyncHandle {
@@ -124,11 +127,13 @@ impl SyncHandle {
                         disk_path,
                         remote,
                         sync_status: SyncStatus::Queued,
+                        pub_sync_status: SyncStatus::Queued,
                         last_index_unix_secs: 0,
                         last_commit_unix_secs: 0,
                         most_common_lang: None,
                         branch_filter: None,
                         file_filter: Default::default(),
+                        locked: false,
                     }
                 }
             });
@@ -340,10 +345,7 @@ impl SyncHandle {
         let mut loop_counter = 0;
         let loop_max = 1;
         let git_err = loop {
-            match creds
-                .git_sync(&self.reporef, repo.clone(), &self.pipes)
-                .await
-            {
+            match creds.clone_or_pull(&self, repo.clone()).await {
                 Err(
                     err @ RemoteError::GitCloneFetch(gix::clone::fetch::Error::PrepareFetch(
                         gix::remote::fetch::prepare::Error::RefMap(
@@ -441,7 +443,23 @@ impl SyncHandle {
         updater: impl FnOnce(&Repository) -> SyncStatus,
     ) -> Option<SyncStatus> {
         let new_status = self.app.repo_pool.update(&self.reporef, move |_k, repo| {
-            repo.sync_status = (updater)(repo);
+            let new_status = (updater)(repo);
+            let old_status = std::mem::replace(&mut repo.sync_status, new_status);
+
+            if !matches!(repo.sync_status, SyncStatus::Queued)
+                || (matches!(old_status, SyncStatus::Syncing)
+                    && matches!(repo.sync_status, SyncStatus::Queued))
+            {
+                repo.pub_sync_status = repo.sync_status.clone();
+            }
+
+            if matches!(
+                repo.sync_status,
+                SyncStatus::Error { .. } | SyncStatus::Done
+            ) {
+                repo.locked = false;
+            }
+
             repo.sync_status.clone()
         })?;
 
@@ -450,7 +468,10 @@ impl SyncHandle {
         } else {
             debug!(?self.reporef, ?new_status, "new status");
         }
-        self.pipes.status(new_status.clone());
+
+        if !matches!(new_status, SyncStatus::Queued) {
+            self.pipes.status(new_status.clone());
+        }
         Some(new_status)
     }
 
@@ -459,22 +480,23 @@ impl SyncHandle {
             .app
             .repo_pool
             .update_async(&self.reporef, |_k, repo| {
-                if repo.sync_status == SyncStatus::Syncing {
+                if repo.lock().is_err() {
                     Err(SyncError::SyncInProgress)
                 } else {
-                    repo.sync_status = SyncStatus::Syncing;
                     Ok(repo.clone())
                 }
             })
             .await;
 
-        if let Some(Ok(repo)) = repo {
-            let new_status = repo.sync_status.clone();
-            debug!(?self.reporef, ?new_status, "new status");
-            self.pipes.status(new_status);
-            Ok(repo)
-        } else {
-            repo.expect("repo was already deleted")
+        match repo {
+            Some(Ok(repo)) => {
+                let new_status = repo.sync_status.clone();
+                debug!(?self.reporef, ?new_status, "new status");
+                self.pipes.status(new_status);
+                Ok(repo)
+            }
+            Some(err) => err,
+            None => Err(SyncError::Removed),
         }
     }
 }

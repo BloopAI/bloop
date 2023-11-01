@@ -130,7 +130,7 @@ impl From<(&RepoRef, &Repository)> for Repo {
             provider: key.backend(),
             name: key.display_name(),
             repo_ref: key.clone(),
-            sync_status: repo.sync_status.clone(),
+            sync_status: repo.pub_sync_status.clone(),
             local_duplicates: vec![],
             last_update: NaiveDateTime::from_timestamp_opt(repo.last_commit_unix_secs, 0)
                 .unwrap()
@@ -231,15 +231,13 @@ pub(super) async fn index_status(Extension(app): Extension<Application>) -> impl
 
     Sse::new(async_stream::stream! {
         loop {
-            match receiver.recv().await {
-            Ok(event) => {
+            if let Ok(event) = receiver.recv().await {
                 yield sse::Event::default().json_data(event).map_err(|err| {
                     <_ as Into<Box<dyn std::error::Error + Send + Sync>>>::into(err)
                 });
-            },
-            Err(_) => {},
         }
-    }})
+        }
+    })
     .keep_alive(
         sse::KeepAlive::new()
             .interval(Duration::from_secs(5))

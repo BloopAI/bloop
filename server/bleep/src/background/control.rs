@@ -119,7 +119,7 @@ impl gix::progress::Progress for GitSync {
     }
 
     fn id(&self) -> gix::progress::Id {
-        self.id.clone()
+        self.id
     }
 
     fn message(&self, level: gix::progress::MessageLevel, message: String) {
@@ -157,7 +157,7 @@ impl gix::progress::Count for GitSync {
         _ = self.progress.send(Progress {
             reporef: self.reporef.clone(),
             branch_filter: self.filter_updates.branch_filter.clone(),
-            event: ProgressEvent::IndexPercent((current.min(100)) as u8),
+            event: ProgressEvent::IndexPercent(current.min(100)),
         });
     }
 
@@ -174,7 +174,7 @@ impl gix::progress::NestedProgress for GitSync {
             max: self.max.clone(),
             cnt: self.cnt.clone(),
             progress: self.progress.clone(),
-            id: self.id.clone(),
+            id: self.id,
             filter_updates: self.filter_updates.clone(),
             reporef: self.reporef.clone(),
             name: name.into(),
