@@ -231,7 +231,7 @@ impl Agent {
                     thought: thought.into(),
                 }))
                 .await?;
-                "".into()
+                "Thinking...".into()
             }
         };
 

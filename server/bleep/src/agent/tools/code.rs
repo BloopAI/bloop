@@ -27,6 +27,11 @@ impl Agent {
             .await?;
 
         debug!("returned {} results", results.len());
+        results.iter().for_each(|p| {
+            let path = p.relative_path.clone();
+            let text = p.text.clone();
+            dbg!(path, text);
+        });
 
         let hyde_docs = if results.len() < MINIMUM_RESULTS {
             info!("too few results returned, running HyDE");
