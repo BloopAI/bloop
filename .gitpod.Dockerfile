@@ -40,14 +40,3 @@ RUN mkdir -p $HOME/.config/direnv && printf '%s\n' "[whitelist]" 'prefix = [ "/w
         'create-overlay /nix "${dirs[@]}"' > $HOME/.runonce/100-nix \
     && . /home/gitpod/.nix-profile/etc/profile.d/nix.sh \
     && nix-env -iA nixpkgs.direnv
-
-# Cache nix compilation for saving time
-ARG onetime_cache_dir="/tmp/.workdir"
-RUN mkdir -p "${onetime_cache_dir}"
-COPY --chown=gitpod:gitpod . "${onetime_cache_dir}"
-
-WORKDIR "${onetime_cache_dir}"
-SHELL [ "/bin/bash", "-c" ]
-RUN source "$HOME/.nix-profile/etc/profile.d/nix.sh" \
-    && nix run nixpkgs#cachix use bloopai \
-    && nix develop
