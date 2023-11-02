@@ -23,10 +23,19 @@ enum ControlEvent {
 }
 
 pub struct SyncPipes {
+    /// Together with `filter_updates`, it uniquely identifies the sync process
     reporef: RepoRef,
+
+    /// Together with `reporef`, it uniquely identifies the sync process
     filter_updates: FilterUpdate,
+
+    /// Channel to stream updates to the frontend
     progress: super::ProgressStream,
+
+    /// Control event received from frontend
     event: RwLock<Option<ControlEvent>>,
+
+    /// Interrupt signal channel for `gix`
     git_interrupt: Arc<AtomicBool>,
 }
 
