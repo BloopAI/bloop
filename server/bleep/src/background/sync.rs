@@ -458,8 +458,7 @@ impl SyncHandle {
             let old_status = std::mem::replace(&mut repo.sync_status, new_status);
 
             if !matches!(repo.sync_status, SyncStatus::Queued)
-                || (matches!(old_status, SyncStatus::Syncing)
-                    && matches!(repo.sync_status, SyncStatus::Queued))
+                || matches!(old_status, SyncStatus::Syncing)
             {
                 repo.pub_sync_status = repo.sync_status.clone();
             }

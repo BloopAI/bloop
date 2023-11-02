@@ -109,6 +109,6 @@ fn determine_embedder_backend() {
 
 fn is_apple_silicon() -> bool {
     let target = env::var("TARGET").unwrap();
-    let components: Vec<_> = target.split("-").map(|s| s.to_string()).collect();
+    let components: Vec<_> = target.split('-').map(|s| s.to_string()).collect();
     components[0] == "aarch64" && components[2] == "darwin"
 }
