@@ -494,9 +494,11 @@ mod test {
                     sync_status: SyncStatus::Done,
                     last_commit_unix_secs: 123456,
                     last_index_unix_secs: 123456,
-                    most_common_lang: None,
+                    most_common_lang: Default::default(),
                     branch_filter: Default::default(),
                     file_filter: Default::default(),
+                    pub_sync_status: Default::default(),
+                    locked: Default::default(),
                 },
             )
             .unwrap();
@@ -513,9 +515,11 @@ mod test {
                     sync_status: SyncStatus::Done,
                     last_commit_unix_secs: 123456,
                     last_index_unix_secs: 123456,
-                    most_common_lang: None,
+                    most_common_lang: Default::default(),
                     branch_filter: Default::default(),
                     file_filter: Default::default(),
+                    pub_sync_status: Default::default(),
+                    locked: Default::default(),
                 },
             )
             .unwrap();
@@ -534,9 +538,11 @@ mod test {
                     sync_status: SyncStatus::Uninitialized,
                     last_commit_unix_secs: 123456,
                     last_index_unix_secs: 0,
-                    most_common_lang: None,
+                    most_common_lang: Default::default(),
                     branch_filter: Default::default(),
                     file_filter: Default::default(),
+                    pub_sync_status: Default::default(),
+                    locked: Default::default(),
                 },
             )
                 .into(),
@@ -554,9 +560,11 @@ mod test {
                 sync_status: SyncStatus::Uninitialized,
                 last_commit_unix_secs: 123456,
                 last_index_unix_secs: 0,
-                most_common_lang: None,
+                most_common_lang: Default::default(),
                 branch_filter: Default::default(),
                 file_filter: Default::default(),
+                pub_sync_status: Default::default(),
+                locked: Default::default(),
             },
         )
             .into();
