@@ -68,7 +68,7 @@ const IndexedDocRow = ({
       onClick={() => onSubmit(doc)}
       className={`flex h-9 px-3 gap-3 items-center justify-between group rounded-6  hover:bg-bg-base-hover ${
         isFocused ? 'bg-bg-base-hover' : 'bg-bg-shade'
-      } focus:bg-bg-base-hover focus:outline-0 focus:outline-none w-full cursor-pointer body-s ellipsis flex-shrink-0`}
+      } focus:bg-bg-base-hover focus:outline-0 focus:outline-none w-full select-none cursor-pointer body-s ellipsis flex-shrink-0`}
       onMouseOver={handleMouseOver}
     >
       <div

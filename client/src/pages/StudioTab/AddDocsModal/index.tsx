@@ -138,6 +138,7 @@ const AddDocsModal = ({
       );
       eventSource.onerror = (err) => {
         console.log(err);
+        eventSource.close(); //otherwise the doc will be indexed twice
       };
       eventSource.onmessage = (ev) => {
         const data = JSON.parse(ev.data);
@@ -218,7 +219,7 @@ const AddDocsModal = ({
         <div
           className={`mb-3 mx-auto relative z-10 rounded-full ${
             verifyError || isIndexing ? 'opacity-100 shadow-float' : 'opacity-0'
-          } max-w-[38.75rem]`}
+          } max-w-[38.75rem] select-none`}
         >
           <div className="text-center caption flex gap-1.5 items-center py-2 px-2.5 rounded-full bg-bg-shade ellipsis">
             {verifyError ? (
@@ -355,7 +356,7 @@ const AddDocsModal = ({
             />
           ) : null}
         </div>
-        <div className="flex justify-between items-center gap-1 py-3 px-4 border-t border-bg-border bg-bg-base">
+        <div className="flex justify-between items-center gap-1 py-3 px-4 border-t border-bg-border bg-bg-base select-none cursor-default">
           <div className="flex items-center gap-3">
             <CommandIndicator label={t('Close')} keyboardKeys={['Esc']} />
             <div className="h-3.5 w-px bg-bg-border flex-shrink-0" />

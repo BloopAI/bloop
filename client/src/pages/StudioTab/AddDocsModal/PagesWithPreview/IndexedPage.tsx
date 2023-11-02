@@ -57,7 +57,7 @@ const IndexedPage = ({
       onClick={handleClick}
       className={`relative h-9 px-3 group rounded-6 hover:bg-bg-base-hover ${
         isFocused ? 'bg-bg-base-hover' : 'bg-bg-shade'
-      } focus:outline-0 focus:outline-none w-full cursor-pointer body-s ellipsis flex-shrink-0`}
+      } focus:outline-0 focus:outline-none w-full select-none cursor-pointer body-s ellipsis flex-shrink-0`}
     >
       <div
         className={`body-s group-hover:text-label-title ${
