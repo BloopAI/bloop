@@ -3,12 +3,13 @@ use std::os::windows::process::CommandExt;
 use std::{
     borrow::Borrow,
     collections::HashMap,
+    num::NonZeroU32,
     path::{Path, PathBuf},
     sync::Arc,
 };
 
 use anyhow::Context;
-use gix::sec::identity::Account;
+use gix::{remote::fetch::Shallow, sec::identity::Account};
 use ignore::WalkBuilder;
 use serde::{Deserialize, Serialize};
 use tracing::{error, warn};
@@ -134,7 +135,8 @@ async fn git_clone(auth: Option<GitCreds>, url: &str, target: &Path) -> Result<(
 
     tokio::task::spawn_blocking(move || {
         let mut clone = {
-            let c = gix::prepare_clone_bare(url, target)?;
+            let c = gix::prepare_clone_bare(url, target)?
+                .with_shallow(Shallow::DepthAtRemote(NonZeroU32::new(1).unwrap()));
             match auth {
                 Some(auth) => c.configure_connection(move |con| {
                     con.set_credentials(creds_callback!(auth));
@@ -170,6 +172,7 @@ async fn git_pull(auth: Option<GitCreds>, repo: &Repository) -> Result<()> {
 
         connection
             .prepare_fetch(gix::progress::Discard, Default::default())?
+            .with_shallow(Shallow::DepthAtRemote(NonZeroU32::new(1).unwrap()))
             .receive(gix::progress::Discard, &false.into())?;
 
         Ok(())
