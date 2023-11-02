@@ -248,10 +248,7 @@ impl Agent {
 
         let raw_response = self
             .llm_gateway
-            .chat_stream(
-                &trim_history(history.clone(), self.model)?,
-                Some(&functions),
-            )
+            .chat_stream(&trimmed_history, Some(&functions))
             .await?
             .try_fold(
                 llm_gateway::api::FunctionCall::default(),
