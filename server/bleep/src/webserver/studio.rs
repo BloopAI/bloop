@@ -863,8 +863,8 @@ pub async fn diff(
 
                 match diffy::apply(&file_content, &patch) {
                     Ok(t) => file_content = t,
-                    Err(e) => {
-                        error!("hunk ({i}, {j}) failed: {e}");
+                    Err(_) => {
+                        error!("hunk ({i}, {j}) failed: {diff}");
                     }
                 }
             }
@@ -893,13 +893,90 @@ pub async fn diff(
         }
     }
 
-    // For debugging.
     let patched_diff = resolved_chunk_map
         .into_values()
         .map(|chunk| chunk.to_string())
         .collect::<String>();
 
     Ok(patched_diff)
+}
+
+pub async fn diff_apply(
+    app: Extension<Application>,
+    user: Extension<User>,
+    Path(studio_id): Path<i64>,
+    diff: String,
+) -> webserver::Result<()> {
+    let user_id = user.username().ok_or_else(no_user_id)?.to_string();
+
+    let snapshot_id = latest_snapshot_id(studio_id, &*app.sql, &user_id).await?;
+
+    let context_json = sqlx::query!(
+        "SELECT context FROM studio_snapshots WHERE id = ?",
+        snapshot_id,
+    )
+    .fetch_optional(&*app.sql)
+    .await?
+    .map(|row| row.context)
+    .ok_or_else(studio_not_found)?;
+
+    let context =
+        serde_json::from_str::<Vec<ContextFile>>(&context_json).map_err(Error::internal)?;
+
+    let diff_chunks = diff::relaxed_parse(&diff);
+
+    for (i, chunk) in diff_chunks.enumerate() {
+        let context_file = match context.iter().find(|c| c.path == chunk.src) {
+            Some(cf) => cf,
+            None => {
+                warn!(?chunk.src, "chunk had unknown src file");
+                continue;
+            }
+        };
+
+        let file = app
+            .indexes
+            .file
+            .by_path(
+                &context_file.repo,
+                &context_file.path,
+                context_file.branch.as_deref(),
+            )
+            .await?
+            .context("path did not exist in the index")?;
+
+        let mut file_content = file.content;
+
+        for (j, hunk) in chunk.hunks.iter().enumerate() {
+            let mut singular_chunk = chunk.clone();
+            singular_chunk.hunks = vec![hunk.clone()];
+
+            let diff = singular_chunk.to_string();
+            let patch = diffy::Patch::from_str(&diff).context("invalid patch")?;
+
+            match diffy::apply(&file_content, &patch) {
+                Ok(t) => file_content = t,
+                Err(e) => {
+                    return Err(
+                        Error::user(format!("chunk {i}, hunk {j} failed to apply: {e}"))
+                            .with_status(StatusCode::BAD_REQUEST),
+                    )
+                }
+            }
+        }
+
+        let repo_ref = file.repo_ref.parse::<RepoRef>().unwrap();
+        let Some(repo_path) = repo_ref.local_path() else {
+            error!("cannot apply patch to remote repo");
+            continue;
+        };
+
+        let file_path = repo_path.join(file.relative_path);
+
+        std::fs::write(file_path, file_content).context("failed to patch file on disk")?;
+    }
+
+    Ok(())
 }
 
 /// If a given studio's name is `NULL`, try to auto-generate a name.

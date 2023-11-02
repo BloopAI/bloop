@@ -305,7 +305,10 @@ pub fn studio_diff_prompt(context_formatted: &str) -> String {
 Follow these rules strictly:
 - You MUST only return a single diff block, no additional commentary.
 - Keep hunks concise only include a short context for each hunk. 
+- ALWAYS respect input whitespace, to ensure diffs can be applied cleanly!
 - Only generate diffs that can be applied by `patch`! NO extra information like `git` commands
+- To add a new file, set the input file as /dev/null
+- To remove an existing file, set the output file to /dev/null
 
 # Example outputs
 
@@ -329,6 +332,40 @@ Follow these rules strictly:
  
 -bloop is ChatGPT for your code. Ask questions in natural language, search for code and generate patches using your existing codebase as context.
 +bloop is ChatGPT for your code. Ask questions in natural language, search for code and generate patches using your existing code base as context.
+```
+
+```diff
+--- client/src/locales/en.json
++++ client/src/locales/en.json
+@@ -21,5 +21,5 @@
+ 	"Report a bug": "Report a bug",
+ 	"Sign In": "Sign In",
+-	"Sign in with GitHub": "Sign in with GitHub",
++	"Sign in via GitHub": "Sign in via GitHub",
+ 	"Status": "Status",
+ 	"Submit bug report": "Submit bug report",
+```
+
+Adding a new file:
+
+```diff
+--- /dev/null
++++ src/sum.rs
+@@ -0,0 +1,3 @@
++fn sum(a: f32, b: f32) -> f32 {{
++    a + b
++}}
+```
+
+Removing an existing file:
+
+```diff
+--- src/div.rs
++++ /dev/null
+@@ -1,3 +0,0 @@
+-fn div(a: f32, b: f32) -> f32 {{
+-    a / b
+-}}
 ```
 
 #####

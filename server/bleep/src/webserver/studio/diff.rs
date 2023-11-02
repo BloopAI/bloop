@@ -18,7 +18,7 @@ fn extract_diff(chat_response: &str) -> Result<&str> {
 }
 
 /// Parse a diff, allowing for some formatting errors.
-fn relaxed_parse(diff: &str) -> impl Iterator<Item = DiffChunk> {
+pub fn relaxed_parse(diff: &str) -> impl Iterator<Item = DiffChunk> {
     split_chunks(diff).map(|mut chunk| {
         chunk.fixup();
         chunk
