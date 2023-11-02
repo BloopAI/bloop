@@ -65,12 +65,19 @@ const AddDocsModal = ({
   );
   const { apiUrl } = useContext(DeviceContext);
 
-  const handleKeyEvent = useCallback((e: KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      onClose();
-    }
-  }, []);
+  const handleKeyEvent = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        if (step === 0) {
+          onClose();
+        } else {
+          setStep((prev) => prev - 1);
+        }
+      }
+    },
+    [step],
+  );
   useKeyboardNavigation(handleKeyEvent);
 
   const refreshIndexedDocs = useCallback(() => {

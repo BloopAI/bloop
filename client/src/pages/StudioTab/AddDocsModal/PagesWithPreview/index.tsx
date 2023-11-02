@@ -38,6 +38,10 @@ const PagesWithPreview = ({
   >([]);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
 
+  useEffect(() => {
+    setHighlightedIndex(0);
+  }, [search]);
+
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey) {
@@ -142,7 +146,7 @@ const PagesWithPreview = ({
                   i={i}
                   relative_url={s.relative_url}
                   isFocused={highlightedIndex === i}
-                  key={s.point_id}
+                  key={s.point_id + '-' + i}
                   point_id={s.point_id}
                 />
               ))
@@ -155,16 +159,18 @@ const PagesWithPreview = ({
                   i={i}
                   relative_url={p.relative_url}
                   isFocused={highlightedIndex === i}
-                  key={p.relative_url}
+                  key={p.relative_url + '-' + i}
                 />
               ))}
         </div>
         <div className="w-3/5 flex flex-col gap-3 p-3 overflow-y-auto">
           {search ? (
-            <RenderedSection
-              text={filteredSections[highlightedIndex].text}
-              key={filteredSections[highlightedIndex].point_id}
-            />
+            filteredSections[highlightedIndex] ? (
+              <RenderedSection
+                text={filteredSections[highlightedIndex].text}
+                key={filteredSections[highlightedIndex].point_id}
+              />
+            ) : null
           ) : (
             previewingSections.map((s) => {
               return <RenderedSection text={s.text} key={s.point_id} />;

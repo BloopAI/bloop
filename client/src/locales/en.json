@@ -409,11 +409,12 @@
 	"Select page": "Select page",
 	"Resync": "Resync",
 	"Indexing <1>#</1>. This process can take a couple of minutes.": "Indexing <1>{{url}}</1>. This process can take a couple of minutes.",
-	"Indexing <1>#</1>": "Indexing <1>{{url}}</1>",
+	"Indexing <2>#</2>": "Indexing <2>{{url}}</2>",
 	"Select section": "Select section",
 	"Clear selection": "Clear selection",
 	"Search docs or paste a URL to index": "Search docs or paste a URL to index",
 	"Search pages": "Search pages",
 	"This page is currently unavailable. Ability to generate will be resumed as soon as this issue is resolved.": "This page is currently unavailable. Ability to generate will be resumed as soon as this issue is resolved.",
-	"Hold <1></1> to add multiple files": "Hold <1></1> to add multiple files"
+	"Hold <1></1> to add multiple files": "Hold <1></1> to add multiple files",
+	"Clear section": "Clear section"
 }

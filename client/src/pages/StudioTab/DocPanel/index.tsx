@@ -79,8 +79,15 @@ const DocPanel = ({
       if (selectedSection) {
         setSelectedSections((prev) => [...prev, selectedSection]);
       }
+      const firstSelectedSection =
+        initialSections?.length === 1
+          ? initialSections[0]
+          : initialSections?.length
+          ? sections.find((s) => initialSections?.includes(s.point_id))
+              ?.point_id
+          : '';
       findElementInCurrentTab(
-        `[data-section-id="${selectedSection || initialSections?.[0]}"]`,
+        `[data-section-id="${selectedSection || firstSelectedSection}"]`,
       )?.scrollIntoView();
     }
   }, [selectedSection, sections.length, initialSections]);

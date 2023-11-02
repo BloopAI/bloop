@@ -47,22 +47,24 @@ const ContextFileRow = ({
   const { t } = useTranslation();
 
   const handleClick = useCallback(() => {
-    setLeftPanel({
-      type: StudioLeftPanelType.DOCS,
-      data: {
-        docProvider: {
-          id: doc_id,
-          url: doc_source,
-          name: doc_title || '',
-          favicon: doc_icon || '',
+    if (tokens !== null) {
+      setLeftPanel({
+        type: StudioLeftPanelType.DOCS,
+        data: {
+          docProvider: {
+            id: doc_id,
+            url: doc_source,
+            name: doc_title || '',
+            favicon: doc_icon || '',
+          },
+          title: doc_title || doc_source,
+          isDocInContext: true,
+          url: relative_url,
+          initialSections: ranges,
         },
-        title: doc_title || doc_source,
-        isDocInContext: true,
-        url: relative_url,
-        initialSections: ranges,
-      },
-    });
-  }, [doc_id, doc_source, relative_url, ranges]);
+      });
+    }
+  }, [doc_id, doc_source, relative_url, ranges, tokens]);
 
   return (
     <div

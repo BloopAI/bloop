@@ -48,9 +48,13 @@ const IndexedDocRow = ({
     [doc.id],
   );
 
-  const handleResync = useCallback(() => {
-    syncDocProvider(doc.id, true);
-  }, [doc.id]);
+  const handleResync = useCallback(
+    (e: MouseEvent) => {
+      e.stopPropagation();
+      syncDocProvider(doc.id, true);
+    },
+    [doc.id],
+  );
 
   const handleMouseOver = useCallback(() => {
     setHighlightedIndex(i);
