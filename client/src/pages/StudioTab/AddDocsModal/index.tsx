@@ -29,7 +29,6 @@ import { DeviceContext } from '../../../context/deviceContext';
 import CommandIndicator from './CommandIndicator';
 import PagesWithPreview from './PagesWithPreview';
 import IndexedDocsList from './IndexedDocsList';
-import Sections from './Sections';
 
 type Props = {
   isVisible: boolean;
@@ -154,7 +153,7 @@ const AddDocsModal = ({
   const handleUrlSubmit = useCallback(
     (e: FormEvent) => {
       e.preventDefault();
-      if (!docsUrl) {
+      if (!docsUrl || step !== 0) {
         return;
       }
       setVerifying(true);
@@ -169,7 +168,7 @@ const AddDocsModal = ({
           setVerifyError(true);
         });
     },
-    [docsUrl, refreshIndexedDocs, syncDocProvider],
+    [docsUrl, refreshIndexedDocs, syncDocProvider, step],
   );
 
   const handleLibrarySubmit = useCallback((docProvider: DocShortType) => {
@@ -208,54 +207,56 @@ const AddDocsModal = ({
       noWrapper
       noBg
     >
-      <div
-        className={`mb-3 mx-auto relative z-10 rounded-full ${
-          verifyError || isIndexing ? 'opacity-100 shadow-float' : 'opacity-0'
-        } max-w-[38.75rem]`}
-      >
-        <div className="text-center caption flex gap-1.5 items-center py-2 px-2.5 rounded-full bg-bg-shade ellipsis">
-          {verifyError ? (
-            <>
-              <WarningSign
-                raw
-                sizeClassName="w-4 h-4"
-                className="text-warning-300"
-              />
-              <p className=" text-warning-300">
-                <Trans>
-                  We couldn&apos;t find any docs at that link. Try again or make
-                  sure the link is correct!
-                </Trans>
-              </p>
-            </>
-          ) : isIndexing ? (
-            <>
-              <LiteLoaderContainer sizeClassName="w-4 h-4" />
-              <p className="text-label-title ellipsis">
-                {currentlyIndexingUrl ? (
-                  <Trans
-                    values={{
-                      url: currentlyIndexingUrl
-                        .slice(7)
-                        .split('/')
-                        .filter((i) => !!i)
-                        .join(' > '),
-                    }}
-                  >
-                    Indexing <span className="text-label-link ellipsis">#</span>
-                    .
+      {step === 0 && (
+        <div
+          className={`mb-3 mx-auto relative z-10 rounded-full ${
+            verifyError || isIndexing ? 'opacity-100 shadow-float' : 'opacity-0'
+          } max-w-[38.75rem]`}
+        >
+          <div className="text-center caption flex gap-1.5 items-center py-2 px-2.5 rounded-full bg-bg-shade ellipsis">
+            {verifyError ? (
+              <>
+                <WarningSign
+                  raw
+                  sizeClassName="w-4 h-4"
+                  className="text-warning-300"
+                />
+                <p className=" text-warning-300">
+                  <Trans>
+                    We couldn&apos;t find any docs at that link. Try again or
+                    make sure the link is correct!
                   </Trans>
-                ) : (
-                  <Trans values={{ url: docsUrl }}>
-                    Indexing <span className="text-label-link">#</span>. This
-                    process can take a couple of minutes.
-                  </Trans>
-                )}
-              </p>
-            </>
-          ) : null}
+                </p>
+              </>
+            ) : isIndexing ? (
+              <>
+                <LiteLoaderContainer sizeClassName="w-4 h-4" />
+                <p className="text-label-title ellipsis">
+                  {currentlyIndexingUrl ? (
+                    <Trans
+                      values={{
+                        url: currentlyIndexingUrl
+                          .slice(7)
+                          .split('/')
+                          .filter((i) => !!i)
+                          .join(' > '),
+                      }}
+                    >
+                      Indexing{' '}
+                      <span className="text-label-link ellipsis">#</span>
+                    </Trans>
+                  ) : (
+                    <Trans values={{ url: docsUrl }}>
+                      Indexing <span className="text-label-link">#</span>. This
+                      process can take a couple of minutes.
+                    </Trans>
+                  )}
+                </p>
+              </>
+            ) : null}
+          </div>
         </div>
-      </div>
+      )}
       <div
         className={`flex flex-col overflow-auto shadow-float ${
           step === 0 ? 'w-[38.75rem]' : 'w-[80vw] max-w-[57.75rem]'
@@ -337,18 +338,14 @@ const AddDocsModal = ({
               refetchCodeStudio={refetchCodeStudio}
             />
           ) : selectedProvider ? (
-            docsUrl ? (
-              <Sections
-                filteredSections={filteredSections}
-                handleDocSubmit={handleDocSubmit}
-                selectedProvider={selectedProvider!}
-              />
-            ) : (
-              <PagesWithPreview
-                docId={selectedProvider!.id}
-                handleSelectPage={handleSelectPage}
-              />
-            )
+            <PagesWithPreview
+              docId={selectedProvider!.id}
+              handleSelectPage={handleSelectPage}
+              handleDocSubmit={handleDocSubmit}
+              filteredSections={filteredSections}
+              search={docsUrl}
+              selectedProvider={selectedProvider}
+            />
           ) : null}
         </div>
         <div className="flex justify-between items-center gap-1 py-3 px-4 border-t border-bg-border bg-bg-base">

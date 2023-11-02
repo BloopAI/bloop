@@ -407,7 +407,7 @@
 	"Select page": "[ページ]を選択します",
 	"Resync": "resync",
 	"Indexing <1>#</1>. This process can take a couple of minutes.": "インデックス作成<1>{{url}}</1>。 このプロセスには数分かかる場合があります。",
-	"Indexing <1>#</1>.": "インデックス作成<1>{{url}}</1>。",
+	"Indexing <1>#</1>": "インデックス作成<1>{{url}}</1>",
 	"Select section": "セクションを選択します",
 	"Clear selection": "明確な選択",
 	"Search docs or paste a URL to index": "ドキュメントを検索するか、URLを貼り付けてインデックスを付けます",

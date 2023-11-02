@@ -75,13 +75,15 @@ const DocPanel = ({
   }, [selectedSections, url, docProvider.id]);
 
   useEffect(() => {
-    if (selectedSection && sections.length) {
-      setSelectedSections((prev) => [...prev, selectedSection]);
+    if ((selectedSection || initialSections?.length) && sections.length) {
+      if (selectedSection) {
+        setSelectedSections((prev) => [...prev, selectedSection]);
+      }
       findElementInCurrentTab(
-        `[data-section-id="${selectedSection}"]`,
+        `[data-section-id="${selectedSection || initialSections?.[0]}"]`,
       )?.scrollIntoView();
     }
-  }, [selectedSection, sections.length]);
+  }, [selectedSection, sections.length, initialSections]);
 
   const onCancel = useCallback(() => {
     setLeftPanel({ type: StudioLeftPanelType.CONTEXT });

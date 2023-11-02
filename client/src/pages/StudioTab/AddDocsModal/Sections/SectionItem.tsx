@@ -53,7 +53,7 @@ const SectionItem = ({
         {ancestry.map((a, i) => (
           <>
             {i !== 0 && <ChevronRight sizeClassName="w-4 h-4" />}
-            <p className="caption">{a.replace(/^#+ /g, '')}</p>
+            <p className="caption">{a.replace(/#/g, '')}</p>
           </>
         ))}
       </div>

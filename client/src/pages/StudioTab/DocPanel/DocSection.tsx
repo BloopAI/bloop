@@ -64,7 +64,7 @@ const DocSection = ({
           {!isSelected ? (
             <Trans>Select section</Trans>
           ) : (
-            <Trans>Clear selection</Trans>
+            <Trans>Clear section</Trans>
           )}
         </Button>
       </div>

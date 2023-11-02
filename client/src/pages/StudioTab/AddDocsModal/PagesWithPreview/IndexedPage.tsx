@@ -1,13 +1,20 @@
-import { memo, useCallback, useEffect, useRef } from 'react';
+import { memo, ReactElement, useCallback, useEffect, useRef } from 'react';
 import KeyboardChip from '../../KeyboardChip';
 
 type Props = {
   relative_url: string;
   i: number;
   doc_title: string;
+  displayTitle: string | ReactElement;
   setHighlightedIndex: (i: number) => void;
-  handleSelectPage: (url: string, title: string) => void;
+  handleSelectPage?: (url: string, title: string) => void;
+  handleDocSubmit?: (
+    url: string,
+    title: string,
+    selectedSection: string,
+  ) => void;
   isFocused: boolean;
+  point_id?: string;
 };
 
 const IndexedPage = ({
@@ -17,6 +24,9 @@ const IndexedPage = ({
   setHighlightedIndex,
   handleSelectPage,
   isFocused,
+  handleDocSubmit,
+  displayTitle,
+  point_id,
 }: Props) => {
   const ref = useRef<HTMLButtonElement>(null);
 
@@ -31,8 +41,12 @@ const IndexedPage = ({
   }, []);
 
   const handleClick = useCallback(() => {
-    handleSelectPage(relative_url, doc_title);
-  }, []);
+    if (handleSelectPage) {
+      handleSelectPage(relative_url, doc_title);
+    } else if (handleDocSubmit) {
+      handleDocSubmit(relative_url, doc_title, point_id!);
+    }
+  }, [handleSelectPage, handleDocSubmit, relative_url, doc_title, point_id]);
   return (
     <button
       ref={ref}
@@ -50,7 +64,7 @@ const IndexedPage = ({
           isFocused ? 'text-label-title' : 'text-label-base'
         } ellipsis flex gap-2 items-center`}
       >
-        {doc_title}
+        {displayTitle}
       </div>
       <div
         className={`absolute top-1 right-0 bg-bg-base-hover px-2 py-1 flex gap-1.5 ${

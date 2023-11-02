@@ -106,7 +106,9 @@ const TextSearch = ({
   const handleChange = useCallback(
     (searchTerm: string) => {
       setSearchValue(searchTerm);
-      doSearch(searchTerm);
+      if (searchTerm.length > 1) {
+        doSearch(searchTerm);
+      }
     },
     [doSearch],
   );
