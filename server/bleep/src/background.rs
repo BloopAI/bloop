@@ -44,7 +44,7 @@ pub struct Progress {
 #[derive(serde::Serialize, Clone)]
 #[serde(rename_all = "snake_case")]
 pub enum ProgressEvent {
-    IndexPercent(u8),
+    IndexPercent(Option<u8>),
     StatusChange(SyncStatus),
 }
 

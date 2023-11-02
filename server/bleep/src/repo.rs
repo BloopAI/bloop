@@ -217,6 +217,7 @@ pub struct Repository {
     #[serde(default)]
     pub file_filter: FileFilterConfig,
 
+    /// Sync lock
     #[serde(skip)]
     pub locked: bool,
 

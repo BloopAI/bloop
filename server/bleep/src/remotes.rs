@@ -143,7 +143,7 @@ async fn git_clone(
     let auth = auth.clone();
 
     let git_status = pipes.git_sync_progress();
-    let interrupt = pipes.interrupt();
+    let interrupt = pipes.is_interrupted();
 
     tokio::task::spawn_blocking(move || {
         let mut clone = {
@@ -169,7 +169,7 @@ async fn git_pull(auth: &Option<GitCreds>, repo: &Repository, pipes: &SyncPipes)
     let auth = auth.clone();
     let disk_path = repo.disk_path.to_owned();
 
-    let interrupt = pipes.interrupt();
+    let interrupt = pipes.is_interrupted();
 
     tokio::task::spawn_blocking(move || {
         let repo = gix::open(disk_path)?;

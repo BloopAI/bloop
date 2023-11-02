@@ -46,6 +46,13 @@ impl SyncPipes {
     }
 
     pub(crate) fn git_sync_progress(&self) -> GitSync {
+        // clear any state stored on the frontend
+        _ = self.progress.send(Progress {
+            reporef: self.reporef.clone(),
+            branch_filter: self.filter_updates.branch_filter.clone(),
+            event: ProgressEvent::IndexPercent(None),
+        });
+
         GitSync {
             created: Instant::now(),
             max: Arc::new(0.into()),
@@ -62,7 +69,7 @@ impl SyncPipes {
         _ = self.progress.send(Progress {
             reporef: self.reporef.clone(),
             branch_filter: self.filter_updates.branch_filter.clone(),
-            event: ProgressEvent::IndexPercent(current),
+            event: ProgressEvent::IndexPercent(Some(current)),
         });
     }
 
@@ -74,7 +81,7 @@ impl SyncPipes {
         });
     }
 
-    pub(crate) fn interrupt(&self) -> Arc<AtomicBool> {
+    pub(crate) fn is_interrupted(&self) -> Arc<AtomicBool> {
         Arc::clone(&self.git_interrupt)
     }
 
@@ -160,13 +167,13 @@ impl gix::progress::Progress for GitSync {
 impl gix::progress::Count for GitSync {
     fn set(&self, step: gix::progress::prodash::progress::Step) {
         self.cnt.store(step, Ordering::SeqCst);
-        let current = ((step as f32 / self.max.load(Ordering::SeqCst) as f32) * 100f32) as u8;
 
         if self.created.elapsed() > GIT_REPORT_DELAY {
+            let current = ((step as f32 / self.max.load(Ordering::SeqCst) as f32) * 100f32) as u8;
             _ = self.progress.send(Progress {
                 reporef: self.reporef.clone(),
                 branch_filter: self.filter_updates.branch_filter.clone(),
-                event: ProgressEvent::IndexPercent(current.min(100)),
+                event: ProgressEvent::IndexPercent(Some(current.min(100))),
             });
         }
     }
@@ -191,7 +198,7 @@ impl gix::progress::Count for GitSync {
             _ = self.progress.send(Progress {
                 reporef: self.reporef.clone(),
                 branch_filter: self.filter_updates.branch_filter.clone(),
-                event: ProgressEvent::IndexPercent(current.min(100)),
+                event: ProgressEvent::IndexPercent(Some(current.min(100))),
             });
         }
     }
