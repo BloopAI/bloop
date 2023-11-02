@@ -347,7 +347,7 @@ pub struct RepoMetadata {
     pub langs: language::LanguageInfo,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug, Hash)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug, Hash, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum SyncStatus {
     /// There was an error during last sync & index
@@ -366,9 +366,10 @@ pub enum SyncStatus {
     Cancelled,
 
     /// Queued for sync & index
+    #[default]
     Queued,
 
-    /// Active VCS operation in progress
+    /// Active Git clone in progress (we don't report fetch/pull)
     Syncing,
 
     /// Active indexing in progress
@@ -379,12 +380,6 @@ pub enum SyncStatus {
 
     /// Successfully indexed
     Done,
-}
-
-impl Default for SyncStatus {
-    fn default() -> Self {
-        SyncStatus::Queued
-    }
 }
 
 impl SyncStatus {

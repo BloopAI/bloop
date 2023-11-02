@@ -234,7 +234,7 @@ impl SyncHandle {
             }),
         };
 
-        Ok(status.expect("failed to update repo status"))
+        status.ok_or(SyncError::Removed)
     }
 
     async fn index(&self) -> Result<Either<SyncStatus, Arc<RepoMetadata>>> {
@@ -345,7 +345,7 @@ impl SyncHandle {
         let mut loop_counter = 0;
         let loop_max = 1;
         let git_err = loop {
-            match creds.clone_or_pull(&self, repo.clone()).await {
+            match creds.clone_or_pull(self, repo.clone()).await {
                 Err(
                     err @ RemoteError::GitCloneFetch(gix::clone::fetch::Error::PrepareFetch(
                         gix::remote::fetch::prepare::Error::RefMap(
@@ -367,7 +367,9 @@ impl SyncHandle {
                     | err @ RemoteError::GitConnect(_)
                     | err @ RemoteError::GitFindRemote(_),
                 ) => {
-                    _ = tokio::fs::remove_dir_all(&repo.disk_path).await;
+                    if repo.disk_path.exists() {
+                        _ = tokio::fs::remove_dir_all(&repo.disk_path).await;
+                    }
 
                     if loop_counter == loop_max {
                         break err;
@@ -389,6 +391,15 @@ impl SyncHandle {
                 )) => {
                     warn!("likely network error, skipping further syncing");
                     return Ok(SyncStatus::Done);
+                }
+                Err(RemoteError::Interrupted) if self.pipes.is_removed() => {
+                    if repo.disk_path.exists() {
+                        _ = tokio::fs::remove_dir_all(&repo.disk_path).await;
+                    }
+                    return Ok(SyncStatus::Removed);
+                }
+                Err(RemoteError::Interrupted) if self.pipes.is_cancelled() => {
+                    return Ok(SyncStatus::Cancelled);
                 }
                 Err(err) => {
                     error!(?err, ?self.reporef, "failed to sync repository");

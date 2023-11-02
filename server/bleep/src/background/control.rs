@@ -1,6 +1,9 @@
-use std::sync::{
-    atomic::{AtomicUsize, Ordering},
-    Arc, RwLock,
+use std::{
+    sync::{
+        atomic::{AtomicBool, AtomicUsize, Ordering},
+        Arc, RwLock,
+    },
+    time::{Duration, Instant},
 };
 
 use tracing::debug;
@@ -8,6 +11,8 @@ use tracing::debug;
 use crate::repo::{FilterUpdate, RepoRef, SyncStatus};
 
 use super::{Progress, ProgressEvent};
+
+const GIT_REPORT_DELAY: Duration = Duration::from_secs(5);
 
 enum ControlEvent {
     /// Cancel whatever's happening, and return
@@ -22,6 +27,7 @@ pub struct SyncPipes {
     filter_updates: FilterUpdate,
     progress: super::ProgressStream,
     event: RwLock<Option<ControlEvent>>,
+    git_interrupt: Arc<AtomicBool>,
 }
 
 impl SyncPipes {
@@ -34,12 +40,14 @@ impl SyncPipes {
             reporef,
             progress,
             filter_updates,
+            git_interrupt: Default::default(),
             event: Default::default(),
         }
     }
 
     pub(crate) fn git_sync_progress(&self) -> GitSync {
         GitSync {
+            created: Instant::now(),
             max: Arc::new(0.into()),
             cnt: Arc::new(0.into()),
             id: Default::default(),
@@ -66,6 +74,10 @@ impl SyncPipes {
         });
     }
 
+    pub(crate) fn interrupt(&self) -> Arc<AtomicBool> {
+        Arc::clone(&self.git_interrupt)
+    }
+
     pub(crate) fn is_cancelled(&self) -> bool {
         use ControlEvent::*;
         matches!(self.event.read().unwrap().as_ref(), Some(Cancel | Remove))
@@ -78,21 +90,39 @@ impl SyncPipes {
 
     pub(crate) fn cancel(&self) {
         *self.event.write().unwrap() = Some(ControlEvent::Cancel);
+        self.git_interrupt.store(true, Ordering::Relaxed);
     }
 
     pub(crate) fn remove(&self) {
         *self.event.write().unwrap() = Some(ControlEvent::Remove);
+        self.git_interrupt.store(true, Ordering::Relaxed);
     }
 }
 
 #[derive(Clone)]
 pub(crate) struct GitSync {
+    /// Record creation time so we can delay sending events
+    created: Instant,
+
+    /// Maximum value
     max: Arc<AtomicUsize>,
+
+    /// Current value
     cnt: Arc<AtomicUsize>,
+
+    /// This is where we report status
     progress: super::ProgressStream,
+
+    /// Copy from `SyncPipes`, because we can't make this a referential type
     reporef: RepoRef,
+
+    /// Copy from `SyncPipes`, because we can't make this a referential type
     filter_updates: FilterUpdate,
+
+    /// Used by `gix`
     id: gix::progress::Id,
+
+    /// Used by `gix`
     name: String,
 }
 
@@ -132,11 +162,13 @@ impl gix::progress::Count for GitSync {
         self.cnt.store(step, Ordering::SeqCst);
         let current = ((step as f32 / self.max.load(Ordering::SeqCst) as f32) * 100f32) as u8;
 
-        _ = self.progress.send(Progress {
-            reporef: self.reporef.clone(),
-            branch_filter: self.filter_updates.branch_filter.clone(),
-            event: ProgressEvent::IndexPercent(current.min(100)),
-        });
+        if self.created.elapsed() > GIT_REPORT_DELAY {
+            _ = self.progress.send(Progress {
+                reporef: self.reporef.clone(),
+                branch_filter: self.filter_updates.branch_filter.clone(),
+                event: ProgressEvent::IndexPercent(current.min(100)),
+            });
+        }
     }
 
     fn step(&self) -> gix::progress::prodash::progress::Step {
@@ -145,20 +177,23 @@ impl gix::progress::Count for GitSync {
 
     fn inc_by(&self, step: gix::progress::prodash::progress::Step) {
         self.cnt.fetch_add(step, Ordering::SeqCst);
-        let max = self.max.load(Ordering::SeqCst);
-        let current = self.cnt.load(Ordering::SeqCst);
 
-        let current = if max > 10000 {
-            ((current as f32 / (max * 4 * 1024) as f32) * 100f32) as u8
-        } else {
-            ((current as f32 / (max) as f32) * 100f32) as u8
-        };
+        if self.created.elapsed() > GIT_REPORT_DELAY {
+            let max = self.max.load(Ordering::SeqCst);
+            let current = self.cnt.load(Ordering::SeqCst);
 
-        _ = self.progress.send(Progress {
-            reporef: self.reporef.clone(),
-            branch_filter: self.filter_updates.branch_filter.clone(),
-            event: ProgressEvent::IndexPercent(current.min(100)),
-        });
+            let current = if max > 10000 {
+                ((current as f32 / (max * 4 * 1024) as f32) * 100f32) as u8
+            } else {
+                ((current as f32 / (max) as f32) * 100f32) as u8
+            };
+
+            _ = self.progress.send(Progress {
+                reporef: self.reporef.clone(),
+                branch_filter: self.filter_updates.branch_filter.clone(),
+                event: ProgressEvent::IndexPercent(current.min(100)),
+            });
+        }
     }
 
     fn counter(&self) -> gix::progress::StepShared {
@@ -166,11 +201,15 @@ impl gix::progress::Count for GitSync {
     }
 }
 
+/// These implementations just create clones of the original one, we
+/// don't treat children as separate tasks apart from id/naming to
+/// preserve some illusion of being good citizens.
 impl gix::progress::NestedProgress for GitSync {
     type SubProgress = Self;
 
     fn add_child(&mut self, name: impl Into<String>) -> Self::SubProgress {
         GitSync {
+            created: self.created,
             max: self.max.clone(),
             cnt: self.cnt.clone(),
             progress: self.progress.clone(),
@@ -187,6 +226,7 @@ impl gix::progress::NestedProgress for GitSync {
         id: gix::progress::Id,
     ) -> Self::SubProgress {
         GitSync {
+            created: self.created,
             max: self.max.clone(),
             cnt: self.cnt.clone(),
             progress: self.progress.clone(),
