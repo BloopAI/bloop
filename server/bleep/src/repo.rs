@@ -289,6 +289,7 @@ impl Repository {
     /// Does not initiate a new sync.
     pub(crate) fn mark_removed(&mut self) {
         self.sync_status = SyncStatus::Removed;
+        self.pub_sync_status = SyncStatus::Removed;
     }
 
     /// Marks the repository for indexing on the next sync
