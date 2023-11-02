@@ -70,7 +70,10 @@ const ReposSection = ({
               return newRepos;
             });
           }
-          if (Number.isInteger(data.ev?.index_percent)) {
+          if (
+            Number.isInteger(data.ev?.index_percent) ||
+            data.ev?.index_percent === null
+          ) {
             setCurrentlySyncingRepos((prev) => ({
               ...prev,
               [data.ref]: data.ev.index_percent,
