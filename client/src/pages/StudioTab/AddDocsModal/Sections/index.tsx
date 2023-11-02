@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useState } from 'react';
+import React, { memo, useCallback, useEffect, useState } from 'react';
 import { DocSectionType, DocShortType } from '../../../../types/api';
 import useKeyboardNavigation from '../../../../hooks/useKeyboardNavigation';
 import SectionItem from './SectionItem';
@@ -19,7 +19,11 @@ const Sections = ({
   selectedProvider,
   handleDocSubmit,
 }: Props) => {
-  const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+
+  useEffect(() => {
+    setHighlightedIndex(-1);
+  }, [filteredSections]);
 
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {

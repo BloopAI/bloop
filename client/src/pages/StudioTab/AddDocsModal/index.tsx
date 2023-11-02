@@ -323,7 +323,11 @@ const AddDocsModal = ({
             </Button>
           )}
         </form>
-        <div className="flex max-h-72 overflow-auto px-1 py-3 flex-col">
+        <div
+          className={`flex ${
+            step === 0 ? 'max-h-72' : 'max-h-99'
+          } overflow-auto px-1 py-3 flex-col`}
+        >
           {step === 0 ? (
             <IndexedDocsList
               refetchDocs={refreshIndexedDocs}

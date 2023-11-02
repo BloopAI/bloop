@@ -1,5 +1,6 @@
 import React, { memo, useCallback, useEffect, useRef } from 'react';
 import { DocSectionType, DocShortType } from '../../../../types/api';
+import { ChevronRight } from '../../../../icons';
 import RenderedSection from './RenderedSection';
 
 type Props = DocSectionType & {
@@ -25,6 +26,7 @@ const SectionItem = ({
   i,
   isFocused,
   setHighlightedIndex,
+  ancestry,
 }: Props) => {
   const ref = useRef<HTMLAnchorElement>(null);
 
@@ -47,6 +49,14 @@ const SectionItem = ({
       }`}
       onClick={handleClick}
     >
+      <div className="flex gap-0.5 items-center text-label-base mb-2">
+        {ancestry.map((a, i) => (
+          <>
+            {i !== 0 && <ChevronRight sizeClassName="w-4 h-4" />}
+            <p className="caption">{a.replace(/^#+ /g, '')}</p>
+          </>
+        ))}
+      </div>
       <RenderedSection text={text} />
     </a>
   );

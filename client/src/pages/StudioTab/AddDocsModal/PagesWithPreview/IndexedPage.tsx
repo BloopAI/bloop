@@ -41,12 +41,12 @@ const IndexedPage = ({
       onMouseOver={handleMouseOver}
       onFocus={handleMouseOver}
       onClick={handleClick}
-      className={`relative h-9 px-3 group rounded-6 hover:bg-bg-base-hover focus:bg-bg-base-hover ${
+      className={`relative h-9 px-3 group rounded-6 hover:bg-bg-base-hover ${
         isFocused ? 'bg-bg-base-hover' : 'bg-bg-shade'
       } focus:outline-0 focus:outline-none w-full cursor-pointer body-s ellipsis flex-shrink-0`}
     >
       <div
-        className={`body-s group-hover:text-label-title group-focus:text-label-title ${
+        className={`body-s group-hover:text-label-title ${
           isFocused ? 'text-label-title' : 'text-label-base'
         } ellipsis flex gap-2 items-center`}
       >
@@ -55,7 +55,7 @@ const IndexedPage = ({
       <div
         className={`absolute top-1 right-0 bg-bg-base-hover px-2 py-1 flex gap-1.5 ${
           isFocused ? 'opacity-100' : 'opacity-0'
-        } group-hover:opacity-100 group-focus:opacity-100 transition-all items-center caption text-label-base`}
+        } group-hover:opacity-100 transition-all items-center caption text-label-base`}
       >
         Select
         <KeyboardChip type="cmd" variant="tertiary" />
