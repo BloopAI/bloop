@@ -189,7 +189,11 @@ pub struct Document {
 
 impl Document {
     pub fn relative_url(&self, base: &Url) -> String {
-        base.make_relative(&self.url).unwrap()
+        base.make_relative(&self.url).expect(&format!(
+            "`{}` is not relative to `{}`",
+            self.url.as_str(),
+            base.as_str()
+        ))
     }
 }
 

@@ -1,10 +1,5 @@
 use async_stream::{stream, try_stream};
 use futures::stream::{Stream, StreamExt};
-use qdrant_client::qdrant::{
-    point_id::PointIdOptions, r#match::MatchValue, vectors_config, with_payload_selector,
-    CreateCollection, Distance, FieldCondition, FieldType, Filter, Match, PointId, PointStruct,
-    ScrollPoints, SearchPointGroups, VectorParams, VectorsConfig, WithPayloadSelector,
-};
 use rayon::prelude::*;
 use tantivy::{
     collector::TopDocs,
@@ -25,15 +20,15 @@ use crate::{
     db::SqlDb,
     query::compiler::{case_permutations, trigrams},
     scraper::{self, Config, Scraper},
-    semantic::{make_kv_keyword_filter, Semantic},
+    semantic::Embedder,
 };
 
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct Doc {
     sql: SqlDb,
-    semantic: Semantic,
+    embedder: Arc<dyn Embedder>,
     section_index: tantivy::Index,
     section_schema: SectionSchema,
 }
@@ -54,7 +49,7 @@ pub struct SectionSchema {
     pub start_byte: Field,
     pub end_byte: Field,
     pub section_depth: Field,
-    // pub raw_relative_url: Field,
+    pub raw_relative_url: Field,
 }
 
 impl Default for SectionSchema {
@@ -71,19 +66,26 @@ impl SectionSchema {
                 .set_tokenizer("trigram")
                 .set_index_option(IndexRecordOption::WithFreqsAndPositions),
         );
+        let raw = TextOptions::default().set_stored().set_indexing_options(
+            TextFieldIndexing::default()
+                .set_tokenizer("raw")
+                .set_index_option(IndexRecordOption::WithFreqsAndPositions),
+        );
 
         let doc_id = builder.add_i64_field("doc_id", FAST | STORED | INDEXED);
         let point_id = builder.add_text_field("point_id", STORED);
         let doc_source = builder.add_text_field("doc_source", STORED);
         let doc_title = builder.add_text_field("doc_title", TEXT | STORED);
         let doc_description = builder.add_text_field("doc_description", TEXT | STORED);
-        let relative_url = builder.add_text_field("relative_url", trigram.clone());
+        let relative_url = builder.add_text_field("relative_url", raw);
         let header = builder.add_text_field("header", trigram.clone());
         let ancestry = builder.add_text_field("ancestry", trigram.clone());
         let text = builder.add_text_field("text", trigram);
         let start_byte = builder.add_u64_field("start_byte", STORED);
         let end_byte = builder.add_u64_field("end_byte", STORED);
         let section_depth = builder.add_u64_field("section_depth", FAST | STORED);
+
+        let raw_relative_url = builder.add_bytes_field("raw_relative_url", FAST | STORED | INDEXED);
 
         Self {
             doc_id,
@@ -98,7 +100,7 @@ impl SectionSchema {
             start_byte,
             end_byte,
             section_depth,
-            // raw_relative_url,
+            raw_relative_url,
             schema: builder.build(),
         }
     }
@@ -150,9 +152,6 @@ pub enum Error {
     #[error("failed to perform sql transaction: {0}")]
     Sql(#[from] sqlx::Error),
 
-    #[error("failed to perform qdrant transaction: {0}")]
-    Qdrant(anyhow::Error),
-
     #[error("failed to embed sequence: {0}")]
     Embed(anyhow::Error),
 
@@ -176,21 +175,15 @@ impl Doc {
     /// Initialize docs index
     pub async fn create(
         sql: SqlDb,
-        semantic: Semantic,
+        embedder: Arc<dyn Embedder>,
         path: &std::path::Path,
     ) -> Result<Self, Error> {
-        if create_indexes(semantic.qdrant_client()).await? {
-            info!(%COLLECTION_NAME, "created doc index");
-        } else {
-            info!(%COLLECTION_NAME, "using existing doc index");
-        };
-
         std::fs::create_dir_all(path)?;
 
         let section_schema = SectionSchema::new();
         let mut section_index = tantivy::Index::open_or_create(
             tantivy::directory::MmapDirectory::open(path)
-                .map_err(|e| Error::Initialize(e.to_string()))?,
+                .map_err(|e| Error::Initialize(e.to_string()))?, // todo: handle tantivy index upgrades here
             section_schema.schema.clone(),
         )
         .map_err(|e| Error::Initialize(e.to_string()))?;
@@ -210,7 +203,7 @@ impl Doc {
 
         Ok(Self {
             sql,
-            semantic,
+            embedder,
             section_index,
             section_schema,
         })
@@ -285,7 +278,7 @@ impl Doc {
 
         let stream = try_stream! {
             let mut is_meta_set = false;
-            let stream = self.clone().insert_into_qdrant(id, url.clone(), Arc::clone(&index_writer));
+            let stream = self.clone().insert_into_tantivy(id, url.clone(), Arc::clone(&index_writer));
 
             // TODO: handle empty stream error here
 
@@ -339,7 +332,7 @@ impl Doc {
         let url = url::Url::parse(&url).map_err(|e| Error::UrlParse(url, e))?;
 
         // delete old docs from qdrant
-        self.delete_from_qdrant(id).await?;
+        // self.delete_from_qdrant(id).await?;
 
         // delete old docs from tantivy
         self.index_writer()?
@@ -355,7 +348,7 @@ impl Doc {
         let index_writer = Arc::new(Mutex::new(self.index_writer()?));
 
         let progress_stream = self
-            .insert_into_qdrant(id, url, Arc::clone(&index_writer))
+            .insert_into_tantivy(id, url, Arc::clone(&index_writer))
             .map(Progress::Update);
         let done_stream = futures::stream::once(async move { Progress::Done(id) });
 
@@ -372,7 +365,7 @@ impl Doc {
             .id;
 
         // delete entry from qdrant
-        self.delete_from_qdrant(id).await?;
+        // self.delete_from_qdrant(id).await?;
 
         // delete entry from tantivy
         self.index_writer()?
@@ -422,7 +415,7 @@ impl Doc {
     }
 
     /// Search for doc source by title
-    pub async fn search(&self, q: String, limit: u64) -> Result<Vec<Record>, Error> {
+    pub async fn search(&self, q: String, limit: usize) -> Result<Vec<Record>, Error> {
         let limit = limit.to_string();
         let q = format!("%{q}%");
         let records = sqlx::query!(
@@ -456,7 +449,7 @@ impl Doc {
     pub async fn search_sections(
         &self,
         q: String,
-        limit: u64,
+        limit: usize,
         id: i64,
     ) -> Result<Vec<SearchResult>, Error> {
         // use the tantivy index for section search
@@ -512,74 +505,13 @@ impl Doc {
 
         let mut results = tantivy_results
             .into_par_iter()
-            .map(move |(_, addr)| {
+            .filter_map(move |(_, addr)| {
                 let retrieved_doc = searcher
                     .doc(addr)
                     .expect("failed to get document by address");
-                SearchResult {
-                    doc_id: retrieved_doc
-                        .get_first(self.section_schema.doc_id)
-                        .unwrap()
-                        .as_i64()
-                        .unwrap(),
-                    point_id: retrieved_doc
-                        .get_first(self.section_schema.point_id)
-                        .unwrap()
-                        .as_text()
-                        .unwrap()
-                        .parse::<uuid::Uuid>()
-                        .unwrap(),
-                    doc_source: retrieved_doc
-                        .get_first(self.section_schema.doc_source)
-                        .unwrap()
-                        .as_text()
-                        .unwrap()
-                        .parse::<url::Url>()
-                        .unwrap(),
-                    ancestry: retrieved_doc
-                        .get_first(self.section_schema.ancestry)
-                        .unwrap()
-                        .as_text()
-                        .map(|t| {
-                            scraper::chunk::Section::ancestry_from_str(t)
-                                .into_iter()
-                                .map(ToOwned::to_owned)
-                                .collect()
-                        })
-                        .unwrap(),
-                    header: retrieved_doc
-                        .get_first(self.section_schema.header)
-                        .unwrap()
-                        .as_text()
-                        .unwrap()
-                        .to_owned(),
-                    relative_url: retrieved_doc
-                        .get_first(self.section_schema.relative_url)
-                        .unwrap()
-                        .as_text()
-                        .unwrap()
-                        .to_owned(),
-                    section_range: retrieved_doc
-                        .get_first(self.section_schema.start_byte)
-                        .unwrap()
-                        .as_u64()
-                        .unwrap() as usize
-                        ..retrieved_doc
-                            .get_first(self.section_schema.end_byte)
-                            .unwrap()
-                            .as_u64()
-                            .unwrap() as usize,
-                    text: retrieved_doc
-                        .get_first(self.section_schema.text)
-                        .unwrap()
-                        .as_text()
-                        .unwrap()
-                        .to_owned(),
-                }
+                SearchResult::from_tantivy_document(retrieved_doc, &self.section_schema)
             })
             .filter_map(|search_result| {
-                let mut breakup = vec![];
-
                 let term_distances =
                     terms
                         .iter()
@@ -618,7 +550,7 @@ impl Doc {
                     if terms.is_empty() || dt == 0 {
                         1.
                     } else {
-                        (dbg!(dt) as f32 / dbg!(dq) as f32) * (dbg!(total_len) as f32)
+                        (dt as f32 / dq as f32) * (total_len as f32)
                     }
                 };
 
@@ -643,11 +575,8 @@ impl Doc {
 
                 let header_distance_penalty = distance_penalty(dq, header_hit_distance, &terms);
 
-                breakup.push(("header dist penalty", header_distance_penalty as i64));
                 header_score += 10 * (6 - search_result.ancestry.len()) as i64;
                 header_score -= header_distance_penalty as i64;
-
-                breakup.push(("header score", header_score));
 
                 let (mut text_score, mut text_positions) = terms
                     .iter()
@@ -671,20 +600,16 @@ impl Doc {
 
                 let text_distance_penalty = distance_penalty(dq, text_hit_distance, &terms);
 
-                breakup.push(("text dist penalty", text_distance_penalty as i64));
                 text_score -= text_distance_penalty as i64;
-
-                breakup.push(("text score", text_score));
 
                 Some((
                     search_result,
                     text_score as f32 + (header_score as f32) * 2.0,
-                    breakup,
                 ))
             })
             .collect::<Vec<_>>();
 
-        results.par_sort_by(|(_, a_score, _), (_, b_score, _)| {
+        results.par_sort_by(|(_, a_score), (_, b_score)| {
             b_score
                 .partial_cmp(a_score)
                 .unwrap_or(std::cmp::Ordering::Less)
@@ -692,81 +617,51 @@ impl Doc {
 
         Ok(results
             .into_iter()
-            .inspect(|(doc, score, breakup)| {
-                println!("score: {}", score);
-                println!("breakup: {:?}", breakup);
-                println!("{}", doc.ancestry.join(" > "));
-                println!("{}", doc.header);
-                println!("{}", doc.text);
-                println!("{}", "*".repeat(20));
-                println!("\n\n");
-            })
-            .map(|(doc, _, _)| doc)
-            .take(limit as usize)
+            .map(|(doc, _)| doc)
+            .take(limit)
             .collect::<Vec<_>>())
     }
 
-    pub async fn list_sections(&self, limit: u32, id: i64) -> Result<Vec<SearchResult>, Error> {
-        let data = self
-            .semantic
-            .qdrant_client()
-            .scroll(&ScrollPoints {
-                collection_name: COLLECTION_NAME.into(),
-                limit: Some(limit),
-                filter: Some(Filter {
-                    must: vec![make_kv_int_filter("doc_id", id).into()],
-                    ..Default::default()
-                }),
-                with_payload: Some(WithPayloadSelector {
-                    selector_options: Some(with_payload_selector::SelectorOptions::Enable(true)),
-                }),
-                ..Default::default()
-            })
-            .await
-            .map_err(Error::Qdrant)?
-            .result;
-
-        Ok(data
+    pub async fn list_sections(&self, limit: usize, id: i64) -> Result<Vec<SearchResult>, Error> {
+        let reader = self.index_reader()?;
+        let searcher = reader.searcher();
+        let doc_id_query = Box::new(dbg!(TermQuery::new(
+            Term::from_field_i64(self.section_schema.doc_id, id),
+            IndexRecordOption::Basic,
+        ))) as Box<dyn Query>;
+        let collector = TopDocs::with_limit(limit);
+        Ok(searcher
+            .search(&doc_id_query, &collector)?
             .into_iter()
-            .filter_map(|s| SearchResult::from_qdrant(s.id.unwrap(), s.payload))
+            .map(|(_score, addr)| {
+                let retrieved_doc = searcher.doc(addr).expect("failed to fetch doc");
+                SearchResult::from_tantivy_document(retrieved_doc, &self.section_schema).unwrap()
+            })
             .collect())
     }
 
     /// Scroll pages in a doc
-    pub async fn list_pages(&self, limit: u32, id: i64) -> Result<Vec<PageResult>, Error> {
-        let data = self
-            .semantic
-            .qdrant_client()
-            .search_groups(&SearchPointGroups {
-                vector: vec![0.; 384], // re-export from semantic::schema, this will cause an index wipe
-                collection_name: COLLECTION_NAME.into(),
-                limit,
-                group_size: 1,
-                group_by: "relative_url".into(),
-                filter: Some(Filter {
-                    must: vec![make_kv_int_filter("doc_id", id).into()],
-                    ..Default::default()
-                }),
-                with_payload: Some(WithPayloadSelector {
-                    selector_options: Some(with_payload_selector::SelectorOptions::Enable(true)),
-                }),
-                ..Default::default()
-            })
-            .await
-            .map_err(Error::Qdrant)?
-            .result
-            .ok_or(Error::Qdrant(anyhow::anyhow!("empty search result field")))?;
-
-        let mut data = data
-            .groups
+    pub async fn list_pages(&self, limit: usize, id: i64) -> Result<Vec<PageResult>, Error> {
+        let reader = self.index_reader()?;
+        let searcher = reader.searcher();
+        let doc_id_query = Box::new(TermQuery::new(
+            Term::from_field_i64(self.section_schema.doc_id, id),
+            IndexRecordOption::Basic,
+        )) as Box<dyn Query>;
+        let collector =
+            crate::collector::GroupCollector::with_field(self.section_schema.raw_relative_url)
+                .with_group_size(1)
+                .with_limit(limit);
+        Ok(searcher
+            .search(&doc_id_query, &collector)?
             .into_iter()
-            .flat_map(|s| s.hits)
-            .filter_map(|s| PageResult::from_qdrant(s.payload))
-            .collect::<Vec<_>>();
-
-        data.sort_by(|a, b| a.relative_url.cmp(&b.relative_url));
-
-        Ok(data)
+            .flat_map(|groups| groups.items.into_values())
+            .flat_map(|group| group.items.into_iter())
+            .filter_map(|addr| {
+                let retrieved_doc = searcher.doc(addr).expect("failed to fetch doc");
+                PageResult::from_tantivy_document(retrieved_doc, &self.section_schema)
+            })
+            .collect())
     }
 
     /// Fetch all sections of a page, in order
@@ -776,69 +671,68 @@ impl Doc {
         relative_url: S,
         limit: u32,
     ) -> Result<Vec<SearchResult>, Error> {
-        let data = self
-            .semantic
-            .qdrant_client()
-            .scroll(&ScrollPoints {
-                collection_name: COLLECTION_NAME.into(),
-                limit: Some(limit),
-                filter: Some(Filter {
-                    must: vec![
-                        make_kv_int_filter("doc_id", id).into(),
-                        make_kv_keyword_filter("relative_url", relative_url.as_ref()).into(),
-                    ],
-                    ..Default::default()
-                }),
-                with_payload: Some(WithPayloadSelector {
-                    selector_options: Some(with_payload_selector::SelectorOptions::Enable(true)),
-                }),
-                ..Default::default()
-            })
-            .await
-            .map_err(Error::Qdrant)?
-            .result;
+        let reader = self.index_reader()?;
+        let searcher = reader.searcher();
+        let doc_id_query = Box::new(TermQuery::new(
+            Term::from_field_i64(self.section_schema.doc_id, id),
+            IndexRecordOption::Basic,
+        )) as Box<dyn Query>;
+        let relative_url_query = Box::new(TermQuery::new(
+            Term::from_field_text(self.section_schema.relative_url, relative_url.as_ref()),
+            IndexRecordOption::Basic,
+        )) as Box<dyn Query>;
+        let query = Box::new(BooleanQuery::intersection(vec![
+            doc_id_query,
+            relative_url_query,
+        ])) as Box<dyn Query>;
+        let collector = TopDocs::with_limit(9999);
+        let results = searcher.search(&query, &collector)?;
 
-        if data.is_empty() {
+        if results.is_empty() {
             return Err(Error::InvalidDocId(id));
         }
 
-        let mut data = data
+        let mut results = results
             .into_iter()
-            .filter_map(|s| SearchResult::from_qdrant(s.id.unwrap(), s.payload))
+            .filter_map(|(_score, addr)| {
+                let retrieved_doc = searcher.doc(addr).expect("failed to fetch doc");
+                SearchResult::from_tantivy_document(retrieved_doc, &self.section_schema)
+            })
             .collect::<Vec<_>>();
 
-        data.sort_by_key(|s| s.section_range.start);
+        results.sort_by_key(|s| s.section_range.start);
 
-        Ok(data)
+        Ok(results)
     }
 
     pub async fn contains_page<S: AsRef<str>>(&self, id: i64, relative_url: S) -> bool {
-        use std::ops::Not;
-        self.semantic
-            .qdrant_client()
-            .scroll(&ScrollPoints {
-                collection_name: COLLECTION_NAME.into(),
-                limit: Some(1),
-                filter: Some(Filter {
-                    must: vec![
-                        make_kv_int_filter("doc_id", id).into(),
-                        make_kv_keyword_filter("relative_url", relative_url.as_ref()).into(),
-                    ],
-                    ..Default::default()
-                }),
-                with_payload: Some(WithPayloadSelector {
-                    selector_options: Some(with_payload_selector::SelectorOptions::Enable(true)),
-                }),
-                ..Default::default()
-            })
-            .await
-            .map(|v| v.result.is_empty())
-            .unwrap_or(true)
-            .not()
+        false
+        // use std::ops::Not;
+        // self.semantic
+        //     .qdrant_client()
+        //     .scroll(&ScrollPoints {
+        //         collection_name: COLLECTION_NAME.into(),
+        //         limit: Some(1),
+        //         filter: Some(Filter {
+        //             must: vec![
+        //                 make_kv_int_filter("doc_id", id).into(),
+        //                 make_kv_keyword_filter("relative_url", relative_url.as_ref()).into(),
+        //             ],
+        //             ..Default::default()
+        //         }),
+        //         with_payload: Some(WithPayloadSelector {
+        //             selector_options: Some(with_payload_selector::SelectorOptions::Enable(true)),
+        //         }),
+        //         ..Default::default()
+        //     })
+        //     .await
+        //     .map(|v| v.result.is_empty())
+        //     .unwrap_or(true)
+        //     .not()
     }
 
     /// Scrape & insert a doc source into qdrant and return doc metadata if available
-    fn insert_into_qdrant(
+    fn insert_into_tantivy(
         self,
         id: i64,
         url: url::Url,
@@ -857,79 +751,25 @@ impl Doc {
                     meta: doc.meta.clone(),
                 };
                 yield progress;
-                let semantic = self.semantic.clone();
+                let embedder = Arc::clone(&self.embedder);
                 let u = url.clone();
                 let section_schema = self.section_schema.clone();
                 let index_writer = Arc::clone(&index_writer);
                 if !self.contains_page(id, doc.relative_url(&url)).await
                 {
                     handles.push(tokio::task::spawn(async move {
-                        let embedder = semantic.embedder();
-                        let (tantivy_docs_to_insert, points_to_insert) = doc.embed(id, &u, embedder, section_schema);
+                        let tantivy_docs_to_insert = doc.embed(id, &u, embedder.as_ref(), section_schema);
                         let mut lock = index_writer.lock().await;
                         for d in tantivy_docs_to_insert {
                             info!("inserting doc into tantivy: `{}` - `{}`", id, u.as_str());
                             let _ = lock.add_document(d);
                         }
                         let _ = lock.commit();
-                        let _ = semantic
-                            .qdrant_client()
-                            .upsert_points(COLLECTION_NAME, points_to_insert, None)
-                            .await;
-                        }));
+                    }));
                 }
             }
         }
     }
-
-    async fn delete_from_qdrant(&self, id: i64) -> Result<(), Error> {
-        let id_filter = make_kv_int_filter("doc_id", id).into();
-        let selector = Filter {
-            must: vec![id_filter],
-            ..Default::default()
-        }
-        .into();
-        self.semantic
-            .qdrant_client()
-            .delete_points(COLLECTION_NAME, &selector, None)
-            .await
-            .map_err(Error::Qdrant)?;
-        Ok(())
-    }
-}
-
-async fn create_indexes(qdrant: &qdrant_client::prelude::QdrantClient) -> Result<bool, Error> {
-    if !qdrant
-        .has_collection(COLLECTION_NAME)
-        .await
-        .unwrap_or(false)
-    {
-        qdrant
-            .create_collection(&CreateCollection {
-                collection_name: COLLECTION_NAME.to_string(),
-                vectors_config: Some(VectorsConfig {
-                    config: Some(vectors_config::Config::Params(VectorParams {
-                        size: 384_u64,
-                        distance: Distance::Cosine.into(),
-                        ..Default::default()
-                    })),
-                }),
-                ..Default::default()
-            })
-            .await
-            .map_err(Error::Qdrant)?;
-
-        // initialize indexes
-        let text_fields = &["text", "relative_path", "ancestry_text"];
-        for field in text_fields {
-            qdrant
-                .create_field_index(COLLECTION_NAME, field, FieldType::Text, None, None)
-                .await
-                .map_err(Error::Qdrant)?;
-        }
-        return Ok(true);
-    }
-    Ok(false)
 }
 
 impl scraper::Document {
@@ -937,9 +777,9 @@ impl scraper::Document {
         &self,
         id: i64,
         url: &url::Url,
-        embedder: &dyn crate::semantic::Embedder,
+        embedder: &dyn Embedder,
         schema: SectionSchema,
-    ) -> (Vec<tantivy::Document>, Vec<PointStruct>) {
+    ) -> Vec<tantivy::Document> {
         info!("inserting points for `{}`", self.url.as_str());
         scraper::chunk::by_section(
             &self.content,           // section content
@@ -948,33 +788,7 @@ impl scraper::Document {
             embedder.tokenizer(),
         )
         .par_bridge()
-        // .inspect(|(section, chunks)| {
-        //     println!("{}", section.data);
-        // })
-        .map(|(section, chunks)| {
-            let embeddings = chunks
-                .iter()
-                .filter_map(|c| {
-                    embedder
-                        .embed(&format!(
-                            "{}\t{}\t{}\n{}",
-                            url.as_str(),
-                            &self.relative_url(url),
-                            section.ancestry_str(),
-                            c.data,
-                        ))
-                        .ok()
-                })
-                .collect::<Vec<_>>();
-            let average_embedding = embeddings.iter().fold(vec![0.; 384], |acc, e| {
-                acc.into_iter()
-                    .zip(e.iter())
-                    .map(|(acc_elem, e_elem)| acc_elem + e_elem)
-                    .collect::<Vec<_>>()
-            });
-            (section, average_embedding)
-        })
-        .map(|(section, avg_embedding)| {
+        .map(|(section, _)| {
             let point_id = {
                 let mut bytes = [0; 16];
                 let mut hasher = blake3::Hasher::new();
@@ -988,81 +802,30 @@ impl scraper::Document {
             };
 
             use tantivy::doc;
-            let tantivy_doc = doc!(
+            doc!(
                 schema.doc_id => id,
                 schema.point_id => point_id.as_str(),
                 schema.doc_source => url.as_str(),
                 schema.doc_title => self.meta.title.as_deref().unwrap_or_default(),
                 schema.doc_description => self.meta.description.as_deref().unwrap_or_default(),
                 schema.relative_url => self.relative_url(url).as_str(),
+                schema.raw_relative_url => self.relative_url(url).as_str().as_bytes(),
                 schema.header => section.header.unwrap_or_default(),
                 schema.ancestry => section.ancestry_str().as_str(),
                 schema.text => section.data,
                 schema.start_byte => section.section_range.start.byte as u64,
                 schema.end_byte => section.section_range.start.byte as u64,
                 schema.section_depth => section.ancestry.len() as u64,
-            );
-
-            let mut payload = HashMap::new();
-            let favicon = self.meta.icon.as_deref().unwrap_or("");
-            let favicon_url =
-                url::Url::parse(favicon).unwrap_or_else(|_| normalize_absolute_url(url, favicon));
-            payload.insert("doc_id".to_owned(), id.into());
-            payload.insert("doc_source".to_owned(), url.to_string().into());
-            payload.insert("relative_url".to_owned(), self.relative_url(url).into());
-            payload.insert(
-                "start".to_owned(),
-                (section.section_range.start.byte as i64).into(),
-            );
-            payload.insert(
-                "end".to_owned(),
-                (section.section_range.end.byte as i64).into(),
-            );
-            payload.insert("text".to_owned(), section.data.into());
-            payload.insert("header".to_owned(), section.header.unwrap_or("").into());
-            payload.insert("ancestry_text".to_owned(), section.ancestry_str().into());
-            payload.insert("ancestry".to_owned(), section.ancestry.into());
-
-            // doc meta
-            payload.insert(
-                "doc_title".to_owned(),
-                self.meta.title.as_deref().unwrap_or("").into(),
-            );
-            payload.insert(
-                "doc_description".to_owned(),
-                self.meta.description.as_deref().unwrap_or("").into(),
-            );
-            payload.insert("doc_favicon".to_owned(), favicon_url.as_str().into());
-            (
-                tantivy_doc,
-                PointStruct {
-                    id: Some(PointId {
-                        point_id_options: Some(PointIdOptions::Uuid(point_id.to_string())),
-                    }),
-                    vectors: Some(avg_embedding.into()),
-                    payload,
-                },
             )
         })
-        .unzip()
-    }
-}
-
-fn make_kv_int_filter(key: &str, value: i64) -> FieldCondition {
-    let key = key.to_owned();
-    let value = value.to_owned();
-    FieldCondition {
-        key,
-        r#match: Some(Match {
-            match_value: MatchValue::Integer(value).into(),
-        }),
-        ..Default::default()
+        .collect()
     }
 }
 
 #[derive(serde::Serialize)]
 pub struct SearchResult {
     pub doc_id: i64,
+    pub doc_title: Option<String>,
     pub point_id: uuid::Uuid,
     pub doc_source: url::Url,
     pub relative_url: String,
@@ -1073,73 +836,137 @@ pub struct SearchResult {
 }
 
 impl SearchResult {
-    pub fn from_qdrant(
-        id: PointId,
-        payload: HashMap<String, qdrant_client::qdrant::Value>,
+    pub fn from_tantivy_document(
+        doc: tantivy::schema::Document,
+        schema: &SectionSchema,
     ) -> Option<Self> {
-        let doc_id = payload["doc_id"].as_integer()?;
-        let point_id = id.point_id_options.and_then(|opts| match opts {
-            PointIdOptions::Uuid(u) => uuid::Uuid::try_parse(&u).ok(),
-            _ => None,
-        })?;
-        let doc_source = payload["doc_source"]
-            .as_str()
-            .and_then(|s| url::Url::parse(s).ok())?;
-        let relative_url = payload["relative_url"].as_str().map(ToOwned::to_owned)?;
-        let section_start_byte: usize = payload["start"]
-            .as_integer()
-            .and_then(|i| i.try_into().ok())?;
-        let section_end_byte: usize = payload["end"]
-            .as_integer()
-            .and_then(|i| i.try_into().ok())?;
-        let header = payload["header"].as_str().map(ToOwned::to_owned)?;
-        let ancestry = payload["ancestry"]
-            .as_list()
-            .map(ToOwned::to_owned)?
-            .into_iter()
-            .map(|item| item.as_str().unwrap().to_owned())
-            .collect();
-        let text = payload["text"].as_str().map(ToOwned::to_owned)?;
-        Some(Self {
-            doc_id,
-            point_id,
-            doc_source,
-            relative_url,
-            header,
-            ancestry,
-            text,
-            section_range: section_start_byte..section_end_byte,
+        Some(SearchResult {
+            doc_id: doc.get_first(schema.doc_id)?.as_i64()?,
+            doc_title: doc
+                .get_first(schema.doc_title)?
+                .as_text()
+                .map(ToOwned::to_owned),
+            point_id: doc
+                .get_first(schema.point_id)?
+                .as_text()?
+                .parse::<uuid::Uuid>()
+                .unwrap(),
+            doc_source: doc
+                .get_first(schema.doc_source)?
+                .as_text()?
+                .parse::<url::Url>()
+                .unwrap(),
+            ancestry: doc.get_first(schema.ancestry)?.as_text().map(|t| {
+                scraper::chunk::Section::ancestry_from_str(t)
+                    .into_iter()
+                    .map(ToOwned::to_owned)
+                    .collect()
+            })?,
+            header: doc.get_first(schema.header)?.as_text()?.to_owned(),
+            relative_url: doc.get_first(schema.relative_url)?.as_text()?.to_owned(),
+            section_range: doc.get_first(schema.start_byte)?.as_u64()? as usize
+                ..doc.get_first(schema.end_byte)?.as_u64()? as usize,
+            text: doc.get_first(schema.text)?.as_text()?.to_owned(),
         })
     }
+    // pub fn from_qdrant(
+    //     id: PointId,
+    //     payload: HashMap<String, qdrant_client::qdrant::Value>,
+    // ) -> Option<Self> {
+    //     let doc_id = payload["doc_id"].as_integer()?;
+    //     let doc_title = payload["doc_title"].as_str().map(ToOwned::to_owned);
+    //     let point_id = id.point_id_options.and_then(|opts| match opts {
+    //         PointIdOptions::Uuid(u) => uuid::Uuid::try_parse(&u).ok(),
+    //         _ => None,
+    //     })?;
+    //     let doc_source = payload["doc_source"]
+    //         .as_str()
+    //         .and_then(|s| url::Url::parse(s).ok())?;
+    //     let relative_url = payload["relative_url"].as_str().map(ToOwned::to_owned)?;
+    //     let section_start_byte: usize = payload["start"]
+    //         .as_integer()
+    //         .and_then(|i| i.try_into().ok())?;
+    //     let section_end_byte: usize = payload["end"]
+    //         .as_integer()
+    //         .and_then(|i| i.try_into().ok())?;
+    //     let header = payload["header"].as_str().map(ToOwned::to_owned)?;
+    //     let ancestry = payload["ancestry"]
+    //         .as_list()
+    //         .map(ToOwned::to_owned)?
+    //         .into_iter()
+    //         .map(|item| item.as_str().unwrap().to_owned())
+    //         .collect();
+    //     let text = payload["text"].as_str().map(ToOwned::to_owned)?;
+    //     Some(Self {
+    //         doc_id,
+    //         doc_title,
+    //         point_id,
+    //         doc_source,
+    //         relative_url,
+    //         header,
+    //         ancestry,
+    //         text,
+    //         section_range: section_start_byte..section_end_byte,
+    //     })
+    // }
 }
 
 #[derive(serde::Serialize)]
 pub struct PageResult {
     pub doc_id: i64,
     pub doc_source: url::Url,
-    pub doc_title: String,
-    pub doc_description: String,
-    pub doc_favicon: String,
+    pub doc_title: Option<String>,
+    pub doc_description: Option<String>,
+    pub doc_favicon: Option<String>,
     pub relative_url: String,
 }
 
 impl PageResult {
-    pub fn from_qdrant(payload: HashMap<String, qdrant_client::qdrant::Value>) -> Option<Self> {
-        let doc_id = payload["doc_id"].as_integer()?;
-        let doc_source = payload["doc_source"]
-            .as_str()
-            .and_then(|s| url::Url::parse(s).ok())?;
-        let relative_url = payload["relative_url"].as_str().map(ToOwned::to_owned)?;
-        let doc_title = payload["doc_title"].as_str().map(ToOwned::to_owned)?;
-        let doc_description = payload["doc_description"].as_str().map(ToOwned::to_owned)?;
-        let doc_favicon = payload["doc_favicon"].as_str().map(ToOwned::to_owned)?;
-        Some(Self {
-            doc_id,
-            doc_source,
-            doc_title,
-            doc_description,
-            doc_favicon,
-            relative_url,
+    // pub fn from_qdrant(payload: HashMap<String, qdrant_client::qdrant::Value>) -> Option<Self> {
+    //     let doc_id = payload["doc_id"].as_integer()?;
+    //     let doc_source = payload["doc_source"]
+    //         .as_str()
+    //         .and_then(|s| url::Url::parse(s).ok())?;
+    //     let relative_url = payload["relative_url"].as_str().map(ToOwned::to_owned)?;
+    //     let doc_title = payload["doc_title"].as_str().map(ToOwned::to_owned)?;
+    //     let doc_description = payload["doc_description"].as_str().map(ToOwned::to_owned)?;
+    //     let doc_favicon = payload["doc_favicon"].as_str().map(ToOwned::to_owned)?;
+    //     Some(Self {
+    //         doc_id,
+    //         doc_source,
+    //         doc_title,
+    //         doc_description,
+    //         doc_favicon,
+    //         relative_url,
+    //     })
+    // }
+}
+
+impl PageResult {
+    pub fn from_tantivy_document(
+        doc: tantivy::schema::Document,
+        schema: &SectionSchema,
+    ) -> Option<Self> {
+        Some(PageResult {
+            doc_id: doc.get_first(schema.doc_id)?.as_i64()?,
+            doc_title: doc
+                .get_first(schema.doc_title)?
+                .as_text()
+                .map(ToOwned::to_owned),
+            doc_description: doc
+                .get_first(schema.doc_title)?
+                .as_text()
+                .map(ToOwned::to_owned),
+            doc_favicon: doc
+                .get_first(schema.doc_title)?
+                .as_text()
+                .map(ToOwned::to_owned),
+            doc_source: doc
+                .get_first(schema.doc_source)?
+                .as_text()?
+                .parse::<url::Url>()
+                .unwrap(),
+            relative_url: doc.get_first(schema.relative_url)?.as_text()?.to_owned(),
         })
     }
 }

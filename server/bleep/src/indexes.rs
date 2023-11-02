@@ -86,7 +86,7 @@ impl Indexes {
     pub async fn new(
         config: &Configuration,
         sql: crate::SqlDb,
-        semantic: crate::semantic::Semantic,
+        embedder: Arc<dyn crate::semantic::Embedder>,
     ) -> Result<Self> {
         Ok(Self {
             repo: Indexer::create(
@@ -101,7 +101,7 @@ impl Indexes {
                 config.buffer_size,
                 config.max_threads,
             )?,
-            doc: Doc::create(sql, semantic, config.index_path("doc").as_ref()).await?,
+            doc: Doc::create(sql, embedder, config.index_path("doc").as_ref()).await?,
             write_mutex: Default::default(),
         })
     }

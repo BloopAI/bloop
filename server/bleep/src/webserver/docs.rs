@@ -20,13 +20,13 @@ pub struct Sync {
 
 #[derive(serde::Deserialize)]
 pub struct List {
-    limit: u32,
+    limit: usize,
 }
 
 #[derive(serde::Deserialize)]
 pub struct Search {
     pub q: Option<String>,
-    pub limit: u64,
+    pub limit: usize,
 }
 
 #[derive(serde::Deserialize)]
@@ -108,12 +108,7 @@ pub async fn search_with_id(
                 .search_sections(query, params.limit, id)
                 .await?
         }
-        None => {
-            app.indexes
-                .doc
-                .list_sections(params.limit as u32, id)
-                .await?
-        }
+        None => app.indexes.doc.list_sections(params.limit, id).await?,
     }))
 }
 
@@ -147,7 +142,6 @@ impl From<doc::Error> for Error {
         match value {
             doc::Error::Sql(_)
             | doc::Error::Embed(_)
-            | doc::Error::Qdrant(_)
             | doc::Error::UrlParse(..)
             | doc::Error::Io(..)
             | doc::Error::Tantivy(..)
