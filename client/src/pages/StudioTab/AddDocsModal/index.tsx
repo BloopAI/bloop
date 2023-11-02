@@ -333,7 +333,7 @@ const AddDocsModal = ({
         </form>
         <div
           className={`flex ${
-            step === 0 ? 'max-h-72' : 'max-h-99'
+            step === 0 ? 'max-h-72' : 'h-99'
           } overflow-auto px-1 py-3 flex-col`}
         >
           {step === 0 ? (
@@ -367,7 +367,7 @@ const AddDocsModal = ({
               <>
                 <CommandIndicator
                   label={t('Remove')}
-                  keyboardKeys={['cmd', 'bksp']}
+                  keyboardKeys={['cmd', 'D']}
                 />
                 <CommandIndicator
                   label={t('Resync')}

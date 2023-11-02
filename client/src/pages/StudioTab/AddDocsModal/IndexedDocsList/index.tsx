@@ -30,7 +30,7 @@ const IndexedDocsList = ({
       if (e.ctrlKey || e.metaKey) {
         if (e.key === 'r') {
           syncDocProvider(filteredDocs[highlightedDocIndex].id, true);
-        } else if (e.key === 'Backspace') {
+        } else if (e.key === 'd') {
           deleteDocProvider(filteredDocs[highlightedDocIndex].id)
             .then(() => {
               refetchDocs();
