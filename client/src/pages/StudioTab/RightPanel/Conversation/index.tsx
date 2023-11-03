@@ -39,6 +39,7 @@ type Props = {
   isPreviewing: boolean;
   isActiveTab: boolean;
   isChangeUnsaved: boolean;
+  hasContextError: boolean;
   handleRestore: () => void;
 };
 
@@ -72,6 +73,7 @@ const Conversation = ({
   isActiveTab,
   refetchCodeStudio,
   isChangeUnsaved,
+  hasContextError,
 }: Props) => {
   const { t } = useTranslation();
   const { inputValue } = useContext(StudioContext.Input);
@@ -347,6 +349,7 @@ const Conversation = ({
           if (
             inputValue &&
             !isTokenLimitExceeded &&
+            !hasContextError &&
             requestsLeft &&
             !isChangeUnsaved
           ) {
@@ -449,13 +452,18 @@ const Conversation = ({
                 <Button
                   size="small"
                   disabled={
-                    !inputValue || isTokenLimitExceeded || isChangeUnsaved
+                    !inputValue ||
+                    isTokenLimitExceeded ||
+                    isChangeUnsaved ||
+                    hasContextError
                   }
                   title={
                     isChangeUnsaved
                       ? t('Save context changes before answer generation')
                       : isTokenLimitExceeded
                       ? t('Token limit exceeded')
+                      : hasContextError
+                      ? t('Check context files for any errors')
                       : undefined
                   }
                   onClick={onSubmit}
@@ -465,7 +473,10 @@ const Conversation = ({
                     <KeyboardChip
                       type="cmd"
                       variant={
-                        !inputValue || isTokenLimitExceeded || isChangeUnsaved
+                        !inputValue ||
+                        isTokenLimitExceeded ||
+                        isChangeUnsaved ||
+                        hasContextError
                           ? 'secondary'
                           : 'primary'
                       }
@@ -473,7 +484,10 @@ const Conversation = ({
                     <KeyboardChip
                       type="entr"
                       variant={
-                        !inputValue || isTokenLimitExceeded || isChangeUnsaved
+                        !inputValue ||
+                        isTokenLimitExceeded ||
+                        isChangeUnsaved ||
+                        hasContextError
                           ? 'secondary'
                           : 'primary'
                       }

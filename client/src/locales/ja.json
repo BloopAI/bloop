@@ -392,5 +392,9 @@
 	"Unlimited usage and premium features are activated.": "無制限の使用機能とプレミアム機能がアクティブになります。",
 	"Let's go": "さあ行こう",
 	"Token limit reached, this answer may be incomplete. To generate a full answer, please reduce the number of tokens used and regenerate.": "到達したトークン制限は、この答えが不完全になる可能性があります。 完全な回答を生成するには、使用して再生するトークンの数を減らしてください。",
+	"<0></0><1></1> to navigate.": "<0> </0> <1> </1>ナビゲートします。",
+	"Below are a few questions you can ask me to get started:": "以下は、あなたが私に始めるように頼むことができるいくつかの質問です：",
+	"Check context files for any errors": "エラーがない場合は、コンテキストファイルを確認してください",
+	"Token limit reached, this answer may be incomplete. To generate a full answer, please reduce the number of tokens used and regenerate.": "到達したトークン制限は、この答えが不完全になる可能性があります。 完全な回答を生成するには、使用して再生するトークンの数を減らしてください。",
 	"Let’s get you started with bloop!": "Bloopを始めましょう！"
 }

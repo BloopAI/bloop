@@ -10,6 +10,13 @@
 #![warn(unused_crate_dependencies)]
 #![allow(elided_lifetimes_in_paths)]
 
+#[cfg(all(feature = "onnx", feature = "metal"))]
+compile_error!("cannot enable `onnx` and `metal` at the same time");
+
+// only used in the binary
+#[cfg(feature = "color-eyre")]
+use color_eyre as _;
+
 #[cfg(any(bench, test))]
 use criterion as _;
 
@@ -20,14 +27,13 @@ use git_version as _;
 #[cfg(all(feature = "debug", not(tokio_unstable)))]
 use console_subscriber as _;
 
-use secrecy::{ExposeSecret, SecretString};
 use state::PersistedState;
-use std::{fs::canonicalize, sync::RwLock};
+use std::fs::canonicalize;
 use user::UserProfile;
 
 use crate::{
     background::SyncQueue, indexes::Indexes, remotes::CognitoGithubTokenBundle, semantic::Semantic,
-    state::RepositoryPool,
+    state::RepositoryPool, webserver::middleware::User,
 };
 use anyhow::{bail, Context, Result};
 use axum::extract::FromRef;
@@ -127,9 +133,9 @@ impl Application {
         config.max_threads = config.max_threads.max(minimum_parallelism());
         let threads = config.max_threads;
 
-        // 3MiB buffer size is minimum for Tantivy
-        config.buffer_size = config.buffer_size.max(threads * 3_000_000);
-        config.repo_buffer_size = config.repo_buffer_size.max(threads * 3_000_000);
+        // 15MiB buffer size is minimum for Tantivy
+        config.buffer_size = config.buffer_size.max(threads * 15_000_000);
+        config.repo_buffer_size = config.repo_buffer_size.max(threads * 15_000_000);
         config.source.set_default_dir(&config.index_dir);
 
         // Finalize config
@@ -249,15 +255,7 @@ impl Application {
             warn!("Failed to install tracing_subscriber. There's probably one already...");
         };
 
-        if color_eyre::install().is_err() {
-            warn!("Failed to install color-eyre. Oh well...");
-        };
-
         LOGGER_INSTALLED.set(true).unwrap();
-    }
-
-    pub fn user(&self) -> Option<String> {
-        self.credentials.user()
     }
 
     pub async fn run(self) -> Result<()> {
@@ -269,13 +267,7 @@ impl Application {
             joins.spawn(self.write_index().startup_scan());
         } else {
             if !self.config.disable_background {
-                tokio::spawn(periodic::sync_github_status(self.clone()));
-                tokio::spawn(periodic::check_repo_updates(self.clone()));
-                tokio::spawn(periodic::log_and_branch_rotate(self.clone()));
-
-                if !self.env.is_cloud_instance() {
-                    tokio::spawn(periodic::clear_disk_logs(self.clone()));
-                }
+                periodic::start_background_jobs(self.clone());
             }
 
             joins.spawn(webserver::start(self));
@@ -304,13 +296,13 @@ impl Application {
         false
     }
 
-    fn track_query(&self, user: &webserver::middleware::User, event: &analytics::QueryEvent) {
+    fn track_query(&self, user: &User, event: &analytics::QueryEvent) {
         if let Some(analytics) = self.analytics.as_ref() {
             analytics.track_query(user, event.clone());
         }
     }
 
-    fn track_studio(&self, user: &webserver::middleware::User, event: analytics::StudioEvent) {
+    fn track_studio(&self, user: &User, event: analytics::StudioEvent) {
         if let Some(analytics) = self.analytics.as_ref() {
             analytics.track_studio(user, event);
         }
@@ -321,49 +313,37 @@ impl Application {
         self.analytics.as_ref().map(f)
     }
 
-    fn org_name(&self) -> Option<String> {
+    pub fn username(&self) -> Option<String> {
+        self.credentials.user().clone()
+    }
+
+    pub(crate) async fn user(&self) -> User {
         self.credentials
-            .github()
-            .and_then(|state| match state.auth {
-                remotes::github::Auth::App { org, .. } => Some(org),
-                _ => None,
+            .user()
+            .zip(self.credentials.github())
+            .and_then(|(user, gh)| {
+                use crate::remotes::github::{Auth, State};
+                match gh {
+                    State {
+                        auth:
+                            Auth::OAuth(CognitoGithubTokenBundle {
+                                access_token: ref token,
+                                ..
+                            }),
+                        ..
+                    } => Some(User::Desktop {
+                        access_token: token.clone(),
+                        login: user,
+                        crab: Arc::new(move || Ok(gh.client()?)),
+                    }),
+                    _ => None,
+                }
             })
+            .unwrap_or_else(|| User::Unknown)
     }
 
     fn write_index(&self) -> background::BoundSyncQueue {
         self.sync_queue.bind(self.clone())
-    }
-
-    fn answer_api_token(&self) -> Result<Option<SecretString>> {
-        Ok(if self.env.allow(env::Feature::DesktopUserAuth) {
-            let Some(cred) = self.credentials.github() else {
-                bail!("missing Github token");
-            };
-
-            use remotes::github::{Auth, State};
-            match cred {
-                State {
-                    auth:
-                        Auth::OAuth(CognitoGithubTokenBundle {
-                            access_token: token,
-                            ..
-                        }),
-                    ..
-                } => Some(token.into()),
-
-                _ => {
-                    bail!("cannot connect to answer API");
-                }
-            }
-        } else {
-            None
-        })
-    }
-
-    fn llm_gateway_client(&self) -> Result<llm_gateway::Client> {
-        let answer_api_token = self.answer_api_token()?.map(|s| s.expose_secret().clone());
-
-        Ok(llm_gateway::Client::new(&self.config.answer_api_url).bearer(answer_api_token))
     }
 
     fn seal_auth_state(&self, payload: serde_json::Value) -> String {
@@ -492,7 +472,6 @@ fn initialize_analytics(
     };
 
     let options = options.into().unwrap_or_else(|| analytics::HubOptions {
-        enable_telemetry: Arc::new(RwLock::new(true)),
         package_metadata: Some(analytics::PackageMetadata {
             name: env!("CARGO_CRATE_NAME"),
             version: env!("CARGO_PKG_VERSION"),

@@ -105,7 +105,7 @@ const AllConversations = ({
         </div>
       )}
       {!!openItem && (
-        <div className="flex-1 overflow-auto pb-10">
+        <div className="flex-1 overflow-auto">
           <Conversation
             conversation={openItem.conversation}
             threadId={openItem.threadId}
@@ -114,6 +114,7 @@ const AllConversations = ({
             isHistory
             repoName={repoName}
             onMessageEdit={() => {}}
+            setInputValue={() => {}}
           />
         </div>
       )}

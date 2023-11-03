@@ -13,6 +13,7 @@ import { DeviceContext } from '../../../../context/deviceContext';
 import { getConfig, githubLogin, githubLogout } from '../../../../services/api';
 import { copyToClipboard } from '../../../../utils';
 import Button from '../../../../components/Button';
+import { polling } from '../../../../utils/requestUtils';
 
 type Props = {
   onContinue: () => void;
@@ -79,13 +80,15 @@ const UserFormStep2 = ({ onContinue }: Props) => {
     let timerId: number;
     if (loginUrl && !isGithubConnected) {
       checkGHAuth();
-      intervalId = window.setInterval(() => {
-        checkGHAuth().then((d) => {
-          if (!!d.user_login) {
-            onContinue();
-          }
-        });
-      }, 500);
+      intervalId = polling(
+        () =>
+          checkGHAuth().then((d) => {
+            if (!!d.user_login) {
+              onContinue();
+            }
+          }),
+        500,
+      );
       timerId = window.setTimeout(
         () => {
           clearInterval(intervalId);

@@ -407,11 +407,11 @@ pub const fn minimum_parallelism() -> usize {
 }
 
 const fn default_buffer_size() -> usize {
-    100_000_000
+    500_000_000
 }
 
 const fn default_repo_buffer_size() -> usize {
-    30_000_000
+    200_000_000
 }
 
 const fn default_port() -> u16 {
@@ -435,5 +435,6 @@ fn default_max_chunk_tokens() -> usize {
 }
 
 fn interactive_batch_size() -> NonZeroUsize {
-    NonZeroUsize::new(1).unwrap()
+    let batch_size = if cfg!(feature = "metal") { 5 } else { 1 };
+    NonZeroUsize::new(batch_size).unwrap()
 }

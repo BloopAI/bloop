@@ -49,6 +49,7 @@ import { PersonalQuotaContextProvider } from './context/providers/PersonalQuotaC
 import UpgradePopup from './components/UpgradePopup';
 import StudioGuidePopup from './components/StudioGuidePopup';
 import WaitingUpgradePopup from './components/UpgradePopup/WaitingUpgradePopup';
+import { polling } from './utils/requestUtils';
 
 type Props = {
   deviceContextValue: DeviceContextType;
@@ -319,7 +320,7 @@ function App({ deviceContextValue }: Props) {
   );
 
   const fetchRepos = useCallback(() => {
-    getRepos().then((data) => {
+    return getRepos().then((data) => {
       const list = data?.list?.sort((a, b) => (a.name < b.name ? -1 : 1)) || [];
       setRepositories((prev) => {
         if (JSON.stringify(prev) === JSON.stringify(list)) {
@@ -331,8 +332,7 @@ function App({ deviceContextValue }: Props) {
   }, []);
 
   useEffect(() => {
-    fetchRepos();
-    const intervalId = setInterval(fetchRepos, 5000);
+    const intervalId = polling(fetchRepos, 5000);
     return () => {
       clearInterval(intervalId);
     };

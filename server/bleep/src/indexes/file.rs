@@ -1,5 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
+    panic::AssertUnwindSafe,
     path::{Path, PathBuf},
     sync::atomic::{AtomicU64, Ordering},
 };
@@ -97,7 +98,7 @@ impl Indexable for File {
 
         let file_worker = |count: usize| {
             let cache = &cache;
-            move |dir_entry: RepoDirEntry| {
+            let callback = move |dir_entry: RepoDirEntry| {
                 let completed = processed.fetch_add(1, Ordering::Relaxed);
                 pipes.index_percent(((completed as f32 / count as f32) * 100f32) as u8);
 
@@ -129,6 +130,16 @@ impl Indexable for File {
 
                 if let Err(err) = cache.parent().process_embedding_queue() {
                     warn!(?err, "failed to commit embeddings");
+                }
+            };
+
+            move |dir_entry: RepoDirEntry| {
+                let result = std::panic::catch_unwind(AssertUnwindSafe(|| (callback)(dir_entry)));
+                if let Err(err) = result {
+                    error!(
+                        ?err,
+                        "Indexing crashed. This is bad. Please send these logs to support!"
+                    );
                 }
             }
         };
@@ -552,7 +563,7 @@ impl File {
             }
             RepoDirEntry::Dir(dir) => {
                 trace!("writing dir document");
-                let doc = dir.build_document(self, &workload, last_commit, &cache_keys);
+                let doc = dir.build_document(self, &workload, last_commit as u64, &cache_keys);
                 writer.add_document(doc)?;
                 trace!("dir document written");
             }
@@ -563,7 +574,7 @@ impl File {
                         self,
                         &workload,
                         &cache_keys,
-                        last_commit,
+                        last_commit as u64,
                         workload.cache.parent(),
                     )
                     .ok_or(anyhow::anyhow!("failed to build document"))?;
@@ -713,7 +724,7 @@ impl RepoFile {
         let mut buffer = match self.buffer() {
             Ok(b) => b,
             Err(err) => {
-                error!(?err, "failed to open file buffer; skipping file");
+                warn!(?err, "failed to open file buffer; skipping file");
                 return None;
             }
         };

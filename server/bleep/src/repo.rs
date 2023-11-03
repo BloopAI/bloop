@@ -198,7 +198,7 @@ pub struct Repository {
     pub sync_status: SyncStatus,
 
     /// Time of last commit at the last successful index
-    pub last_commit_unix_secs: u64,
+    pub last_commit_unix_secs: i64,
 
     /// Time of last successful index
     pub last_index_unix_secs: u64,
@@ -316,7 +316,7 @@ fn get_unix_time(time: SystemTime) -> u64 {
 
 #[derive(Debug)]
 pub struct RepoMetadata {
-    pub last_commit_unix_secs: Option<u64>,
+    pub last_commit_unix_secs: Option<i64>,
     pub langs: language::LanguageInfo,
 }
 

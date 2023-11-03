@@ -1,19 +1,28 @@
 [package]
 name = "bleep"
-version = "0.5.6"
+version = "0.5.7"
 edition = "2021"
 default-run = "bleep"
 build = "build.rs"
 
 [features]
-default = ["dynamic-ort", "ee-pro"]
+default = ["ee-pro"]
 debug = ["console-subscriber", "histogram"]
-dynamic-ort = ["ort/load-dynamic"]
+onnx = []
+metal = []
 ee-pro = []
-ee-cloud = ["ee-pro"]
+ee-cloud = ["ee-pro", "color-eyre"]
+
+[target.'cfg(not(all(target_os = "macos", target_arch = "aarch64")))'.dependencies]
+ndarray = { version = "0.15" }
+ort = { git = "https://github.com/bloopai/ort", branch = "env-builder-telemetry", features = ["load-dynamic"] }
+
+[target.aarch64-apple-darwin.dependencies]
+llm = { git = "https://github.com/bloopai/llm", branch = "batch-metal-kernels", default-features = false, features = ["bert", "metal"] }
 
 [[bin]]
 name = "bleep"
+required-features = ["color-eyre"]
 
 [[bench]]
 name = "snippets"
@@ -43,7 +52,7 @@ clap = { version = "4.4.4", features = ["derive"] }
 tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.17", features = ["env-filter", "registry"] }
 tracing-appender = "0.2.2"
-color-eyre = "0.6.2"
+color-eyre = { version = "0.6.2", optional = true }
 regex = "1.9.5"
 regex-syntax = "0.6.29"
 fuzzy-matcher = "0.3.7"
@@ -99,15 +108,13 @@ notify-debouncer-mini = { version = "0.3.0", default-features = false }
 
 # git
 git-version = "0.3.5"
-gix = { version="0.47.0", features = ["blocking-http-transport-reqwest-rust-tls", "pack-cache-lru-static"] }
+gix = { git = "https://github.com/BloopAI/gitoxide", version="0.55.2", features = ["blocking-http-transport-reqwest-rust-tls-no-trust-dns", "pack-cache-lru-static"] }
 
 # semantic
 rake = "0.1"
-ndarray = "0.15"
 qdrant-client = { version = "1.5.0", default-features = false }
 tiktoken-rs = "0.4.5"
 tokenizers = { version = "0.14.0", default-features = false, features = ["progressbar", "cli", "onig", "esaxx_fast"] }
-ort = { git = "https://github.com/bloopai/ort", branch = "env-builder-telemetry" }
 
 # answer parsing
 # We use the git version here, so that we can pull in recent changes that make footnotes work. The

@@ -1,7 +1,7 @@
 use std::{
     ops::Not,
     sync::Arc,
-    time::{Duration, SystemTime, UNIX_EPOCH},
+    time::{Duration, SystemTime},
 };
 
 use anyhow::Context;
@@ -51,7 +51,7 @@ async fn sleep_systime(duration: Duration) {
     let start = SystemTime::now();
 
     loop {
-        tokio::time::sleep(Duration::from_secs(2)).await;
+        tokio::time::sleep(Duration::from_secs(1)).await;
         let Ok(elapsed) = start.elapsed() else {
             // There was a drift in system time probably because of
             // sleep.
@@ -64,77 +64,33 @@ async fn sleep_systime(duration: Duration) {
 }
 
 pub(crate) async fn sync_github_status(app: Application) {
-    const POLL_PERIOD: Duration = POLL_INTERVAL_MINUTE[1];
-    const LIVENESS: Duration = Duration::from_secs(1);
-
-    let timeout = || async {
-        sleep_systime(LIVENESS).await;
-    };
-
-    let timeout_or_update = |last_poll: SystemTime, handle: flume::Receiver<()>| async move {
-        loop {
-            tokio::select! {
-                _ = sleep_systime(POLL_PERIOD) => {
-                    debug!("timeout expired; refreshing repositories");
-                    return SystemTime::now();
-                },
-                result = handle.recv_async() => {
-                    let now = SystemTime::now();
-                    let elapsed = now.duration_since(last_poll);
-                    match (elapsed, result) {
-                        (Ok(elapsed),Ok( _)) if elapsed > POLL_PERIOD => {
-                            debug!("github credentials changed; refreshing repositories");
-                            return now;
-                        }
-                        (Ok(_), Ok(_)) => {
-                            continue;
-                        }
-                        (_, Err(flume::RecvError::Disconnected)) => {
-                            return SystemTime::now();
-                        }
-                        (Err(_), _) => {
-                            return SystemTime::now();
-                        }
-                    };
-                }
-            }
-        }
-    };
+    const POLL_PERIOD: Duration = POLL_INTERVAL_MINUTE[0];
 
     // In case this is a GitHub App installation, we get the
     // credentials from CLI/config
-    update_credentials(&app).await;
-
-    let mut last_poll = UNIX_EPOCH;
     loop {
-        let Some(github) = app.credentials.github() else {
-            timeout().await;
-            continue;
-        };
-        debug!("credentials exist");
-
-        let Ok(repos) = github.current_repo_list().await else {
-            timeout().await;
-            continue;
-        };
-        debug!("repo list updated");
-
-        let updated = match app.credentials.github_updated() {
-            Some(receiver) => receiver,
-            // This is a race condition, let's need to start from scratch.
-            None => continue,
-        };
-        let new = github.update_repositories(repos);
-
-        // store the updated credentials here
-        app.credentials.set_github(new);
-
         // then retrieve username & other maintenance
         update_credentials(&app).await;
+        update_repo_list(&app).await;
+        sleep_systime(POLL_PERIOD).await;
+    }
+}
 
-        // swallow the event that's generated from this update
-        _ = updated.recv_async().await;
-        last_poll = timeout_or_update(last_poll, updated).await;
+pub(crate) async fn update_repo_list(app: &Application) {
+    if let Some(gh) = app.credentials.github() {
+        let repos = match gh.current_repo_list().await {
+            Ok(repos) => {
+                debug!("fetched new repo list");
+                repos
+            }
+            Err(err) => {
+                debug!(?err, "failed to update repo list");
+                return;
+            }
+        };
+
+        let new = gh.update_repositories(repos);
+        app.credentials.set_github(new);
     }
 }
 
@@ -143,7 +99,7 @@ struct RefreshedAccessToken {
     access_token: String,
 }
 
-async fn update_credentials(app: &Application) {
+pub(crate) async fn update_credentials(app: &Application) {
     if app.env.allow(Feature::CloudUserAuth) {
         match app.credentials.github().and_then(|c| c.expiry()) {
             // If we have a valid token, do nothing.
@@ -164,7 +120,7 @@ async fn update_credentials(app: &Application) {
     if app.env.allow(Feature::DesktopUserAuth) {
         let Some(github::State {
             auth: github::Auth::OAuth(ref creds),
-            ..
+            repositories,
         }) = app.credentials.github()
         else {
             return;
@@ -181,29 +137,31 @@ async fn update_credentials(app: &Application) {
             }
         };
 
-        if rotate_access_key {
-            let query_url = format!(
-                "{url_base}/refresh_token?refresh_token={token}",
-                url_base = app
-                    .config
-                    .cognito_mgmt_url
-                    .as_ref()
-                    .expect("auth not configured"),
-                token = creds.refresh_token
-            );
+        if !rotate_access_key {
+            return;
+        }
 
-            let response = match reqwest::get(&query_url).await {
-                Ok(res) => res.text().await,
-                Err(err) => {
-                    warn!(?err, "refreshing bloop token failed");
-                    return;
-                }
+        let query_url = format!(
+            "{url_base}/refresh_token?refresh_token={token}",
+            url_base = app
+                .config
+                .cognito_mgmt_url
+                .as_ref()
+                .expect("auth not configured"),
+            token = creds.refresh_token
+        );
+
+        let response = match reqwest::get(&query_url).await {
+            Ok(res) => res.text().await,
+            Err(err) => {
+                warn!(?err, "refreshing bloop token failed");
+                return;
             }
-            .context("body");
+        }
+        .context("body");
 
-            let tokens: RefreshedAccessToken = match response
-                .and_then(|r| serde_json::from_str(&r).context(format!("json: {r}")))
-            {
+        let tokens: RefreshedAccessToken =
+            match response.and_then(|r| serde_json::from_str(&r).context(format!("json: {r}"))) {
                 Ok(tokens) => tokens,
                 Err(err) => {
                     // This is sort-of a wild assumption here, BUT hear me out.
@@ -237,38 +195,42 @@ async fn update_credentials(app: &Application) {
                 }
             };
 
-            app.credentials
-                .set_github(github::State::with_auth(Auth::OAuth(
-                    CognitoGithubTokenBundle {
-                        access_token: tokens.access_token,
-                        refresh_token: creds.refresh_token.clone(),
-                        github_access_token: creds.github_access_token.clone(),
-                    },
-                )));
+        app.credentials.set_github(github::State {
+            repositories,
+            auth: Auth::OAuth(CognitoGithubTokenBundle {
+                access_token: tokens.access_token,
+                refresh_token: creds.refresh_token.clone(),
+                github_access_token: creds.github_access_token.clone(),
+            }),
+        });
 
-            app.credentials.store().unwrap();
-            info!("new bloop access keys saved");
-        }
+        app.credentials.store().unwrap();
+        info!("new bloop access keys saved");
 
-        let github_expired = if let Some(github) = app.credentials.github() {
-            let username = github.validate().await;
-            if let Ok(Some(ref user)) = username {
-                debug!(?user, "updated user");
-                app.credentials.set_user(user.into()).await;
-                if let Err(err) = app.credentials.store() {
-                    error!(?err, "failed to save user credentials");
-                }
+        validate_github_credentials(app).await;
+    }
+}
+
+pub(crate) async fn validate_github_credentials(app: &Application) {
+    let github_expired = if let Some(github) = app.credentials.github() {
+        let username = github.validate().await;
+        if let Ok(Some(ref user)) = username {
+            debug!(?user, "updated user");
+            app.credentials.set_user(user.into()).await;
+            if let Err(err) = app.credentials.store() {
+                error!(?err, "failed to save user credentials");
             }
-
-            username.is_err()
-        } else {
-            true
-        };
-
-        if github_expired && app.credentials.remove(&Backend::Github).is_some() {
-            app.credentials.store().unwrap();
-            debug!("github oauth is invalid; credentials removed");
         }
+
+        username.is_err()
+    } else {
+        error!("failed to create github client?");
+        true
+    };
+
+    if github_expired && app.credentials.remove(&Backend::Github).is_some() {
+        app.credentials.store().unwrap();
+        debug!("github oauth is invalid; credentials removed");
     }
 }
 
@@ -350,17 +312,10 @@ async fn periodic_repo_poll(app: Application, reporef: RepoRef) -> Option<()> {
             )
         }
 
-        let timeout = sleep_systime(poller.jittery_interval());
-        tokio::select!(
-            _ = timeout => {
-                debug!(?reporef, "reindexing");
-                continue;
-            },
-            _ = poller.git_change() => {
-                debug!(?reporef, "git changes triggered reindexing");
-                continue;
-            }
-        );
+        match tokio::time::timeout(poller.jittery_interval(), poller.git_change()).await {
+            Ok(_) => debug!(?reporef, "git changes triggered reindexing"),
+            Err(_) => debug!(?reporef, "timeout; reindexing"),
+        }
     }
 }
 
@@ -445,7 +400,7 @@ impl Poller {
     }
 }
 
-fn check_repo(app: &Application, reporef: &RepoRef) -> Option<(u64, SyncStatus)> {
+fn check_repo(app: &Application, reporef: &RepoRef) -> Option<(i64, SyncStatus)> {
     app.repo_pool.read(reporef, |_, repo| {
         (repo.last_commit_unix_secs, repo.sync_status.clone())
     })

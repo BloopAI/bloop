@@ -1,4 +1,3 @@
-use secrecy::ExposeSecret;
 use std::{panic::AssertUnwindSafe, time::Duration};
 
 use anyhow::{anyhow, Context, Result};
@@ -13,7 +12,7 @@ use axum::{
 use futures::{future::Either, stream, StreamExt};
 use reqwest::StatusCode;
 use serde_json::json;
-use tracing::{error, warn};
+use tracing::{debug, error, info, warn};
 
 use self::conversations::ConversationId;
 
@@ -26,7 +25,6 @@ use crate::{
     },
     analytics::{EventData, QueryEvent},
     db::QueryLog,
-    llm_gateway,
     query::parser::{self, Literal},
     repo::RepoRef,
     Application,
@@ -93,11 +91,12 @@ pub(super) async fn answer(
     Extension(app): Extension<Application>,
     Extension(user): Extension<User>,
 ) -> super::Result<impl IntoResponse> {
+    info!(?params.q, "handling /answer query");
     let query_id = uuid::Uuid::new_v4();
 
     let conversation_id = ConversationId {
         user_id: user
-            .login()
+            .username()
             .ok_or_else(|| super::Error::user("didn't have user ID"))?
             .to_string(),
         thread_id: params.thread_id,
@@ -136,6 +135,8 @@ pub(super) async fn answer(
         .context("user query was not plain text")?
         .clone()
         .into_owned();
+
+    debug!(?query_target, "parsed query target");
 
     let action = Action::Query(query_target);
     exchanges.push(Exchange::new(query_id, query));
@@ -207,14 +208,10 @@ async fn try_execute_agent(
 > {
     QueryLog::new(&app.sql).insert(&params.q).await?;
 
-    let answer_api_token = app
-        .answer_api_token()
-        .map_err(|e| super::Error::user(e).with_status(StatusCode::UNAUTHORIZED))?
-        .map(|s| s.expose_secret().clone());
-
-    let llm_gateway = llm_gateway::Client::new(&app.config.answer_api_url)
+    let llm_gateway = user
+        .llm_gateway(&app)
+        .await?
         .temperature(0.0)
-        .bearer(answer_api_token)
         .session_reference_id(conversation_id.to_string());
 
     // confirm client compatibility with answer-api
@@ -400,7 +397,7 @@ pub async fn explain(
     let conversation_id = ConversationId {
         thread_id: params.thread_id,
         user_id: user
-            .login()
+            .username()
             .ok_or_else(|| super::Error::user("didn't have user ID"))?
             .to_string(),
     };

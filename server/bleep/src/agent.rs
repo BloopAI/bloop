@@ -99,14 +99,21 @@ impl Drop for Agent {
         match self.exchange_state {
             ExchangeState::Failed => {}
             ExchangeState::Pending => {
-                self.last_exchange_mut().apply_update(Update::Cancel);
+                if std::thread::panicking() {
+                    self.track_query(
+                        EventData::output_stage("cancelled")
+                            .with_payload("message", "request panicked"),
+                    );
+                } else {
+                    self.last_exchange_mut().apply_update(Update::Cancel);
 
-                self.track_query(
-                    EventData::output_stage("cancelled")
-                        .with_payload("message", "request was cancelled"),
-                );
+                    self.track_query(
+                        EventData::output_stage("cancelled")
+                            .with_payload("message", "request was cancelled"),
+                    );
 
-                tokio::spawn(self.store());
+                    tokio::spawn(self.store());
+                }
             }
 
             ExchangeState::Complete => {
@@ -221,7 +228,7 @@ impl Agent {
             Action::Proc { query, paths } => self.process_files(query, paths).await?,
         };
 
-        if self.exchanges.len() >= MAX_STEPS {
+        if self.last_exchange().search_steps.len() >= MAX_STEPS {
             return Ok(Some(Action::Answer {
                 paths: self.paths().enumerate().map(|(i, _)| i).collect(),
             }));
@@ -241,15 +248,19 @@ impl Agent {
 
         let raw_response = self
             .llm_gateway
-            .chat_stream(
-                &trim_history(history.clone(), self.model)?,
-                Some(&functions),
-            )
+            .chat_stream(&trimmed_history, Some(&functions))
             .await?
             .try_fold(
                 llm_gateway::api::FunctionCall::default(),
                 |acc, e| async move {
-                    let e: FunctionCall = serde_json::from_str(&e)?;
+                    let e: FunctionCall = serde_json::from_str(&e).map_err(|err| {
+                        tracing::error!(
+                            "Failed to deserialize to FunctionCall: {:?}. Error: {:?}",
+                            e,
+                            err
+                        );
+                        err
+                    })?;
                     Ok(FunctionCall {
                         name: acc.name.or(e.name),
                         arguments: acc.arguments + &e.arguments,
@@ -265,7 +276,8 @@ impl Agent {
                 .with_payload("trimmed_history", &trimmed_history)
                 .with_payload("last_message", history.last())
                 .with_payload("functions", &functions)
-                .with_payload("raw_response", &raw_response),
+                .with_payload("raw_response", &raw_response)
+                .with_payload("model", &self.llm_gateway.model),
         );
 
         let action =
@@ -439,7 +451,7 @@ impl Agent {
         let conversation = (self.repo_ref.clone(), self.exchanges.clone());
         let conversation_id = self
             .user
-            .login()
+            .username()
             .context("didn't have user ID")
             .map(|user_id| ConversationId {
                 thread_id: self.thread_id,

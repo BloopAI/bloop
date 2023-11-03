@@ -24,7 +24,7 @@ jobs:
 
         include:	
           - target: x86_64-unknown-linux-gnu	
-            os: ubuntu-latest
+            os: ubuntu-20.04
             cross: false
 
           - target: x86_64-apple-darwin	
@@ -54,7 +54,7 @@ jobs:
 
       - name: Build qdrant	
         env:	
-          VERSION: 1.6.0
+          VERSION: 1.6.1
         run: |	
           cargo install --target ${{ matrix.target }} --git https://github.com/qdrant/qdrant --tag v${{ env.VERSION }} --root . qdrant	
       - name: Upload binaries	

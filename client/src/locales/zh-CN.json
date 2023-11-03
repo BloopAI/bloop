@@ -400,5 +400,9 @@
 	"You've upgraded your account!": "您已经升级了您的帐户！",
 	"Unlimited usage and premium features are activated.": "无限用法和高级功能被激活。",
 	"Token limit reached, this answer may be incomplete. To generate a full answer, please reduce the number of tokens used and regenerate.": "达到令牌限制，此答案可能不完整。 要产生完整的答案，请减少使用和再生的代币数量。",
+	"<0></0><1></1> to navigate.": "<0> </0> <1> </1>导航。",
+	"Below are a few questions you can ask me to get started:": "以下是您可以要求我开始的几个问题：",
+	"Check context files for any errors": "检查上下文文件是否有任何错误",
+	"Token limit reached, this answer may be incomplete. To generate a full answer, please reduce the number of tokens used and regenerate.": "达到令牌限制，此答案可能不完整。 要产生完整的答案，请减少使用和再生的代币数量。",
 	"Let’s get you started with bloop!": "让我们开始开始Bloop！"
 }
