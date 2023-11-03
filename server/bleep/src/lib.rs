@@ -255,6 +255,12 @@ impl Application {
             warn!("Failed to install tracing_subscriber. There's probably one already...");
         };
 
+        let hook = std::panic::take_hook();
+        std::panic::set_hook(Box::new(move |info| {
+            tracing::error!("panic occurred: {info}");
+            hook(info);
+        }));
+
         LOGGER_INSTALLED.set(true).unwrap();
     }
 
