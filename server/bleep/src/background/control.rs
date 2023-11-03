@@ -12,7 +12,7 @@ use crate::repo::{FilterUpdate, RepoRef, SyncStatus};
 
 use super::{Progress, ProgressEvent};
 
-const GIT_REPORT_DELAY: Duration = Duration::from_secs(5);
+const GIT_REPORT_DELAY: Duration = Duration::from_secs(0);
 
 enum ControlEvent {
     /// Cancel whatever's happening, and return
@@ -224,15 +224,23 @@ impl gix::progress::NestedProgress for GitSync {
     type SubProgress = Self;
 
     fn add_child(&mut self, name: impl Into<String>) -> Self::SubProgress {
+        let name = name.into();
+        let progress = if name == "read pack" {
+            self.progress.clone()
+        } else {
+            let (sender, _) = tokio::sync::broadcast::channel(1000);
+            sender
+        };
+
         GitSync {
             created: self.created,
             max: self.max.clone(),
             cnt: self.cnt.clone(),
-            progress: self.progress.clone(),
             id: self.id,
             filter_updates: self.filter_updates.clone(),
             reporef: self.reporef.clone(),
-            name: name.into(),
+            progress,
+            name,
         }
     }
 
@@ -241,14 +249,22 @@ impl gix::progress::NestedProgress for GitSync {
         name: impl Into<String>,
         id: gix::progress::Id,
     ) -> Self::SubProgress {
+        let name = name.into();
+        let progress = if name == "read pack" {
+            self.progress.clone()
+        } else {
+            let (sender, _) = tokio::sync::broadcast::channel(1000);
+            sender
+        };
+
         GitSync {
             created: self.created,
             max: self.max.clone(),
             cnt: self.cnt.clone(),
-            progress: self.progress.clone(),
             filter_updates: self.filter_updates.clone(),
             reporef: self.reporef.clone(),
-            name: name.into(),
+            progress,
+            name,
             id,
         }
     }

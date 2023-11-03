@@ -178,8 +178,7 @@ impl SyncHandle {
                 Err(err) => {
                     self.set_status(|_| SyncStatus::Error {
                         message: err.to_string(),
-                    })
-                    .unwrap();
+                    });
                     return Err(err);
                 }
             }
