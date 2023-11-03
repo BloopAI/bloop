@@ -12,7 +12,7 @@ use crate::repo::{FilterUpdate, RepoRef, SyncStatus};
 
 use super::{Progress, ProgressEvent};
 
-const GIT_REPORT_DELAY: Duration = Duration::from_secs(0);
+const GIT_REPORT_DELAY: Duration = Duration::from_secs(3);
 
 enum ControlEvent {
     /// Cancel whatever's happening, and return
@@ -64,7 +64,7 @@ impl SyncPipes {
 
         GitSync {
             created: Instant::now(),
-            max: Arc::new(0.into()),
+            max: Arc::new(usize::MAX.into()),
             cnt: Arc::new(0.into()),
             id: Default::default(),
             name: Default::default(),
