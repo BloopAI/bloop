@@ -2,7 +2,7 @@ use once_cell::sync::OnceCell;
 use rayon::ThreadPool;
 use thread_priority::ThreadBuilderExt;
 use tokio::sync::Semaphore;
-use tracing::{debug, info};
+use tracing::{debug, error, info};
 
 use crate::{
     repo::{BranchFilterConfig, RepoRef, SyncStatus},
@@ -175,7 +175,11 @@ impl SyncQueue {
                                 let result = next.run(permit).await;
                                 _ = active.remove(&next.reporef);
 
-                                debug!(?result, "sync finished");
+                                if result.is_ok() {
+                                    debug!(?result, "sync finished");
+                                } else {
+                                    error!(?result, "sync finished");
+                                }
                             });
                         }
                         Err((_, next)) => {
