@@ -130,7 +130,7 @@ impl From<(&RepoRef, &Repository)> for Repo {
             provider: key.backend(),
             name: key.display_name(),
             repo_ref: key.clone(),
-            sync_status: repo.sync_status.clone(),
+            sync_status: repo.pub_sync_status.clone(),
             local_duplicates: vec![],
             last_update: NaiveDateTime::from_timestamp_opt(repo.last_commit_unix_secs, 0)
                 .unwrap()
@@ -230,10 +230,10 @@ pub(super) async fn index_status(Extension(app): Extension<Application>) -> impl
     let mut receiver = app.sync_queue.subscribe();
 
     Sse::new(async_stream::stream! {
-        while let Ok(event) = receiver.recv().await {
-            yield sse::Event::default().json_data(event).map_err(|err| {
-                <_ as Into<Box<dyn std::error::Error + Send + Sync>>>::into(err)
-            });
+        loop {
+            if let Ok(event) = receiver.recv().await {
+                yield sse::Event::default().json_data(event).map_err(Box::new);
+            }
         }
     })
     .keep_alive(
@@ -492,9 +492,11 @@ mod test {
                     sync_status: SyncStatus::Done,
                     last_commit_unix_secs: 123456,
                     last_index_unix_secs: 123456,
-                    most_common_lang: None,
+                    most_common_lang: Default::default(),
                     branch_filter: Default::default(),
                     file_filter: Default::default(),
+                    pub_sync_status: Default::default(),
+                    locked: Default::default(),
                 },
             )
             .unwrap();
@@ -511,9 +513,11 @@ mod test {
                     sync_status: SyncStatus::Done,
                     last_commit_unix_secs: 123456,
                     last_index_unix_secs: 123456,
-                    most_common_lang: None,
+                    most_common_lang: Default::default(),
                     branch_filter: Default::default(),
                     file_filter: Default::default(),
+                    pub_sync_status: Default::default(),
+                    locked: Default::default(),
                 },
             )
             .unwrap();
@@ -532,9 +536,11 @@ mod test {
                     sync_status: SyncStatus::Uninitialized,
                     last_commit_unix_secs: 123456,
                     last_index_unix_secs: 0,
-                    most_common_lang: None,
+                    most_common_lang: Default::default(),
                     branch_filter: Default::default(),
                     file_filter: Default::default(),
+                    pub_sync_status: Default::default(),
+                    locked: Default::default(),
                 },
             )
                 .into(),
@@ -552,9 +558,11 @@ mod test {
                 sync_status: SyncStatus::Uninitialized,
                 last_commit_unix_secs: 123456,
                 last_index_unix_secs: 0,
-                most_common_lang: None,
+                most_common_lang: Default::default(),
                 branch_filter: Default::default(),
                 file_filter: Default::default(),
+                pub_sync_status: Default::default(),
+                locked: Default::default(),
             },
         )
             .into();

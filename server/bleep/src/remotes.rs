@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use tracing::{error, warn};
 
 use crate::{
+    background::{SyncHandle, SyncPipes},
     remotes,
     repo::{Backend, RepoError, RepoRef, Repository, SyncStatus},
     Application,
@@ -91,6 +92,9 @@ pub(crate) enum RemoteError {
 
     #[error("git clone fetch: {0:?}")]
     GitCloneFetch(#[from] gix::clone::fetch::Error),
+
+    #[error("interrupted")]
+    Interrupted,
 }
 
 impl From<&RemoteError> for SyncStatus {
@@ -128,9 +132,18 @@ macro_rules! creds_callback(($auth:ident) => {{
     }
 }});
 
-async fn git_clone(auth: Option<GitCreds>, url: &str, target: &Path) -> Result<()> {
+async fn git_clone(
+    auth: &Option<GitCreds>,
+    url: &str,
+    target: &Path,
+    pipes: &SyncPipes,
+) -> Result<()> {
     let url = url.to_owned();
     let target = target.to_owned();
+    let auth = auth.clone();
+
+    let git_status = pipes.git_sync_progress();
+    let interrupt = pipes.is_interrupted();
 
     tokio::task::spawn_blocking(move || {
         let mut clone = {
@@ -144,16 +157,20 @@ async fn git_clone(auth: Option<GitCreds>, url: &str, target: &Path) -> Result<(
             }
         };
 
-        let (_repo, _outcome) = clone.fetch_only(gix::progress::Discard, &false.into())?;
+        let (_repo, _outcome) = clone.fetch_only(git_status, &interrupt)?;
         Ok(())
     })
     .await?
 }
 
-async fn git_pull(auth: Option<GitCreds>, repo: &Repository) -> Result<()> {
+async fn git_pull(auth: &Option<GitCreds>, repo: &Repository, pipes: &SyncPipes) -> Result<()> {
     use gix::remote::Direction;
 
+    let auth = auth.clone();
     let disk_path = repo.disk_path.to_owned();
+
+    let interrupt = pipes.is_interrupted();
+
     tokio::task::spawn_blocking(move || {
         let repo = gix::open(disk_path)?;
         let remote = repo
@@ -170,7 +187,7 @@ async fn git_pull(auth: Option<GitCreds>, repo: &Repository) -> Result<()> {
 
         connection
             .prepare_fetch(gix::progress::Discard, Default::default())?
-            .receive(gix::progress::Discard, &false.into())?;
+            .receive(gix::progress::Discard, &interrupt)?;
 
         Ok(())
     })
@@ -337,31 +354,54 @@ pub(crate) enum BackendCredential {
 }
 
 impl BackendCredential {
-    #[tracing::instrument(fields(repo=%reporef), skip_all)]
-    pub(crate) async fn git_sync(&self, reporef: &RepoRef, repo: Repository) -> Result<SyncStatus> {
+    #[tracing::instrument(fields(repo=%handle.reporef), skip_all)]
+    pub(crate) async fn clone_or_pull(
+        &self,
+        handle: &SyncHandle,
+        repo: Repository,
+    ) -> Result<SyncStatus> {
         use BackendCredential::*;
         let Github(gh) = self;
+
+        let creds = gh.auth.creds(&repo).await?;
+        let clone = || async {
+            handle.set_status(|_| SyncStatus::Syncing);
+            git_clone(
+                &creds,
+                &repo.remote.to_string(),
+                &repo.disk_path,
+                &handle.pipes,
+            )
+            .await
+        };
+        let pull = || async { git_pull(&creds, &repo, &handle.pipes).await };
 
         let synced = if repo.last_index_unix_secs == 0 && repo.disk_path.exists() {
             // it is possible syncing was killed, but the repo is
             // intact. pull if the dir exists, then quietly revert
             // to cloning if that fails
-            if let Ok(success) = gh.auth.pull_repo(&repo).await {
-                Ok(success)
-            } else {
-                gh.auth.clone_repo(&repo).await
+            match pull().await {
+                Ok(success) => Ok(success),
+                Err(_) if handle.pipes.is_cancelled() => Err(RemoteError::Interrupted),
+                Err(_) => clone().await,
             }
         } else if repo.last_index_unix_secs == 0 {
-            gh.auth.clone_repo(&repo).await
+            clone().await
         } else {
-            let pulled = gh.auth.pull_repo(&repo).await;
-            if pulled.is_err() {
-                gh.auth.clone_repo(&repo).await
+            let pulled = pull().await;
+            if pulled.is_err() && !handle.pipes.is_cancelled() {
+                clone().await
             } else {
                 pulled
             }
         };
 
-        synced.map(|_| SyncStatus::Queued)
+        synced.map(|_| SyncStatus::Queued).map_err(|e| {
+            if handle.pipes.is_cancelled() {
+                RemoteError::Interrupted
+            } else {
+                e
+            }
+        })
     }
 }
