@@ -161,6 +161,7 @@ jobs:
           token: ${{ secrets.SENTRY_AUTH_TOKEN }}
           organization: ${{ secrets.SENTRY_ORG }}
           project: ${{ secrets.SENTRY_PROJECT }}
+          version: 2.21.2
 
       - name: Create Sentry release
         run: |
