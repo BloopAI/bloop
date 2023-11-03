@@ -366,9 +366,7 @@ impl SyncHandle {
                     | err @ RemoteError::GitConnect(_)
                     | err @ RemoteError::GitFindRemote(_),
                 ) => {
-                    if repo.disk_path.exists() {
-                        _ = tokio::fs::remove_dir_all(&repo.disk_path).await;
-                    }
+                    _ = repo.remove_all().await;
 
                     if loop_counter == loop_max {
                         break err;
@@ -392,9 +390,7 @@ impl SyncHandle {
                     return Ok(SyncStatus::Done);
                 }
                 Err(RemoteError::Interrupted) if self.pipes.is_removed() => {
-                    if repo.disk_path.exists() {
-                        _ = tokio::fs::remove_dir_all(&repo.disk_path).await;
-                    }
+                    _ = repo.remove_all().await;
                     return Ok(SyncStatus::Removed);
                 }
                 Err(RemoteError::Interrupted) if self.pipes.is_cancelled() => {
@@ -436,7 +432,7 @@ impl SyncHandle {
             .map_err(SyncError::Sql)?;
 
         if !self.reporef.is_local() {
-            tokio::fs::remove_dir_all(&repo.disk_path)
+            repo.remove_all()
                 .await
                 .map_err(|e| SyncError::RemoveLocal(repo.disk_path.clone(), e))?;
         }

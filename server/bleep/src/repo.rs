@@ -268,6 +268,15 @@ impl Repository {
         }
     }
 
+    /// Delete the on-disk data for this repository asynchronously.
+    pub async fn remove_all(&self) -> Result<(), std::io::Error> {
+        if self.disk_path.exists() {
+            tokio::fs::remove_dir_all(&self.disk_path).await
+        } else {
+            Ok(())
+        }
+    }
+
     /// Pre-scan the repository to provide supporting metadata for a
     /// new indexing operation
     pub async fn get_repo_metadata(&self) -> Arc<RepoMetadata> {
