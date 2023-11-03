@@ -201,7 +201,7 @@ impl gix::progress::Count for GitSync {
             let current = if max > 10000 {
                 ((current as f32 / (max * 4 * 1024) as f32) * 100f32) as u8
             } else {
-                ((current as f32 / (max) as f32) * 100f32) as u8
+                0
             };
 
             _ = self.progress.send(Progress {
