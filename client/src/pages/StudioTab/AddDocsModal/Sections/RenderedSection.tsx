@@ -4,7 +4,7 @@ import { highlightCode } from '../../../../utils/prism';
 import { DeviceContext } from '../../../../context/deviceContext';
 
 const md = new Remarkable({
-  html: true,
+  html: false,
   highlight(str: string, lang: string): string {
     try {
       return highlightCode(str, lang);
