@@ -178,7 +178,7 @@ impl SyncQueue {
                                 if result.is_ok() {
                                     debug!(?result, "sync finished");
                                 } else {
-                                    error!(?result, "sync finished");
+                                    error!(?result, "sync failed");
                                 }
                             });
                         }
