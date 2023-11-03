@@ -198,6 +198,18 @@ impl gix::progress::Count for GitSync {
             let max = self.max.load(Ordering::SeqCst);
             let current = self.cnt.load(Ordering::SeqCst);
 
+            // This logic is super arbitrary. If the `max` is larger
+            // than 10000, we assume that it's a meaningful value. At
+            // the beginning of the syncing process `gix` sometimes
+            // reports some smaller values that cause a false `0%`
+            // progress to make it to the frontend.
+            //
+            // The magic constant 4 * 1024 was experientially
+            // determined to roughly align with the scale of data git
+            // ends up receiving from the server.
+            //
+            // Feel free to change anything as long as it looks good
+            // on the frontend.
             let current = if max > 10000 {
                 ((current as f32 / (max * 4 * 1024) as f32) * 100f32) as u8
             } else {
