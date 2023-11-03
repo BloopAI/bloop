@@ -134,8 +134,9 @@ impl Application {
         let threads = config.max_threads;
 
         // 3MiB buffer size is minimum for Tantivy
-        config.buffer_size = config.buffer_size.max(threads * 3_000_000);
-        config.repo_buffer_size = config.repo_buffer_size.max(threads * 3_000_000);
+        config.buffer_size = config.buffer_size.max(threads * 15_000_000);
+        config.repo_buffer_size = config.repo_buffer_size.max(threads * 15_000_000);
+
         config.source.set_default_dir(&config.index_dir);
 
         // Finalize config
