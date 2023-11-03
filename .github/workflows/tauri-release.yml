@@ -112,6 +112,10 @@ jobs:
           field: tauri.bundle.macOS.signingIdentity
           value: ${{ secrets.APPLE_SIGNING_IDENTITY }}
 
+      - name: Create Signing API Key
+        if: matrix.name == 'macos-11'
+        run: echo "${{ secrets.APPLE_API_KEY_CONTENT }}" > apiKey.p8
+
       - name: Remove onnxruntime from aarch64-apple-darwin builds
         if: matrix.target == 'aarch64-apple-darwin'
         uses: jossef/action-set-json-field@v2.1
@@ -133,9 +137,9 @@ jobs:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_PATH: /Users/runner/work/bloop/bloop/apiKey.p8
           TAURI_BIN_PATH: apps/desktop/src-tauri/bin
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
@@ -157,6 +161,7 @@ jobs:
           token: ${{ secrets.SENTRY_AUTH_TOKEN }}
           organization: ${{ secrets.SENTRY_ORG }}
           project: ${{ secrets.SENTRY_PROJECT }}
+          version: 2.21.2
 
       - name: Create Sentry release
         run: |
