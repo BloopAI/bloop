@@ -33,7 +33,8 @@ const ARTICLE_BODY_ATTR: &[(&str, &str); 3] = &[
     ("data-testid", "article-body"),
     ("name", "articleBody"),
 ];
-const BAD_NODE_NAMES: &[&str; 8] = &[
+const BAD_NODE_NAMES: &[&str; 9] = &[
+    "nav",
     "script",
     "style",
     "figcaption",
@@ -380,7 +381,9 @@ impl ArticleBuilder {
                 USER_AGENT,
                 self.browser_user_agent
                     .map(|x| x.parse())
-                    .unwrap_or_else(|| "bloop-doc-scraper".parse())
+                    .unwrap_or_else(|| {
+                        format!("bloop/{} bloop-doc-scraper", env!("CARGO_PKG_VERSION")).parse()
+                    })
                     .context("Failed to parse user agent header.")?,
             );
 
@@ -392,22 +395,6 @@ impl ArticleBuilder {
 
         let client = builder.build()?;
         let resp = client.get(url).send().await?;
-
-        // follow redirects upto 1 time
-        // match resp.status() {
-        //     StatusCode::MOVED_PERMANENTLY
-        //     | StatusCode::FOUND
-        //     | StatusCode::TEMPORARY_REDIRECT
-        //     | StatusCode::PERMANENT_REDIRECT => {
-        //         let new_location = resp
-        //             .headers()
-        //             .get(LOCATION)
-        //             .ok_or(anyhow::anyhow!("failed to follow redirect"))?
-        //             .to_str()?;
-        //         resp = client.get(dbg!(new_location)).send().await?;
-        //     }
-        //     _ => {}
-        // }
 
         if !resp.status().is_success() {
             return Err(anyhow::anyhow!(
@@ -480,7 +467,13 @@ trait DocumentCleaner {
                             txt.push('#');
                         }
                         txt.push(' ');
-                        txt.push_str(&child.text());
+                        txt.push_str(
+                            &child
+                                .text()
+                                .chars()
+                                .filter(|c| c.is_ascii())
+                                .collect::<String>(),
+                        );
                         txt.push('\n');
                         txt_added |= true;
                     } else if child.is(pre()) {
@@ -510,15 +503,21 @@ trait DocumentCleaner {
                         txt_added |= true;
                     } else if child.is(link()) {
                         let link_text = child.text();
-                        let link_href = child.attr("href");
-                        if !link_text.trim().is_empty() {
-                            if let Some(href) = link_href {
-                                txt.push_str(&format!("[{}]({})", link_text.trim(), href));
-                            } else {
-                                txt.push_str(&link_text);
+
+                        // check if this link is an anchor link, typically used to share permalinks to headers
+                        if link_text.chars().count() == 1 {
+                            txt_added |= false
+                        } else {
+                            let link_href = child.attr("href");
+                            if !link_text.trim().is_empty() {
+                                if let Some(href) = link_href {
+                                    txt.push_str(&format!("[{}]({})", link_text.trim(), href));
+                                } else {
+                                    txt.push_str(&link_text);
+                                }
                             }
+                            txt_added |= true;
                         }
-                        txt_added |= true;
                     } else if child.is(code()) {
                         txt.push('`');
                         txt.push_str(&child.text());
@@ -527,6 +526,11 @@ trait DocumentCleaner {
                     } else if child.is(Name("td")) {
                         txt.push_str(&child.text());
                         txt.push(';');
+                        txt_added |= true;
+                    } else if child.is(list()) {
+                        txt.push('-');
+                        txt.push(' ');
+                        txt.push_str(&child.text());
                         txt_added |= true;
                     } else {
                         let mut a = String::new();
@@ -646,6 +650,10 @@ fn code() -> impl Predicate {
 
 fn link() -> impl Predicate {
     Name("a")
+}
+
+fn list() -> impl Predicate {
+    Name("li")
 }
 
 fn extract_language_classes(node: Node) -> impl Iterator<Item = String> + '_ {

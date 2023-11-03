@@ -21,14 +21,14 @@ impl<'a> Section<'a> {
 
     /// may not be idempotent
     pub fn ancestry_from_str(s: &str) -> Vec<&str> {
-        s.split(" > ").collect()
+        s.split(" > ").filter(|h| !h.is_empty()).collect()
     }
 }
 
 // - collect non-section child-nodes for the current node
 // - these form a single chunk to be embedded
 // - repeat above on every section child-node
-const MAX_DEPTH: usize = 4;
+const MAX_DEPTH: usize = 2;
 pub fn sectionize<'s, 'b>(
     start_node: &'b Node,
     sections: &'b mut Vec<Section<'s>>,

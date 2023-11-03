@@ -625,10 +625,10 @@ impl Doc {
     pub async fn list_sections(&self, limit: usize, id: i64) -> Result<Vec<SearchResult>, Error> {
         let reader = self.index_reader()?;
         let searcher = reader.searcher();
-        let doc_id_query = Box::new(dbg!(TermQuery::new(
+        let doc_id_query = Box::new(TermQuery::new(
             Term::from_field_i64(self.section_schema.doc_id, id),
             IndexRecordOption::Basic,
-        ))) as Box<dyn Query>;
+        )) as Box<dyn Query>;
         let collector = TopDocs::with_limit(limit);
         Ok(searcher
             .search(&doc_id_query, &collector)?
@@ -706,29 +706,30 @@ impl Doc {
     }
 
     pub async fn contains_page<S: AsRef<str>>(&self, id: i64, relative_url: S) -> bool {
-        false
-        // use std::ops::Not;
-        // self.semantic
-        //     .qdrant_client()
-        //     .scroll(&ScrollPoints {
-        //         collection_name: COLLECTION_NAME.into(),
-        //         limit: Some(1),
-        //         filter: Some(Filter {
-        //             must: vec![
-        //                 make_kv_int_filter("doc_id", id).into(),
-        //                 make_kv_keyword_filter("relative_url", relative_url.as_ref()).into(),
-        //             ],
-        //             ..Default::default()
-        //         }),
-        //         with_payload: Some(WithPayloadSelector {
-        //             selector_options: Some(with_payload_selector::SelectorOptions::Enable(true)),
-        //         }),
-        //         ..Default::default()
-        //     })
-        //     .await
-        //     .map(|v| v.result.is_empty())
-        //     .unwrap_or(true)
-        //     .not()
+        let Ok(reader) = self.index_reader() else {
+            return false;
+        };
+
+        let searcher = reader.searcher();
+        let doc_id_query = Box::new(TermQuery::new(
+            Term::from_field_i64(self.section_schema.doc_id, id),
+            IndexRecordOption::Basic,
+        )) as Box<dyn Query>;
+        let relative_url_query = Box::new(TermQuery::new(
+            Term::from_field_text(self.section_schema.relative_url, relative_url.as_ref()),
+            IndexRecordOption::Basic,
+        )) as Box<dyn Query>;
+        let query = Box::new(BooleanQuery::intersection(vec![
+            doc_id_query,
+            relative_url_query,
+        ])) as Box<dyn Query>;
+        let collector = TopDocs::with_limit(1);
+
+        let Ok(results) = searcher.search(&query, &collector) else {
+            return false;
+        };
+
+        !results.is_empty()
     }
 
     /// Scrape & insert a doc source into qdrant and return doc metadata if available
@@ -750,6 +751,7 @@ impl Doc {
                     discovered_count,
                     meta: doc.meta.clone(),
                 };
+                // println!("doc content: {:?}", doc.content);
                 yield progress;
                 let embedder = Arc::clone(&self.embedder);
                 let u = url.clone();
@@ -787,6 +789,9 @@ impl scraper::Document {
             &self.relative_url(url), // relative path
             embedder.tokenizer(),
         )
+        .inspect(|(section, _)| {
+            // println!("{}", section.data);
+        })
         .par_bridge()
         .map(|(section, _)| {
             let point_id = {
@@ -829,6 +834,7 @@ pub struct SearchResult {
     pub point_id: uuid::Uuid,
     pub doc_source: url::Url,
     pub relative_url: String,
+    pub absolute_url: url::Url,
     pub header: String,
     pub ancestry: Vec<String>,
     pub text: String,
@@ -840,6 +846,13 @@ impl SearchResult {
         doc: tantivy::schema::Document,
         schema: &SectionSchema,
     ) -> Option<Self> {
+        let doc_source = doc
+            .get_first(schema.doc_source)?
+            .as_text()?
+            .parse::<url::Url>()
+            .unwrap();
+        let relative_url = doc.get_first(schema.relative_url)?.as_text()?.to_owned();
+        let absolute_url = doc_source.join(&relative_url).unwrap();
         Some(SearchResult {
             doc_id: doc.get_first(schema.doc_id)?.as_i64()?,
             doc_title: doc
@@ -851,11 +864,7 @@ impl SearchResult {
                 .as_text()?
                 .parse::<uuid::Uuid>()
                 .unwrap(),
-            doc_source: doc
-                .get_first(schema.doc_source)?
-                .as_text()?
-                .parse::<url::Url>()
-                .unwrap(),
+            doc_source,
             ancestry: doc.get_first(schema.ancestry)?.as_text().map(|t| {
                 scraper::chunk::Section::ancestry_from_str(t)
                     .into_iter()
@@ -863,7 +872,8 @@ impl SearchResult {
                     .collect()
             })?,
             header: doc.get_first(schema.header)?.as_text()?.to_owned(),
-            relative_url: doc.get_first(schema.relative_url)?.as_text()?.to_owned(),
+            relative_url,
+            absolute_url,
             section_range: doc.get_first(schema.start_byte)?.as_u64()? as usize
                 ..doc.get_first(schema.end_byte)?.as_u64()? as usize,
             text: doc.get_first(schema.text)?.as_text()?.to_owned(),
@@ -919,6 +929,7 @@ pub struct PageResult {
     pub doc_description: Option<String>,
     pub doc_favicon: Option<String>,
     pub relative_url: String,
+    pub absolute_url: url::Url,
 }
 
 impl PageResult {
@@ -947,6 +958,13 @@ impl PageResult {
         doc: tantivy::schema::Document,
         schema: &SectionSchema,
     ) -> Option<Self> {
+        let doc_source = doc
+            .get_first(schema.doc_source)?
+            .as_text()?
+            .parse::<url::Url>()
+            .unwrap();
+        let relative_url = doc.get_first(schema.relative_url)?.as_text()?.to_owned();
+        let absolute_url = doc_source.join(&relative_url).unwrap();
         Some(PageResult {
             doc_id: doc.get_first(schema.doc_id)?.as_i64()?,
             doc_title: doc
@@ -961,12 +979,9 @@ impl PageResult {
                 .get_first(schema.doc_title)?
                 .as_text()
                 .map(ToOwned::to_owned),
-            doc_source: doc
-                .get_first(schema.doc_source)?
-                .as_text()?
-                .parse::<url::Url>()
-                .unwrap(),
-            relative_url: doc.get_first(schema.relative_url)?.as_text()?.to_owned(),
+            doc_source,
+            relative_url,
+            absolute_url,
         })
     }
 }
