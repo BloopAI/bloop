@@ -236,24 +236,7 @@ impl gix::progress::NestedProgress for GitSync {
     type SubProgress = Self;
 
     fn add_child(&mut self, name: impl Into<String>) -> Self::SubProgress {
-        let name = name.into();
-        let progress = if name == "read pack" {
-            self.progress.clone()
-        } else {
-            let (sender, _) = tokio::sync::broadcast::channel(1000);
-            sender
-        };
-
-        GitSync {
-            created: self.created,
-            max: self.max.clone(),
-            cnt: self.cnt.clone(),
-            id: self.id,
-            filter_updates: self.filter_updates.clone(),
-            reporef: self.reporef.clone(),
-            progress,
-            name,
-        }
+        self.add_child_with_id(name, self.id)
     }
 
     fn add_child_with_id(
