@@ -12,7 +12,7 @@ use crate::{
 use std::{future::Future, pin::Pin, sync::Arc, thread};
 
 mod sync;
-pub(crate) use sync::SyncHandle;
+pub(crate) use sync::{SyncConfig, SyncHandle};
 
 mod control;
 pub(crate) use control::SyncPipes;
@@ -65,7 +65,6 @@ pub struct BackgroundExecutor {
     sender: flume::Sender<Task>,
 }
 
-pub struct BoundSyncQueue(pub(crate) Application, pub(crate) SyncQueue);
 impl BackgroundExecutor {
     fn start(config: Arc<Configuration>) -> Self {
         let (sender, receiver) = flume::unbounded();
@@ -194,8 +193,8 @@ impl SyncQueue {
         instance
     }
 
-    pub fn bind(&self, app: Application) -> BoundSyncQueue {
-        BoundSyncQueue(app, self.clone())
+    pub fn broadcast(&self) -> tokio::sync::broadcast::Sender<Progress> {
+        self.progress.clone()
     }
 
     pub fn subscribe(&self) -> tokio::sync::broadcast::Receiver<Progress> {
@@ -240,23 +239,26 @@ pub(crate) enum QueueState {
     Queued,
 }
 
+pub struct BoundSyncQueue(pub(crate) Application);
 impl BoundSyncQueue {
     /// Enqueue repos for syncing with the current configuration.
     ///
     /// Skips any repositories in the list which are already queued or being synced.
     /// Returns the number of new repositories queued for syncing.
     pub(crate) async fn enqueue_sync(self, repositories: Vec<RepoRef>) -> usize {
-        let mut num_queued = 0;
+        let Self(app) = &self;
+        let jobs = &app.sync_queue;
 
+        let mut num_queued = 0;
         for reporef in repositories {
-            if self.1.queue.contains(&reporef).await || self.1.active.contains(&reporef) {
+            if jobs.queue.contains(&reporef).await || jobs.active.contains(&reporef) {
                 continue;
             }
 
             info!(%reporef, "queueing for sync");
-            let handle =
-                SyncHandle::new(self.0.clone(), reporef, self.1.progress.clone(), None).await;
-            self.1.queue.push(handle).await;
+            jobs.queue
+                .push(SyncConfig::new(app, reporef).into_handle().await)
+                .await;
             num_queued += 1;
         }
 
@@ -267,15 +269,21 @@ impl BoundSyncQueue {
     ///
     /// Returns the new status.
     pub(crate) async fn block_until_synced(self, reporef: RepoRef) -> anyhow::Result<SyncStatus> {
-        let handle = SyncHandle::new(self.0.clone(), reporef, self.1.progress.clone(), None).await;
+        let Self(app) = &self;
+        let jobs = &app.sync_queue;
+
+        let handle = SyncConfig::new(app, reporef).into_handle().await;
         let finished = handle.notify_done();
-        self.1.queue.push(handle).await;
+
+        jobs.queue.push(handle).await;
         Ok(finished.recv_async().await?)
     }
 
     pub(crate) async fn remove(self, reporef: RepoRef) -> Option<()> {
-        let active = self
-            .1
+        let Self(app) = &self;
+        let jobs = &app.sync_queue;
+
+        let active = jobs
             .active
             .update_async(&reporef, |_, v| {
                 v.pipes.remove();
@@ -285,23 +293,22 @@ impl BoundSyncQueue {
 
         if active.is_none() {
             // Re-queue to the front, so clean any currently queued refs
-            self.1.queue.remove(reporef.clone()).await;
-
-            self.0
-                .repo_pool
+            jobs.queue.remove(reporef.clone()).await;
+            app.repo_pool
                 .update_async(&reporef, |_k, v| v.mark_removed())
                 .await?;
 
-            let handle =
-                SyncHandle::new(self.0.clone(), reporef, self.1.progress.clone(), None).await;
-            self.1.queue.push_front(handle).await;
+            jobs.queue
+                .push_front(SyncConfig::new(app, reporef).into_handle().await)
+                .await;
         }
 
         Some(())
     }
 
     pub(crate) async fn cancel(&self, reporef: RepoRef) {
-        self.1
+        self.0
+            .sync_queue
             .active
             .update_async(&reporef, |_, v| {
                 v.set_status(|_| SyncStatus::Cancelling);
@@ -311,7 +318,7 @@ impl BoundSyncQueue {
     }
 
     pub(crate) async fn startup_scan(self) -> anyhow::Result<()> {
-        let Self(Application { repo_pool, .. }, _) = &self;
+        let Self(Application { ref repo_pool, .. }) = self;
 
         let mut repos = vec![];
         repo_pool.scan_async(|k, _| repos.push(k.clone())).await;

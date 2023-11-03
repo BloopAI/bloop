@@ -10,7 +10,7 @@ use crate::{
     Application,
 };
 
-use std::{path::PathBuf, sync::Arc};
+use std::{borrow::Borrow, path::PathBuf, sync::Arc};
 
 use super::control::SyncPipes;
 
@@ -93,13 +93,48 @@ impl Drop for SyncHandle {
     }
 }
 
+pub struct SyncConfig {
+    app: Application,
+    reporef: RepoRef,
+    filter_updates: Option<FilterUpdate>,
+    shallow: bool,
+}
+
+impl SyncConfig {
+    pub fn new(app: impl Borrow<Application>, reporef: RepoRef) -> SyncConfig {
+        SyncConfig {
+            app: app.borrow().clone(),
+            reporef,
+            filter_updates: None,
+            shallow: false,
+        }
+    }
+
+    pub fn filter_updates(mut self, update: Option<FilterUpdate>) -> Self {
+        self.filter_updates = update;
+        self
+    }
+
+    pub fn shallow(mut self, shallow: bool) -> Self {
+        self.shallow = shallow;
+        self
+    }
+
+    pub async fn into_handle(self) -> Arc<SyncHandle> {
+        SyncHandle::new(self).await
+    }
+}
+
 impl SyncHandle {
-    pub(crate) async fn new(
-        app: Application,
-        reporef: RepoRef,
-        status: super::ProgressStream,
-        filter_updates: Option<FilterUpdate>,
-    ) -> Arc<Self> {
+    async fn new(config: SyncConfig) -> Arc<Self> {
+        let SyncConfig {
+            app,
+            reporef,
+            filter_updates,
+            ..
+        } = config;
+        let status = app.sync_queue.broadcast();
+
         // Going through an extra hoop here to ensure the outward
         // facing interface communicates intent.
         //
