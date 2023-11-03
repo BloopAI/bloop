@@ -282,7 +282,9 @@ async fn periodic_repo_poll(app: Application, reporef: RepoRef) -> Option<()> {
         if (UNIX_EPOCH + Duration::from_secs(last_index)) > SystemTime::now() - poller.interval() {
             app.repo_pool
                 .update_async(&reporef, |_, repo| {
-                    repo.pub_sync_status = repo.sync_status.clone();
+                    if !matches!(repo.sync_status, Queued) {
+                        repo.pub_sync_status = repo.sync_status.clone();
+                    }
                 })
                 .await;
 
