@@ -64,7 +64,13 @@ following commands in this repo:
     git lfs install
     git lfs pull
 
-If you find a bug or have a feature request, [open an issue](https://github.com/BloopAI/bloop/issues)!
+If you find a bug or have a feature request, [open an issue](https://github.com/BloopAI/bloop/issues)! You can find the application logs here:
+
+| OS      | Logs Path |
+| ----------- | ----------- |
+| MacOS      | `~/Library/Application\ Support/ai.bloop.bloop/bleep/logs`       |
+| Windows   | `%APPDATA%/bloop/bleep/logs`        |
+| Linux   | `~/.local/share/bloop/bleep/logs`        |
 
 ## Privacy
 
