@@ -351,6 +351,7 @@ impl Doc {
             // delete old docs from tantivy
             self.index_writer()?
                 .delete_term(Term::from_field_i64(self.section_schema.doc_id, id));
+            self.index_writer()?.commit();
 
             sqlx::query! {
                 "UPDATE docs SET modified_at = datetime('now') WHERE id = ?",
@@ -381,6 +382,7 @@ impl Doc {
         // delete entry from tantivy
         self.index_writer()?
             .delete_term(Term::from_field_i64(self.section_schema.doc_id, id));
+        self.index_writer()?.commit();
 
         Ok(id)
     }
@@ -767,7 +769,6 @@ impl Doc {
         stream! {
             let mut scraper = Scraper::with_config(Config::new(doc_source.clone()));
             let mut stream = Box::pin(scraper.complete());
-            // let mut set = tokio::task::JoinSet::new();
             let mut handles = Vec::new();
             let mut discovered_count = 0;
             while let Some(doc) = stream.next().await {
@@ -790,12 +791,12 @@ impl Doc {
                         for d in tantivy_docs_to_insert {
                             let _ = lock.add_document(d);
                         }
-                        let _ = lock.commit();
-                        trace!(%id, url = doc.url.as_str(), "commiting page");
                         drop(lock);
                     }));
                 }
             }
+            trace!(%id, url = doc_source.as_str(), "commiting doc-provider to index");
+            index_writer.lock().await.commit();
             futures::future::join_all(handles).await;
             info!(%id, url = doc_source.as_str(), "index complete");
             yield Progress::Done(id);
@@ -854,7 +855,7 @@ impl scraper::Document {
                     schema.ancestry => section.ancestry_str().as_str(),
                     schema.text => section.data,
                     schema.start_byte => section.section_range.start.byte as u64,
-                    schema.end_byte => section.section_range.start.byte as u64,
+                    schema.end_byte => section.section_range.end.byte as u64,
                     schema.section_depth => section.ancestry.len() as u64,
                 )
             })

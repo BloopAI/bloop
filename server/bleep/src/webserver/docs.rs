@@ -1,17 +1,21 @@
 use axum::{
-    extract::{Json, Path, Query, State},
-    response::{sse::Event, Sse},
+    extract::{Extension, Json, Path, Query, State},
+    response::{
+        sse::{Event, KeepAlive},
+        Sse,
+    },
 };
 use futures::stream::{Stream, StreamExt};
 use tracing::error;
 
 use crate::{
+    analytics::DocEvent,
     indexes::doc,
-    webserver::{Error, Result},
+    webserver::{middleware::User, Error, Result},
     Application,
 };
 
-use std::{convert::Infallible, pin::Pin};
+use std::convert::Infallible;
 
 // schema
 #[derive(serde::Deserialize)]
@@ -58,8 +62,15 @@ pub async fn delete(State(app): State<Application>, Path(id): Path<i64>) -> Resu
 
 pub async fn sync(
     State(app): State<Application>,
+    Extension(user): Extension<User>,
     Query(params): Query<Sync>,
-) -> Sse<Pin<Box<dyn Stream<Item = Result<Event, Infallible>> + Send>>> {
+) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+    app.with_analytics(|hub| {
+        hub.track_doc(
+            &user,
+            DocEvent::new("sync").with_payload("url", &params.url),
+        )
+    });
     Sse::new(Box::pin(
         app.indexes
             .doc
@@ -72,12 +83,13 @@ pub async fn sync(
                     .unwrap())
             }),
     ))
+    .keep_alive(KeepAlive::default())
 }
 
 pub async fn resync(
     State(app): State<Application>,
     Path(id): Path<i64>,
-) -> Sse<Pin<Box<dyn Stream<Item = Result<Event, Infallible>> + Send>>> {
+) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
     Sse::new(Box::pin(app.indexes.doc.clone().resync(id).await.map(
         |result| {
             Ok(Event::default()
@@ -85,6 +97,7 @@ pub async fn resync(
                 .unwrap())
         },
     )))
+    .keep_alive(KeepAlive::default())
 }
 
 pub async fn search(

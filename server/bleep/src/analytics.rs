@@ -50,6 +50,29 @@ impl StudioEvent {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct DocEvent {
+    pub payload: Vec<(String, Value)>,
+    pub type_: String,
+}
+
+impl DocEvent {
+    pub fn new(type_: &str) -> Self {
+        Self {
+            payload: vec![],
+            type_: type_.to_owned(),
+        }
+    }
+
+    pub fn with_payload<T: Serialize + Clone>(mut self, name: &str, payload: &T) -> Self {
+        self.payload.push((
+            name.to_owned(),
+            serde_json::to_value(payload.clone()).unwrap(),
+        ));
+        self
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct EventData {
     kind: EventKind,
@@ -206,6 +229,22 @@ impl RudderHub {
                     "device_id": self.device_id(),
                     "event_type": event.type_,
                     "studio_id": event.studio_id,
+                    "payload": event.payload,
+                    "package_metadata": options.package_metadata,
+                })),
+                ..Default::default()
+            }));
+        }
+    }
+
+    pub fn track_doc(&self, user: &crate::webserver::middleware::User, event: DocEvent) {
+        if let Some(options) = &self.options {
+            self.send(Message::Track(Track {
+                user_id: Some(self.tracking_id(user.username())),
+                event: "doc".to_owned(),
+                properties: Some(json!({
+                    "device_id": self.device_id(),
+                    "event_type": event.type_,
                     "payload": event.payload,
                     "package_metadata": options.package_metadata,
                 })),
