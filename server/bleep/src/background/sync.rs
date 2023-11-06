@@ -153,12 +153,12 @@ impl SyncHandle {
         // How filter updates work specifically should not have to
         // trickle down to all callers.
         let filter_updates = if shallow {
-            let mut filter_updates = FilterUpdate::default();
-            filter_updates.file_filter = Some(FileFilterConfig {
-                rules: vec![FileFilterRule::ExcludeRegex(".*".into())],
-            });
-
-            filter_updates
+            FilterUpdate {
+                file_filter: Some(FileFilterConfig {
+                    rules: vec![FileFilterRule::ExcludeRegex(".*".into())],
+                }),
+                ..filter_updates.unwrap_or_default()
+            }
         } else {
             filter_updates.unwrap_or_default()
         };
