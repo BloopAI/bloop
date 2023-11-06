@@ -360,7 +360,7 @@ impl Doc {
                 id,
             }
             .execute(&*self.sql)
-                .await?;
+            .await?;
 
             let index_writer = Arc::new(Mutex::new(self.index_writer()?));
 
@@ -480,8 +480,6 @@ impl Doc {
             .filter(|s| !s.is_empty())
             .collect::<Vec<_>>();
 
-        println!("{:?}", terms);
-
         // for each term, build up a trigram query
         let trigram_queries = Box::new(BooleanQuery::union(
             terms
@@ -514,8 +512,6 @@ impl Doc {
                 &TopDocs::with_limit(1000),
             )
             .expect("failed to search index");
-
-        println!("tantivy results list: {}", tantivy_results.len());
 
         let mut results = tantivy_results
             .into_par_iter()
@@ -804,6 +800,7 @@ impl Doc {
                 }
             }
             futures::future::join_all(handles).await;
+            info!(%id, url = doc_source.as_str(), "index complete");
             yield Progress::Done(id);
         }
     }

@@ -3,7 +3,7 @@ use async_stream::stream;
 use futures::stream::Stream;
 use select::predicate::Name;
 use tokio::{sync::RwLock, task};
-use tracing::{debug, error};
+use tracing::{debug, warn};
 use url::Url;
 
 use std::{
@@ -114,8 +114,8 @@ impl Scraper {
 
                             self.queue_requests(new_urls.into_iter()).await;
                         }
-                        Ok(Err(e)) => error!("task failed successfully: {e}"),
-                        Err(e) => error!("task failed: {e}"),
+                        Ok(Err(e)) => warn!("task failed with: {e}"),
+                        Err(e) => warn!("task aborted with: {e}"),
                     }
                 }
 
