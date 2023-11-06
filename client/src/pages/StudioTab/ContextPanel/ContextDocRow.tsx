@@ -37,6 +37,7 @@ const ContextFileRow = ({
   setLeftPanel,
   isPreviewing,
   relative_url,
+  absolute_url,
   doc_icon,
   doc_title,
   doc_id,
@@ -57,6 +58,7 @@ const ContextFileRow = ({
             name: doc_title || '',
             favicon: doc_icon || '',
           },
+          absoluteUrl: absolute_url,
           title: doc_title || doc_source,
           isDocInContext: true,
           url: relative_url,
@@ -64,7 +66,7 @@ const ContextFileRow = ({
         },
       });
     }
-  }, [doc_id, doc_source, relative_url, ranges, tokens]);
+  }, [doc_id, doc_source, relative_url, ranges, tokens, absolute_url]);
 
   return (
     <div
@@ -113,12 +115,8 @@ const ContextFileRow = ({
               hidden ? 'opacity-30' : ''
             }`}
           >
-            <Tooltip
-              text={doc_source + relative_url}
-              placement={'bottom-start'}
-              delay={500}
-            >
-              {doc_title || relative_url}
+            <Tooltip text={absolute_url} placement={'bottom-start'} delay={500}>
+              {doc_title || absolute_url}
             </Tooltip>
           </p>
           <SectionsBadge sections={ranges} />

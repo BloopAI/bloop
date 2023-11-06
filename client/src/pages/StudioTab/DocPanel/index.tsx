@@ -32,6 +32,7 @@ type Props = {
   selectedSection?: string;
   setLeftPanel: Dispatch<SetStateAction<StudioLeftPanelDataType>>;
   url: string;
+  absoluteUrl: string;
   title: string;
   docProvider: DocShortType;
   onSectionsChanged: (a: {
@@ -39,6 +40,7 @@ type Props = {
     doc_id: string;
     doc_source: string;
     relative_url: string;
+    absolute_url: string;
     doc_icon: string;
     doc_title: string;
   }) => void;
@@ -56,6 +58,7 @@ const DocPanel = ({
   onSectionsChanged,
   selectedSection,
   setIsChangeUnsaved,
+  absoluteUrl,
 }: Props) => {
   useTranslation();
   const [selectedSections, setSelectedSections] = useState(
@@ -105,11 +108,19 @@ const DocPanel = ({
       doc_id: docProvider.id,
       doc_source: docProvider.url,
       relative_url: url,
+      absolute_url: absoluteUrl,
       doc_title: title,
       doc_icon: docProvider.favicon,
     });
     setLeftPanel({ type: StudioLeftPanelType.CONTEXT });
-  }, [onSectionsChanged, selectedSections, docProvider, url, setLeftPanel]);
+  }, [
+    onSectionsChanged,
+    selectedSections,
+    docProvider,
+    url,
+    setLeftPanel,
+    absoluteUrl,
+  ]);
 
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
@@ -132,12 +143,6 @@ const DocPanel = ({
   useEffect(() => {
     setIsChangeUnsaved(hasChanges);
   }, [hasChanges]);
-
-  const fullUrl = useMemo(() => {
-    return `${docProvider.url}${
-      docProvider.url.endsWith('/') || url.startsWith('/') ? '' : '/'
-    }${url}`;
-  }, [url, docProvider.url]);
 
   return (
     <div className="flex flex-col w-full flex-1 overflow-auto relative">
@@ -182,8 +187,8 @@ const DocPanel = ({
       </div>
       <div className="flex px-8 py-2 items-center justify-between gap-2 border-b border-bg-border bg-bg-sub text-label-base overflow-x-auto flex-shrink-0">
         <div className="flex items-center gap-1.5 caption text-label-link ellipsis cursor-pointer">
-          <a href="#" onClick={() => openLink(fullUrl)}>
-            {fullUrl}
+          <a href="#" onClick={() => openLink(absoluteUrl)}>
+            {absoluteUrl}
           </a>
         </div>
         <div className="flex items-center gap-2">

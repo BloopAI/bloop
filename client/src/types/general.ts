@@ -385,6 +385,7 @@ export type DocsStudioPanelType = {
   data: {
     docProvider: DocShortType;
     url: string;
+    absoluteUrl: string;
     title: string;
     selectedSection?: string;
     isDocInContext: boolean;
@@ -419,6 +420,7 @@ export type StudioContextDoc = {
   doc_icon: string | null;
   doc_title: string | null;
   relative_url: string;
+  absolute_url: string;
   ranges: string[];
   hidden: boolean;
 };

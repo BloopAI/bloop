@@ -330,6 +330,7 @@ export type DocPageType = {
   doc_id: number;
   doc_source: string;
   relative_url: string;
+  absolute_url: string;
   doc_title: string;
 };
 
@@ -341,6 +342,7 @@ export type DocSectionType = {
   header: string;
   point_id: string;
   relative_url: string;
+  absolute_url: string;
   section_range: { start: number; end: number };
   text: string;
 };

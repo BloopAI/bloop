@@ -13,10 +13,11 @@ import IndexedPage from './IndexedPage';
 
 type Props = {
   docId: string;
-  handleSelectPage: (url: string, title: string) => void;
+  handleSelectPage: (url: string, absoluteUrl: string, title: string) => void;
   handleDocSubmit: (
     docProvider: DocShortType,
     url: string,
+    absoluteUrl: string,
     title: string,
     selectedSection?: string,
   ) => void;
@@ -51,12 +52,14 @@ const PagesWithPreview = ({
             handleDocSubmit(
               selectedProvider,
               filteredSections[highlightedIndex].relative_url,
+              filteredSections[highlightedIndex].absolute_url,
               filteredSections[highlightedIndex].doc_title,
               filteredSections[highlightedIndex].point_id,
             );
           } else {
             handleSelectPage(
               indexedPages[highlightedIndex].relative_url,
+              indexedPages[highlightedIndex].absolute_url,
               indexedPages[highlightedIndex].doc_title,
             );
           }
@@ -154,6 +157,7 @@ const PagesWithPreview = ({
                   doc_title={s.doc_title}
                   i={i}
                   relative_url={s.relative_url}
+                  absolute_url={s.absolute_url}
                   isFocused={highlightedIndex === i}
                   key={s.point_id + '-' + i}
                   point_id={s.point_id}
@@ -167,6 +171,7 @@ const PagesWithPreview = ({
                   displayTitle={p.doc_title}
                   i={i}
                   relative_url={p.relative_url}
+                  absolute_url={p.absolute_url}
                   isFocused={highlightedIndex === i}
                   key={p.relative_url + '-' + i}
                 />
@@ -178,11 +183,18 @@ const PagesWithPreview = ({
               <RenderedSection
                 text={filteredSections[highlightedIndex].text}
                 key={filteredSections[highlightedIndex].point_id}
+                baseUrl={selectedProvider.url}
               />
             ) : null
           ) : (
             previewingSections.map((s) => {
-              return <RenderedSection text={s.text} key={s.point_id} />;
+              return (
+                <RenderedSection
+                  text={s.text}
+                  key={s.point_id}
+                  baseUrl={selectedProvider.url}
+                />
+              );
             })
           )}
         </div>

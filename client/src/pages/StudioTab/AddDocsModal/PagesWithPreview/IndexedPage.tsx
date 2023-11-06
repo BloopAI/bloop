@@ -3,13 +3,15 @@ import KeyboardChip from '../../KeyboardChip';
 
 type Props = {
   relative_url: string;
+  absolute_url: string;
   i: number;
   doc_title: string;
   displayTitle: string | ReactElement;
   setHighlightedIndex: (i: number) => void;
-  handleSelectPage?: (url: string, title: string) => void;
+  handleSelectPage?: (url: string, absoluteUrl: string, title: string) => void;
   handleDocSubmit?: (
     url: string,
+    absoluteUrl: string,
     title: string,
     selectedSection: string,
   ) => void;
@@ -19,6 +21,7 @@ type Props = {
 
 const IndexedPage = ({
   relative_url,
+  absolute_url,
   i,
   doc_title,
   setHighlightedIndex,
@@ -42,11 +45,18 @@ const IndexedPage = ({
 
   const handleClick = useCallback(() => {
     if (handleSelectPage) {
-      handleSelectPage(relative_url, doc_title);
+      handleSelectPage(relative_url, absolute_url, doc_title);
     } else if (handleDocSubmit) {
-      handleDocSubmit(relative_url, doc_title, point_id!);
+      handleDocSubmit(relative_url, absolute_url, doc_title, point_id!);
     }
-  }, [handleSelectPage, handleDocSubmit, relative_url, doc_title, point_id]);
+  }, [
+    handleSelectPage,
+    handleDocSubmit,
+    relative_url,
+    absolute_url,
+    doc_title,
+    point_id,
+  ]);
   return (
     <button
       ref={ref}

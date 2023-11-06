@@ -36,6 +36,7 @@ type Props = {
   onSubmit: (
     docProvider: DocShortType,
     url: string,
+    absoluteUrl: string,
     title: string,
     selectedSection?: string,
   ) => void;
@@ -192,19 +193,20 @@ const AddDocsModal = ({
     (
       docProvider: DocShortType,
       url: string,
+      absoluteUrl: string,
       title: string,
       selectedSection?: string,
     ) => {
-      onSubmit(docProvider, url, title, selectedSection);
+      onSubmit(docProvider, url, absoluteUrl, title, selectedSection);
       onClose();
     },
     [onClose, onSubmit],
   );
 
   const handleSelectPage = useCallback(
-    (url: string, title: string) => {
+    (url: string, absoluteUrl: string, title: string) => {
       if (selectedProvider) {
-        onSubmit(selectedProvider, url, title);
+        onSubmit(selectedProvider, url, absoluteUrl, title);
         onClose();
       }
     },

@@ -115,6 +115,7 @@ const ContentContainer = ({
       doc_icon,
       doc_title,
       relative_url,
+      absolute_url,
       ranges,
     }: Omit<StudioContextDoc, 'hidden'>) => {
       if (tab.key) {
@@ -127,6 +128,7 @@ const ContentContainer = ({
               doc_icon,
               doc_title,
               relative_url,
+              absolute_url,
               ranges,
               hidden: false,
             },
@@ -160,6 +162,7 @@ const ContentContainer = ({
     (
       docProvider: DocShortType,
       url: string,
+      absoluteUrl: string,
       title: string,
       selectedSection?: string,
     ) => {
@@ -168,6 +171,7 @@ const ContentContainer = ({
         data: {
           docProvider,
           url,
+          absoluteUrl,
           title,
           isDocInContext: false,
           selectedSection,
@@ -217,6 +221,7 @@ const ContentContainer = ({
       doc_source,
       ranges,
       relative_url,
+      absolute_url,
       doc_icon,
       doc_title,
     }: Omit<StudioContextDoc, 'hidden'>) => {
@@ -231,6 +236,7 @@ const ContentContainer = ({
           doc_id,
           doc_source,
           relative_url,
+          absolute_url,
           ranges,
           doc_icon,
           doc_title,

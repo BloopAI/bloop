@@ -57,7 +57,7 @@ const SectionItem = ({
           </>
         ))}
       </div>
-      <RenderedSection text={text} />
+      <RenderedSection text={text} baseUrl={''} />
     </a>
   );
 };
