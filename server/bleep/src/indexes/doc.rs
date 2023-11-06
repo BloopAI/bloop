@@ -12,7 +12,7 @@ use tantivy::{
 };
 use thiserror::Error;
 use tokio::sync::Mutex;
-use tracing::{debug, error, info};
+use tracing::{error, info, trace};
 
 pub const COLLECTION_NAME: &str = "web";
 
@@ -794,7 +794,7 @@ impl Doc {
                             let _ = lock.add_document(d);
                         }
                         let _ = lock.commit();
-                        debug!(%id, url = doc.url.as_str(), "commiting page");
+                        trace!(%id, url = doc.url.as_str(), "commiting page");
                         drop(lock);
                     }));
                 }
