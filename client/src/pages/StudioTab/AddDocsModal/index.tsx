@@ -146,7 +146,6 @@ const AddDocsModal = ({
       };
       eventSource.onmessage = (ev) => {
         const data = JSON.parse(ev.data);
-        console.log(data);
         if (data.Ok.Done) {
           eventSource.close();
           setIndexing(false);

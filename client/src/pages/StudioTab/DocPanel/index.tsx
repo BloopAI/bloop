@@ -3,6 +3,7 @@ import React, {
   memo,
   SetStateAction,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useState,
@@ -20,6 +21,7 @@ import { getDocSections, getDocTokenCount } from '../../../services/api';
 import { DocSectionType, DocShortType } from '../../../types/api';
 import { findElementInCurrentTab } from '../../../utils/domUtils';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
+import { DeviceContext } from '../../../context/deviceContext';
 import SectionsBadge from './SectionsBadge';
 import DocSection from './DocSection';
 
@@ -59,6 +61,7 @@ const DocPanel = ({
   const [selectedSections, setSelectedSections] = useState(
     initialSections || [],
   );
+  const { openLink } = useContext(DeviceContext);
   const [tokenCount, setTokenCount] = useState(0);
   const [sections, setSections] = useState<DocSectionType[]>([]);
 
@@ -130,6 +133,12 @@ const DocPanel = ({
     setIsChangeUnsaved(hasChanges);
   }, [hasChanges]);
 
+  const fullUrl = useMemo(() => {
+    return `${docProvider.url}${
+      docProvider.url.endsWith('/') || url.startsWith('/') ? '' : '/'
+    }${url}`;
+  }, [url, docProvider.url]);
+
   return (
     <div className="flex flex-col w-full flex-1 overflow-auto relative">
       <div className="flex gap-1 px-8 justify-between items-center border-b border-bg-border bg-bg-shade shadow-low h-11.5 flex-shrink-0">
@@ -172,11 +181,10 @@ const DocPanel = ({
         </div>
       </div>
       <div className="flex px-8 py-2 items-center justify-between gap-2 border-b border-bg-border bg-bg-sub text-label-base overflow-x-auto flex-shrink-0">
-        <div className="flex items-center gap-1.5 caption text-label-link ellipsis">
-          <p>
-            {docProvider.url}
-            {url}
-          </p>
+        <div className="flex items-center gap-1.5 caption text-label-link ellipsis cursor-pointer">
+          <a href="#" onClick={() => openLink(fullUrl)}>
+            {fullUrl}
+          </a>
         </div>
         <div className="flex items-center gap-2">
           <TokensUsageBadge tokens={tokenCount} />

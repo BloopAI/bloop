@@ -8,6 +8,7 @@ import {
 import useKeyboardNavigation from '../../../../hooks/useKeyboardNavigation';
 import RenderedSection from '../Sections/RenderedSection';
 import BreadcrumbsPath from '../../../../components/BreadcrumbsPath';
+import Tooltip from '../../../../components/Tooltip';
 import IndexedPage from './IndexedPage';
 
 type Props = {
@@ -93,11 +94,8 @@ const PagesWithPreview = ({
   }, [docId, indexedPages, highlightedIndex]);
 
   const constructSectionTitle = useCallback(
-    (docTitle: string, ancestry: string[]) => {
-      let title = docTitle?.slice(0, 10);
-      if (docTitle?.length > 10) {
-        title += '...';
-      }
+    (docTitle: string, ancestry: string[], sectionHeader: string) => {
+      let title = docTitle;
       if (ancestry.length) {
         title += '/';
       }
@@ -107,6 +105,10 @@ const PagesWithPreview = ({
           title += '/';
         }
       });
+      if (sectionHeader) {
+        title += '/';
+        title += sectionHeader.replace(/#/g, '');
+      }
       return title;
     },
     [],
@@ -114,13 +116,6 @@ const PagesWithPreview = ({
 
   const handleSelectSection = useCallback(
     (url: string, title: string, pointId: string) => {
-      console.log(
-        'selectedProvider, url, title, pointId',
-        selectedProvider,
-        url,
-        title,
-        pointId,
-      );
       handleDocSubmit(selectedProvider, url, title, pointId);
     },
     [],
@@ -136,11 +131,25 @@ const PagesWithPreview = ({
                   setHighlightedIndex={setHighlightedIndex}
                   handleDocSubmit={handleSelectSection}
                   displayTitle={
-                    <BreadcrumbsPath
-                      path={constructSectionTitle(s.doc_title, s.ancestry)}
-                      repo={''}
-                      nonInteractive
-                    />
+                    <Tooltip
+                      placement="top-start"
+                      text={constructSectionTitle(
+                        s.doc_title,
+                        s.ancestry,
+                        s.header,
+                      )}
+                    >
+                      <BreadcrumbsPath
+                        path={constructSectionTitle(
+                          s.doc_title,
+                          s.ancestry,
+                          s.header,
+                        )}
+                        repo={''}
+                        limitSectionWidth
+                        nonInteractive
+                      />
+                    </Tooltip>
                   }
                   doc_title={s.doc_title}
                   i={i}
