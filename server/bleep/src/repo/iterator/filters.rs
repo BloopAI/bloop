@@ -85,7 +85,7 @@ impl Default for BranchFilter {
 /// Configure file filters
 #[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq, Eq)]
 pub struct FileFilterConfig {
-    rules: Vec<FileFilterRule>,
+    pub(crate) rules: Vec<FileFilterRule>,
 }
 
 /// Rules for what gets included in a repository

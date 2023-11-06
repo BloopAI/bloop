@@ -6,7 +6,10 @@ use crate::{
     cache::FileCache,
     indexes,
     remotes::RemoteError,
-    repo::{Backend, FilterUpdate, RepoError, RepoMetadata, RepoRef, Repository, SyncStatus},
+    repo::{
+        iterator::FileFilterRule, Backend, FileFilterConfig, FilterUpdate, RepoError, RepoMetadata,
+        RepoRef, Repository, SyncStatus,
+    },
     Application,
 };
 
@@ -149,7 +152,17 @@ impl SyncHandle {
         //
         // How filter updates work specifically should not have to
         // trickle down to all callers.
-        let filter_updates = filter_updates.unwrap_or_default();
+        let filter_updates = if shallow {
+            let mut filter_updates = FilterUpdate::default();
+            filter_updates.file_filter = Some(FileFilterConfig {
+                rules: vec![FileFilterRule::ExcludeRegex(".*".into())],
+            });
+
+            filter_updates
+        } else {
+            filter_updates.unwrap_or_default()
+        };
+
         let (exited, exit_signal) = flume::bounded(1);
         let pipes = SyncPipes::new(reporef.clone(), filter_updates.clone(), status);
         let current = app
@@ -249,63 +262,48 @@ impl SyncHandle {
             .await
             .unwrap();
 
-        // This if not shallow, do the whole indexing thing
-        if !self.shallow {
-            let tutorial_questions = if repository.last_index_unix_secs == 0 {
-                let db = self.app.sql.clone();
-                let llm_gateway = self.app.user().await.llm_gateway(&self.app).await;
-                let repo_pool = self.app.repo_pool.clone();
-                let reporef = self.reporef.clone();
+        let tutorial_questions = if repository.last_index_unix_secs == 0 {
+            let db = self.app.sql.clone();
+            let llm_gateway = self.app.user().await.llm_gateway(&self.app).await;
+            let repo_pool = self.app.repo_pool.clone();
+            let reporef = self.reporef.clone();
 
-                Some(tokio::task::spawn(
-                    crate::commits::generate_tutorial_questions(
-                        db,
-                        llm_gateway,
-                        repo_pool,
-                        reporef,
-                    ),
-                ))
-            } else {
-                None
-            };
+            Some(tokio::task::spawn(
+                crate::commits::generate_tutorial_questions(db, llm_gateway, repo_pool, reporef),
+            ))
+        } else {
+            None
+        };
 
-            let indexed = self.index().await;
-            let status = match indexed {
-                Ok(Either::Left(status)) => Some(status),
-                Ok(Either::Right(state)) => {
-                    info!("commit complete; indexing done");
-                    self.app.repo_pool.update(&self.reporef, |_k, repo| {
-                        repo.sync_done_with(self.shallow, &self.filter_updates, state)
-                    });
+        let indexed = self.index().await;
+        let status = match indexed {
+            Ok(Either::Left(status)) => Some(status),
+            Ok(Either::Right(state)) => {
+                info!("commit complete; indexing done");
+                self.app.repo_pool.update(&self.reporef, |_k, repo| {
+                    repo.sync_done_with(self.shallow, &self.filter_updates, state)
+                });
 
-                    if let Some(tutorial_questions) = tutorial_questions {
-                        if let Err(err) = tutorial_questions.await {
-                            error!(?err, "failed to generate tutorial questions");
-                        }
+                if let Some(tutorial_questions) = tutorial_questions {
+                    if let Err(err) = tutorial_questions.await {
+                        error!(?err, "failed to generate tutorial questions");
                     }
+                }
 
+                if self.shallow {
+                    self.set_status(|_| SyncStatus::Shallow)
+                } else {
                     // technically `sync_done_with` does this, but we want to send notifications
                     self.set_status(|_| SyncStatus::Done)
                 }
-                Err(SyncError::Cancelled) => self.set_status(|_| SyncStatus::Cancelled),
-                Err(err) => self.set_status(|_| SyncStatus::Error {
-                    message: err.to_string(),
-                }),
-            };
+            }
+            Err(SyncError::Cancelled) => self.set_status(|_| SyncStatus::Cancelled),
+            Err(err) => self.set_status(|_| SyncStatus::Error {
+                message: err.to_string(),
+            }),
+        };
 
-            status.ok_or(SyncError::Removed)
-
-        // If shallow, it still needs configuration, so we're going to
-        // skip any indexing to save time
-        } else {
-            let metadata = repository.get_repo_metadata().await;
-            self.app.repo_pool.update(&self.reporef, |_k, repo| {
-                repo.sync_done_with(self.shallow, &self.filter_updates, metadata)
-            });
-
-            self.set_status(|_| SyncStatus::Shallow)
-                .ok_or(SyncError::Removed)
-        }
+        status.ok_or(SyncError::Removed)
     }
 
     async fn index(&self) -> Result<Either<SyncStatus, Arc<RepoMetadata>>> {

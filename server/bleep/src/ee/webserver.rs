@@ -18,7 +18,7 @@ use crate::{
 /// This will automatically trigger a sync
 //
 pub(crate) async fn patch_repository(
-    Query(RepoParams { repo, shallow }): Query<RepoParams>,
+    Query(RepoParams { repo, .. }): Query<RepoParams>,
     user: Extension<User>,
     State(app): State<Application>,
     Json(mut patch): Json<FilterUpdate>,
@@ -37,11 +37,7 @@ pub(crate) async fn patch_repository(
 
     if patch.file_filter.is_some() || patch.branch_filter.is_some() {
         app.write_index()
-            .enqueue(
-                SyncConfig::new(app, repo)
-                    .shallow(shallow)
-                    .filter_updates(patch.into()),
-            )
+            .enqueue(SyncConfig::new(app, repo).filter_updates(patch.into()))
             .await;
         json(ReposResponse::SyncQueued)
     } else {
