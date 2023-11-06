@@ -241,11 +241,20 @@ pub(crate) enum QueueState {
 
 pub struct BoundSyncQueue(pub(crate) Application);
 impl BoundSyncQueue {
+    /// Enqueue repo for syncing
+    pub(crate) async fn enqueue(self, config: SyncConfig) {
+        self.0
+            .sync_queue
+            .queue
+            .push(config.into_handle().await)
+            .await;
+    }
+
     /// Enqueue repos for syncing with the current configuration.
     ///
     /// Skips any repositories in the list which are already queued or being synced.
     /// Returns the number of new repositories queued for syncing.
-    pub(crate) async fn enqueue_sync(self, repositories: Vec<RepoRef>) -> usize {
+    pub(crate) async fn enqueue_all(self, repositories: Vec<RepoRef>) -> usize {
         let Self(app) = &self;
         let jobs = &app.sync_queue;
 
@@ -323,7 +332,7 @@ impl BoundSyncQueue {
         let mut repos = vec![];
         repo_pool.scan_async(|k, _| repos.push(k.clone())).await;
 
-        self.enqueue_sync(repos).await;
+        self.enqueue_all(repos).await;
 
         Ok(())
     }

@@ -4,6 +4,7 @@ use axum::{
 };
 
 use crate::{
+    background::SyncConfig,
     repo::FilterUpdate,
     webserver::{
         middleware::User,
@@ -17,7 +18,7 @@ use crate::{
 /// This will automatically trigger a sync
 //
 pub(crate) async fn patch_repository(
-    Query(RepoParams { repo }): Query<RepoParams>,
+    Query(RepoParams { repo, shallow }): Query<RepoParams>,
     user: Extension<User>,
     State(app): State<Application>,
     Json(mut patch): Json<FilterUpdate>,
@@ -35,7 +36,13 @@ pub(crate) async fn patch_repository(
     }
 
     if patch.file_filter.is_some() || patch.branch_filter.is_some() {
-        app.write_index().add_branches_for_repo(repo, patch).await;
+        app.write_index()
+            .enqueue(
+                SyncConfig::new(app, repo)
+                    .shallow(shallow)
+                    .filter_updates(patch.into()),
+            )
+            .await;
         json(ReposResponse::SyncQueued)
     } else {
         json(ReposResponse::Unchanged)

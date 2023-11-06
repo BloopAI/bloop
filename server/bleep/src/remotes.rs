@@ -8,7 +8,7 @@ use std::{
 };
 
 use anyhow::Context;
-use gix::sec::identity::Account;
+use gix::{remote::fetch::Shallow, sec::identity::Account};
 use ignore::WalkBuilder;
 use serde::{Deserialize, Serialize};
 use tracing::{error, warn};
@@ -137,6 +137,7 @@ async fn git_clone(
     url: &str,
     target: &Path,
     pipes: &SyncPipes,
+    shallow: Shallow,
 ) -> Result<()> {
     let url = url.to_owned();
     let target = target.to_owned();
@@ -147,7 +148,7 @@ async fn git_clone(
 
     tokio::task::spawn_blocking(move || {
         let mut clone = {
-            let c = gix::prepare_clone_bare(url, target)?;
+            let c = gix::prepare_clone_bare(url, target)?.with_shallow(shallow);
             match auth {
                 Some(auth) => c.configure_connection(move |con| {
                     con.set_credentials(creds_callback!(auth));
@@ -163,7 +164,12 @@ async fn git_clone(
     .await?
 }
 
-async fn git_pull(auth: &Option<GitCreds>, repo: &Repository, pipes: &SyncPipes) -> Result<()> {
+async fn git_pull(
+    auth: &Option<GitCreds>,
+    repo: &Repository,
+    pipes: &SyncPipes,
+    shallow: Shallow,
+) -> Result<()> {
     use gix::remote::Direction;
 
     let auth = auth.clone();
@@ -187,6 +193,7 @@ async fn git_pull(auth: &Option<GitCreds>, repo: &Repository, pipes: &SyncPipes)
 
         connection
             .prepare_fetch(gix::progress::Discard, Default::default())?
+            .with_shallow(shallow)
             .receive(gix::progress::Discard, &interrupt)?;
 
         Ok(())
@@ -371,10 +378,12 @@ impl BackendCredential {
                 &repo.remote.to_string(),
                 &repo.disk_path,
                 &handle.pipes,
+                handle.shallow.clone(),
             )
             .await
         };
-        let pull = || async { git_pull(&creds, &repo, &handle.pipes).await };
+        let pull =
+            || async { git_pull(&creds, &repo, &handle.pipes, handle.shallow.clone()).await };
 
         let synced = if repo.last_index_unix_secs == 0 && repo.disk_path.exists() {
             // it is possible syncing was killed, but the repo is

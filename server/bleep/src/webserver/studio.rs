@@ -8,7 +8,7 @@ use std::{
 
 use anyhow::{Context, Result};
 use axum::{
-    extract::{Path, Query},
+    extract::{Path, Query, State},
     response::{sse, Sse},
     Extension, Json,
 };
@@ -1259,7 +1259,7 @@ async fn validate_add_file(
 }
 
 pub async fn diff_apply(
-    app: Extension<Application>,
+    app: State<Application>,
     user: Extension<User>,
     Path(studio_id): Path<i64>,
     diff: String,
@@ -1335,8 +1335,15 @@ pub async fn diff_apply(
     }
 
     // Force a re-sync.
-    let _ = crate::webserver::repos::sync(Query(webserver::repos::RepoParams { repo }), app, user)
-        .await?;
+    let _ = crate::webserver::repos::sync(
+        Query(webserver::repos::RepoParams {
+            repo,
+            shallow: false,
+        }),
+        app,
+        user,
+    )
+    .await?;
 
     Ok(())
 }

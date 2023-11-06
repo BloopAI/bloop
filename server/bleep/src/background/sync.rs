@@ -10,7 +10,7 @@ use crate::{
     Application,
 };
 
-use std::{borrow::Borrow, path::PathBuf, sync::Arc};
+use std::{borrow::Borrow, num::NonZeroU32, path::PathBuf, sync::Arc};
 
 use super::control::SyncPipes;
 
@@ -20,6 +20,7 @@ pub struct SyncHandle {
     pub(crate) pipes: SyncPipes,
     pub(crate) file_cache: FileCache,
     pub(crate) app: Application,
+    pub(crate) shallow: gix::remote::fetch::Shallow,
     exited: flume::Sender<SyncStatus>,
     exit_signal: flume::Receiver<SyncStatus>,
 }
@@ -131,9 +132,16 @@ impl SyncHandle {
             app,
             reporef,
             filter_updates,
+            shallow,
             ..
         } = config;
         let status = app.sync_queue.broadcast();
+
+        let shallow = if shallow {
+            gix::remote::fetch::Shallow::DepthAtRemote(NonZeroU32::new(1).unwrap())
+        } else {
+            gix::remote::fetch::Shallow::DepthAtRemote(NonZeroU32::new(1000).unwrap())
+        };
 
         // Going through an extra hoop here to ensure the outward
         // facing interface communicates intent.
@@ -177,6 +185,7 @@ impl SyncHandle {
             app: app.clone(),
             reporef: reporef.clone(),
             file_cache: FileCache::new(app.sql.clone(), app.semantic.clone()),
+            shallow,
             pipes,
             filter_updates,
             exited,
