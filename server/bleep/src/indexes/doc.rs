@@ -286,10 +286,15 @@ impl Doc {
                 if let Progress::Update(update) = progress.clone() {
                     discovered_count = update.discovered_count;
                     if !update.meta.is_empty() && !is_meta_set {
+                        // do not set meta for this doc provider in subsequent turns
+                        is_meta_set = true;
+
                         // set title
                         if let Some(title) = &update.meta.title {
                             if let Err(e) = self.set_title(title, id).await {
                                 error!(%e, %title, %id, "failed to set doc title");
+                            } else {
+                                info!(%id, %title, "doc title set");
                             };
                         }
 
@@ -299,6 +304,8 @@ impl Doc {
                                 .unwrap_or_else(|_| normalize_absolute_url(&url, favicon));
                             if let Err(e) = self.set_favicon(resolved_url.as_str(), id).await {
                                 error!(%e, %favicon, %id, "failed to set doc icon");
+                            } else {
+                                info!(%id, %favicon, "doc icon set");
                             };
                         }
 
@@ -306,11 +313,10 @@ impl Doc {
                         if let Some(description) = &update.meta.description {
                             if let Err(e) = self.set_description(description, id).await {
                                 error!(%e, %description, %id, "failed to set doc description");
+                            } else {
+                                info!(%id, %description, "doc description set");
                             };
                         }
-
-                        // do not set meta for this doc provider in subsequent turns
-                        is_meta_set = true;
                     };
                 }
                 // populate metadata in sqlite
@@ -795,9 +801,11 @@ impl Doc {
                     }));
                 }
             }
+            futures::future::join_all(handles).await;
+
             trace!(%id, url = doc_source.as_str(), "commiting doc-provider to index");
             index_writer.lock().await.commit();
-            futures::future::join_all(handles).await;
+
             info!(%id, url = doc_source.as_str(), "index complete");
             yield Progress::Done(id);
         }
@@ -822,7 +830,7 @@ impl scraper::Document {
         schema: SectionSchema,
     ) -> Vec<tantivy::Document> {
         info!(
-            doc_source = %(doc_source.as_str()),
+            url = %(self.url.as_str()),
             doc_id = %id,
             "indexing doc",
         );

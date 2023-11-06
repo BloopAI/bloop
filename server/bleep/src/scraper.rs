@@ -3,7 +3,7 @@ use async_stream::stream;
 use futures::stream::Stream;
 use select::predicate::Name;
 use tokio::{sync::RwLock, task};
-use tracing::{debug, warn};
+use tracing::{trace, warn};
 use url::Url;
 
 use std::{
@@ -77,7 +77,7 @@ impl Scraper {
             loop {
                 // extract results from finished tasks
                 for h in self.finished_tasks().into_iter() {
-                    debug!("task finished");
+                    trace!("task finished");
                     match h.await {
                         Ok(Ok(mut scraper_result)) => {
                             // insert doc into the stream if any
@@ -110,7 +110,7 @@ impl Scraper {
                                 })
                                 .collect::<Vec<_>>();
 
-                            debug!("{} new urls collected", new_urls.len());
+                            trace!("{} new urls collected", new_urls.len());
 
                             self.queue_requests(new_urls.into_iter()).await;
                         }
@@ -133,7 +133,7 @@ impl Scraper {
 
                     for request in new_requests.into_iter() {
                         if !self.visited_links.contains(&request.url.to_string()) {
-                            debug!("{} queued", request.url.as_str());
+                            trace!("{} queued", request.url.as_str());
                             self.visited_links.insert(request.url.to_string());
                             let handle = task::spawn(async { visit(request).await });
                             self.handles.push(handle);
@@ -142,7 +142,7 @@ impl Scraper {
                 }
 
                 if self.queued_requests.read().await.is_empty() && self.handles.is_empty() {
-                    debug!("no more tasks");
+                    trace!("no more tasks");
                     break;
                 }
             }
@@ -220,7 +220,7 @@ impl Meta {
 }
 
 async fn visit(ScraperRequest { url, depth }: ScraperRequest) -> Result<ScraperResult> {
-    debug!("visited - {}", url);
+    trace!("visited - {}", url);
 
     // calculate the location on disk to store this url
     let mut doc_path = PathBuf::from(url.path().strip_prefix('/').unwrap()); // infallible

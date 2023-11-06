@@ -54,6 +54,10 @@ impl Extractor for DefaultExtractor {}
 
 trait Extractor {
     fn title<'a>(&self, doc: &'a Document) -> Option<Cow<'a, str>> {
+        if let Some(title) = doc.find(Name("title")).next() {
+            return Some(Cow::Owned(title.text()));
+        }
+
         if let Some(title) = self.meta_content(doc, Attr("property", "og:title")) {
             return Some(title);
         }
@@ -62,9 +66,6 @@ trait Extractor {
             return Some(title);
         }
 
-        if let Some(title) = doc.find(Name("title")).next() {
-            return Some(Cow::Owned(title.text()));
-        }
         if let Some(title) = doc
             .find(Name("h1"))
             .filter_map(|node| node.as_text().map(str::trim))
@@ -471,7 +472,7 @@ trait DocumentCleaner {
                             child
                                 .text()
                                 .chars()
-                                .filter(|c| c.is_ascii() || *c != '\n')
+                                .filter(|c| c.is_ascii() && *c != '\n')
                                 .collect::<String>()
                                 .trim(),
                         );
