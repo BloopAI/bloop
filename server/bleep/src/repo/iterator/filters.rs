@@ -176,14 +176,16 @@ impl FileFilter {
     ///  * `Some(true)` if the file is allowed
     ///  * `Some(false)` if rejected
     ///  * `None` if not mentioned at all
+    ///
+    /// Includes must take priority.
     pub fn is_allowed<P: AsRef<Path> + ?Sized>(&self, path: &P) -> Option<bool> {
         let lossy = path.as_ref().to_string_lossy();
         let name = lossy.as_ref();
 
-        if self.exclude_list.contains(name) || self.exclude_patterns.is_match(name) {
-            Some(false)
-        } else if self.include_list.contains(name) || self.include_patterns.is_match(name) {
+        if self.include_list.contains(name) || self.include_patterns.is_match(name) {
             Some(true)
+        } else if self.exclude_list.contains(name) || self.exclude_patterns.is_match(name) {
+            Some(false)
         } else {
             None
         }

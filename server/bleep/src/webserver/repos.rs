@@ -508,6 +508,7 @@ mod test {
                     file_filter: Default::default(),
                     pub_sync_status: Default::default(),
                     locked: Default::default(),
+                    shallow: Default::default(),
                 },
             )
             .unwrap();
@@ -529,6 +530,7 @@ mod test {
                     file_filter: Default::default(),
                     pub_sync_status: Default::default(),
                     locked: Default::default(),
+                    shallow: Default::default(),
                 },
             )
             .unwrap();
@@ -552,6 +554,7 @@ mod test {
                     file_filter: Default::default(),
                     pub_sync_status: Default::default(),
                     locked: Default::default(),
+                    shallow: Default::default(),
                 },
             )
                 .into(),
@@ -574,6 +577,7 @@ mod test {
                 file_filter: Default::default(),
                 pub_sync_status: Default::default(),
                 locked: Default::default(),
+                shallow: Default::default(),
             },
         )
             .into();

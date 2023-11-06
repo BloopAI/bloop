@@ -138,7 +138,7 @@ impl SyncHandle {
         } = config;
         let status = app.sync_queue.broadcast();
 
-        let shallow_config = if shallow {
+        let mut shallow_config = if shallow {
             gix::remote::fetch::Shallow::DepthAtRemote(NonZeroU32::new(1).unwrap())
         } else {
             gix::remote::fetch::Shallow::DepthAtRemote(NonZeroU32::new(1000).unwrap())
@@ -182,6 +182,12 @@ impl SyncHandle {
                     }
                 }
             });
+
+        // if we're not upgrading from shallow to full checkout
+        // this seems to be a speed optimization for git operations
+        if !shallow && !current.get().shallow {
+            shallow_config = gix::remote::fetch::Shallow::NoChange;
+        }
 
         let sh = Self {
             app: app.clone(),
