@@ -353,9 +353,14 @@ impl Repository {
             self.file_filter = ff.patch_into(&self.file_filter);
         }
 
-        self.sync_status = SyncStatus::Done;
         self.shallow = shallow;
         self.locked = false;
+
+        self.sync_status = if shallow {
+            SyncStatus::Shallow
+        } else {
+            SyncStatus::Done
+        };
     }
 }
 

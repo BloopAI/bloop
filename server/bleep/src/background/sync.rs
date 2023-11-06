@@ -290,12 +290,8 @@ impl SyncHandle {
                     }
                 }
 
-                if self.shallow {
-                    self.set_status(|_| SyncStatus::Shallow)
-                } else {
-                    // technically `sync_done_with` does this, but we want to send notifications
-                    self.set_status(|_| SyncStatus::Done)
-                }
+                // technically `sync_done_with` does this, but we want to send notifications
+                self.set_status(|repo| repo.sync_status.clone())
             }
             Err(SyncError::Cancelled) => self.set_status(|_| SyncStatus::Cancelled),
             Err(err) => self.set_status(|_| SyncStatus::Error {
