@@ -12,7 +12,7 @@ use tantivy::{
 };
 use thiserror::Error;
 use tokio::sync::Mutex;
-use tracing::info;
+use tracing::{error, info};
 
 pub const COLLECTION_NAME: &str = "web";
 
@@ -43,6 +43,7 @@ pub struct SectionSchema {
     pub doc_title: Field,
     pub doc_description: Field,
     pub relative_url: Field,
+    pub absolute_url: Field,
     pub header: Field,
     pub ancestry: Field,
     pub text: Field,
@@ -77,7 +78,8 @@ impl SectionSchema {
         let doc_source = builder.add_text_field("doc_source", STORED);
         let doc_title = builder.add_text_field("doc_title", TEXT | STORED);
         let doc_description = builder.add_text_field("doc_description", TEXT | STORED);
-        let relative_url = builder.add_text_field("relative_url", raw);
+        let relative_url = builder.add_text_field("relative_url", raw.clone());
+        let absolute_url = builder.add_text_field("absolute_url", raw);
         let header = builder.add_text_field("header", trigram.clone());
         let ancestry = builder.add_text_field("ancestry", trigram.clone());
         let text = builder.add_text_field("text", trigram);
@@ -94,6 +96,7 @@ impl SectionSchema {
             doc_title,
             doc_description,
             relative_url,
+            absolute_url,
             header,
             ancestry,
             text,
@@ -120,13 +123,13 @@ pub struct Record {
     pub modified_at: chrono::NaiveDateTime,
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, Clone)]
 pub enum Progress {
     Update(Update),
     Done(i64),
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, Clone)]
 pub struct Update {
     url: url::Url,
     discovered_count: usize,
@@ -160,6 +163,15 @@ pub enum Error {
 
     #[error("tantivy error: {0}")]
     Tantivy(#[from] tantivy::error::TantivyError),
+
+    #[error("duplicate url: {0}")]
+    DuplicateUrl(url::Url),
+
+    #[error("network error: {0}")]
+    Network(#[from] reqwest::Error),
+
+    #[error("no docs found at url: {0}")]
+    EmptyDocs(url::Url),
 }
 
 impl Doc {
@@ -259,100 +271,109 @@ impl Doc {
     }
 
     /// Add a doc source to the index
-    pub async fn sync(
-        self,
-        url: url::Url,
-    ) -> Result<impl Stream<Item = Result<Progress, Error>>, Error> {
-        // add entry to sqlite
-        let url_string = url.to_string();
-        let id = sqlx::query! {
-            "INSERT INTO docs (url, index_status) VALUES (?, ?)",
-            url_string,
-            STATUS_INDEXING,
-        }
-        .execute(&*self.sql)
-        .await?
-        .last_insert_rowid();
+    pub async fn sync(self, url: url::Url) -> impl Stream<Item = Result<Progress, Error>> {
+        try_stream! {
+            // check if index writer is available
+            let index_writer = Arc::new(Mutex::new(self.index_writer()?));
 
-        let index_writer = Arc::new(Mutex::new(self.index_writer()?));
+            // add entry to sqlite
+            let url_string = url.to_string();
+            let id = sqlx::query! {
+                "INSERT INTO docs (url, index_status) VALUES (?, ?)",
+                url_string,
+                STATUS_INDEXING,
+            }
+            .execute(&*(self.clone()).sql)
+            .await?
+            .last_insert_rowid();
 
-        let stream = try_stream! {
             let mut is_meta_set = false;
-            let stream = self.clone().insert_into_tantivy(id, url.clone(), Arc::clone(&index_writer));
-
-            // TODO: handle empty stream error here
-
+            let stream =
+                self.clone()
+                    .insert_into_tantivy(id, url.clone(), Arc::clone(&index_writer));
+            let mut discovered_count = 0;
             for await progress in stream {
+                match progress.clone() {
+                    Progress::Update(update) => {
+                        discovered_count = update.discovered_count;
+                        if !update.meta.is_empty() && !is_meta_set {
+                            // set title
+                            if let Some(title) = &update.meta.title {
+                                self.set_title(title, id).await?;
+                            }
+
+                            // set favicon
+                            if let Some(favicon) = &update.meta.icon {
+                                let resolved_url = url::Url::parse(favicon)
+                                    .unwrap_or_else(|_| normalize_absolute_url(&url, favicon));
+                                self.set_favicon(resolved_url.as_str(), id).await?;
+                            }
+
+                            // set description
+                            if let Some(description) = &update.meta.description {
+                                self.set_description(description, id).await?;
+                            }
+
+                            // do not set meta for this doc provider in subsequent turns
+                            is_meta_set = true;
+                        };
+                    }
+                    _ => (),
+                }
                 // populate metadata in sqlite
                 //
                 // the first scraped doc that contains metadata is used to populate
                 // metadata in sqlite - this is typically the base_url entered by the user,
                 // if the base_url does not contain any metadata, we move on the the second
                 // scraped url
-                if !progress.meta.is_empty() && !is_meta_set {
-                    // set title
-                    if let Some(title) = &progress.meta.title {
-                        self.set_title(title, id).await?;
-                    }
+                yield progress;
+            }
 
-                    // set favicon
-                    if let Some(favicon) = &progress.meta.icon {
-                        let resolved_url = url::Url::parse(favicon).unwrap_or_else(|_|
-                            normalize_absolute_url(&url, favicon)
-                        );
-                        self.set_favicon(resolved_url.as_str(), id).await?;
-                    }
-
-                    // set description
-                    if let Some(description) = &progress.meta.description {
-                        self.set_description(description, id).await?;
-
-                    }
-
-                    // do not set meta for this doc provider in subsequent turns
-                    is_meta_set = true;
-                };
-                yield Progress::Update(progress);
+            // scraped doc, but no pages
+            if discovered_count == 0 {
+                // delete sql entry
+                sqlx::query!("DELETE FROM docs WHERE id = ? RETURNING id", id)
+                    .fetch_optional(&*self.sql)
+                    .await?
+                    .ok_or(Error::InvalidDocId(id))?;
+                error!("no docs found at url: `{}`", &url);
+                // return error
+                Err(Error::EmptyDocs(url))?;
             }
 
             self.set_index_status(STATUS_DONE, id).await?;
-            yield Progress::Done(id);
-        };
-
-        Ok(stream)
+        }
     }
 
     /// Update documentation in the index - this will rescrape the entire website
-    pub async fn resync(self, id: i64) -> Result<impl Stream<Item = Progress>, Error> {
-        let url = sqlx::query!("SELECT url FROM docs WHERE id = ?", id)
-            .fetch_optional(&*self.sql)
-            .await?
-            .ok_or(Error::InvalidDocId(id))?
-            .url;
-        let url = url::Url::parse(&url).map_err(|e| Error::UrlParse(url, e))?;
+    pub async fn resync(self, id: i64) -> impl Stream<Item = Result<Progress, Error>> {
+        try_stream! {
+            let url = sqlx::query!("SELECT url FROM docs WHERE id = ?", id)
+                .fetch_optional(&*self.sql)
+                .await?
+                .ok_or(Error::InvalidDocId(id))?
+                .url;
+            let url = url::Url::parse(&url).map_err(|e| Error::UrlParse(url, e))?;
 
-        // delete old docs from qdrant
-        // self.delete_from_qdrant(id).await?;
+            // delete old docs from tantivy
+            self.index_writer()?
+                .delete_term(Term::from_field_i64(self.section_schema.doc_id, id));
 
-        // delete old docs from tantivy
-        self.index_writer()?
-            .delete_term(Term::from_field_i64(self.section_schema.doc_id, id));
+            sqlx::query! {
+                "UPDATE docs SET modified_at = datetime('now') WHERE id = ?",
+                id,
+            }
+            .execute(&*self.sql)
+                .await?;
 
-        sqlx::query! {
-            "UPDATE docs SET modified_at = datetime('now') WHERE id = ?",
-            id,
+            let index_writer = Arc::new(Mutex::new(self.index_writer()?));
+
+            let stream = self
+                .insert_into_tantivy(id, url, Arc::clone(&index_writer));
+            for await progress in stream {
+                yield progress;
+            }
         }
-        .execute(&*self.sql)
-        .await?;
-
-        let index_writer = Arc::new(Mutex::new(self.index_writer()?));
-
-        let progress_stream = self
-            .insert_into_tantivy(id, url, Arc::clone(&index_writer))
-            .map(Progress::Update);
-        let done_stream = futures::stream::once(async move { Progress::Done(id) });
-
-        Ok(progress_stream.chain(done_stream))
     }
 
     /// Remove this doc source from qdrant and sqlite
@@ -363,9 +384,6 @@ impl Doc {
             .await?
             .ok_or(Error::InvalidDocId(id))?
             .id;
-
-        // delete entry from qdrant
-        // self.delete_from_qdrant(id).await?;
 
         // delete entry from tantivy
         self.index_writer()?
@@ -669,7 +687,6 @@ impl Doc {
         &self,
         id: i64,
         relative_url: S,
-        limit: u32,
     ) -> Result<Vec<SearchResult>, Error> {
         let reader = self.index_reader()?;
         let searcher = reader.searcher();
@@ -705,7 +722,26 @@ impl Doc {
         Ok(results)
     }
 
-    pub async fn contains_page<S: AsRef<str>>(&self, id: i64, relative_url: S) -> bool {
+    pub fn contains_url(&self, url: &url::Url) -> bool {
+        let Ok(reader) = self.index_reader() else {
+            return false;
+        };
+
+        let searcher = reader.searcher();
+        let query = Box::new(TermQuery::new(
+            Term::from_field_text(self.section_schema.absolute_url, url.as_str()),
+            IndexRecordOption::Basic,
+        )) as Box<dyn Query>;
+        let collector = TopDocs::with_limit(1);
+
+        let Ok(results) = searcher.search(&query, &collector) else {
+            return false;
+        };
+
+        !results.is_empty()
+    }
+
+    pub fn contains_page<S: AsRef<str>>(&self, id: i64, relative_url: S) -> bool {
         let Ok(reader) = self.index_reader() else {
             return false;
         };
@@ -738,26 +774,27 @@ impl Doc {
         id: i64,
         url: url::Url,
         index_writer: Arc<Mutex<tantivy::IndexWriter>>,
-    ) -> impl Stream<Item = Update> {
+    ) -> impl Stream<Item = Progress> {
         stream! {
             let mut scraper = Scraper::with_config(Config::new(url.clone()));
             let mut stream = Box::pin(scraper.complete());
+            // let mut set = tokio::task::JoinSet::new();
             let mut handles = Vec::new();
             let mut discovered_count = 0;
             while let Some(doc) = stream.next().await {
                 discovered_count += 1;
-                let progress = Update {
+                let progress = Progress::Update(Update {
                     url: doc.url.clone(),
                     discovered_count,
                     meta: doc.meta.clone(),
-                };
+                });
                 // println!("doc content: {:?}", doc.content);
                 yield progress;
                 let embedder = Arc::clone(&self.embedder);
                 let u = url.clone();
                 let section_schema = self.section_schema.clone();
                 let index_writer = Arc::clone(&index_writer);
-                if !self.contains_page(id, doc.relative_url(&url)).await
+                if !self.contains_page(id, doc.relative_url(&url))
                 {
                     handles.push(tokio::task::spawn(async move {
                         let tantivy_docs_to_insert = doc.embed(id, &u, embedder.as_ref(), section_schema);
@@ -766,11 +803,26 @@ impl Doc {
                             info!("inserting doc into tantivy: `{}` - `{}`", id, u.as_str());
                             let _ = lock.add_document(d);
                         }
+                        info!("committing ... ");
                         let _ = lock.commit();
+                        info!("committed");
+                        drop(lock);
                     }));
                 }
             }
+            futures::future::join_all(handles).await;
+            yield Progress::Done(id);
         }
+    }
+
+    pub async fn verify(&self, url: url::Url) -> Result<reqwest::StatusCode, Error> {
+        if self.contains_url(&url) {
+            return Err(Error::DuplicateUrl(url));
+        }
+        reqwest::get(url)
+            .await
+            .map(|r| r.status())
+            .map_err(Error::Network)
     }
 }
 
@@ -782,7 +834,7 @@ impl scraper::Document {
         embedder: &dyn Embedder,
         schema: SectionSchema,
     ) -> Vec<tantivy::Document> {
-        info!("inserting points for `{}`", self.url.as_str());
+        info!("indexing `{}`", self.url.as_str());
         scraper::chunk::by_section(
             &self.content,           // section content
             url.as_str(),            // section url base
@@ -814,6 +866,7 @@ impl scraper::Document {
                 schema.doc_title => self.meta.title.as_deref().unwrap_or_default(),
                 schema.doc_description => self.meta.description.as_deref().unwrap_or_default(),
                 schema.relative_url => self.relative_url(url).as_str(),
+                schema.absolute_url => url.as_str(),
                 schema.raw_relative_url => self.relative_url(url).as_str().as_bytes(),
                 schema.header => section.header.unwrap_or_default(),
                 schema.ancestry => section.ancestry_str().as_str(),
@@ -846,25 +899,22 @@ impl SearchResult {
         doc: tantivy::schema::Document,
         schema: &SectionSchema,
     ) -> Option<Self> {
-        let doc_source = doc
-            .get_first(schema.doc_source)?
-            .as_text()?
-            .parse::<url::Url>()
-            .unwrap();
-        let relative_url = doc.get_first(schema.relative_url)?.as_text()?.to_owned();
-        let absolute_url = doc_source.join(&relative_url).unwrap();
         Some(SearchResult {
             doc_id: doc.get_first(schema.doc_id)?.as_i64()?,
             doc_title: doc
                 .get_first(schema.doc_title)?
                 .as_text()
                 .map(ToOwned::to_owned),
+            doc_source: doc
+                .get_first(schema.doc_source)?
+                .as_text()?
+                .parse::<url::Url>()
+                .unwrap(),
             point_id: doc
                 .get_first(schema.point_id)?
                 .as_text()?
                 .parse::<uuid::Uuid>()
                 .unwrap(),
-            doc_source,
             ancestry: doc.get_first(schema.ancestry)?.as_text().map(|t| {
                 scraper::chunk::Section::ancestry_from_str(t)
                     .into_iter()
@@ -872,53 +922,17 @@ impl SearchResult {
                     .collect()
             })?,
             header: doc.get_first(schema.header)?.as_text()?.to_owned(),
-            relative_url,
-            absolute_url,
+            relative_url: doc.get_first(schema.relative_url)?.as_text()?.to_owned(),
+            absolute_url: doc
+                .get_first(schema.absolute_url)?
+                .as_text()?
+                .parse::<url::Url>()
+                .unwrap(),
             section_range: doc.get_first(schema.start_byte)?.as_u64()? as usize
                 ..doc.get_first(schema.end_byte)?.as_u64()? as usize,
             text: doc.get_first(schema.text)?.as_text()?.to_owned(),
         })
     }
-    // pub fn from_qdrant(
-    //     id: PointId,
-    //     payload: HashMap<String, qdrant_client::qdrant::Value>,
-    // ) -> Option<Self> {
-    //     let doc_id = payload["doc_id"].as_integer()?;
-    //     let doc_title = payload["doc_title"].as_str().map(ToOwned::to_owned);
-    //     let point_id = id.point_id_options.and_then(|opts| match opts {
-    //         PointIdOptions::Uuid(u) => uuid::Uuid::try_parse(&u).ok(),
-    //         _ => None,
-    //     })?;
-    //     let doc_source = payload["doc_source"]
-    //         .as_str()
-    //         .and_then(|s| url::Url::parse(s).ok())?;
-    //     let relative_url = payload["relative_url"].as_str().map(ToOwned::to_owned)?;
-    //     let section_start_byte: usize = payload["start"]
-    //         .as_integer()
-    //         .and_then(|i| i.try_into().ok())?;
-    //     let section_end_byte: usize = payload["end"]
-    //         .as_integer()
-    //         .and_then(|i| i.try_into().ok())?;
-    //     let header = payload["header"].as_str().map(ToOwned::to_owned)?;
-    //     let ancestry = payload["ancestry"]
-    //         .as_list()
-    //         .map(ToOwned::to_owned)?
-    //         .into_iter()
-    //         .map(|item| item.as_str().unwrap().to_owned())
-    //         .collect();
-    //     let text = payload["text"].as_str().map(ToOwned::to_owned)?;
-    //     Some(Self {
-    //         doc_id,
-    //         doc_title,
-    //         point_id,
-    //         doc_source,
-    //         relative_url,
-    //         header,
-    //         ancestry,
-    //         text,
-    //         section_range: section_start_byte..section_end_byte,
-    //     })
-    // }
 }
 
 #[derive(serde::Serialize)]
@@ -933,38 +947,10 @@ pub struct PageResult {
 }
 
 impl PageResult {
-    // pub fn from_qdrant(payload: HashMap<String, qdrant_client::qdrant::Value>) -> Option<Self> {
-    //     let doc_id = payload["doc_id"].as_integer()?;
-    //     let doc_source = payload["doc_source"]
-    //         .as_str()
-    //         .and_then(|s| url::Url::parse(s).ok())?;
-    //     let relative_url = payload["relative_url"].as_str().map(ToOwned::to_owned)?;
-    //     let doc_title = payload["doc_title"].as_str().map(ToOwned::to_owned)?;
-    //     let doc_description = payload["doc_description"].as_str().map(ToOwned::to_owned)?;
-    //     let doc_favicon = payload["doc_favicon"].as_str().map(ToOwned::to_owned)?;
-    //     Some(Self {
-    //         doc_id,
-    //         doc_source,
-    //         doc_title,
-    //         doc_description,
-    //         doc_favicon,
-    //         relative_url,
-    //     })
-    // }
-}
-
-impl PageResult {
     pub fn from_tantivy_document(
         doc: tantivy::schema::Document,
         schema: &SectionSchema,
     ) -> Option<Self> {
-        let doc_source = doc
-            .get_first(schema.doc_source)?
-            .as_text()?
-            .parse::<url::Url>()
-            .unwrap();
-        let relative_url = doc.get_first(schema.relative_url)?.as_text()?.to_owned();
-        let absolute_url = doc_source.join(&relative_url).unwrap();
         Some(PageResult {
             doc_id: doc.get_first(schema.doc_id)?.as_i64()?,
             doc_title: doc
@@ -979,9 +965,17 @@ impl PageResult {
                 .get_first(schema.doc_title)?
                 .as_text()
                 .map(ToOwned::to_owned),
-            doc_source,
-            relative_url,
-            absolute_url,
+            doc_source: doc
+                .get_first(schema.doc_source)?
+                .as_text()?
+                .parse::<url::Url>()
+                .unwrap(),
+            relative_url: doc.get_first(schema.relative_url)?.as_text()?.to_owned(),
+            absolute_url: doc
+                .get_first(schema.doc_source)?
+                .as_text()?
+                .parse::<url::Url>()
+                .unwrap(),
         })
     }
 }

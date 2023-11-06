@@ -499,6 +499,9 @@ trait DocumentCleaner {
                         }
                         txt.push('\n');
                         txt.push_str(&child.text());
+                        if !child.text().ends_with('\n') {
+                            txt.push('\n');
+                        }
                         txt.push_str("```\n");
                         txt_added |= true;
                     } else if child.is(link()) {

@@ -58,31 +58,31 @@ pub async fn delete(State(app): State<Application>, Path(id): Path<i64>) -> Resu
 pub async fn sync(
     State(app): State<Application>,
     Query(params): Query<Sync>,
-) -> Result<Sse<Pin<Box<dyn Stream<Item = Result<Event, Infallible>> + Send>>>> {
-    Ok(Sse::new(Box::pin(
+) -> Sse<Pin<Box<dyn Stream<Item = Result<Event, Infallible>> + Send>>> {
+    Sse::new(Box::pin(
         app.indexes
             .doc
             .clone()
             .sync(params.url)
-            .await?
+            .await
             .map(|result| {
                 Ok(Event::default()
                     .json_data(result.as_ref().map_err(ToString::to_string))
                     .unwrap())
             }),
-    )))
+    ))
 }
 
 pub async fn resync(
     State(app): State<Application>,
     Path(id): Path<i64>,
-) -> Result<Sse<Pin<Box<dyn Stream<Item = Result<Event, Infallible>> + Send>>>> {
-    Ok(Sse::new(Box::pin(
-        app.indexes.doc.clone().resync(id).await?.map(|progress| {
+) -> Sse<Pin<Box<dyn Stream<Item = Result<Event, Infallible>> + Send>>> {
+    Sse::new(Box::pin(app.indexes.doc.clone().resync(id).await.map(
+        |result| {
             Ok(Event::default()
-                .json_data(Ok::<_, String>(progress))
+                .json_data(result.as_ref().map_err(ToString::to_string))
                 .unwrap())
-        }),
+        },
     )))
 }
 
@@ -125,16 +125,14 @@ pub async fn fetch(
     Path(id): Path<i64>,
     Query(params): Query<Fetch>,
 ) -> Result<Json<Vec<doc::SearchResult>>> {
-    Ok(Json(
-        app.indexes.doc.fetch(id, params.relative_url, 9999).await?,
-    ))
+    Ok(Json(app.indexes.doc.fetch(id, params.relative_url).await?))
 }
 
-pub async fn verify(Query(params): Query<Verify>) -> Result<reqwest::StatusCode> {
-    reqwest::get(params.url)
-        .await
-        .map(|r| r.status())
-        .map_err(Error::user)
+pub async fn verify(
+    State(app): State<Application>,
+    Query(params): Query<Verify>,
+) -> Result<reqwest::StatusCode> {
+    Ok(app.indexes.doc.verify(params.url).await?)
 }
 
 impl From<doc::Error> for Error {
@@ -145,8 +143,11 @@ impl From<doc::Error> for Error {
             | doc::Error::UrlParse(..)
             | doc::Error::Io(..)
             | doc::Error::Tantivy(..)
+            | doc::Error::Network(..)
             | doc::Error::Initialize(_) => Self::internal(value), // TODO: log these to sentry
-            doc::Error::InvalidUrl(..) => Self::user(value),
+            doc::Error::InvalidUrl(..)
+            | doc::Error::DuplicateUrl(..)
+            | doc::Error::EmptyDocs(..) => Self::user(value),
             doc::Error::InvalidDocId(_) => Self::not_found(value),
         }
     }

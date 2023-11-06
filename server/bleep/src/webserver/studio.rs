@@ -477,7 +477,7 @@ async fn token_counts(
             let content = app
                 .indexes
                 .doc
-                .fetch(file.doc_id, &file.relative_url, 9999)
+                .fetch(file.doc_id, &file.relative_url)
                 .await
                 .map(|search_results| {
                     search_results
@@ -611,7 +611,7 @@ pub async fn get_doc_file_token_count(
     let content = app
         .indexes
         .doc
-        .fetch(params.doc_id, &params.relative_url, 9999)
+        .fetch(params.doc_id, &params.relative_url)
         .await
         .map_err(Error::internal)?
         .into_iter()
@@ -841,7 +841,7 @@ async fn generate_llm_context(
         let sections = app
             .indexes
             .doc
-            .fetch(file.doc_id, &file.relative_url, 9999)
+            .fetch(file.doc_id, &file.relative_url)
             .await?
             .into_iter()
             .filter(|search_result| {

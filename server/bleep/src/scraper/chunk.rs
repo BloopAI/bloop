@@ -28,7 +28,7 @@ impl<'a> Section<'a> {
 // - collect non-section child-nodes for the current node
 // - these form a single chunk to be embedded
 // - repeat above on every section child-node
-const MAX_DEPTH: usize = 2;
+const MAX_DEPTH: usize = 1;
 pub fn sectionize<'s, 'b>(
     start_node: &'b Node,
     sections: &'b mut Vec<Section<'s>>,
