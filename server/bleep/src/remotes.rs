@@ -378,12 +378,13 @@ impl BackendCredential {
                 &repo.remote.to_string(),
                 &repo.disk_path,
                 &handle.pipes,
-                handle.shallow.clone(),
+                handle.shallow_config.clone(),
             )
             .await
         };
-        let pull =
-            || async { git_pull(&creds, &repo, &handle.pipes, handle.shallow.clone()).await };
+        let pull = || async {
+            git_pull(&creds, &repo, &handle.pipes, handle.shallow_config.clone()).await
+        };
 
         let synced = if repo.last_index_unix_secs == 0 && repo.disk_path.exists() {
             // it is possible syncing was killed, but the repo is

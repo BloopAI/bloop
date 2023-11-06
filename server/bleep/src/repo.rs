@@ -217,6 +217,16 @@ pub struct Repository {
     #[serde(default)]
     pub file_filter: FileFilterConfig,
 
+    /// Indicate that this repository is to be cloned as a shallow copy
+    ///
+    /// Defaults to `false for existing repos.
+    ///
+    /// This is a set-once value, meaning there's no meaningful
+    /// reversal of a `false` value to `true`, but `true` to `false`
+    /// is ok.
+    #[serde(default)]
+    pub shallow: bool,
+
     /// Sync lock
     #[serde(skip)]
     pub locked: bool,
@@ -263,6 +273,7 @@ impl Repository {
             branch_filter: None,
             file_filter: Default::default(),
             locked: false,
+            shallow: false,
             disk_path,
             remote,
         }
@@ -322,6 +333,7 @@ impl Repository {
 
     pub(crate) fn sync_done_with(
         &mut self,
+        shallow: bool,
         filter_update: &FilterUpdate,
         metadata: Arc<RepoMetadata>,
     ) {
@@ -342,6 +354,7 @@ impl Repository {
         }
 
         self.sync_status = SyncStatus::Done;
+        self.shallow = shallow;
         self.locked = false;
     }
 }
@@ -388,6 +401,10 @@ pub enum SyncStatus {
 
     /// VCS remote has been removed
     RemoteRemoved,
+
+    /// There's a clone, but only usable for directory listings
+    /// through a dedicated API based on Git
+    Shallow,
 
     /// Successfully indexed
     Done,
