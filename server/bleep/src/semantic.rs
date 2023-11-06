@@ -51,7 +51,7 @@ pub enum SemanticError {
 #[derive(Clone)]
 pub struct Semantic {
     qdrant: Arc<QdrantClient>,
-    pub(crate) embedder: Arc<dyn Embedder>,
+    embedder: Arc<dyn Embedder>,
     pub(crate) config: Arc<Configuration>,
 }
 

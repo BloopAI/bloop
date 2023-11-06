@@ -3,6 +3,7 @@ use axum::{
     response::{sse::Event, Sse},
 };
 use futures::stream::{Stream, StreamExt};
+use tracing::error;
 
 use crate::{
     indexes::doc,
@@ -139,12 +140,14 @@ impl From<doc::Error> for Error {
     fn from(value: doc::Error) -> Self {
         match value {
             doc::Error::Sql(_)
-            | doc::Error::Embed(_)
             | doc::Error::UrlParse(..)
             | doc::Error::Io(..)
             | doc::Error::Tantivy(..)
             | doc::Error::Network(..)
-            | doc::Error::Initialize(_) => Self::internal(value), // TODO: log these to sentry
+            | doc::Error::Initialize(_) => {
+                error!(%value, "internal docs error");
+                Self::internal(value)
+            } // TODO: log these to sentry
             doc::Error::InvalidUrl(..)
             | doc::Error::DuplicateUrl(..)
             | doc::Error::EmptyDocs(..) => Self::user(value),

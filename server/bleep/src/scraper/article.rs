@@ -373,7 +373,7 @@ impl ArticleBuilder {
             .context("Url of the article must be initialized.")?;
 
         let builder = {
-            let timeout = self.timeout.unwrap_or_else(|| Duration::from_secs(2_000));
+            let timeout = self.timeout.unwrap_or_else(|| Duration::from_secs(5));
 
             let mut headers = HeaderMap::with_capacity(1);
 

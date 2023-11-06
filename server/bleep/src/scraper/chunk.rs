@@ -1,10 +1,6 @@
-use tokenizers::Tokenizer;
 use tree_sitter::{Node, Parser};
 
-use crate::{
-    semantic::chunk::{Chunk, OverlapStrategy},
-    text_range::TextRange,
-};
+use crate::text_range::TextRange;
 
 pub struct Section<'s> {
     pub data: &'s str,
@@ -101,12 +97,7 @@ fn cover(a: tree_sitter::Range, b: tree_sitter::Range) -> tree_sitter::Range {
     }
 }
 
-pub fn by_section<'s, 't: 's>(
-    src: &'s str,
-    doc_source: &'s str,
-    doc_path: &'s str,
-    tokenizer: &'t Tokenizer,
-) -> impl Iterator<Item = (Section<'s>, Vec<Chunk<'s>>)> + 's {
+pub fn by_section<'s>(src: &'s str) -> Vec<Section<'s>> {
     let mut parser = Parser::new();
     parser.set_language(tree_sitter_md::language()).unwrap();
 
@@ -116,23 +107,5 @@ pub fn by_section<'s, 't: 's>(
     let mut sections = Vec::new();
     sectionize(&root_node, &mut sections, vec![], 0, src);
 
-    // repo <-> doc
-    let repo = doc_source;
-    let file = doc_path;
-
-    // break each section into chunks
-    // ideally, each section would contain of just 1 chunk, but
-    // longer sections may contain more than 1 chunk - the embeddings
-    // of such chunks need to be averaged
-    sections.into_iter().map(move |section| {
-        let chunks = crate::semantic::chunk::by_tokens(
-            repo,
-            &format!("{file} > {}", section.ancestry_str()),
-            section.data,
-            tokenizer,
-            50..256,
-            OverlapStrategy::Partial(0.5),
-        );
-        (section, chunks)
-    })
+    sections
 }

@@ -12,7 +12,7 @@ use tantivy::{
 };
 use thiserror::Error;
 use tokio::sync::Mutex;
-use tracing::{error, info};
+use tracing::{debug, error, info};
 
 pub const COLLECTION_NAME: &str = "web";
 
@@ -20,7 +20,6 @@ use crate::{
     db::SqlDb,
     query::compiler::{case_permutations, trigrams},
     scraper::{self, Config, Scraper},
-    semantic::Embedder,
 };
 
 use std::sync::Arc;
@@ -28,7 +27,6 @@ use std::sync::Arc;
 #[derive(Clone)]
 pub struct Doc {
     sql: SqlDb,
-    embedder: Arc<dyn Embedder>,
     section_index: tantivy::Index,
     section_schema: SectionSchema,
 }
@@ -155,9 +153,6 @@ pub enum Error {
     #[error("failed to perform sql transaction: {0}")]
     Sql(#[from] sqlx::Error),
 
-    #[error("failed to embed sequence: {0}")]
-    Embed(anyhow::Error),
-
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
 
@@ -185,11 +180,7 @@ impl Doc {
         self.section_index.reader().map_err(Error::Tantivy)
     }
     /// Initialize docs index
-    pub async fn create(
-        sql: SqlDb,
-        embedder: Arc<dyn Embedder>,
-        path: &std::path::Path,
-    ) -> Result<Self, Error> {
+    pub async fn create(sql: SqlDb, path: &std::path::Path) -> Result<Self, Error> {
         std::fs::create_dir_all(path)?;
 
         let section_schema = SectionSchema::new();
@@ -204,7 +195,7 @@ impl Doc {
             .set_default_multithread_executor()
             .map_err(|e| Error::Initialize(e.to_string()))?;
         section_index
-            .set_multithread_executor(4)
+            .set_multithread_executor(crate::config::default_parallelism())
             .map_err(|e| Error::Initialize(e.to_string()))?;
 
         section_index
@@ -215,7 +206,6 @@ impl Doc {
 
         Ok(Self {
             sql,
-            embedder,
             section_index,
             section_schema,
         })
@@ -299,19 +289,25 @@ impl Doc {
                         if !update.meta.is_empty() && !is_meta_set {
                             // set title
                             if let Some(title) = &update.meta.title {
-                                self.set_title(title, id).await?;
+                                if let Err(e) = self.set_title(title, id).await {
+                                    error!(%e, %title, %id, "failed to set doc title");
+                                };
                             }
 
                             // set favicon
                             if let Some(favicon) = &update.meta.icon {
                                 let resolved_url = url::Url::parse(favicon)
                                     .unwrap_or_else(|_| normalize_absolute_url(&url, favicon));
-                                self.set_favicon(resolved_url.as_str(), id).await?;
+                                if let Err(e) = self.set_favicon(resolved_url.as_str(), id).await {
+                                    error!(%e, %favicon, %id, "failed to set doc icon");
+                                };
                             }
 
                             // set description
                             if let Some(description) = &update.meta.description {
-                                self.set_description(description, id).await?;
+                                if let Err(e) = self.set_description(description, id).await {
+                                    error!(%e, %description, %id, "failed to set doc description");
+                                };
                             }
 
                             // do not set meta for this doc provider in subsequent turns
@@ -336,7 +332,7 @@ impl Doc {
                     .fetch_optional(&*self.sql)
                     .await?
                     .ok_or(Error::InvalidDocId(id))?;
-                error!("no docs found at url: `{}`", &url);
+                error!(doc_source = url.as_str(), "no docs found at url");
                 // return error
                 Err(Error::EmptyDocs(url))?;
             }
@@ -772,11 +768,11 @@ impl Doc {
     fn insert_into_tantivy(
         self,
         id: i64,
-        url: url::Url,
+        doc_source: url::Url,
         index_writer: Arc<Mutex<tantivy::IndexWriter>>,
     ) -> impl Stream<Item = Progress> {
         stream! {
-            let mut scraper = Scraper::with_config(Config::new(url.clone()));
+            let mut scraper = Scraper::with_config(Config::new(doc_source.clone()));
             let mut stream = Box::pin(scraper.complete());
             // let mut set = tokio::task::JoinSet::new();
             let mut handles = Vec::new();
@@ -790,22 +786,19 @@ impl Doc {
                 });
                 // println!("doc content: {:?}", doc.content);
                 yield progress;
-                let embedder = Arc::clone(&self.embedder);
-                let u = url.clone();
+                let doc_source = doc_source.clone();
                 let section_schema = self.section_schema.clone();
                 let index_writer = Arc::clone(&index_writer);
-                if !self.contains_page(id, doc.relative_url(&url))
+                if !self.contains_page(id, doc.relative_url(&doc_source))
                 {
                     handles.push(tokio::task::spawn(async move {
-                        let tantivy_docs_to_insert = doc.embed(id, &u, embedder.as_ref(), section_schema);
+                        let tantivy_docs_to_insert = doc.embed(id, &doc_source, section_schema);
                         let mut lock = index_writer.lock().await;
                         for d in tantivy_docs_to_insert {
-                            info!("inserting doc into tantivy: `{}` - `{}`", id, u.as_str());
                             let _ = lock.add_document(d);
                         }
-                        info!("committing ... ");
                         let _ = lock.commit();
-                        info!("committed");
+                        debug!(%id, url = doc.url.as_str(), "commiting page");
                         drop(lock);
                     }));
                 }
@@ -830,53 +823,48 @@ impl scraper::Document {
     fn embed(
         &self,
         id: i64,
-        url: &url::Url,
-        embedder: &dyn Embedder,
+        doc_source: &url::Url,
         schema: SectionSchema,
     ) -> Vec<tantivy::Document> {
-        info!("indexing `{}`", self.url.as_str());
-        scraper::chunk::by_section(
-            &self.content,           // section content
-            url.as_str(),            // section url base
-            &self.relative_url(url), // relative path
-            embedder.tokenizer(),
-        )
-        .inspect(|(section, _)| {
-            // println!("{}", section.data);
-        })
-        .par_bridge()
-        .map(|(section, _)| {
-            let point_id = {
-                let mut bytes = [0; 16];
-                let mut hasher = blake3::Hasher::new();
-                hasher.update(&id.to_le_bytes()); // doc id
-                hasher.update(self.meta.title.as_deref().unwrap_or("").as_bytes()); // title of this page
-                hasher.update(section.data.as_bytes()); // section data
-                hasher.update(&section.section_range.start.byte.to_le_bytes()); // section start location
-                hasher.update(&section.section_range.end.byte.to_le_bytes()); // section end location
-                bytes.copy_from_slice(&hasher.finalize().as_bytes()[16..32]);
-                uuid::Uuid::from_bytes(bytes).to_string()
-            };
+        info!(
+            doc_source = %(doc_source.as_str()),
+            doc_id = %id,
+            "indexing doc",
+        );
+        scraper::chunk::by_section(&self.content)
+            .into_par_iter()
+            .map(|section| {
+                let point_id = {
+                    let mut bytes = [0; 16];
+                    let mut hasher = blake3::Hasher::new();
+                    hasher.update(&id.to_le_bytes()); // doc id
+                    hasher.update(self.meta.title.as_deref().unwrap_or("").as_bytes()); // title of this page
+                    hasher.update(section.data.as_bytes()); // section data
+                    hasher.update(&section.section_range.start.byte.to_le_bytes()); // section start location
+                    hasher.update(&section.section_range.end.byte.to_le_bytes()); // section end location
+                    bytes.copy_from_slice(&hasher.finalize().as_bytes()[16..32]);
+                    uuid::Uuid::from_bytes(bytes).to_string()
+                };
 
-            use tantivy::doc;
-            doc!(
-                schema.doc_id => id,
-                schema.point_id => point_id.as_str(),
-                schema.doc_source => url.as_str(),
-                schema.doc_title => self.meta.title.as_deref().unwrap_or_default(),
-                schema.doc_description => self.meta.description.as_deref().unwrap_or_default(),
-                schema.relative_url => self.relative_url(url).as_str(),
-                schema.absolute_url => url.as_str(),
-                schema.raw_relative_url => self.relative_url(url).as_str().as_bytes(),
-                schema.header => section.header.unwrap_or_default(),
-                schema.ancestry => section.ancestry_str().as_str(),
-                schema.text => section.data,
-                schema.start_byte => section.section_range.start.byte as u64,
-                schema.end_byte => section.section_range.start.byte as u64,
-                schema.section_depth => section.ancestry.len() as u64,
-            )
-        })
-        .collect()
+                use tantivy::doc;
+                doc!(
+                    schema.doc_id => id,
+                    schema.point_id => point_id.as_str(),
+                    schema.doc_source => doc_source.as_str(),
+                    schema.doc_title => self.meta.title.as_deref().unwrap_or_default(),
+                    schema.doc_description => self.meta.description.as_deref().unwrap_or_default(),
+                    schema.absolute_url => self.url.as_str(),
+                    schema.relative_url => self.relative_url(doc_source).as_str(),
+                    schema.raw_relative_url => self.relative_url(doc_source).as_str().as_bytes(),
+                    schema.header => section.header.unwrap_or_default(),
+                    schema.ancestry => section.ancestry_str().as_str(),
+                    schema.text => section.data,
+                    schema.start_byte => section.section_range.start.byte as u64,
+                    schema.end_byte => section.section_range.start.byte as u64,
+                    schema.section_depth => section.ancestry.len() as u64,
+                )
+            })
+            .collect()
     }
 }
 

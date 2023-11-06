@@ -173,9 +173,7 @@ impl Application {
         config.source.save_index_version()?;
         debug!("index version saved");
 
-        let indexes = Indexes::new(&config, sql.clone(), Arc::clone(&semantic.embedder))
-            .await?
-            .into();
+        let indexes = Indexes::new(&config, sql.clone()).await?.into();
         debug!("indexes initialized");
 
         // Enforce capabilies and features depending on environment
