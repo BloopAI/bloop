@@ -138,6 +138,7 @@ struct DocContextFile {
     doc_icon: Option<String>,
     doc_title: Option<String>,
     relative_url: String,
+    absolute_url: String,
     hidden: bool,
     ranges: Vec<Uuid>,
 }
