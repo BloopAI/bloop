@@ -787,7 +787,7 @@ impl Doc {
                 {
                     handles.push(tokio::task::spawn(async move {
                         let tantivy_docs_to_insert = doc.embed(id, &doc_source, section_schema);
-                        let mut lock = index_writer.lock().await;
+                        let lock = index_writer.lock().await;
                         for d in tantivy_docs_to_insert {
                             let _ = lock.add_document(d);
                         }

@@ -468,7 +468,7 @@ trait DocumentCleaner {
                         }
                         txt.push(' ');
                         txt.push_str(
-                            &child
+                            child
                                 .text()
                                 .chars()
                                 .filter(|c| c.is_ascii() || *c != '\n')

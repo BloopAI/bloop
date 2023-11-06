@@ -1195,7 +1195,7 @@ pub async fn list_snapshots(
             modified_at: r.modified_at,
             context: serde_json::from_str(&r.context).context("failed to deserialize context")?,
             doc_context: if let Some(c) = &r.doc_context {
-                serde_json::from_str(&c).context("failed to deserialize doc context")?
+                serde_json::from_str(c).context("failed to deserialize doc context")?
             } else {
                 Vec::new()
             },
