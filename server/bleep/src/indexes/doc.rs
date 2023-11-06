@@ -283,38 +283,35 @@ impl Doc {
                     .insert_into_tantivy(id, url.clone(), Arc::clone(&index_writer));
             let mut discovered_count = 0;
             for await progress in stream {
-                match progress.clone() {
-                    Progress::Update(update) => {
-                        discovered_count = update.discovered_count;
-                        if !update.meta.is_empty() && !is_meta_set {
-                            // set title
-                            if let Some(title) = &update.meta.title {
-                                if let Err(e) = self.set_title(title, id).await {
-                                    error!(%e, %title, %id, "failed to set doc title");
-                                };
-                            }
+                if let Progress::Update(update) = progress.clone() {
+                    discovered_count = update.discovered_count;
+                    if !update.meta.is_empty() && !is_meta_set {
+                        // set title
+                        if let Some(title) = &update.meta.title {
+                            if let Err(e) = self.set_title(title, id).await {
+                                error!(%e, %title, %id, "failed to set doc title");
+                            };
+                        }
 
-                            // set favicon
-                            if let Some(favicon) = &update.meta.icon {
-                                let resolved_url = url::Url::parse(favicon)
-                                    .unwrap_or_else(|_| normalize_absolute_url(&url, favicon));
-                                if let Err(e) = self.set_favicon(resolved_url.as_str(), id).await {
-                                    error!(%e, %favicon, %id, "failed to set doc icon");
-                                };
-                            }
+                        // set favicon
+                        if let Some(favicon) = &update.meta.icon {
+                            let resolved_url = url::Url::parse(favicon)
+                                .unwrap_or_else(|_| normalize_absolute_url(&url, favicon));
+                            if let Err(e) = self.set_favicon(resolved_url.as_str(), id).await {
+                                error!(%e, %favicon, %id, "failed to set doc icon");
+                            };
+                        }
 
-                            // set description
-                            if let Some(description) = &update.meta.description {
-                                if let Err(e) = self.set_description(description, id).await {
-                                    error!(%e, %description, %id, "failed to set doc description");
-                                };
-                            }
+                        // set description
+                        if let Some(description) = &update.meta.description {
+                            if let Err(e) = self.set_description(description, id).await {
+                                error!(%e, %description, %id, "failed to set doc description");
+                            };
+                        }
 
-                            // do not set meta for this doc provider in subsequent turns
-                            is_meta_set = true;
-                        };
-                    }
-                    _ => (),
+                        // do not set meta for this doc provider in subsequent turns
+                        is_meta_set = true;
+                    };
                 }
                 // populate metadata in sqlite
                 //

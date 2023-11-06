@@ -97,7 +97,7 @@ fn cover(a: tree_sitter::Range, b: tree_sitter::Range) -> tree_sitter::Range {
     }
 }
 
-pub fn by_section<'s>(src: &'s str) -> Vec<Section<'s>> {
+pub fn by_section(src: &str) -> Vec<Section<'_>> {
     let mut parser = Parser::new();
     parser.set_language(tree_sitter_md::language()).unwrap();
 

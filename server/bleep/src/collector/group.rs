@@ -3,7 +3,6 @@ use tantivy::{
     schema::Field,
     DocAddress, Score, SegmentReader,
 };
-use tantivy_columnar;
 
 use std::collections::HashMap;
 
@@ -19,7 +18,7 @@ pub struct Groups {
 
 impl Groups {
     fn non_zero_count(self) -> Option<Self> {
-        if self.items.len() == 0 {
+        if self.items.is_empty() {
             None
         } else {
             Some(self)
