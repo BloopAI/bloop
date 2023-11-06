@@ -471,8 +471,9 @@ trait DocumentCleaner {
                             &child
                                 .text()
                                 .chars()
-                                .filter(|c| c.is_ascii())
-                                .collect::<String>(),
+                                .filter(|c| c.is_ascii() || *c != '\n')
+                                .collect::<String>()
+                                .trim(),
                         );
                         txt.push('\n');
                         txt_added |= true;
@@ -751,20 +752,23 @@ impl ArticleTextNodeExtractor {
     fn calculate_best_node(doc: &Document, lang: Language) -> Option<ArticleTextNode> {
         let mut starting_boost = 1.0;
 
+        let mut common_best_nodes = doc.find(
+            Name("article")
+                .or(Name("main"))
+                .or(Attr("id", "main"))
+                .or(Attr("id", "content"))
+                .or(Attr("id", "doc-content"))
+                .or(Attr("id", "contents"))
+                .or(Attr("class", "book-body")),
+        );
+
         // heuristics for commonly occurring nodes with main content
-        if let Some(main_tag) = doc
-            .find(
-                Name("article")
-                    .or(Name("main"))
-                    .or(Attr("id", "main"))
-                    .or(Attr("id", "content"))
-                    .or(Attr("id", "doc-content"))
-                    .or(Attr("id", "contents"))
-                    .or(Attr("class", "book-body")),
-            )
-            .next()
-        {
-            return Some(ArticleTextNode::new(main_tag));
+        if let Some(main_tag) = common_best_nodes.next() {
+            // if exactly one, say, article node was found, use it
+            // else, the site may be misusing these tags
+            if common_best_nodes.next().is_none() {
+                return Some(ArticleTextNode::new(main_tag));
+            }
         }
 
         let txt_nodes: Vec<_> = ArticleTextNodeExtractor::nodes_to_check(doc)

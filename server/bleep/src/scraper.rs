@@ -189,7 +189,14 @@ pub struct Document {
 
 impl Document {
     pub fn relative_url(&self, base: &Url) -> String {
-        base.make_relative(&self.url).unwrap_or_else(|| {
+        let mut base = base.clone();
+        let mut other = self.url.clone();
+
+        // scheme difference does not matter to us
+        base.set_scheme("https");
+        other.set_scheme("https");
+
+        base.make_relative(&other).unwrap_or_else(|| {
             panic!(
                 "`{}` is not relative to `{}`",
                 self.url.as_str(),
