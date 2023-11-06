@@ -139,6 +139,10 @@ const AddDocsModal = ({
       eventSource.onerror = (err) => {
         console.log(err);
         eventSource.close(); //otherwise the doc will be indexed twice
+        setIndexing(false);
+        setDocsUrl('');
+        setCurrentlyIndexingUrl('');
+        refreshIndexedDocs();
       };
       eventSource.onmessage = (ev) => {
         const data = JSON.parse(ev.data);
