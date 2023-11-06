@@ -963,7 +963,7 @@ impl PageResult {
                 .unwrap(),
             relative_url: doc.get_first(schema.relative_url)?.as_text()?.to_owned(),
             absolute_url: doc
-                .get_first(schema.doc_source)?
+                .get_first(schema.absolute_url)?
                 .as_text()?
                 .parse::<url::Url>()
                 .unwrap(),

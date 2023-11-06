@@ -47,10 +47,16 @@ const BAD_NODE_NAMES: &[&str; 9] = &[
 ];
 const ATTR_TO_CHECK: [&str; 3] = ["id", "class", "name"];
 
-#[derive(Debug, Default)]
-struct DefaultExtractor;
+#[derive(Debug)]
+struct DefaultExtractor {
+    url: Url,
+}
 
-impl Extractor for DefaultExtractor {}
+impl Extractor for DefaultExtractor {
+    fn url(&self) -> &Url {
+        &self.url
+    }
+}
 
 trait Extractor {
     fn title<'a>(&self, doc: &'a Document) -> Option<Cow<'a, str>> {
@@ -144,7 +150,13 @@ trait Extractor {
     }
 
     fn text<'a>(&self, doc: &'a Document, lang: Language) -> Option<Cow<'a, str>> {
-        self.text_with_cleaner(doc, lang, DefaultDocumentCleaner)
+        self.text_with_cleaner(
+            doc,
+            lang,
+            DefaultDocumentCleaner {
+                url: self.url().clone(),
+            },
+        )
     }
 
     fn text_with_cleaner<'a, T: DocumentCleaner>(
@@ -198,7 +210,7 @@ trait Extractor {
         builder = builder.icon(self.icon(doc));
 
         if let Some(txt_node) = self.article_node(doc, lang) {
-            builder = builder.text(txt_node.clean_text().into());
+            builder = builder.text(txt_node.clean_text(self.url()).into());
         }
 
         builder.build()
@@ -219,6 +231,8 @@ trait Extractor {
 
         None
     }
+
+    fn url(&self) -> &Url;
 }
 
 #[derive(Debug)]
@@ -362,7 +376,11 @@ impl ArticleBuilder {
     }
 
     pub async fn get(self) -> Result<Article> {
-        self.get_with_extractor(&DefaultExtractor).await
+        let url = self.url.clone();
+        self.get_with_extractor(&DefaultExtractor {
+            url: url.context("url not initialized")?,
+        })
+        .await
     }
 
     async fn get_with_extractor<TExtract: Extractor>(
@@ -434,9 +452,15 @@ impl<'a> Deref for MetaNode<'a> {
     }
 }
 
-struct DefaultDocumentCleaner;
+struct DefaultDocumentCleaner {
+    url: Url,
+}
 
-impl DocumentCleaner for DefaultDocumentCleaner {}
+impl DocumentCleaner for DefaultDocumentCleaner {
+    fn url(&self) -> &Url {
+        &self.url
+    }
+}
 
 trait DocumentCleaner {
     fn clean_node_text(&self, node: Node) -> String {
@@ -516,7 +540,22 @@ trait DocumentCleaner {
                             let link_href = child.attr("href");
                             if !link_text.trim().is_empty() {
                                 if let Some(href) = link_href {
-                                    txt.push_str(&format!("[{}]({})", link_text.trim(), href));
+                                    // make href absolute if possible
+                                    let absolute_href = match Url::parse(href) {
+                                        Err(url::ParseError::RelativeUrlWithoutBase) => {
+                                            cleaner.url().join(href).ok()
+                                        }
+                                        _ => None,
+                                    };
+                                    if let Some(ah) = absolute_href {
+                                        txt.push_str(&format!(
+                                            "[{}]({})",
+                                            link_text.trim(),
+                                            ah.as_str()
+                                        ));
+                                    } else {
+                                        txt.push_str(&link_text);
+                                    }
                                 } else {
                                     txt.push_str(&link_text);
                                 }
@@ -579,6 +618,8 @@ trait DocumentCleaner {
             inner: node.descendants(),
         }
     }
+
+    fn url(&self) -> &Url;
 }
 struct CleanNodeIter<'a, T: DocumentCleaner> {
     cleaner: &'a T,
@@ -720,8 +761,8 @@ impl<'a> ArticleTextNode<'a> {
         Self { inner }
     }
 
-    fn clean_text(&self) -> String {
-        DefaultDocumentCleaner.clean_node_text(self.inner)
+    fn clean_text(&self, url: &Url) -> String {
+        DefaultDocumentCleaner { url: url.clone() }.clean_node_text(self.inner)
     }
 }
 
