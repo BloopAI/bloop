@@ -18,9 +18,10 @@ const md = new Remarkable({
 
 type Props = {
   text: string;
+  baseUrl: string;
 };
 
-const RenderedSection = ({ text }: Props) => {
+const RenderedSection = ({ text, baseUrl }: Props) => {
   const { openLink } = useContext(DeviceContext);
 
   const markdown = useMemo(() => md.render(text), [text]);
@@ -28,14 +29,18 @@ const RenderedSection = ({ text }: Props) => {
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
       // @ts-ignore
-      const { href } = e.target;
+      const href = e.target.getAttribute('href');
       if (href) {
         e.preventDefault();
         e.stopPropagation();
-        openLink(href);
+        openLink(
+          href.startsWith('http://') || href.startsWith('https://')
+            ? href
+            : new URL(href, baseUrl).href,
+        );
       }
     },
-    [openLink],
+    [openLink, baseUrl],
   );
 
   return (

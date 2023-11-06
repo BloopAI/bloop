@@ -8,10 +8,9 @@ import React, {
 import { Trans } from 'react-i18next';
 import RenderedSection from '../AddDocsModal/Sections/RenderedSection';
 import Button from '../../../components/Button';
+import { DocSectionType } from '../../../types/api';
 
-type Props = {
-  text: string;
-  point_id: string;
+type Props = DocSectionType & {
   isSelected: boolean;
   isNothingSelected: boolean;
   setSelectedSections: Dispatch<SetStateAction<string[]>>;
@@ -23,6 +22,7 @@ const DocSection = ({
   setSelectedSections,
   point_id,
   isNothingSelected,
+  doc_source,
 }: Props) => {
   const setSelected = useCallback(
     (b: boolean) => {
@@ -68,7 +68,7 @@ const DocSection = ({
           )}
         </Button>
       </div>
-      <RenderedSection text={text} />
+      <RenderedSection text={text} baseUrl={doc_source} />
     </div>
   );
 };
