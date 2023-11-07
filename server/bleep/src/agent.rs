@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Duration};
+use std::{collections::HashSet, sync::Arc, time::Duration};
 
 use anyhow::{anyhow, Context, Result};
 use futures::{Future, TryStreamExt};
@@ -372,13 +372,45 @@ impl Agent {
         threshold: f32,
         retrieve_more: bool,
     ) -> Result<Vec<semantic::Payload>> {
+        let paths_set = paths
+            .into_iter()
+            .map(|p| parser::Literal::Plain(p.into()))
+            .collect::<HashSet<_>>();
+
+        let paths = if paths_set.is_empty() {
+            self.last_exchange().query.paths.clone()
+        } else if self.last_exchange().query.paths.is_empty() {
+            paths_set
+        } else {
+            paths_set
+                .into_iter()
+                .zip(self.last_exchange().query.paths.clone())
+                .flat_map(|(llm, user)| {
+                    if llm
+                        .as_plain()
+                        .unwrap()
+                        .starts_with(user.as_plain().unwrap().as_ref())
+                    {
+                        // llm-defined is more specific than user request
+                        vec![llm]
+                    } else if user
+                        .as_plain()
+                        .unwrap()
+                        .starts_with(llm.as_plain().unwrap().as_ref())
+                    {
+                        // user-defined is more specific than llm request
+                        vec![user]
+                    } else {
+                        vec![llm, user]
+                    }
+                })
+                .collect()
+        };
+
         let query = parser::SemanticQuery {
             target: Some(query),
             repos: [parser::Literal::Plain(self.repo_ref.display_name().into())].into(),
-            paths: paths
-                .iter()
-                .map(|p| parser::Literal::Plain(p.into()))
-                .collect(),
+            paths,
             ..self.last_exchange().query.clone()
         };
 
