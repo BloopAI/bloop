@@ -18,7 +18,7 @@ use crate::{
     scraper::{self, Config, Scraper},
 };
 
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 
 #[derive(Clone)]
 pub struct Doc {
@@ -687,33 +687,6 @@ impl Doc {
         !results.is_empty()
     }
 
-    pub fn contains_page(&self, id: i64, absolute_url: &url::Url) -> bool {
-        let Ok(reader) = self.index_reader() else {
-            return false;
-        };
-
-        let searcher = reader.searcher();
-        let doc_id_query = Box::new(TermQuery::new(
-            Term::from_field_i64(self.section_schema.doc_id, id),
-            IndexRecordOption::Basic,
-        )) as Box<dyn Query>;
-        let absolute_url_query = Box::new(TermQuery::new(
-            Term::from_field_text(self.section_schema.absolute_url, absolute_url.as_str()),
-            IndexRecordOption::Basic,
-        )) as Box<dyn Query>;
-        let query = Box::new(BooleanQuery::intersection(vec![
-            doc_id_query,
-            absolute_url_query,
-        ])) as Box<dyn Query>;
-        let collector = TopDocs::with_limit(1);
-
-        let Ok(results) = searcher.search(&query, &collector) else {
-            return false;
-        };
-
-        !results.is_empty()
-    }
-
     /// Scrape & insert a doc source into tantivy and return doc metadata if available
     fn insert_into_tantivy(
         self,
@@ -726,6 +699,7 @@ impl Doc {
             let mut stream = Box::pin(scraper.complete());
             let mut handles = Vec::new();
             let mut discovered_count = 0;
+            let point_ids = Arc::new(Mutex::new(HashSet::<uuid::Uuid>::new()));
             while let Some(doc) = stream.next().await {
                 discovered_count += 1;
                 let progress = Progress::Update(Update {
@@ -737,17 +711,18 @@ impl Doc {
                 let doc_source = doc_source.clone();
                 let section_schema = self.section_schema.clone();
                 let index_writer = Arc::clone(&index_writer);
-                if !self.contains_page(id, &doc.url)
-                {
-                    handles.push(tokio::task::spawn(async move {
-                        let tantivy_docs_to_insert = doc.sections(id, &doc_source, section_schema);
+                let cache = Arc::clone(&point_ids);
+                handles.push(tokio::task::spawn(async move {
+                    let (section_ids, tantivy_docs_to_insert) = doc.sections(id, &doc_source, &section_schema);
+                    let mut cache_lock = cache.lock().await;
+                    if !section_ids.iter().any(|u| cache_lock.contains(&u)) {
+                        cache_lock.extend(section_ids.iter());
                         let lock = index_writer.lock().await;
                         for d in tantivy_docs_to_insert {
                             let _ = lock.add_document(d);
                         }
-                        drop(lock);
-                    }));
-                }
+                    }
+                }));
             }
             futures::future::join_all(handles).await;
 
@@ -778,8 +753,8 @@ impl scraper::Document {
         &self,
         id: i64,
         doc_source: &url::Url,
-        schema: schema::Section,
-    ) -> Vec<tantivy::Document> {
+        schema: &schema::Section,
+    ) -> (Vec<uuid::Uuid>, Vec<tantivy::Document>) {
         info!(
             url = %(self.url.as_str()),
             doc_id = %id,
@@ -797,7 +772,7 @@ impl scraper::Document {
                     hasher.update(&section.section_range.start.byte.to_le_bytes()); // section start location
                     hasher.update(&section.section_range.end.byte.to_le_bytes()); // section end location
                     bytes.copy_from_slice(&hasher.finalize().as_bytes()[16..32]);
-                    uuid::Uuid::from_bytes(bytes).to_string()
+                    uuid::Uuid::from_bytes(bytes)
                 };
 
                 let Some(relative_url) = self.relative_url(doc_source) else {
@@ -810,24 +785,24 @@ impl scraper::Document {
                 };
 
                 use tantivy::doc;
-                Some(doc!(
-                    schema.doc_id => id,
-                    schema.point_id => point_id.as_str(),
-                    schema.doc_source => doc_source.as_str(),
-                    schema.doc_title => self.meta.title.as_deref().unwrap_or_default(),
-                    schema.doc_description => self.meta.description.as_deref().unwrap_or_default(),
-                    schema.absolute_url => self.url.as_str(),
-                    schema.relative_url => relative_url.as_str(),
-                    schema.raw_relative_url => relative_url.as_str().as_bytes(),
-                    schema.header => section.header.unwrap_or_default(),
-                    schema.ancestry => section.ancestry_str().as_str(),
-                    schema.text => section.data,
-                    schema.start_byte => section.section_range.start.byte as u64,
-                    schema.end_byte => section.section_range.end.byte as u64,
-                    schema.section_depth => section.ancestry.len() as u64,
-                ))
+                Some((point_id, doc!(
+                            schema.doc_id => id,
+                            schema.point_id => point_id.to_string().as_str(),
+                            schema.doc_source => doc_source.as_str(),
+                            schema.doc_title => self.meta.title.as_deref().unwrap_or_default(),
+                            schema.doc_description => self.meta.description.as_deref().unwrap_or_default(),
+                            schema.absolute_url => self.url.as_str(),
+                            schema.relative_url => relative_url.as_str(),
+                            schema.raw_relative_url => relative_url.as_str().as_bytes(),
+                            schema.header => section.header.unwrap_or_default(),
+                            schema.ancestry => section.ancestry_str().as_str(),
+                            schema.text => section.data,
+                            schema.start_byte => section.section_range.start.byte as u64,
+                            schema.end_byte => section.section_range.end.byte as u64,
+                            schema.section_depth => section.ancestry.len() as u64,
+                )))
             })
-            .collect()
+            .unzip()
     }
 }
 

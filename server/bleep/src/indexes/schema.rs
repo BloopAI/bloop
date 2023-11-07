@@ -269,7 +269,7 @@ impl Section {
         );
 
         let doc_id = builder.add_i64_field("doc_id", FAST | STORED | INDEXED);
-        let point_id = builder.add_text_field("point_id", STORED);
+        let point_id = builder.add_text_field("point_id", raw.clone());
         let doc_source = builder.add_text_field("doc_source", STORED);
         let doc_title = builder.add_text_field("doc_title", TEXT | STORED);
         let doc_description = builder.add_text_field("doc_description", TEXT | STORED);
