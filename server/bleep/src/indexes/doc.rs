@@ -26,7 +26,6 @@ pub struct Doc {
     section_index: tantivy::Index,
     section_schema: schema::Section,
     buffer_size: usize,
-    max_threads: usize,
 }
 
 static STATUS_DONE: &str = "done";
@@ -132,54 +131,70 @@ impl Doc {
             section_index,
             section_schema,
             buffer_size,
-            max_threads,
         })
     }
 
-    async fn set_title(&self, title: &str, id: i64) -> Result<(), Error> {
+    async fn set_title<'a, E>(&self, title: &str, id: i64, executor: E) -> Result<(), Error>
+    where
+        E: sqlx::Executor<'a, Database = sqlx::Sqlite>,
+    {
         sqlx::query! {
             "UPDATE docs SET name = ? WHERE id = ?",
             title,
             id,
         }
-        .execute(&*self.sql)
+        .execute(executor)
         .await
         .map(|_| ())
         .map_err(Error::Sql)
     }
 
-    async fn set_favicon(&self, favicon: &str, id: i64) -> Result<(), Error> {
+    async fn set_favicon<'a, E>(&self, favicon: &str, id: i64, executor: E) -> Result<(), Error>
+    where
+        E: sqlx::Executor<'a, Database = sqlx::Sqlite>,
+    {
         sqlx::query! {
             "UPDATE docs SET favicon = ? WHERE id = ?",
             favicon,
             id,
         }
-        .execute(&*self.sql)
+        .execute(executor)
         .await
         .map(|_| ())
         .map_err(Error::Sql)
     }
 
-    async fn set_description(&self, description: &str, id: i64) -> Result<(), Error> {
+    async fn set_description<'a, E>(
+        &self,
+        description: &str,
+        id: i64,
+        executor: E,
+    ) -> Result<(), Error>
+    where
+        E: sqlx::Executor<'a, Database = sqlx::Sqlite>,
+    {
         sqlx::query! {
             "UPDATE docs SET description = ? WHERE id = ?",
             description,
             id,
         }
-        .execute(&*self.sql)
+        .execute(executor)
         .await
         .map(|_| ())
         .map_err(Error::Sql)
     }
 
-    async fn set_index_status(&self, status: &str, id: i64) -> Result<(), Error> {
+    async fn set_index_status<'a, E>(&self, status: &str, id: i64, executor: E) -> Result<(), Error>
+    where
+        E: sqlx::Executor<'a, Database = sqlx::Sqlite>,
+    {
         let status = status.to_string();
         sqlx::query! {
             "UPDATE docs SET index_status = ? WHERE id = ?",
             status,
             id,
         }
-        .execute(&*self.sql)
+        .execute(executor)
         .await
         .map(|_| ())
         .map_err(Error::Sql)
@@ -194,6 +209,8 @@ impl Doc {
             // check if index writer is available
             let index_writer = Arc::new(Mutex::new(self.index_writer()?));
 
+            let mut transaction = self.sql.begin().await?;
+
             // add entry to sqlite
             let url_string = url.to_string();
             let id = sqlx::query! {
@@ -201,7 +218,7 @@ impl Doc {
                 url_string,
                 STATUS_INDEXING,
             }
-            .execute(&*(self.clone()).sql)
+            .execute(&mut transaction)
             .await?
             .last_insert_rowid();
 
@@ -225,7 +242,7 @@ impl Doc {
 
                         // set title
                         if let Some(title) = &update.metadata.title {
-                            if let Err(e) = self.set_title(title, id).await {
+                            if let Err(e) = self.set_title(title, id, &mut transaction).await {
                                 error!(%e, %title, %id, "failed to set doc title");
                             } else {
                                 info!(%id, %title, "doc title set");
@@ -236,7 +253,7 @@ impl Doc {
                         if let Some(favicon) = &update.metadata.icon {
                             let resolved_url = url::Url::parse(favicon)
                                 .unwrap_or_else(|_| normalize_absolute_url(&url, favicon));
-                            if let Err(e) = self.set_favicon(resolved_url.as_str(), id).await {
+                            if let Err(e) = self.set_favicon(resolved_url.as_str(), id, &mut transaction).await {
                                 error!(%e, %favicon, %id, "failed to set doc icon");
                             } else {
                                 info!(%id, %favicon, "doc icon set");
@@ -245,7 +262,7 @@ impl Doc {
 
                         // set description
                         if let Some(description) = &update.metadata.description {
-                            if let Err(e) = self.set_description(description, id).await {
+                            if let Err(e) = self.set_description(description, id, &mut transaction).await {
                                 error!(%e, %description, %id, "failed to set doc description");
                             } else {
                                 info!(%id, %description, "doc description set");
@@ -260,7 +277,7 @@ impl Doc {
             if discovered_count == 0 {
                 // delete sql entry
                 sqlx::query!("DELETE FROM docs WHERE id = ? RETURNING id", id)
-                    .fetch_optional(&*self.sql)
+                    .fetch_optional(&mut transaction)
                     .await?
                     .ok_or(Error::InvalidDocId(id))?;
                 error!(doc_source = url.as_str(), "no docs found at url");
@@ -268,7 +285,8 @@ impl Doc {
                 Err(Error::EmptyDocs(url))?;
             }
 
-            self.set_index_status(STATUS_DONE, id).await?;
+            self.set_index_status(STATUS_DONE, id, &mut transaction).await?;
+            transaction.commit().await?;
         }
     }
 
@@ -285,7 +303,7 @@ impl Doc {
             // delete old docs from tantivy
             self.index_writer()?
                 .delete_term(Term::from_field_i64(self.section_schema.doc_id, id));
-            self.index_writer()?.commit();
+            self.index_writer()?.commit()?;
 
             sqlx::query! {
                 "UPDATE docs SET modified_at = datetime('now') WHERE id = ?",
@@ -316,7 +334,7 @@ impl Doc {
         // delete entry from tantivy
         self.index_writer()?
             .delete_term(Term::from_field_i64(self.section_schema.doc_id, id));
-        self.index_writer()?.commit();
+        self.index_writer()?.commit()?;
 
         Ok(id)
     }
@@ -669,7 +687,7 @@ impl Doc {
         !results.is_empty()
     }
 
-    pub fn contains_page<S: AsRef<str>>(&self, id: i64, relative_url: S) -> bool {
+    pub fn contains_page(&self, id: i64, absolute_url: &url::Url) -> bool {
         let Ok(reader) = self.index_reader() else {
             return false;
         };
@@ -679,13 +697,13 @@ impl Doc {
             Term::from_field_i64(self.section_schema.doc_id, id),
             IndexRecordOption::Basic,
         )) as Box<dyn Query>;
-        let relative_url_query = Box::new(TermQuery::new(
-            Term::from_field_text(self.section_schema.relative_url, relative_url.as_ref()),
+        let absolute_url_query = Box::new(TermQuery::new(
+            Term::from_field_text(self.section_schema.absolute_url, absolute_url.as_str()),
             IndexRecordOption::Basic,
         )) as Box<dyn Query>;
         let query = Box::new(BooleanQuery::intersection(vec![
             doc_id_query,
-            relative_url_query,
+            absolute_url_query,
         ])) as Box<dyn Query>;
         let collector = TopDocs::with_limit(1);
 
@@ -719,7 +737,7 @@ impl Doc {
                 let doc_source = doc_source.clone();
                 let section_schema = self.section_schema.clone();
                 let index_writer = Arc::clone(&index_writer);
-                if !self.contains_page(id, doc.relative_url(&doc_source))
+                if !self.contains_page(id, &doc.url)
                 {
                     handles.push(tokio::task::spawn(async move {
                         let tantivy_docs_to_insert = doc.sections(id, &doc_source, section_schema);
@@ -734,9 +752,11 @@ impl Doc {
             futures::future::join_all(handles).await;
 
             trace!(%id, url = doc_source.as_str(), "commiting doc-provider to index");
-            index_writer.lock().await.commit();
+            match index_writer.lock().await.commit() {
+                Ok(_) => info!(%id, url = doc_source.as_str(), "index complete"),
+                Err(e) => error!(%id, url = doc_source.as_str(), %e, "tantivy commit failed"),
+            }
 
-            info!(%id, url = doc_source.as_str(), "index complete");
             yield Progress::Done(id);
         }
     }
@@ -767,7 +787,7 @@ impl scraper::Document {
         );
         scraper::chunk::by_section(&self.content)
             .into_par_iter()
-            .map(|section| {
+            .filter_map(|section| {
                 let point_id = {
                     let mut bytes = [0; 16];
                     let mut hasher = blake3::Hasher::new();
@@ -780,23 +800,32 @@ impl scraper::Document {
                     uuid::Uuid::from_bytes(bytes).to_string()
                 };
 
+                let Some(relative_url) = self.relative_url(doc_source) else {
+                    error!(
+                        "`{}` is not relative to `{}`",
+                        self.url.as_str(),
+                        doc_source.as_str()
+                    );
+                    return None;
+                };
+
                 use tantivy::doc;
-                doc!(
+                Some(doc!(
                     schema.doc_id => id,
                     schema.point_id => point_id.as_str(),
                     schema.doc_source => doc_source.as_str(),
                     schema.doc_title => self.meta.title.as_deref().unwrap_or_default(),
                     schema.doc_description => self.meta.description.as_deref().unwrap_or_default(),
                     schema.absolute_url => self.url.as_str(),
-                    schema.relative_url => self.relative_url(doc_source).as_str(),
-                    schema.raw_relative_url => self.relative_url(doc_source).as_str().as_bytes(),
+                    schema.relative_url => relative_url.as_str(),
+                    schema.raw_relative_url => relative_url.as_str().as_bytes(),
                     schema.header => section.header.unwrap_or_default(),
                     schema.ancestry => section.ancestry_str().as_str(),
                     schema.text => section.data,
                     schema.start_byte => section.section_range.start.byte as u64,
                     schema.end_byte => section.section_range.end.byte as u64,
                     schema.section_depth => section.ancestry.len() as u64,
-                )
+                ))
             })
             .collect()
     }

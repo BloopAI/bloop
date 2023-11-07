@@ -162,7 +162,7 @@ pub struct ScraperResult {
 pub struct Config {
     max_depth: usize,
     pub base_url: Url,
-    delay: std::time::Duration,
+    _delay: std::time::Duration,
     max_concurrency: usize,
 }
 
@@ -171,7 +171,7 @@ impl Config {
         Self {
             max_depth: 5,
             base_url,
-            delay: std::time::Duration::from_millis(0),
+            _delay: std::time::Duration::from_millis(0),
             max_concurrency: std::thread::available_parallelism()
                 .map(|t| t.get())
                 .unwrap_or(4),
@@ -187,21 +187,14 @@ pub struct Document {
 }
 
 impl Document {
-    pub fn relative_url(&self, base: &Url) -> String {
-        let mut base = base.clone();
+    pub fn relative_url(&self, base: &Url) -> Option<String> {
         let mut other = self.url.clone();
 
         // scheme difference does not matter to us
-        base.set_scheme("https");
-        other.set_scheme("https");
+        other.set_scheme(base.scheme()).ok()?;
+        other.set_host(base.host_str()).ok()?;
 
-        base.make_relative(&other).unwrap_or_else(|| {
-            panic!(
-                "`{}` is not relative to `{}`",
-                self.url.as_str(),
-                base.as_str()
-            )
-        })
+        base.make_relative(&other)
     }
 }
 

@@ -191,11 +191,8 @@ pub async fn get(
 
     let context: Vec<ContextFile> =
         serde_json::from_str(&row.context).context("failed to deserialize context")?;
-    let doc_context: Vec<DocContextFile> = if let Some(c) = row.doc_context {
-        serde_json::from_str(&c).context("failed to deserialize doc context")?
-    } else {
-        Vec::new()
-    };
+    let doc_context: Vec<DocContextFile> =
+        serde_json::from_str(&row.doc_context).context("failed to deserialize doc context")?;
     let messages: Vec<Message> =
         serde_json::from_str(&row.messages).context("failed to deserialize message list")?;
 
@@ -314,11 +311,8 @@ pub async fn patch(
     let context: Vec<ContextFile> =
         serde_json::from_str(&context_json).context("invalid context JSON")?;
 
-    let doc_context: Vec<DocContextFile> = if let Some(c) = doc_context_json {
-        serde_json::from_str(&c).context("invalid context JSON")?
-    } else {
-        Vec::new()
-    };
+    let doc_context: Vec<DocContextFile> =
+        serde_json::from_str(&doc_context_json).context("invalid context JSON")?;
 
     let messages: Vec<Message> =
         serde_json::from_str(&messages_json).context("invalid messages JSON")?;
@@ -714,16 +708,14 @@ pub async fn generate(
     let context =
         serde_json::from_str::<Vec<ContextFile>>(&context_json).map_err(Error::internal)?;
 
-    let doc_context = if let Some(c) = doc_context_json {
-        serde_json::from_str::<Vec<DocContextFile>>(&c).map_err(Error::internal)?
-    } else {
-        Vec::new()
-    };
+    let doc_context =
+        serde_json::from_str::<Vec<DocContextFile>>(&doc_context_json).map_err(Error::internal)?;
 
     app.track_studio(
         &user,
         StudioEvent::new(studio_id, "generate")
             .with_payload("context", &context)
+            .with_payload("doc_context", &doc_context)
             .with_payload("messages", &messages),
     );
 
@@ -1195,11 +1187,8 @@ pub async fn list_snapshots(
             id: r.id,
             modified_at: r.modified_at,
             context: serde_json::from_str(&r.context).context("failed to deserialize context")?,
-            doc_context: if let Some(c) = &r.doc_context {
-                serde_json::from_str(c).context("failed to deserialize doc context")?
-            } else {
-                Vec::new()
-            },
+            doc_context: serde_json::from_str(&r.doc_context)
+                .context("failed to deserialize doc context")?,
             messages: serde_json::from_str(&r.messages)
                 .context("failed to deserialize messages")?,
         })
