@@ -731,12 +731,58 @@ pub struct Diff {
     apply: bool,
 }
 
+/// A set of structured diff definitions consumed by the front-end.
+mod structured_diff {
+    use std::fmt;
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct Diff {
+        pub chunks: Vec<Chunk>,
+    }
+
+    impl fmt::Display for Diff {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            use std::fmt::Write;
+
+            let mut s = String::new();
+
+            for c in &self.chunks {
+                writeln!(s, "--- {}\n+++ {}", c.file, c.file)?;
+
+                for h in &c.hunks {
+                    writeln!(s, "@@ -{},0 +{},0 @@", h.line_start, h.line_start)?;
+                    write!(s, "{}", h.patch)?;
+                }
+            }
+
+            for c in super::diff::relaxed_parse(&s) {
+                write!(f, "{}", c)?;
+            }
+
+            Ok(())
+        }
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct Chunk {
+        pub file: String,
+        pub lang: Option<String>,
+        pub hunks: Vec<Hunk>,
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct Hunk {
+        pub line_start: usize,
+        pub patch: String,
+    }
+}
+
 pub async fn diff(
     app: Extension<Application>,
     user: Extension<User>,
     Query(params): Query<Diff>,
     Path(studio_id): Path<i64>,
-) -> webserver::Result<String> {
+) -> webserver::Result<Json<structured_diff::Diff>> {
     let user_id = user.username().ok_or_else(no_user_id)?.to_string();
 
     let snapshot_id = latest_snapshot_id(studio_id, &*app.sql, &user_id).await?;
@@ -806,6 +852,9 @@ pub async fn diff(
     // use this to reconstructed a "corrected" diff which can be cleanly applied.
     let mut resolved_chunk_map = HashMap::new();
 
+    // Map of `src_file -> lang string`, so that we can pass language information to the front-end.
+    let mut lang_map = HashMap::new();
+
     for (i, chunk) in diff_chunks.iter().enumerate() {
         let context_file = match context.iter().find(|c| c.path == chunk.src) {
             Some(cf) => cf,
@@ -825,6 +874,10 @@ pub async fn diff(
             )
             .await?
             .context("path did not exist in the index")?;
+
+        if let Some(lang) = file.lang {
+            lang_map.insert(chunk.src.to_owned(), lang);
+        }
 
         let mut file_content = file.content;
 
@@ -893,20 +946,37 @@ pub async fn diff(
         }
     }
 
-    let patched_diff = resolved_chunk_map
+    let chunks = resolved_chunk_map
         .into_values()
-        .map(|chunk| chunk.to_string())
-        .collect::<String>();
+        .map(|chunk| structured_diff::Chunk {
+            lang: lang_map.get(chunk.src).cloned(),
+            file: chunk.src.to_owned(),
+            hunks: chunk
+                .hunks
+                .into_iter()
+                .map(|hunk| structured_diff::Hunk {
+                    line_start: hunk.src_line,
+                    patch: hunk
+                        .lines
+                        .into_iter()
+                        .map(|line| line.to_string())
+                        .collect::<String>(),
+                })
+                .collect(),
+        })
+        .collect::<Vec<_>>();
 
-    Ok(patched_diff)
+    Ok(Json(structured_diff::Diff { chunks }))
 }
 
 pub async fn diff_apply(
     app: Extension<Application>,
     user: Extension<User>,
     Path(studio_id): Path<i64>,
-    diff: String,
+    diff: Json<structured_diff::Diff>,
 ) -> webserver::Result<()> {
+    let diff = diff.0.to_string();
+
     let user_id = user.username().ok_or_else(no_user_id)?.to_string();
 
     let snapshot_id = latest_snapshot_id(studio_id, &*app.sql, &user_id).await?;

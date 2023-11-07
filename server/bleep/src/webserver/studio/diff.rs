@@ -127,11 +127,7 @@ impl fmt::Display for DiffHunk<'_> {
         )?;
 
         for line in &self.lines {
-            match line {
-                Line::Context(line) => writeln!(f, " {line}")?,
-                Line::AddLine(line) => writeln!(f, "+{line}")?,
-                Line::DelLine(line) => writeln!(f, "-{line}")?,
-            }
+            <Line as fmt::Display>::fmt(line, f)?;
         }
 
         Ok(())
@@ -143,6 +139,16 @@ pub enum Line<'a> {
     Context(&'a str),
     AddLine(&'a str),
     DelLine(&'a str),
+}
+
+impl fmt::Display for Line<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Line::Context(line) => writeln!(f, " {line}"),
+            Line::AddLine(line) => writeln!(f, "+{line}"),
+            Line::DelLine(line) => writeln!(f, "-{line}"),
+        }
+    }
 }
 
 #[cfg(test)]
