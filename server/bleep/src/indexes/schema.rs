@@ -228,7 +228,7 @@ pub struct Section {
     ///
     /// The order of headers in this field is top to bottom, for example:
     ///
-    ///     # Introduction > ## What is tantivy? > ### API Migration
+    /// # Introduction > ## What is tantivy? > ### API Migration
     ///
     pub ancestry: Field,
 
