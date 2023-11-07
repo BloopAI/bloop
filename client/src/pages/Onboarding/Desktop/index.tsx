@@ -1,10 +1,4 @@
-import React, {
-  memo,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-} from 'react';
+import React, { memo, useCallback, useContext, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import NavBar from '../../../components/NavBar';
 import { DeviceContext } from '../../../context/deviceContext';
@@ -14,7 +8,7 @@ import {
   USER_DATA_FORM,
 } from '../../../services/storage';
 import { Form } from '../index';
-import { getConfig, saveUserData } from '../../../services/api';
+import { saveUserData } from '../../../services/api';
 import SeparateOnboardingStep from '../../../components/SeparateOnboardingStep';
 import FeaturesStep from './FeaturesStep';
 import UserForm from './UserForm';
@@ -22,14 +16,9 @@ import UserForm from './UserForm';
 type Props = {
   activeTab: string;
   closeOnboarding: () => void;
-  setShouldShowWelcome: (b: boolean) => void;
 };
 
-const Desktop = ({
-  activeTab,
-  setShouldShowWelcome,
-  closeOnboarding,
-}: Props) => {
+const Desktop = ({ activeTab, closeOnboarding }: Props) => {
   const { t } = useTranslation();
   const [shouldShowPopup, setShouldShowPopup] = useState(false);
   const [form, setForm] = useState<Form>({
@@ -39,22 +28,7 @@ const Desktop = ({
     emailError: null,
     ...getJsonFromStorage(USER_DATA_FORM),
   });
-  const { os, setEnvConfig, envConfig } = useContext(DeviceContext);
-
-  useEffect(() => {
-    getConfig()
-      .then((d) => {
-        setEnvConfig(d);
-        if (!d.user_login) {
-          setShouldShowWelcome(true);
-        } else {
-          closeOnboarding();
-        }
-      })
-      .catch(() => {
-        setShouldShowWelcome(true);
-      });
-  }, []);
+  const { os, envConfig } = useContext(DeviceContext);
 
   const onSubmit = useCallback(() => {
     saveUserData({

@@ -3,27 +3,16 @@ import { Trans, useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import NavBar from '../../../components/NavBar';
 import StatusBar from '../../../components/StatusBar';
-import {
-  getPlainFromStorage,
-  REFRESH_TOKEN_KEY,
-  savePlainToStorage,
-} from '../../../services/storage';
-import { githubLogin, refreshToken } from '../../../services/api';
+import { githubLogin } from '../../../services/api';
 import DialogText from '../../../components/SeparateOnboardingStep/DialogText';
 import Button from '../../../components/Button';
 import { GitHubLogo } from '../../../icons';
 
 type Props = {
   activeTab: string;
-  closeOnboarding: () => void;
-  setShouldShowWelcome: (b: boolean) => void;
 };
 
-const SelfServe = ({
-  activeTab,
-  closeOnboarding,
-  setShouldShowWelcome,
-}: Props) => {
+const SelfServe = ({ activeTab }: Props) => {
   const { t } = useTranslation();
   const [loginUrl, setLoginUrl] = useState('');
   const location = useLocation();
@@ -38,30 +27,6 @@ const SelfServe = ({
     ).then((resp) => {
       setLoginUrl(resp.authentication_needed.url);
     });
-  }, []);
-
-  useEffect(() => {
-    let token: string | null = null;
-    if (location.hash) {
-      const params = new URLSearchParams('?' + location.hash.slice(1));
-      token = params.get('refresh_token');
-      if (token) {
-        savePlainToStorage(REFRESH_TOKEN_KEY, token);
-      }
-    }
-    const storedToken = getPlainFromStorage(REFRESH_TOKEN_KEY);
-    token = token || storedToken;
-    if (token) {
-      refreshToken(token)
-        .then(() => {
-          closeOnboarding();
-        })
-        .catch(() => {
-          setShouldShowWelcome(true);
-        });
-    } else {
-      setShouldShowWelcome(true);
-    }
   }, []);
 
   return (
