@@ -3,6 +3,9 @@ import {
   AllConversationsResponse,
   CodeStudioType,
   ConversationType,
+  DocPageType,
+  DocSectionType,
+  DocShortType,
   FileResponse,
   HistoryConversationTurn,
   HoverablesResponse,
@@ -304,14 +307,8 @@ export const getIndexQueue = () => http('/repos/queue').then((r) => r.data);
 
 export const getCodeStudios = (): Promise<CodeStudioShortType[]> =>
   http('/studio').then((r) => r.data);
-export const patchCodeStudio = (
-  id: string,
-  data: {
-    name?: string;
-    context?: StudioContextFile[];
-    messages?: ({ User: string } | { Assistant: string })[];
-  },
-) => http.patch(`/studio/${id}`, data).then((r) => r.data);
+export const patchCodeStudio = (id: string, data: Partial<CodeStudioType>) =>
+  http.patch(`/studio/${id}`, data).then((r) => r.data);
 export const getCodeStudio = (id: string): Promise<CodeStudioType> =>
   http(`/studio/${id}`).then((r) => r.data);
 export const getCodeStudioHistory = (
@@ -338,6 +335,18 @@ export const getFileTokenCount = (
       path,
       repo,
       branch,
+      ranges,
+    })
+    .then((r) => r.data);
+export const getDocTokenCount = (
+  doc_id: string,
+  relative_url: string,
+  ranges?: string[],
+): Promise<number> =>
+  http
+    .post(`/studio/doc-file-token-count`, {
+      doc_id,
+      relative_url,
       ranges,
     })
     .then((r) => r.data);
@@ -396,3 +405,27 @@ export const refreshToken = (refresh_token: string) =>
   http('/auth/refresh_token', { params: { refresh_token } }).then(
     (r) => r.data,
   );
+
+export const indexDocsUrl = (url: string) =>
+  http('/docs/sync', { params: { url } }).then((r) => r.data);
+export const verifyDocsUrl = (url: string) =>
+  http('/docs/verify', { params: { url } }).then((r) => r.data);
+export const getIndexedDocs = (): Promise<DocShortType[]> =>
+  http('/docs').then((r) => r.data);
+export const getIndexedPages = (id: number | string): Promise<DocPageType[]> =>
+  http(`docs/${id}/list`, { params: { limit: 100 } }).then((r) => r.data);
+export const deleteDocProvider = (
+  id: number | string,
+): Promise<DocPageType[]> => http.delete(`docs/${id}`).then((r) => r.data);
+export const searchDocSections = (
+  id: string,
+  q: string,
+): Promise<DocSectionType[]> =>
+  http(`/docs/${id}/search`, { params: { q, limit: 20 } }).then((r) => r.data);
+export const getDocSections = (
+  id: number | string,
+  url: string,
+): Promise<DocSectionType[]> =>
+  http(`/docs/${id}/fetch`, {
+    params: { relative_url: url },
+  }).then((r) => r.data);

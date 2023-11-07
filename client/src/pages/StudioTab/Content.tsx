@@ -12,14 +12,18 @@ import ErrorFallback from '../../components/ErrorFallback';
 import PageTemplate from '../../components/PageTemplate';
 import {
   RepoType,
+  StudioContextDoc,
   StudioContextFile,
   StudioLeftPanelDataType,
   StudioLeftPanelType,
-  StudioRightPanelType,
   StudioTabType,
 } from '../../types/general';
 import { patchCodeStudio } from '../../services/api';
-import { CodeStudioType, HistoryConversationTurn } from '../../types/api';
+import {
+  CodeStudioType,
+  DocShortType,
+  HistoryConversationTurn,
+} from '../../types/api';
 import useResizeableSplitPanel from '../../hooks/useResizeableSplitPanel';
 import { TOKEN_LIMIT } from '../../consts/codeStudio';
 import { Info } from '../../icons';
@@ -31,11 +35,14 @@ import TemplatesPanel from './TemplatesPanel';
 import AddContextModal from './AddContextModal';
 import RightPanel from './RightPanel';
 import FilePanel from './FilePanel';
+import AddDocsModal from './AddDocsModal';
+import DocPanel from './DocPanel';
 
 type Props = {
   tab: StudioTabType;
   isActive: boolean;
   currentContext: CodeStudioType['context'];
+  currentDocContext: CodeStudioType['doc_context'];
   currentMessages: CodeStudioType['messages'];
   currentTokenCounts: CodeStudioType['token_counts'];
   refetchCodeStudio: (keyToUpdate?: keyof CodeStudioType) => Promise<void>;
@@ -45,6 +52,7 @@ const ContentContainer = ({
   tab,
   isActive,
   currentContext,
+  currentDocContext,
   currentMessages,
   currentTokenCounts,
   refetchCodeStudio,
@@ -59,6 +67,7 @@ const ContentContainer = ({
   // });
   const { setStudioGuideOpen } = useContext(UIContext.StudioGuide);
   const [isAddContextOpen, setAddContextOpen] = useState(false);
+  const [isAddDocsOpen, setAddDocsOpen] = useState(false);
   const [previewingState, setPreviewingState] = useState<null | CodeStudioType>(
     null,
   );
@@ -74,6 +83,7 @@ const ContentContainer = ({
   }, []);
 
   const handleAddContextClose = useCallback(() => setAddContextOpen(false), []);
+  const handleAddDocsClose = useCallback(() => setAddDocsOpen(false), []);
   const onFileAdded = useCallback(
     (
       repoRef: string,
@@ -98,12 +108,74 @@ const ContentContainer = ({
     },
     [tab.key, currentContext],
   );
+  const onDocAdded = useCallback(
+    ({
+      doc_id,
+      doc_source,
+      doc_icon,
+      doc_title,
+      relative_url,
+      absolute_url,
+      ranges,
+    }: Omit<StudioContextDoc, 'hidden'>) => {
+      if (tab.key) {
+        patchCodeStudio(tab.key, {
+          doc_context: [
+            ...currentDocContext,
+            {
+              doc_id,
+              doc_source,
+              doc_icon,
+              doc_title,
+              relative_url,
+              absolute_url,
+              ranges,
+              hidden: false,
+            },
+          ],
+        }).then(() => refetchCodeStudio());
+      }
+    },
+    [tab.key, currentDocContext],
+  );
 
   const onFileSelected = useCallback(
-    (repo: RepoType, branch: string | null, filePath: string) => {
+    (
+      repo: RepoType,
+      branch: string | null,
+      filePath: string,
+      isMultiSelect?: boolean,
+    ) => {
+      if (isMultiSelect) {
+        onFileAdded(repo.ref, branch, filePath);
+      } else {
+        setLeftPanel({
+          type: StudioLeftPanelType.FILE,
+          data: { repo, branch, filePath, isFileInContext: false },
+        });
+      }
+    },
+    [onFileAdded],
+  );
+
+  const onDocSelected = useCallback(
+    (
+      docProvider: DocShortType,
+      url: string,
+      absoluteUrl: string,
+      title: string,
+      selectedSection?: string,
+    ) => {
       setLeftPanel({
-        type: StudioRightPanelType.FILE,
-        data: { repo, branch, filePath, isFileInContext: false },
+        type: StudioLeftPanelType.DOCS,
+        data: {
+          docProvider,
+          url,
+          absoluteUrl,
+          title,
+          isDocInContext: false,
+          selectedSection,
+        },
       });
     },
     [],
@@ -143,6 +215,51 @@ const ContentContainer = ({
     },
     [tab.key, currentContext],
   );
+  const onDocSectionsChanged = useCallback(
+    ({
+      doc_id,
+      doc_source,
+      ranges,
+      relative_url,
+      absolute_url,
+      doc_icon,
+      doc_title,
+    }: Omit<StudioContextDoc, 'hidden'>) => {
+      const patchedDoc = currentDocContext.find(
+        (f) =>
+          f.doc_id === doc_id &&
+          f.doc_source === doc_source &&
+          f.relative_url === relative_url,
+      );
+      if (!patchedDoc) {
+        onDocAdded({
+          doc_id,
+          doc_source,
+          relative_url,
+          absolute_url,
+          ranges,
+          doc_icon,
+          doc_title,
+        });
+        return;
+      }
+      if (tab.key && patchedDoc) {
+        patchedDoc.ranges = ranges;
+        const newContext = currentDocContext
+          .filter(
+            (f) =>
+              f.doc_id !== doc_id ||
+              f.doc_source !== doc_source ||
+              f.relative_url !== relative_url,
+          )
+          .concat(patchedDoc);
+        patchCodeStudio(tab.key, {
+          doc_context: newContext,
+        }).then(() => refetchCodeStudio());
+      }
+    },
+    [tab.key, currentDocContext],
+  );
 
   const onFileHide = useCallback(
     (
@@ -170,6 +287,31 @@ const ContentContainer = ({
     },
     [tab.key, currentContext],
   );
+  const onDocHide = useCallback(
+    (docId: string, baseUrl: string, relativeUrl: string, hide: boolean) => {
+      const patchedDoc = currentDocContext.find(
+        (f) =>
+          f.doc_id === docId &&
+          f.doc_source === baseUrl &&
+          f.relative_url === relativeUrl,
+      );
+      if (tab.key && patchedDoc) {
+        patchedDoc.hidden = hide;
+        const newContext = currentDocContext
+          .filter(
+            (f) =>
+              f.doc_id !== docId ||
+              f.doc_source !== baseUrl ||
+              f.relative_url !== relativeUrl,
+          )
+          .concat(patchedDoc);
+        patchCodeStudio(tab.key, {
+          doc_context: newContext,
+        }).then(() => refetchCodeStudio());
+      }
+    },
+    [tab.key, currentDocContext],
+  );
 
   const onFileRemove = useCallback(
     (
@@ -194,6 +336,26 @@ const ContentContainer = ({
       }).then(() => refetchCodeStudio());
     },
     [tab.key, currentContext],
+  );
+  const onDocRemove = useCallback(
+    (docId: string, baseUrl: string, relativeUrl: string) => {
+      let newContext: StudioContextDoc[] = JSON.parse(
+        JSON.stringify(currentDocContext),
+      );
+      const patchedDoc = currentDocContext.findIndex(
+        (f) =>
+          f.doc_id === docId &&
+          f.doc_source === baseUrl &&
+          f.relative_url === relativeUrl,
+      );
+      if (tab.key && patchedDoc > -1) {
+        newContext = newContext.filter((f, i) => i !== patchedDoc);
+      }
+      patchCodeStudio(tab.key, {
+        doc_context: newContext,
+      }).then(() => refetchCodeStudio());
+    },
+    [tab.key, currentDocContext],
   );
 
   const handlePreview = useCallback(
@@ -233,6 +395,7 @@ const ContentContainer = ({
       ? previewingState
       : {
           context: currentContext,
+          doc_context: currentDocContext,
           messages: currentMessages,
           token_counts: currentTokenCounts,
         };
@@ -245,10 +408,17 @@ const ContentContainer = ({
   ]);
 
   useEffect(() => {
-    if (leftPanel.type !== StudioRightPanelType.FILE) {
+    if (
+      leftPanel.type !== StudioLeftPanelType.FILE &&
+      leftPanel.type !== StudioLeftPanelType.DOCS
+    ) {
       setIsChangeUnsaved(false);
     }
-  }, [leftPanel.type]);
+  }, [leftPanel.type, isAddDocsOpen, isAddContextOpen]);
+
+  useEffect(() => {
+    setIsChangeUnsaved(isAddDocsOpen || isAddContextOpen);
+  }, [isAddDocsOpen, isAddContextOpen]);
 
   return (
     <PageTemplate renderPage="studio">
@@ -286,23 +456,36 @@ const ContentContainer = ({
                 <ContextPanel
                   setLeftPanel={setLeftPanel}
                   setAddContextOpen={setAddContextOpen}
+                  setAddDocsOpen={setAddDocsOpen}
                   studioId={tab.key}
                   contextFiles={stateToShow.context}
+                  contextDocs={stateToShow.doc_context}
                   tokensPerFile={stateToShow.token_counts?.per_file || []}
+                  tokensPerDoc={stateToShow.token_counts?.per_doc_file || []}
                   onFileRemove={onFileRemove}
                   onFileHide={onFileHide}
+                  onDocRemove={onDocRemove}
+                  onDocHide={onDocHide}
                   onFileAdded={onFileAdded}
                   isPreviewing={!!previewingState}
                   isActiveTab={isActive}
                 />
               ) : leftPanel.type === StudioLeftPanelType.TEMPLATES ? (
                 <TemplatesPanel setLeftPanel={setLeftPanel} />
-              ) : leftPanel.type === StudioRightPanelType.FILE ? (
+              ) : leftPanel.type === StudioLeftPanelType.FILE ? (
                 <FilePanel
                   {...leftPanel.data}
                   setLeftPanel={setLeftPanel}
                   onFileRangesChanged={onFileRangesChanged}
                   isActiveTab={isActive}
+                  setIsChangeUnsaved={setIsChangeUnsaved}
+                />
+              ) : leftPanel.type === StudioLeftPanelType.DOCS ? (
+                <DocPanel
+                  {...leftPanel.data}
+                  setLeftPanel={setLeftPanel}
+                  isActiveTab={isActive}
+                  onSectionsChanged={onDocSectionsChanged}
                   setIsChangeUnsaved={setIsChangeUnsaved}
                 />
               ) : null}
@@ -311,6 +494,12 @@ const ContentContainer = ({
                 onClose={handleAddContextClose}
                 onSubmit={onFileSelected}
                 contextFiles={stateToShow.context}
+              />
+              <AddDocsModal
+                isVisible={isAddDocsOpen}
+                onClose={handleAddDocsClose}
+                onSubmit={onDocSelected}
+                refetchCodeStudio={refetchCodeStudio}
               />
             </div>
             <div
@@ -332,9 +521,10 @@ const ContentContainer = ({
                 setIsHistoryOpen={setIsHistoryOpen}
                 isPreviewing={!!previewingState}
                 handleRestore={handleRestore}
-                hasContextError={stateToShow.token_counts?.per_file?.includes(
-                  null,
-                )}
+                hasContextError={
+                  stateToShow.token_counts?.per_file?.includes(null) ||
+                  stateToShow.token_counts?.per_doc_file?.includes(null)
+                }
                 isActiveTab={isActive}
                 isChangeUnsaved={isChangeUnsaved}
               />
