@@ -36,7 +36,6 @@ const Checkbox = ({
       onClick={(e) => {
         if (!disabled) {
           e.stopPropagation();
-          console.log('onChange', !checked);
           onChange(!checked);
         }
       }}
