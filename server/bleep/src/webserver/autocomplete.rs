@@ -3,7 +3,7 @@ use std::sync::Arc;
 use super::prelude::*;
 use crate::{
     indexes::{
-        reader::{ContentReader, FileReader, RepoReader},
+        reader::{ContentReader, FileReader, OpenReader, RepoReader},
         Indexes,
     },
     query::{
@@ -41,13 +41,6 @@ pub(super) async fn handle(
         );
     }
 
-    // Bypass the parser and execute a prefix search using the last whitespace-split token
-    // in the query string.
-    //
-    // This should be revisited when we implement cursor-aware autocomplete.
-    //
-    //      `api lang:p` -> search lang list with prefix `p`
-    //      `lang:p api` -> lang prefix search not triggered
     if let Some(matched_langs) = complete_lang(&api_params.q) {
         autocomplete_results.append(
             &mut matched_langs
@@ -88,12 +81,16 @@ fn complete_flag(q: &str) -> impl Iterator<Item = &str> + '_ {
         .copied()
 }
 
+// Bypass the parser and execute a prefix search using the rightmost whitespace-split token
+// in the query string.
+//
+// This should be revisited when we implement cursor-aware autocomplete.
 fn complete_lang(q: &str) -> Option<impl Iterator<Item = &str> + '_> {
-    match q.split_whitespace().last() {
+    match q.split_whitespace().rfind(|comp| comp.starts_with("lang:")) {
         Some(last) => last.strip_prefix("lang:").map(|prefix| {
             COMMON_LANGUAGES
                 .iter()
-                .filter(move |l| l.starts_with(prefix))
+                .filter(move |l| l.starts_with(prefix) && **l != prefix)
                 .copied()
         }),
         _ => None,
