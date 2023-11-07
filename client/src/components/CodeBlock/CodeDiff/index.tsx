@@ -34,7 +34,7 @@ const CodeDiff = ({ code, language, filePath, lineStart }: Props) => {
         </div>
         <CopyButton isInHeader code={code} />
       </div>
-      <div className={`overflow-auto p-2`}>
+      <div className={`overflow-auto py-2`}>
         <Code
           showLines
           code={code}
