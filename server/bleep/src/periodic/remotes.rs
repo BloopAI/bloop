@@ -358,7 +358,7 @@ impl Poller {
                 .watch(&disk_path, RecursiveMode::Recursive)
                 .map_err(|e| {
                     let d = disk_path.display();
-                    error!(error = %e, path = %d, "path does not exist anymore");
+                    warn!(error = %e, path = %d, "path does not exist anymore");
                 })
                 .ok()?;
             _debouncer = Some(debouncer);
