@@ -118,8 +118,8 @@ const PagesWithPreview = ({
   );
 
   const handleSelectSection = useCallback(
-    (url: string, title: string, pointId: string) => {
-      handleDocSubmit(selectedProvider, url, title, pointId);
+    (url: string, absoluteUrl: string, title: string, pointId: string) => {
+      handleDocSubmit(selectedProvider, url, absoluteUrl, title, pointId);
     },
     [],
   );
