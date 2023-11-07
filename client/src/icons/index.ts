@@ -133,3 +133,4 @@ export { default as NewTab } from './NewTab';
 export { default as Walk } from './Walk';
 export { default as Run } from './Run';
 export { default as AIAnswerLong } from './AIAnswerLong';
+export { default as BranchMerged } from './BranchMerged';

@@ -326,6 +326,10 @@ export const importCodeStudio = (thread_id: string, studio_id?: string) =>
   http
     .post('/studio/import', {}, { params: { thread_id, studio_id } })
     .then((r) => r.data);
+export const generateStudioDiff = (id: string): Promise<string> =>
+  http(`/studio/${id}/diff`, { timeout: 5 * 60 * 1000 }).then((r) => r.data);
+export const confirmStudioDiff = (id: string, diff: string): Promise<string> =>
+  http.post(`/studio/${id}/diff/apply`, diff).then((r) => r.data);
 
 export const getFileTokenCount = (
   path: string,
