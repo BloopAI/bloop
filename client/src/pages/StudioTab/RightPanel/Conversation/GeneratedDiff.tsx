@@ -1,7 +1,7 @@
 import { memo, useMemo } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { BranchMerged } from '../../../../icons';
-import NewCode from '../../../../components/MarkdownWithCode/NewCode';
+import CodeDiff from '../../../../components/CodeBlock/CodeDiff';
 
 type Props = {
   diff: string;
@@ -20,6 +20,10 @@ const GeneratedDiff = ({ diff }: Props) => {
     }
   }, [filePath]);
 
+  const lineStart = useMemo(() => {
+    return diff.split('\n')[2].match(/@@ -(\d*)/)?.[1];
+  }, [diff]);
+
   return (
     <div className="flex flex-col rounded-6 overflow-hidden border border-transparent hover:shadow-medium hover:border-bg-border-hover focus-within:border-bg-main bg-bg-base hover:focus-within:border-bg-main focus-within:shadow-medium transition-all duration-150 ease-in-out">
       <div className="w-full bg-bg-shade">
@@ -35,11 +39,11 @@ const GeneratedDiff = ({ diff }: Props) => {
             the generated diffs are valid before you apply the changes.
           </Trans>
         </p>
-        <NewCode
-          isCodeStudio
+        <CodeDiff
           filePath={filePath || ''}
           language={language || 'diff'}
-          code={diff.split('\n').slice(2).join('\n')}
+          code={diff.split('\n').slice(3, -1).join('\n')}
+          lineStart={lineStart ? Number(lineStart) - 1 : 0}
         />
       </div>
     </div>
