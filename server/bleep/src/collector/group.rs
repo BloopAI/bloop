@@ -26,9 +26,16 @@ impl Groups {
     }
 }
 
+/// Tantivy collector that groups search results by fastfield
 pub struct GroupCollector {
+    // fast field to group these search results by
+    //
+    // currently, this fast field must be a bytes fast field,
+    // but this could be generic over any hashable fast field
     field: Field,
+    // maximum number of items in each group
     group_size: usize,
+    // maximum number of groups to return
     limit: usize,
 }
 
@@ -119,26 +126,13 @@ impl SegmentCollector for GroupSegmentCollector {
                     .ord_to_bytes(ord, &mut value)
                     .unwrap();
             });
-        let hash = {
-            let mut h = blake3::Hasher::new();
-            h.update(&value);
-            h.finalize()
-        };
-        self.groups
-            .items
-            .entry(hash)
-            .and_modify(|group| {
-                // group.combined_score += score;
-                if group.items.len() < self.group_size {
-                    group
-                        .items
-                        .push(DocAddress::new(self.segment_local_id, doc))
-                }
-            })
-            .or_insert_with(|| Group {
-                // combined_score: score,
-                items: vec![DocAddress::new(self.segment_local_id, doc)],
-            });
+        let hash = blake3::hash(&value);
+        let entry = self.groups.items.entry(hash).or_default();
+        if entry.items.len() < self.group_size {
+            entry
+                .items
+                .push(DocAddress::new(self.segment_local_id, doc))
+        }
     }
 
     fn harvest(self) -> <Self as SegmentCollector>::Fruit {

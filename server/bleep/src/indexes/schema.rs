@@ -3,7 +3,7 @@
 //!
 use tantivy::schema::{
     BytesOptions, Field, IndexRecordOption, Schema, SchemaBuilder, TextFieldIndexing, TextOptions,
-    FAST, STORED, STRING,
+    FAST, INDEXED, STORED, STRING, TEXT,
 };
 
 #[cfg(feature = "debug")]
@@ -188,6 +188,117 @@ impl Repo {
             name,
             raw_name,
             repo_ref,
+            schema: builder.build(),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct Section {
+    pub(super) schema: Schema,
+
+    /// Monotonically increasing id, unique to each doc-provider indexed. This
+    /// is also stored in sqlite and is used to cross reference the two
+    pub doc_id: Field,
+
+    /// URL that identifies this doc-source
+    pub doc_source: Field,
+
+    /// Human readable doc-title, scraped from html
+    pub doc_title: Field,
+
+    /// Human readable doc-description, scraped from html
+    pub doc_description: Field,
+
+    // Content-addressable hash for each section in a page
+    pub point_id: Field,
+
+    /// Relative URL of the page containing this section
+    pub relative_url: Field,
+
+    /// Absolute URL of the page containing this section
+    pub absolute_url: Field,
+
+    /// Section header. All sections start with a header
+    pub header: Field,
+
+    /// List of headers of all parent sections above this section. This
+    /// is stored in the tantivy index as a string separated by the sequence " > ".
+    ///
+    ///
+    /// The order of headers in this field is top to bottom, for example:
+    ///
+    ///     # Introduction > ## What is tantivy? > ### API Migration
+    ///
+    pub ancestry: Field,
+
+    /// Text content of this section in raw markdown. This content also includes the header
+    pub text: Field,
+
+    /// Start location in bytes
+    pub start_byte: Field,
+
+    /// End location in bytes
+    pub end_byte: Field,
+
+    /// Number of items in this sections' ancestry
+    pub section_depth: Field,
+
+    /// Bytes indexed, fast, relative_url field, used for grouping and other fastfield business
+    pub raw_relative_url: Field,
+}
+
+impl Default for Section {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Section {
+    pub fn new() -> Self {
+        let mut builder = SchemaBuilder::new();
+        let trigram = TextOptions::default().set_stored().set_indexing_options(
+            TextFieldIndexing::default()
+                .set_tokenizer("trigram")
+                .set_index_option(IndexRecordOption::WithFreqsAndPositions),
+        );
+        let raw = TextOptions::default().set_stored().set_indexing_options(
+            TextFieldIndexing::default()
+                .set_tokenizer("raw")
+                .set_index_option(IndexRecordOption::WithFreqsAndPositions),
+        );
+
+        let doc_id = builder.add_i64_field("doc_id", FAST | STORED | INDEXED);
+        let point_id = builder.add_text_field("point_id", STORED);
+        let doc_source = builder.add_text_field("doc_source", STORED);
+        let doc_title = builder.add_text_field("doc_title", TEXT | STORED);
+        let doc_description = builder.add_text_field("doc_description", TEXT | STORED);
+        let relative_url = builder.add_text_field("relative_url", raw.clone());
+        let absolute_url = builder.add_text_field("absolute_url", raw);
+        let header = builder.add_text_field("header", trigram.clone());
+        let ancestry = builder.add_text_field("ancestry", trigram.clone());
+        let text = builder.add_text_field("text", trigram);
+        let start_byte = builder.add_u64_field("start_byte", STORED);
+        let end_byte = builder.add_u64_field("end_byte", STORED);
+        let section_depth = builder.add_u64_field("section_depth", FAST | STORED);
+
+        let raw_relative_url = builder.add_bytes_field("raw_relative_url", FAST | STORED | INDEXED);
+
+        Self {
+            doc_id,
+            point_id,
+            doc_source,
+            doc_title,
+            doc_description,
+            relative_url,
+            absolute_url,
+            header,
+            ancestry,
+            text,
+            start_byte,
+            end_byte,
+            section_depth,
+            raw_relative_url,
             schema: builder.build(),
         }
     }

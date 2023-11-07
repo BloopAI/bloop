@@ -97,7 +97,12 @@ impl Indexes {
                 config.buffer_size,
                 config.max_threads,
             )?,
-            doc: Doc::create(sql, config.index_path("doc").as_ref()).await?,
+            doc: Doc::create(
+                sql,
+                config.index_path("doc").as_ref(),
+                config.buffer_size,
+                config.max_threads,
+            )?,
             write_mutex: Default::default(),
         })
     }

@@ -45,14 +45,14 @@ pub struct Verify {
 }
 
 // handlers
-pub async fn list(State(app): State<Application>) -> Result<Json<Vec<doc::Record>>> {
+pub async fn list(State(app): State<Application>) -> Result<Json<Vec<doc::SqlRecord>>> {
     Ok(Json(app.indexes.doc.list().await?))
 }
 
 pub async fn list_one(
     State(app): State<Application>,
     Path(id): Path<i64>,
-) -> Result<Json<doc::Record>> {
+) -> Result<Json<doc::SqlRecord>> {
     Ok(Json(app.indexes.doc.list_one(id).await?))
 }
 
@@ -103,7 +103,7 @@ pub async fn resync(
 pub async fn search(
     State(app): State<Application>,
     Query(params): Query<Search>,
-) -> Result<Json<Vec<doc::Record>>> {
+) -> Result<Json<Vec<doc::SqlRecord>>> {
     Ok(Json(match params.q {
         Some(q) => app.indexes.doc.search(q, params.limit).await?,
         None => app.indexes.doc.list().await?,
@@ -114,7 +114,7 @@ pub async fn search_with_id(
     State(app): State<Application>,
     Path(id): Path<i64>,
     Query(params): Query<Search>,
-) -> Result<Json<Vec<doc::SearchResult>>> {
+) -> Result<Json<Vec<doc::Section>>> {
     Ok(Json(match params.q {
         Some(query) => {
             app.indexes
@@ -130,7 +130,7 @@ pub async fn list_with_id(
     State(app): State<Application>,
     Path(id): Path<i64>,
     Query(params): Query<List>,
-) -> Result<Json<Vec<doc::PageResult>>> {
+) -> Result<Json<Vec<doc::Page>>> {
     Ok(Json(app.indexes.doc.list_pages(params.limit, id).await?))
 }
 
@@ -138,7 +138,7 @@ pub async fn fetch(
     State(app): State<Application>,
     Path(id): Path<i64>,
     Query(params): Query<Fetch>,
-) -> Result<Json<Vec<doc::SearchResult>>> {
+) -> Result<Json<Vec<doc::Section>>> {
     Ok(Json(app.indexes.doc.fetch(id, params.relative_url).await?))
 }
 

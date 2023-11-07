@@ -65,7 +65,6 @@ impl Scraper {
         finished
     }
 
-    // maybe replace this with async-stream
     pub fn complete(&mut self) -> impl Stream<Item = Document> + '_ {
         stream! {
             self.queue_request(ScraperRequest {

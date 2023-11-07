@@ -4,20 +4,16 @@ use rayon::prelude::*;
 use tantivy::{
     collector::TopDocs,
     query::{BooleanQuery, Query, TermQuery},
-    schema::{
-        Field, IndexRecordOption, Schema, SchemaBuilder, Term, TextFieldIndexing, TextOptions,
-        FAST, INDEXED, STORED, TEXT,
-    },
+    schema::{Field, IndexRecordOption, Term},
     tokenizer::NgramTokenizer,
 };
 use thiserror::Error;
 use tokio::sync::Mutex;
 use tracing::{error, info, trace};
 
-pub const COLLECTION_NAME: &str = "web";
-
 use crate::{
     db::SqlDb,
+    indexes::schema,
     query::compiler::{case_permutations, trigrams},
     scraper::{self, Config, Scraper},
 };
@@ -28,90 +24,16 @@ use std::sync::Arc;
 pub struct Doc {
     sql: SqlDb,
     section_index: tantivy::Index,
-    section_schema: SectionSchema,
-}
-
-#[derive(Clone)]
-pub struct SectionSchema {
-    pub(super) schema: Schema,
-
-    pub doc_id: Field,
-    pub point_id: Field,
-    pub doc_source: Field,
-    pub doc_title: Field,
-    pub doc_description: Field,
-    pub relative_url: Field,
-    pub absolute_url: Field,
-    pub header: Field,
-    pub ancestry: Field,
-    pub text: Field,
-    pub start_byte: Field,
-    pub end_byte: Field,
-    pub section_depth: Field,
-    pub raw_relative_url: Field,
-}
-
-impl Default for SectionSchema {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl SectionSchema {
-    pub fn new() -> Self {
-        let mut builder = SchemaBuilder::new();
-        let trigram = TextOptions::default().set_stored().set_indexing_options(
-            TextFieldIndexing::default()
-                .set_tokenizer("trigram")
-                .set_index_option(IndexRecordOption::WithFreqsAndPositions),
-        );
-        let raw = TextOptions::default().set_stored().set_indexing_options(
-            TextFieldIndexing::default()
-                .set_tokenizer("raw")
-                .set_index_option(IndexRecordOption::WithFreqsAndPositions),
-        );
-
-        let doc_id = builder.add_i64_field("doc_id", FAST | STORED | INDEXED);
-        let point_id = builder.add_text_field("point_id", STORED);
-        let doc_source = builder.add_text_field("doc_source", STORED);
-        let doc_title = builder.add_text_field("doc_title", TEXT | STORED);
-        let doc_description = builder.add_text_field("doc_description", TEXT | STORED);
-        let relative_url = builder.add_text_field("relative_url", raw.clone());
-        let absolute_url = builder.add_text_field("absolute_url", raw);
-        let header = builder.add_text_field("header", trigram.clone());
-        let ancestry = builder.add_text_field("ancestry", trigram.clone());
-        let text = builder.add_text_field("text", trigram);
-        let start_byte = builder.add_u64_field("start_byte", STORED);
-        let end_byte = builder.add_u64_field("end_byte", STORED);
-        let section_depth = builder.add_u64_field("section_depth", FAST | STORED);
-
-        let raw_relative_url = builder.add_bytes_field("raw_relative_url", FAST | STORED | INDEXED);
-
-        Self {
-            doc_id,
-            point_id,
-            doc_source,
-            doc_title,
-            doc_description,
-            relative_url,
-            absolute_url,
-            header,
-            ancestry,
-            text,
-            start_byte,
-            end_byte,
-            section_depth,
-            raw_relative_url,
-            schema: builder.build(),
-        }
-    }
+    section_schema: schema::Section,
+    buffer_size: usize,
+    max_threads: usize,
 }
 
 static STATUS_DONE: &str = "done";
 static STATUS_INDEXING: &str = "indexing";
 
 #[derive(serde::Serialize)]
-pub struct Record {
+pub struct SqlRecord {
     pub id: i64,
     pub url: String,
     pub index_status: String,
@@ -133,7 +55,7 @@ pub struct Update {
     discovered_count: usize,
 
     #[serde(skip)]
-    meta: scraper::Meta,
+    metadata: scraper::Meta,
 }
 
 #[derive(Error, Debug)]
@@ -172,18 +94,24 @@ pub enum Error {
 impl Doc {
     fn index_writer(&self) -> Result<tantivy::IndexWriter, Error> {
         self.section_index
-            .writer(crate::config::default_buffer_size())
+            .writer(self.buffer_size)
             .map_err(Error::Tantivy)
     }
 
     fn index_reader(&self) -> Result<tantivy::IndexReader, Error> {
         self.section_index.reader().map_err(Error::Tantivy)
     }
+
     /// Initialize docs index
-    pub async fn create(sql: SqlDb, path: &std::path::Path) -> Result<Self, Error> {
+    pub fn create(
+        sql: SqlDb,
+        path: &std::path::Path,
+        buffer_size: usize,
+        max_threads: usize,
+    ) -> Result<Self, Error> {
         std::fs::create_dir_all(path)?;
 
-        let section_schema = SectionSchema::new();
+        let section_schema = schema::Section::new();
         let mut section_index = tantivy::Index::open_or_create(
             tantivy::directory::MmapDirectory::open(path)
                 .map_err(|e| Error::Initialize(e.to_string()))?, // todo: handle tantivy index upgrades here
@@ -192,22 +120,19 @@ impl Doc {
         .map_err(|e| Error::Initialize(e.to_string()))?;
 
         section_index
-            .set_default_multithread_executor()
-            .map_err(|e| Error::Initialize(e.to_string()))?;
-        section_index
-            .set_multithread_executor(crate::config::default_parallelism())
+            .set_multithread_executor(max_threads)
             .map_err(|e| Error::Initialize(e.to_string()))?;
 
         section_index
             .tokenizers()
             .register("trigram", NgramTokenizer::new(1, 3, false).unwrap());
 
-        // Ok(index)
-
         Ok(Self {
             sql,
             section_index,
             section_schema,
+            buffer_size,
+            max_threads,
         })
     }
 
@@ -261,6 +186,9 @@ impl Doc {
     }
 
     /// Add a doc source to the index
+    ///
+    /// The sqlite DB stores metadata about the doc-provider, and the tantivy index stores
+    /// searchable page content.
     pub async fn sync(self, url: url::Url) -> impl Stream<Item = Result<Progress, Error>> {
         try_stream! {
             // check if index writer is available
@@ -283,14 +211,20 @@ impl Doc {
                     .insert_into_tantivy(id, url.clone(), Arc::clone(&index_writer));
             let mut discovered_count = 0;
             for await progress in stream {
+                // populate metadata in sqlite
+                //
+                // the first scraped doc that contains metadata is used to populate
+                // metadata in sqlite - this is typically the base_url entered by the user,
+                // if the base_url does not contain any metadata, we move on the the second
+                // scraped url
                 if let Progress::Update(update) = progress.clone() {
                     discovered_count = update.discovered_count;
-                    if !update.meta.is_empty() && !is_meta_set {
+                    if !update.metadata.is_empty() && !is_meta_set {
                         // do not set meta for this doc provider in subsequent turns
                         is_meta_set = true;
 
                         // set title
-                        if let Some(title) = &update.meta.title {
+                        if let Some(title) = &update.metadata.title {
                             if let Err(e) = self.set_title(title, id).await {
                                 error!(%e, %title, %id, "failed to set doc title");
                             } else {
@@ -299,7 +233,7 @@ impl Doc {
                         }
 
                         // set favicon
-                        if let Some(favicon) = &update.meta.icon {
+                        if let Some(favicon) = &update.metadata.icon {
                             let resolved_url = url::Url::parse(favicon)
                                 .unwrap_or_else(|_| normalize_absolute_url(&url, favicon));
                             if let Err(e) = self.set_favicon(resolved_url.as_str(), id).await {
@@ -310,7 +244,7 @@ impl Doc {
                         }
 
                         // set description
-                        if let Some(description) = &update.meta.description {
+                        if let Some(description) = &update.metadata.description {
                             if let Err(e) = self.set_description(description, id).await {
                                 error!(%e, %description, %id, "failed to set doc description");
                             } else {
@@ -319,12 +253,6 @@ impl Doc {
                         }
                     };
                 }
-                // populate metadata in sqlite
-                //
-                // the first scraped doc that contains metadata is used to populate
-                // metadata in sqlite - this is typically the base_url entered by the user,
-                // if the base_url does not contain any metadata, we move on the the second
-                // scraped url
                 yield progress;
             }
 
@@ -376,7 +304,7 @@ impl Doc {
         }
     }
 
-    /// Remove this doc source from qdrant and sqlite
+    /// Remove this doc source from tantivy and sqlite
     pub async fn delete(&self, id: i64) -> Result<i64, Error> {
         // delete entry from sql
         let id = sqlx::query!("DELETE FROM docs WHERE id = ? RETURNING id", id)
@@ -394,14 +322,14 @@ impl Doc {
     }
 
     /// List all synced doc sources
-    pub async fn list(&self) -> Result<Vec<Record>, Error> {
+    pub async fn list(&self) -> Result<Vec<SqlRecord>, Error> {
         Ok(sqlx::query!(
             "SELECT id, index_status, name, url, favicon, description, modified_at FROM docs"
         )
         .fetch_all(&*self.sql)
         .await?
         .into_iter()
-        .map(|record| Record {
+        .map(|record| SqlRecord {
             id: record.id,
             name: record.name,
             index_status: record.index_status,
@@ -414,7 +342,7 @@ impl Doc {
     }
 
     /// List a synced doc source by id
-    pub async fn list_one(&self, id: i64) -> Result<Record, Error> {
+    pub async fn list_one(&self, id: i64) -> Result<SqlRecord, Error> {
         let record = sqlx::query!(
             "SELECT id, index_status, name, url, favicon, description, modified_at FROM docs WHERE id = ?",
             id
@@ -422,7 +350,7 @@ impl Doc {
         .fetch_one(&*self.sql)
         .await?;
 
-        Ok(Record {
+        Ok(SqlRecord {
             id: record.id,
             name: record.name,
             index_status: record.index_status,
@@ -434,7 +362,7 @@ impl Doc {
     }
 
     /// Search for doc source by title
-    pub async fn search(&self, q: String, limit: usize) -> Result<Vec<Record>, Error> {
+    pub async fn search(&self, q: String, limit: usize) -> Result<Vec<SqlRecord>, Error> {
         let limit = limit.to_string();
         let q = format!("%{q}%");
         let records = sqlx::query!(
@@ -452,7 +380,7 @@ impl Doc {
 
         Ok(records
             .into_iter()
-            .map(|r| Record {
+            .map(|r| SqlRecord {
                 id: r.id,
                 index_status: r.index_status,
                 name: r.name,
@@ -470,7 +398,7 @@ impl Doc {
         q: String,
         limit: usize,
         id: i64,
-    ) -> Result<Vec<SearchResult>, Error> {
+    ) -> Result<Vec<Section>, Error> {
         // use the tantivy index for section search
         let reader = self.index_reader()?;
         let searcher = reader.searcher();
@@ -524,7 +452,7 @@ impl Doc {
                 let retrieved_doc = searcher
                     .doc(addr)
                     .expect("failed to get document by address");
-                SearchResult::from_tantivy_document(retrieved_doc, &self.section_schema)
+                Section::from_tantivy_document(retrieved_doc, &self.section_schema)
             })
             .filter_map(|search_result| {
                 let term_distances =
@@ -560,6 +488,7 @@ impl Doc {
                         .sum::<usize>()
                 };
 
+                // utility closure to calculate proximity penalty
                 let distance_penalty = |dq, dt, terms: &[&str]| {
                     let total_len = terms.iter().map(|s| s.len()).sum::<usize>();
                     if terms.is_empty() || dt == 0 {
@@ -590,6 +519,8 @@ impl Doc {
 
                 let header_distance_penalty = distance_penalty(dq, header_hit_distance, &terms);
 
+                // boost header score based on the "level" of this header, i.e., h1 gets a boost of
+                // 60, h2 gets a boost of 50, etc.
                 header_score += 10 * (6 - search_result.ancestry.len()) as i64;
                 header_score -= header_distance_penalty as i64;
 
@@ -637,7 +568,7 @@ impl Doc {
             .collect::<Vec<_>>())
     }
 
-    pub async fn list_sections(&self, limit: usize, id: i64) -> Result<Vec<SearchResult>, Error> {
+    pub async fn list_sections(&self, limit: usize, id: i64) -> Result<Vec<Section>, Error> {
         let reader = self.index_reader()?;
         let searcher = reader.searcher();
         let doc_id_query = Box::new(TermQuery::new(
@@ -650,13 +581,13 @@ impl Doc {
             .into_iter()
             .map(|(_score, addr)| {
                 let retrieved_doc = searcher.doc(addr).expect("failed to fetch doc");
-                SearchResult::from_tantivy_document(retrieved_doc, &self.section_schema).unwrap()
+                Section::from_tantivy_document(retrieved_doc, &self.section_schema).unwrap()
             })
             .collect())
     }
 
     /// Scroll pages in a doc
-    pub async fn list_pages(&self, limit: usize, id: i64) -> Result<Vec<PageResult>, Error> {
+    pub async fn list_pages(&self, limit: usize, id: i64) -> Result<Vec<Page>, Error> {
         let reader = self.index_reader()?;
         let searcher = reader.searcher();
         let doc_id_query = Box::new(TermQuery::new(
@@ -674,7 +605,7 @@ impl Doc {
             .flat_map(|group| group.items.into_iter())
             .filter_map(|addr| {
                 let retrieved_doc = searcher.doc(addr).expect("failed to fetch doc");
-                PageResult::from_tantivy_document(retrieved_doc, &self.section_schema)
+                Page::from_tantivy_document(retrieved_doc, &self.section_schema)
             })
             .collect())
     }
@@ -684,7 +615,7 @@ impl Doc {
         &self,
         id: i64,
         relative_url: S,
-    ) -> Result<Vec<SearchResult>, Error> {
+    ) -> Result<Vec<Section>, Error> {
         let reader = self.index_reader()?;
         let searcher = reader.searcher();
         let doc_id_query = Box::new(TermQuery::new(
@@ -710,7 +641,7 @@ impl Doc {
             .into_iter()
             .filter_map(|(_score, addr)| {
                 let retrieved_doc = searcher.doc(addr).expect("failed to fetch doc");
-                SearchResult::from_tantivy_document(retrieved_doc, &self.section_schema)
+                Section::from_tantivy_document(retrieved_doc, &self.section_schema)
             })
             .collect::<Vec<_>>();
 
@@ -765,7 +696,7 @@ impl Doc {
         !results.is_empty()
     }
 
-    /// Scrape & insert a doc source into qdrant and return doc metadata if available
+    /// Scrape & insert a doc source into tantivy and return doc metadata if available
     fn insert_into_tantivy(
         self,
         id: i64,
@@ -782,9 +713,8 @@ impl Doc {
                 let progress = Progress::Update(Update {
                     url: doc.url.clone(),
                     discovered_count,
-                    meta: doc.meta.clone(),
+                    metadata: doc.meta.clone(),
                 });
-                // println!("doc content: {:?}", doc.content);
                 yield progress;
                 let doc_source = doc_source.clone();
                 let section_schema = self.section_schema.clone();
@@ -792,7 +722,7 @@ impl Doc {
                 if !self.contains_page(id, doc.relative_url(&doc_source))
                 {
                     handles.push(tokio::task::spawn(async move {
-                        let tantivy_docs_to_insert = doc.embed(id, &doc_source, section_schema);
+                        let tantivy_docs_to_insert = doc.sections(id, &doc_source, section_schema);
                         let lock = index_writer.lock().await;
                         for d in tantivy_docs_to_insert {
                             let _ = lock.add_document(d);
@@ -823,11 +753,12 @@ impl Doc {
 }
 
 impl scraper::Document {
-    fn embed(
+    // break down this `Document` into sections and build `tantivy::Document` of out of each section
+    fn sections(
         &self,
         id: i64,
         doc_source: &url::Url,
-        schema: SectionSchema,
+        schema: schema::Section,
     ) -> Vec<tantivy::Document> {
         info!(
             url = %(self.url.as_str()),
@@ -872,7 +803,7 @@ impl scraper::Document {
 }
 
 #[derive(serde::Serialize)]
-pub struct SearchResult {
+pub struct Section {
     pub doc_id: i64,
     pub doc_title: Option<String>,
     pub point_id: uuid::Uuid,
@@ -885,12 +816,12 @@ pub struct SearchResult {
     pub section_range: std::ops::Range<usize>,
 }
 
-impl SearchResult {
+impl Section {
     pub fn from_tantivy_document(
         doc: tantivy::schema::Document,
-        schema: &SectionSchema,
+        schema: &schema::Section,
     ) -> Option<Self> {
-        Some(SearchResult {
+        Some(Section {
             doc_id: doc.get_first(schema.doc_id)?.as_i64()?,
             doc_title: doc
                 .get_first(schema.doc_title)?
@@ -927,7 +858,7 @@ impl SearchResult {
 }
 
 #[derive(serde::Serialize)]
-pub struct PageResult {
+pub struct Page {
     pub doc_id: i64,
     pub doc_source: url::Url,
     pub doc_title: Option<String>,
@@ -937,12 +868,12 @@ pub struct PageResult {
     pub absolute_url: url::Url,
 }
 
-impl PageResult {
+impl Page {
     pub fn from_tantivy_document(
         doc: tantivy::schema::Document,
-        schema: &SectionSchema,
+        schema: &schema::Section,
     ) -> Option<Self> {
-        Some(PageResult {
+        Some(Page {
             doc_id: doc.get_first(schema.doc_id)?.as_i64()?,
             doc_title: doc
                 .get_first(schema.doc_title)?
