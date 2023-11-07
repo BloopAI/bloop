@@ -157,7 +157,7 @@ impl SyncHandle {
                 file_filter: Some(FileFilterConfig {
                     rules: vec![FileFilterRule::ExcludeRegex(".*".into())],
                 }),
-                ..filter_updates.unwrap_or_default()
+                ..Default::default()
             }
         } else {
             filter_updates.unwrap_or_default()
