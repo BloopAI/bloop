@@ -200,7 +200,7 @@
 	"Something went wrong": "Algo salió mal",
 	"chats in bloop": "Chats en bloop",
 	"Setup bloop": "Configuración de bloop",
-	"Please log into your GitHub account to complete setup": "Inicie sesión con su cuenta de GitHub para completar la configuración",
+	"Please log into your GitHub account to complete setup, this helps us us combat misuse.": "Inicie sesión con su cuenta de GitHub para completar la configuración",
 	"Select color theme:": "Seleccione el tema:",
 	"Connect account": "Conectar cuenta",
 	"Continue": "Continuar",

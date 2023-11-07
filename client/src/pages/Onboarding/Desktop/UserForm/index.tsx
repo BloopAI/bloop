@@ -52,7 +52,8 @@ const UserForm = ({ form, setForm, onContinue }: Props) => {
               <Trans>Let’s get you started with bloop!</Trans>
             ) : (
               <Trans>
-                Please log into your GitHub account to complete setup
+                Please log into your GitHub account to complete setup, this
+                helps us us combat misuse.
               </Trans>
             )}
           </p>
