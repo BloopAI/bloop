@@ -417,7 +417,7 @@ impl Semantic {
             .search_with(
                 &parse_nl(&query)?,
                 vector.clone(),
-                if retrieve_more { limit * 2 } else { limit }, // Retrieve double `limit` and deduplicate
+                if retrieve_more { limit * 4 } else { limit }, // Retrieve double `limit` and deduplicate
                 offset,
                 threshold,
             )

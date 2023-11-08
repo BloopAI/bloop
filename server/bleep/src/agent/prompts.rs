@@ -5,7 +5,7 @@ pub fn functions(add_proc: bool) -> serde_json::Value {
         [
             {
                 "name": "code",
-                "description":  "Search the contents of files in a codebase semantically. Results will not necessarily match search terms exactly, but should be related.",
+                "description":  "Search within the files in a codebase semantically. Results will not necessarily match search terms exactly, but should be related.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -68,7 +68,7 @@ pub fn functions(add_proc: bool) -> serde_json::Value {
                             "type": "array",
                             "items": {
                                 "type": "integer",
-                                "description": "The indices of the paths to search."
+                                "description": "The indices of the paths to search. Search paths that you think are most likely to be relevant."
                             }
                         }
                     },
@@ -87,9 +87,14 @@ pub fn system<'a>(paths: impl IntoIterator<Item = &'a RepoPath>) -> String {
     let mut paths = paths.into_iter().peekable();
 
     if paths.peek().is_some() {
-        s.push_str("## PATHS ##\nindex, path\n");
+        s.push_str("## PATHS ##\nindex, repo, path\n");
         for (i, path) in paths.enumerate() {
-            s.push_str(&format!("{}, {}\n", i, path));
+            let repo = path
+                .repo
+                .strip_prefix("www.github.com/BloopAI")
+                .unwrap_or(&path.repo);
+            let path = &path.path;
+            s.push_str(&format!("{}, {}, {}\n", i, repo, path));
         }
         s.push('\n');
     }
@@ -119,7 +124,7 @@ pub fn answer_article_prompt(context: &str) -> String {
     format!(
         r#"{context}####
 
-You are an expert programmer called 'bloop' and you are helping a junior colleague answer questions about a codebase using the information above. If their query refers to 'this' or 'it' and there is no other context, assume that it refers to the information above.
+You are an expert programmer called 'bloop' and you are helping a junior colleague answer questions about a codebase (consisting of several repos) using the information above. If their query refers to 'this' or 'it' and there is no other context, assume that it refers to the information above.
 
 Provide only as much information and code as is necessary to answer the query, but be concise. Keep number of quoted lines to a minimum when possible. If you do not have enough information needed to answer the query, do not make up an answer. Infer as much as possible from the information above.
 When referring to code, you must provide an example in a code block.
