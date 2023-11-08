@@ -18,6 +18,7 @@ import { cancelSync, deleteRepo, syncRepo } from '../../../../services/api';
 import { RepoSource } from '../../../../types';
 import { LocaleContext } from '../../../../context/localeContext';
 import { ContextMenuItem } from '../../../../components/ContextMenu';
+import Tooltip from '../../../../components/Tooltip';
 
 type Props = {
   name: string;
@@ -27,7 +28,7 @@ type Props = {
   lang: string;
   repoRef: string;
   provider: 'local' | 'github';
-  syncStatus?: { percentage: number } | null;
+  syncPercentage?: number | null;
   onDelete: (ref: string) => void;
   indexedBranches?: string[];
 };
@@ -51,7 +52,7 @@ const RepoCard = ({
   last_index,
   lang,
   provider,
-  syncStatus,
+  syncPercentage,
   repoRef,
   onDelete,
   indexedBranches,
@@ -168,10 +169,18 @@ const RepoCard = ({
     >
       <div className="flex justify-between items-start">
         <div className="flex items-center gap-4">
-          <span className="h-11 w-11 rounded-md bg-bg-shade flex items-center justify-center mt-1 file-icon-lg">
+          <span className="h-11 w-11 rounded-md bg-bg-shade flex items-center justify-center mt-1 file-icon-lg flex-shrink-0">
             <FileIcon filename={getFileExtensionForLang(lang)} noMargin />
           </span>
-          <p className="break-all text-label-title pt-0.5">{repoName}</p>
+          {repoName.length > 40 ? (
+            <Tooltip text={repoName} placement={'top'}>
+              <p className="break-all text-label-title pt-0.5">
+                {repoName.slice(0, 37)}...
+              </p>
+            </Tooltip>
+          ) : (
+            <p className="break-all text-label-title pt-0.5">{repoName}</p>
+          )}
         </div>
         <div className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-all duration-150">
           <Dropdown
@@ -188,14 +197,18 @@ const RepoCard = ({
       </div>
       {(sync_status === SyncStatus.Indexing ||
         sync_status === SyncStatus.Syncing) &&
-      syncStatus ? (
+      syncPercentage !== null &&
+      syncPercentage !== undefined ? (
         <div className="flex flex-col gap-2">
           <p className="body-s text-label-title">
-            <Trans>Indexing...</Trans>
+            <Trans>
+              {sync_status === SyncStatus.Indexing ? 'Indexing' : 'Cloning'}
+            </Trans>
+            ...
           </p>
-          <BarLoader percentage={syncStatus.percentage} />
+          <BarLoader percentage={syncPercentage} />
           <p className="caption text-label-muted">
-            {syncStatus.percentage}% <Trans>complete</Trans>
+            {syncPercentage}% <Trans>complete</Trans>
           </p>
         </div>
       ) : (

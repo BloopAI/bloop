@@ -1,4 +1,4 @@
-import React, { memo, useContext } from 'react';
+import React, { memo, useContext, useMemo } from 'react';
 import { DeviceContext } from '../../context/deviceContext';
 
 type Props = {
@@ -21,19 +21,26 @@ const KeyboardChip = ({
   size = 'medium',
 }: Props) => {
   const { os } = useContext(DeviceContext);
+  const label = useMemo(() => {
+    return type === 'entr'
+      ? '↵'
+      : type === 'cmd'
+      ? os.type === 'Darwin'
+        ? '⌘'
+        : 'Ctrl'
+      : type === 'bksp'
+      ? '⌫'
+      : type;
+  }, [type]);
   return (
     <span
       className={`flex items-center justify-center p-1 ${
-        size === 'small' ? 'h-3.5' : 'h-4.5'
+        size === 'small'
+          ? `h-3.5 ${label.length === 1 ? 'w-3.5' : ''}`
+          : `h-5 ${label.length === 1 ? 'w-5' : ''}`
       } rounded ${variantsMap[variant]} caption-strong flex-shrink-0`}
     >
-      {type === 'entr'
-        ? '↵'
-        : type === 'cmd'
-        ? os.type === 'Darwin'
-          ? '⌘'
-          : 'Ctrl'
-        : type}
+      {label}
     </span>
   );
 };

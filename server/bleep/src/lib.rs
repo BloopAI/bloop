@@ -61,6 +61,7 @@ mod env;
 mod llm_gateway;
 mod remotes;
 mod repo;
+mod scraper;
 mod webserver;
 
 mod ee;
@@ -166,14 +167,13 @@ impl Application {
 
             semantic.reset_collection_blocking().await?;
             debug!("semantic indexes deleted");
-
             debug!("state reset complete");
         }
 
         config.source.save_index_version()?;
         debug!("index version saved");
 
-        let indexes = Indexes::new(&config)?.into();
+        let indexes = Indexes::new(&config, sql.clone()).await?.into();
         debug!("indexes initialized");
 
         // Enforce capabilies and features depending on environment
@@ -254,6 +254,12 @@ impl Application {
         if !tracing_subscribe(config) {
             warn!("Failed to install tracing_subscriber. There's probably one already...");
         };
+
+        let hook = std::panic::take_hook();
+        std::panic::set_hook(Box::new(move |info| {
+            tracing::error!("panic occurred: {info}");
+            hook(info);
+        }));
 
         LOGGER_INSTALLED.set(true).unwrap();
     }

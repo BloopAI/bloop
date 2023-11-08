@@ -154,17 +154,20 @@ const SelectionHandler = ({
     <>
       <div
         ref={startHandlerRef}
-        className={`absolute -left-0.5 w-5 h-1 bg-bg-main rounded-tl rounded-tr cursor-row-resize z-10`}
+        className={`absolute -left-0.5 w-5 h-1 bg-bg-main rounded-tl rounded-tr cursor-row-resize z-20`}
         style={{
-          top: `${range[0] * CODE_LINE_HEIGHT - 2}px`,
+          top: `${Math.max(range[0] * CODE_LINE_HEIGHT - 2, 0)}px`,
         }}
         onMouseDown={handleMouseDownStart}
       />
       <div
         ref={endHandlerRef}
-        className={`absolute -left-0.5 w-5 h-1 bg-bg-main rounded-bl rounded-br cursor-row-resize z-10`}
+        className={`absolute -left-0.5 w-5 h-1 bg-bg-main rounded-bl rounded-br cursor-row-resize z-20`}
         style={{
-          top: `${range[1] * CODE_LINE_HEIGHT + CODE_LINE_HEIGHT}px`,
+          top: `${Math.min(
+            range[1] * CODE_LINE_HEIGHT + CODE_LINE_HEIGHT,
+            fileLinesNum * 20 - 4,
+          )}px`,
         }}
         onMouseDown={handleMouseDownEnd}
       />

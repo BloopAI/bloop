@@ -37,7 +37,7 @@ const BreadcrumbsCollapsed = ({ items, type }: Props) => {
     [items],
   );
   return (
-    <span className="relative">
+    <span className="relative" onClick={(e) => e.stopPropagation()}>
       <ContextMenu
         items={contextMenuItems}
         visible={isHiddenClicked}

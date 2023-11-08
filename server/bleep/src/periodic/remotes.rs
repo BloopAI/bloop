@@ -1,7 +1,7 @@
 use std::{
     ops::Not,
     sync::Arc,
-    time::{Duration, SystemTime},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 use anyhow::Context;
@@ -273,10 +273,25 @@ async fn periodic_repo_poll(app: Application, reporef: RepoRef) -> Option<()> {
 
     loop {
         use SyncStatus::*;
-        let (last_updated, status) = check_repo(&app, &reporef)?;
+        let (last_index, last_updated, status) = check_repo(&app, &reporef)?;
         if status.indexable().not() {
-            warn!(?status, "skipping indexing of repo");
+            debug!(?status, "skipping indexing of repo");
             return None;
+        }
+
+        if (UNIX_EPOCH + Duration::from_secs(last_index)) > SystemTime::now() - poller.interval() {
+            app.repo_pool
+                .update_async(&reporef, |_, repo| {
+                    if !matches!(repo.sync_status, Queued) {
+                        repo.pub_sync_status = repo.sync_status.clone();
+                    }
+                })
+                .await;
+
+            // dividing by 10, because this may actually add up to
+            // quite a few minutes
+            tokio::time::sleep(poller.interval() / 10).await;
+            continue;
         }
 
         debug!("starting sync");
@@ -286,7 +301,7 @@ async fn periodic_repo_poll(app: Application, reporef: RepoRef) -> Option<()> {
         }
 
         debug!("sync done");
-        let (updated, status) = check_repo(&app, &reporef)?;
+        let (_, updated, status) = check_repo(&app, &reporef)?;
         if status.indexable().not() {
             warn!(?status, ?reporef, "terminating monitoring for repo");
             return None;
@@ -328,7 +343,7 @@ struct Poller {
 
 impl Poller {
     fn start(app: &Application, reporef: &RepoRef) -> Option<Self> {
-        let mut poll_interval_index = 0;
+        let mut poll_interval_index = 2;
         let mut minimum_interval_index = 0;
 
         let (tx, rx) = flume::bounded(10);
@@ -343,7 +358,7 @@ impl Poller {
                 .watch(&disk_path, RecursiveMode::Recursive)
                 .map_err(|e| {
                     let d = disk_path.display();
-                    error!(error = %e, path = %d, "path does not exist anymore");
+                    warn!(error = %e, path = %d, "path does not exist anymore");
                 })
                 .ok()?;
             _debouncer = Some(debouncer);
@@ -400,9 +415,13 @@ impl Poller {
     }
 }
 
-fn check_repo(app: &Application, reporef: &RepoRef) -> Option<(i64, SyncStatus)> {
+fn check_repo(app: &Application, reporef: &RepoRef) -> Option<(u64, i64, SyncStatus)> {
     app.repo_pool.read(reporef, |_, repo| {
-        (repo.last_commit_unix_secs, repo.sync_status.clone())
+        (
+            repo.last_index_unix_secs,
+            repo.last_commit_unix_secs,
+            repo.sync_status.clone(),
+        )
     })
 }
 

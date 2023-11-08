@@ -89,8 +89,8 @@ fn process_languages() {
 
     write!(
         BufWriter::new(File::create(languages_path).unwrap()),
-        "static EXT_MAP: phf::Map<&str, &str> = \n{};\n\
-         static PROPER_CASE_MAP: phf::Map<&str, &str> = \n{};\n",
+        "pub static EXT_MAP: phf::Map<&str, &str> = \n{};\n\
+         pub static PROPER_CASE_MAP: phf::Map<&str, &str> = \n{};\n",
         ext_map.build(),
         case_map.build(),
     )
@@ -109,6 +109,6 @@ fn determine_embedder_backend() {
 
 fn is_apple_silicon() -> bool {
     let target = env::var("TARGET").unwrap();
-    let components: Vec<_> = target.split("-").map(|s| s.to_string()).collect();
+    let components: Vec<_> = target.split('-').map(|s| s.to_string()).collect();
     components[0] == "aarch64" && components[2] == "darwin"
 }

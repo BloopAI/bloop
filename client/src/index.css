@@ -1323,7 +1323,9 @@ h5, .h5 {
   scrollbar-width: none;  /* Firefox */
 }
 
-.readme h1, .readme h2, .readme h3, .readme h4, .readme h5, .readme h6, .readme p, .readme span, .readme div {
+.readme h1, .readme h2, .readme h3, .readme h4, .readme h5, .readme h6, .readme p, .readme span, .readme div,
+.doc-section h1, .doc-section h2, .doc-section h3, .doc-section h4, .doc-section h5, .doc-section h6,
+.doc-section p, .doc-section span, .doc-section div {
   cursor: auto;
 }
 
@@ -1333,15 +1335,18 @@ h5, .h5 {
   margin: revert;
 }
 
-.code-studio-md h1:not(:first-child), .code-studio-md h2:not(:first-child), .code-studio-md h3:not(:first-child), .code-studio-md h4:not(:first-child), .code-studio-md h5:not(:first-child), .code-studio-md h6:not(:first-child), .code-studio-md p:not(:first-child) {
+.code-studio-md h1:not(:first-child), .code-studio-md h2:not(:first-child), .code-studio-md h3:not(:first-child), .code-studio-md h4:not(:first-child), .code-studio-md h5:not(:first-child), .code-studio-md h6:not(:first-child), .code-studio-md p:not(:first-child),
+.doc-section h1:not(:first-child), .doc-section h2:not(:first-child), .doc-section h3:not(:first-child), .doc-section h4:not(:first-child), .doc-section h5:not(:first-child), .doc-section h6:not(:first-child), .doc-section p:not(:first-child), .doc-section pre:not(:first-child) {
   margin-top: revert;
 }
 
-.code-studio-md h1:not(:last-child), .code-studio-md h2:not(:last-child), .code-studio-md h3:not(:last-child), .code-studio-md h4:not(:last-child), .code-studio-md h5:not(:last-child), .code-studio-md h6:not(:last-child), .code-studio-md p:not(:last-child) {
+.code-studio-md h1:not(:last-child), .code-studio-md h2:not(:last-child), .code-studio-md h3:not(:last-child), .code-studio-md h4:not(:last-child), .code-studio-md h5:not(:last-child), .code-studio-md h6:not(:last-child), .code-studio-md p:not(:last-child),
+.doc-section h1:not(:last-child), .doc-section h2:not(:last-child), .doc-section h3:not(:last-child), .doc-section h4:not(:last-child), .doc-section h5:not(:last-child), .doc-section h6:not(:last-child), .doc-section p:not(:last-child), .doc-section pre:not(:last-child) {
   margin-bottom: revert;
 }
 
 .readme h1, .readme h2, .readme h3, .readme h4, .readme h5, .readme h6, .readme p,
+.doc-section h1, .doc-section h2, .doc-section h3, .doc-section h4, .doc-section h5, .doc-section h6, .doc-section p,
 .code-studio-md h1, .code-studio-md h2, .code-studio-md h3, .code-studio-md h4, .code-studio-md h5,
 .code-studio-md h6, .code-studio-md p,
 .article-response h1, .article-response h2, .article-response h3, .article-response h4, .article-response h5,
@@ -1377,43 +1382,43 @@ h5, .h5 {
   padding-bottom: 0.6rem;
 }
 
-.readme h1, .article-response h1, .markdown h1, .code-studio-md h1 {
+.readme h1, .article-response h1, .markdown h1, .code-studio-md h1, .doc-section h1 {
   font-size: 2rem;
 }
 
-.readme h2, .article-response h2, .markdown h2, .code-studio-md h2 {
+.readme h2, .article-response h2, .markdown h2, .code-studio-md h2, .doc-section h2 {
   font-size: 1.5rem;
 }
 
-.readme h3, .article-response h3, .markdown h3, .code-studio-md h3 {
+.readme h3, .article-response h3, .markdown h3, .code-studio-md h3, .doc-section h3 {
   font-size: 1.25rem
 }
 
-.readme h4, .article-response h4, .markdown h4, .code-studio-md h4 {
+.readme h4, .article-response h4, .markdown h4, .code-studio-md h4, .doc-section h4 {
   font-size: 1rem
 }
 
-.readme h5, .article-response h5, .markdown h5, .code-studio-md h5 {
+.readme h5, .article-response h5, .markdown h5, .code-studio-md h5, .doc-section h5 {
   font-size: .875rem
 }
 
-.readme h6, .article-response h6, .markdown h6, .code-studio-md h6 {
+.readme h6, .article-response h6, .markdown h6, .code-studio-md h6, .doc-section h6 {
   font-size: .85rem
 }
 
-.readme ul, .article-response ul, .markdown ul, .code-studio-md ul {
+.readme ul, .article-response ul, .markdown ul, .code-studio-md ul, .doc-section ul {
   list-style: revert;
   margin: revert;
   padding: revert;
 }
 
-.readme ol, .article-response ol, .markdown ol, .code-studio-md ol {
+.readme ol, .article-response ol, .markdown ol, .code-studio-md ol, .doc-section ol {
   list-style: revert;
   margin: revert;
   padding: revert;
 }
 
-.readme a, .markdown a {
+.readme a, .markdown a, .doc-section a {
   color: rgb(var(--label-link));
 }
 
@@ -1434,10 +1439,14 @@ h5, .h5 {
   display: unset;
 }
 
-.article-response code, .summary-card code, .code-studio-md code, .green-code {
+.article-response code, .summary-card code, .code-studio-md code, .doc-section :not(pre) code, .green-code {
   color: #14B8A6;
   font-family: Menlo, sans-serif;
   font-size: 0.95em;
+}
+
+.doc-section pre code {
+  color: inherit;
 }
 
 .markdown code {
@@ -1447,12 +1456,16 @@ h5, .h5 {
   border-radius: 4px;
 }
 
-.article-response pre:has(code), .code-studio-md pre:has(code) {
+.article-response pre:has(code), .code-studio-md pre:has(code), .doc-section pre:has(code) {
   background-color: rgb(var(--bg-shade));
   border: 1px solid rgb(var(--bg-border));
   border-radius: 8px;
   padding: 12px;
   white-space: pre-wrap;
+}
+
+.doc-section pre:has(code) {
+  overflow: auto;
 }
 
 .hljs-addition {

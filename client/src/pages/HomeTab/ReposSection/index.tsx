@@ -36,55 +36,60 @@ const ReposSection = ({
   isFiltered,
   showAll,
 }: Props) => {
-  const { apiUrl } = useContext(DeviceContext);
+  const { apiUrl, envConfig } = useContext(DeviceContext);
   const { setRepositories } = useContext(RepositoriesContext);
-  const [currentlySyncingRepo, setCurrentlySyncingRepo] = useState<{
-    repoRef: string;
-    percentage: number;
-  } | null>(null);
+  const [currentlySyncingRepos, setCurrentlySyncingRepos] = useState<Record<
+    string,
+    number
+  > | null>(null);
 
   useEffect(() => {
     eventSource?.close();
-    eventSource = new EventSource(
-      `${apiUrl.replace('https:', '')}/repos/status`,
-    );
-    eventSource.onmessage = (ev) => {
-      try {
-        const data = JSON.parse(ev.data);
-        if (data.ev?.status_change) {
-          setRepositories((prev: RepoType[] | undefined) => {
-            if (!prev) {
-              return prev;
-            }
-            const index = prev.findIndex((r) => r.ref === data.ref);
-            const newRepos = [...prev];
-            newRepos[index] = {
-              ...newRepos[index],
-              sync_status: data.ev?.status_change,
-              last_index:
-                data.ev?.status_change === SyncStatus.Done
-                  ? new Date().toISOString()
-                  : '',
-            };
-            return newRepos;
-          });
-        }
-        if (Number.isInteger(data.ev?.index_percent)) {
-          setCurrentlySyncingRepo({
-            repoRef: data.ref,
-            percentage: data.ev.index_percent,
-          });
-        }
-      } catch {}
-    };
-    eventSource.onerror = (err) => {
-      console.error('EventSource failed:', err);
-      setCurrentlySyncingRepo(null);
-    };
+    if (envConfig.github_user) {
+      eventSource = new EventSource(
+        `${apiUrl.replace('https:', '')}/repos/status`,
+      );
+      eventSource.onmessage = (ev) => {
+        try {
+          const data = JSON.parse(ev.data);
+          if (data.ev?.status_change) {
+            setRepositories((prev: RepoType[] | undefined) => {
+              if (!prev) {
+                return prev;
+              }
+              const index = prev.findIndex((r) => r.ref === data.ref);
+              const newRepos = [...prev];
+              newRepos[index] = {
+                ...newRepos[index],
+                sync_status: data.ev?.status_change,
+                last_index:
+                  data.ev?.status_change === SyncStatus.Done
+                    ? new Date().toISOString()
+                    : '',
+              };
+              return newRepos;
+            });
+          }
+          if (
+            Number.isInteger(data.ev?.index_percent) ||
+            data.ev?.index_percent === null
+          ) {
+            setCurrentlySyncingRepos((prev) => ({
+              ...prev,
+              [data.ref]: data.ev.index_percent,
+            }));
+          }
+        } catch {}
+      };
+      eventSource.onerror = (err) => {
+        console.error('EventSource failed:', err);
+        setCurrentlySyncingRepos(null);
+      };
+    }
     return () => {
       eventSource?.close();
     };
-  }, []);
+  }, [envConfig.github_user]);
 
   const onDelete = useCallback((ref: string) => {
     setReposToShow((prev) => prev.filter((r) => r.ref !== ref));
@@ -108,11 +113,7 @@ const ReposSection = ({
               lang={r.most_common_lang}
               key={ref + i}
               provider={r.provider}
-              syncStatus={
-                currentlySyncingRepo?.repoRef === ref
-                  ? currentlySyncingRepo
-                  : null
-              }
+              syncPercentage={currentlySyncingRepos?.[ref]}
               onDelete={onDelete}
               indexedBranches={r.branch_filter?.select}
             />

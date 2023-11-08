@@ -23,7 +23,8 @@ type Props = {
 const emptyCodeStudio: CodeStudioType = {
   messages: [],
   context: [],
-  token_counts: { total: 0, per_file: [], messages: 0 },
+  doc_context: [],
+  token_counts: { total: 0, per_file: [], messages: 0, per_doc_file: [] },
   name: '',
   id: '',
   modified_at: '',
@@ -34,6 +35,9 @@ const StudioTab = ({ isActive, tab, isTransitioning }: Props) => {
   const { repositories } = useContext(RepositoriesContext);
   const [currentContext, setCurrentContext] = useState<
     CodeStudioType['context']
+  >([]);
+  const [currentDocContext, setCurrentDocContext] = useState<
+    CodeStudioType['doc_context']
   >([]);
   const [currentMessages, setCurrentMessages] = useState<
     CodeStudioType['messages']
@@ -70,6 +74,12 @@ const StudioTab = ({ isActive, tab, isTransitioning }: Props) => {
               return prev;
             }
             return resp.context;
+          });
+          setCurrentDocContext((prev) => {
+            if (JSON.stringify(resp) === JSON.stringify(prev)) {
+              return prev;
+            }
+            return resp.doc_context;
           });
           setCurrentMessages((prev) => {
             if (JSON.stringify(resp) === JSON.stringify(prev)) {
@@ -124,6 +134,7 @@ const StudioTab = ({ isActive, tab, isTransitioning }: Props) => {
           isActive={isActive}
           refetchCodeStudio={refetchCodeStudio}
           currentContext={currentContext}
+          currentDocContext={currentDocContext}
           currentMessages={currentMessages}
           currentTokenCounts={currentTokenCounts}
         />

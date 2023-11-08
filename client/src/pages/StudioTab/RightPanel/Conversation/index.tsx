@@ -88,14 +88,16 @@ const Conversation = ({
     StudioConversationMessageAuthor.USER,
   );
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
-  const setInput = (value: StudioConversationMessage) => {
+
+  const setInput = useCallback((value: StudioConversationMessage) => {
     setInputValue(value.message);
     setInputAuthor(value.author);
     // Focus on the input
     if (inputRef.current) {
       inputRef.current.focus();
     }
-  };
+  }, []);
+
   const [isLoading, setIsLoading] = useState(false);
   const { apiUrl } = useContext(DeviceContext);
   const { messagesRef, handleScroll, scrollToBottom } =

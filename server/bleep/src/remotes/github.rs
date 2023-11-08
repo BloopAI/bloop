@@ -95,17 +95,8 @@ impl From<Auth> for State {
 }
 
 impl Auth {
-    pub(crate) async fn clone_repo(&self, repo: &Repository) -> Result<()> {
-        let creds = self.creds_for_private_repos(repo).await?;
-        git_clone(creds, &repo.remote.to_string(), &repo.disk_path).await
-    }
-
-    pub(crate) async fn pull_repo(&self, repo: &Repository) -> Result<()> {
-        let creds = self.creds_for_private_repos(repo).await?;
-        git_pull(creds, repo).await
-    }
-
-    async fn creds_for_private_repos(&self, repo: &Repository) -> Result<Option<GitCreds>> {
+    /// Return credentials for private repositories, and no credentials for public ones.
+    pub(crate) async fn creds(&self, repo: &Repository) -> Result<Option<GitCreds>> {
         let RepoRemote::Git(GitRemote { ref address, .. }) = repo.remote else {
             return Err(RemoteError::NotSupported("github without git backend"));
         };

@@ -186,8 +186,10 @@ mod gpu {
 
     impl LocalEmbedder {
         pub fn new(model_dir: &Path) -> anyhow::Result<Self> {
-            let mut model_params = llm::ModelParameters::default();
-            model_params.use_gpu = true;
+            let model_params = llm::ModelParameters {
+                use_gpu: true,
+                ..Default::default()
+            };
 
             let model = llm::load_dynamic(
                 Some(llm::ModelArchitecture::Bert),
@@ -281,7 +283,7 @@ mod gpu {
                 .iter()
                 .map(|sequence| {
                     vocab
-                        .tokenize(&sequence, beginning_of_sentence)
+                        .tokenize(sequence, beginning_of_sentence)
                         .unwrap()
                         .iter()
                         .map(|(_, tok)| *tok)
