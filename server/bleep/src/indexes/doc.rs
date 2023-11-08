@@ -715,7 +715,7 @@ impl Doc {
                 handles.push(tokio::task::spawn(async move {
                     let (section_ids, tantivy_docs_to_insert) = doc.sections(id, &doc_source, &section_schema);
                     let mut cache_lock = cache.lock().await;
-                    if !section_ids.iter().any(|u| cache_lock.contains(&u)) {
+                    if !section_ids.iter().any(|u| cache_lock.contains(u)) {
                         cache_lock.extend(section_ids.iter());
                         let lock = index_writer.lock().await;
                         for d in tantivy_docs_to_insert {
