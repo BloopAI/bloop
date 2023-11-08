@@ -7,6 +7,7 @@ import {
   DocSectionType,
   DocShortType,
   FileResponse,
+  GeneratedCodeDiff,
   HistoryConversationTurn,
   HoverablesResponse,
   NLSearchResponse,
@@ -323,9 +324,12 @@ export const importCodeStudio = (thread_id: string, studio_id?: string) =>
   http
     .post('/studio/import', {}, { params: { thread_id, studio_id } })
     .then((r) => r.data);
-export const generateStudioDiff = (id: string): Promise<string> =>
+export const generateStudioDiff = (id: string): Promise<GeneratedCodeDiff> =>
   http(`/studio/${id}/diff`, { timeout: 5 * 60 * 1000 }).then((r) => r.data);
-export const confirmStudioDiff = (id: string, diff: string): Promise<string> =>
+export const confirmStudioDiff = (
+  id: string,
+  diff: GeneratedCodeDiff,
+): Promise<void> =>
   http.post(`/studio/${id}/diff/apply`, diff).then((r) => r.data);
 
 export const getFileTokenCount = (

@@ -346,3 +346,14 @@ export type DocSectionType = {
   section_range: { start: number; end: number };
   text: string;
 };
+
+export type GeneratedCodeDiff = {
+  chunks: {
+    file: string;
+    lang: string;
+    hunks: {
+      line_start: number;
+      patch: string;
+    }[];
+  }[];
+};
