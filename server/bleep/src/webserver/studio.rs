@@ -960,7 +960,7 @@ pub async fn diff(
                 raw_patch: chunk.to_string(),
 
                 lang: doc.lang.clone(),
-                repo: RepoRef::from(&doc.repo_ref),
+                repo: RepoRef::from(doc.repo_ref.as_str()),
                 branch: doc.branches.clone(),
                 file: chunk.src.to_owned(),
                 hunks: chunk
