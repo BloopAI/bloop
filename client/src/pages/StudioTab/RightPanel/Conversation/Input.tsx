@@ -222,7 +222,7 @@ const ConversationInput = ({
         )}
       </div>
       <div
-        className={`code-studio-md body-s relative ${
+        className={`code-studio-md break-words body-s relative ${
           isFocused || i === undefined ? 'flex flex-col' : ''
         }`}
       >
