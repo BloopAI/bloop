@@ -986,10 +986,8 @@ pub async fn diff_apply(
     app: Extension<Application>,
     user: Extension<User>,
     Path(studio_id): Path<i64>,
-    diff: Json<structured_diff::Diff>,
+    diff: String,
 ) -> webserver::Result<()> {
-    let diff = diff.0.to_string();
-
     let user_id = user.username().ok_or_else(no_user_id)?.to_string();
 
     let snapshot_id = latest_snapshot_id(studio_id, &*app.sql, &user_id).await?;
