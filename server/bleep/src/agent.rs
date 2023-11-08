@@ -193,17 +193,8 @@ impl Agent {
                     let keywords = {
                         let sw = stop_words();
                         let r = Rake::new(sw.clone());
-                        let keywords = r.run(s);
-
-                        if keywords.is_empty() {
-                            s.clone()
-                        } else {
-                            keywords
-                                .iter()
-                                .map(|k| k.keyword.clone())
-                                .collect::<Vec<_>>()
-                                .join(" ")
-                        }
+                        r.run_phrase(s)
+                        
                     };
 
                     self.code_search(&keywords).await?;
