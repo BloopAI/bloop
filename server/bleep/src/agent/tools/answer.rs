@@ -28,7 +28,7 @@ impl Agent {
                 .context("invalid path alias passed")?;
 
             let doc = self
-                .get_file_content(&path.path)
+                .get_file_content(&path.repo, &path.path)
                 .await?
                 .context("path did not exist")?;
 
@@ -283,7 +283,7 @@ impl Agent {
                 let path = path.1.clone();
 
                 let lines = self_
-                    .get_file_content(&path)
+                    .get_file_content(&repo, &path)
                     .await
                     .unwrap()
                     .unwrap_or_else(|| panic!("path did not exist in the index: {path}"))

@@ -24,7 +24,6 @@ fn set_index_version() {
 
     let model_directories = &["src/intelligence/scope_resolution", "migrations"];
     let model_files = &[
-        "sqlx-data.json",
         "src/indexes/file.rs",
         "src/semantic.rs",
         "src/semantic/schema.rs",

@@ -21,7 +21,7 @@ impl Agent {
 
         // First, perform a lexical search for the path
         let mut paths = self
-            .fuzzy_path_search(query)
+            .fuzzy_path_search(query.as_str())
             .await
             .map(|c| (c.repo_name, c.relative_path))
             .collect::<HashSet<_>>() // TODO: This shouldn't be necessary. Path search should return unique results.

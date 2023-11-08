@@ -241,7 +241,6 @@ impl Indexer<File> {
     pub async fn fuzzy_path_match(
         &self,
         query_str: &str,
-        branch: Option<&str>,
         limit: usize,
     ) -> impl Iterator<Item = FileDocument> + '_ {
         // lifted from query::compiler
@@ -251,26 +250,12 @@ impl Indexer<File> {
 
         // hits is a mapping between a document address and the number of trigrams in it that
         // matched the query
-        let branch_term = branch
-            .map(|b| {
-                trigrams(b)
-                    .map(|token| Term::from_field_text(self.source.branches, token.as_str()))
-                    .map(|term| TermQuery::new(term, IndexRecordOption::Basic))
-                    .map(Box::new)
-                    .map(|q| q as Box<dyn Query>)
-                    .collect::<Vec<_>>()
-            })
-            .map(BooleanQuery::intersection);
         let mut hits = trigrams(query_str)
             .flat_map(|s| case_permutations(s.as_str()))
             .map(|token| Term::from_field_text(self.source.relative_path, token.as_str()))
             .map(|term| {
-                let mut query: Vec<Box<dyn Query>> =
+                let query: Vec<Box<dyn Query>> =
                     vec![Box::new(TermQuery::new(term, IndexRecordOption::Basic))];
-
-                if let Some(b) = branch_term.as_ref() {
-                    query.push(Box::new(b.clone()));
-                };
 
                 BooleanQuery::intersection(query)
             })

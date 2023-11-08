@@ -138,7 +138,6 @@ impl Agent {
         let event = QueryEvent {
             query_id: self.query_id,
             thread_id: self.thread_id,
-            repo_ref: self.repo_ref.map(|r| r.clone()),
             data,
         };
         self.app.track_query(&self.user, &event);
@@ -195,19 +194,19 @@ impl Agent {
                 s.clone()
             }
 
-            Action::Answer { aliases } => {
-                self.answer(aliases).await.context("answer action failed")?;
+            Action::Answer { paths } => {
+                self.answer(paths).await.context("answer action failed")?;
                 return Ok(None);
             }
 
             Action::Path { query } => self.path_search(query).await?,
             Action::Code { query } => self.code_search(query).await?,
-            Action::Proc { query, aliases } => self.process_files(query, aliases).await?,
+            Action::Proc { query, paths } => self.process_files(query, paths).await?,
         };
 
         if self.last_exchange().search_steps.len() >= MAX_STEPS {
             return Ok(Some(Action::Answer {
-                aliases: self.paths().enumerate().map(|(i, _)| i).collect(),
+                paths: self.paths().enumerate().map(|(i, _)| i).collect(),
             }));
         }
 
@@ -257,6 +256,7 @@ impl Agent {
                 .with_payload("model", &self.llm_gateway.model),
         );
 
+        dbg!(&raw_response);
         let action =
             Action::deserialize_gpt(&raw_response).context("failed to deserialize LLM output")?;
 
@@ -370,33 +370,6 @@ impl Agent {
             .await
     }
 
-    #[allow(dead_code)]
-    async fn batch_semantic_search(
-        &self,
-        queries: Vec<parser::Literal<'_>>,
-        limit: u64,
-        offset: u64,
-        threshold: f32,
-        retrieve_more: bool,
-    ) -> Result<Vec<semantic::Payload>> {
-        let queries = queries
-            .iter()
-            .map(|q| parser::SemanticQuery {
-                target: Some(q.clone()),
-                repos: [parser::Literal::Plain(self.repo_ref.display_name().into())].into(),
-                ..self.last_exchange().query.clone()
-            })
-            .collect::<Vec<_>>();
-
-        let queries = queries.iter().collect::<Vec<_>>();
-
-        debug!(?queries, %self.thread_id, "executing semantic query");
-        self.app
-            .semantic
-            .batch_search(queries.as_slice(), limit, offset, threshold, retrieve_more)
-            .await
-    }
-
     async fn get_file_content(&self, repo: &str, path: &str) -> Result<Option<ContentDocument>> {
         let branch = self.last_exchange().query.first_branch();
 
@@ -412,16 +385,8 @@ impl Agent {
     async fn fuzzy_path_search<'a>(
         &'a self,
         query: &str,
-        repo: &str,
     ) -> impl Iterator<Item = FileDocument> + 'a {
-        let branch = self.last_exchange().query.first_branch();
-
-        debug!(%self.repo_ref, query, ?branch, %self.thread_id, "executing fuzzy search");
-        self.app
-            .indexes
-            .file
-            .fuzzy_path_match(query, branch.as_deref(), 50)
-            .await
+        self.app.indexes.file.fuzzy_path_match(query, 50).await
     }
 
     /// Store the conversation in the DB.
@@ -510,14 +475,14 @@ pub enum Action {
     },
     #[serde(rename = "none")]
     Answer {
-        aliases: Vec<usize>,
+        paths: Vec<usize>,
     },
     Code {
         query: String,
     },
     Proc {
         query: String,
-        aliases: Vec<usize>,
+        paths: Vec<usize>,
     },
 }
 

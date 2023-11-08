@@ -16,7 +16,7 @@ use crate::{
     Application,
 };
 
-type Conversation = (RepoRef, Vec<Exchange>);
+type Conversation = (Option<RepoRef>, Vec<Exchange>);
 
 #[derive(Hash, PartialEq, Eq, Clone)]
 pub struct ConversationId {
@@ -123,7 +123,7 @@ pub(in crate::webserver) async fn thread(
         .ok_or_else(|| Error::user("missing user ID"))?
         .to_owned();
 
-    let (.., exchanges) = load(&app.sql, &ConversationId { thread_id, user_id })
+    let exchanges = load(&app.sql, &ConversationId { thread_id, user_id })
         .await?
         .ok_or_else(|| Error::new(ErrorKind::NotFound, "thread was not found"))?;
 
@@ -151,7 +151,7 @@ pub async fn store(db: &SqlDb, id: ConversationId, conversation: Conversation) -
     .await?;
 
     let (repo_ref, exchanges) = conversation;
-    let repo_ref = repo_ref.to_string();
+    let repo_ref = repo_ref.map(|r| r.to_string());
     let title = exchanges
         .first()
         .and_then(|list| list.query())
@@ -182,7 +182,7 @@ pub async fn load(db: &SqlDb, id: &ConversationId) -> Result<Option<Vec<Exchange
     let (user_id, thread_id) = (id.user_id.clone(), id.thread_id.to_string());
 
     let row = sqlx::query! {
-        "SELECT exchanges FROM conversations \
+        "SELECT repo_ref, exchanges FROM conversations \
          WHERE user_id = ? AND thread_id = ?",
         user_id,
         thread_id,

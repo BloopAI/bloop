@@ -1,3 +1,5 @@
+use crate::agent::exchange::RepoPath;
+
 pub fn functions(add_proc: bool) -> serde_json::Value {
     let mut funcs = serde_json::json!(
         [
@@ -79,7 +81,7 @@ pub fn functions(add_proc: bool) -> serde_json::Value {
     funcs
 }
 
-pub fn system<'a>(paths: impl IntoIterator<Item = &'a str>) -> String {
+pub fn system<'a>(paths: impl IntoIterator<Item = &'a RepoPath>) -> String {
     let mut s = "".to_string();
 
     let mut paths = paths.into_iter().peekable();

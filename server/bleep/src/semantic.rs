@@ -1,6 +1,9 @@
 use std::{borrow::Cow, collections::HashMap, env, path::Path, sync::Arc};
 
-use crate::{query::parser::SemanticQuery, Configuration};
+use crate::{
+    query::parser::{parse_nl, SemanticQuery},
+    Configuration,
+};
 
 use anyhow::bail;
 use qdrant_client::{
@@ -412,7 +415,7 @@ impl Semantic {
         // In /answer we want to retrieve `limit` results exactly
         let results = self
             .search_with(
-                query,
+                &parse_nl(&query)?,
                 vector.clone(),
                 if retrieve_more { limit * 2 } else { limit }, // Retrieve double `limit` and deduplicate
                 offset,

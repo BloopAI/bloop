@@ -36,6 +36,7 @@ impl Agent {
             .await?;
 
         debug!("returned {} results", results.len());
+        dbg!(&results);
 
         let hyde_docs = if results.len() < MINIMUM_RESULTS {
             info!("too few results returned, running HyDE");
