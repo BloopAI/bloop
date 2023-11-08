@@ -17,6 +17,7 @@ import { markNode, unmark } from '../../../utils/textSearch';
 type Props = {
   lineNumber: number;
   lineNumberToShow?: number | null;
+  lineNumbersDiff?: [number | null, number | null] | null;
   children: ReactNode;
   showLineNumbers?: boolean;
   lineFoldable?: boolean;
@@ -64,6 +65,7 @@ const CodeLine = ({
   leftHighlight,
   removePaddings,
   hoveredBackground,
+  lineNumbersDiff,
 }: Props) => {
   const codeRef = useRef<HTMLTableCellElement>(null);
 
@@ -210,25 +212,31 @@ const CodeLine = ({
             )}
           </span>
         </div>
-      ) : (
-        <div
-          className={`${
-            showLineNumbers && !removePaddings ? 'px-1' : ''
-          } text-center ${lineHidden ? 'p-0' : ''} ${
-            isRemovedLine
-              ? 'bg-bg-danger/30'
-              : isNewLine
-              ? 'bg-bg-success/30'
-              : ''
-          }`}
-        />
-      )}
-      {showLineNumbers && (
-        <div
-          data-line={lineNumberToShow}
-          className={`min-w-[27px] text-right select-none pr-0 leading-5 ${blameStyle} ${
-            lineHidden ? 'p-0' : ''
-          } ${hoverEffect ? 'group-hover:text-label-base' : ''}
+      ) : null}
+      {showLineNumbers &&
+        (lineNumbersDiff ? (
+          lineNumbersDiff.map((ln, i) => (
+            <div
+              key={i}
+              data-line={ln}
+              className={`min-w-[27px] text-right select-none pr-0 leading-5 ${blameStyle} ${
+                lineHidden ? 'p-0' : ''
+              } ${hoverEffect ? 'group-hover:text-label-base' : ''}
+           ${lineHidden ? '' : 'before:content-[attr(data-line)]'} ${
+             isRemovedLine
+               ? 'bg-bg-danger/30 text-label-base'
+               : isNewLine
+               ? 'bg-bg-success/30 text-label-base'
+               : 'text-label-muted'
+           }`}
+            />
+          ))
+        ) : (
+          <div
+            data-line={lineNumberToShow}
+            className={`min-w-[27px] text-right select-none pr-0 leading-5 ${blameStyle} ${
+              lineHidden ? 'p-0' : ''
+            } ${hoverEffect ? 'group-hover:text-label-base' : ''}
            ${
              lineHidden || !lineNumberToShow
                ? ''
@@ -240,8 +248,8 @@ const CodeLine = ({
                ? 'bg-bg-success/30 text-label-base'
                : 'text-label-muted'
            }`}
-        />
-      )}
+          />
+        ))}
       <div
         className={`text-label-muted ${lineHidden ? 'p-0' : ''} ${blameStyle}`}
       >
