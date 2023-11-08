@@ -23,7 +23,7 @@ import { Metadata, BlameLine } from './index';
 
 type Props = {
   language: string;
-  metadata: Metadata;
+  metadata?: Metadata;
   relativePath: string;
   repoPath: string;
   repoName: string;
@@ -49,6 +49,7 @@ type Props = {
   ) => void;
   width: number;
   height: number;
+  isDiff?: boolean;
 };
 
 const CodeContainer = ({

@@ -31,6 +31,7 @@ import TemplatesPanel from './TemplatesPanel';
 import AddContextModal from './AddContextModal';
 import RightPanel from './RightPanel';
 import FilePanel from './FilePanel';
+import DiffPanel from './DiffPanel';
 
 type Props = {
   tab: StudioTabType;
@@ -305,6 +306,8 @@ const ContentContainer = ({
                   isActiveTab={isActive}
                   setIsChangeUnsaved={setIsChangeUnsaved}
                 />
+              ) : leftPanel.type === StudioLeftPanelType.DIFF ? (
+                <DiffPanel {...leftPanel.data} setLeftPanel={setLeftPanel} />
               ) : null}
               <AddContextModal
                 isVisible={isAddContextOpen}

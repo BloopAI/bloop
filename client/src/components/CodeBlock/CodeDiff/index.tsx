@@ -1,23 +1,36 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import FileIcon from '../../FileIcon';
 import { getFileExtensionForLang, getPrettyLangName } from '../../../utils';
 import BreadcrumbsPath from '../../BreadcrumbsPath';
 import CopyButton from '../../MarkdownWithCode/CopyButton';
 import Code from '../Code';
+import { DiffChunkType } from '../../../types/general';
 
-type Props = {
-  hunks: {
-    line_start: number;
-    patch: string;
-  }[];
+type Props = DiffChunkType & {
+  onClick: (d: DiffChunkType) => void;
   language: string;
   filePath: string;
 };
 
-const CodeDiff = ({ hunks, language, filePath }: Props) => {
+const CodeDiff = ({
+  hunks,
+  language,
+  filePath,
+  onClick,
+  file,
+  repo,
+  branch,
+  raw_patch,
+  lang,
+}: Props) => {
+  const handleClick = useCallback(() => {
+    onClick({ hunks, repo, branch, file, lang, raw_patch });
+  }, [hunks, repo, branch, file, lang, raw_patch]);
   return (
-    <div
-      className={`my-4 bg-bg-sub text-xs border-bg-border border rounded-md relative group-code`}
+    <a
+      href="#"
+      onClick={handleClick}
+      className={`my-4 block bg-bg-sub text-xs border-bg-border border rounded-md relative group-code`}
     >
       <div
         className={`bg-bg-shade border-bg-border border-b rounded-t-md p-2 flex items-center justify-between gap-2`}
@@ -64,7 +77,7 @@ const CodeDiff = ({ hunks, language, filePath }: Props) => {
           </>
         ))}
       </div>
-    </div>
+    </a>
   );
 };
 

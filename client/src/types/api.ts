@@ -1,5 +1,5 @@
 import { SymbolType, Range, TokenInfoType } from './results';
-import { StudioContextFile } from './general';
+import { DiffChunkType, DiffHunkType, StudioContextFile } from './general';
 
 export interface RangeLine {
   byte: number;
@@ -318,12 +318,5 @@ export type TutorialQuestionType = {
 };
 
 export type GeneratedCodeDiff = {
-  chunks: {
-    file: string;
-    lang: string;
-    hunks: {
-      line_start: number;
-      patch: string;
-    }[];
-  }[];
+  chunks: DiffChunkType[];
 };
