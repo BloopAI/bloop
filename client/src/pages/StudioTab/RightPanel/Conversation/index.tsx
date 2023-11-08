@@ -20,7 +20,11 @@ import {
 import Button from '../../../../components/Button';
 import { ArrowRefresh, BranchMerged, TrashCanFilled } from '../../../../icons';
 import KeyboardChip from '../../KeyboardChip';
-import { CodeStudioMessageType, CodeStudioType } from '../../../../types/api';
+import {
+  CodeStudioMessageType,
+  CodeStudioType,
+  GeneratedCodeDiff,
+} from '../../../../types/api';
 import {
   confirmStudioDiff,
   generateStudioDiff,
@@ -32,6 +36,7 @@ import useScrollToBottom from '../../../../hooks/useScrollToBottom';
 import { StudioContext } from '../../../../context/studioContext';
 import { PersonalQuotaContext } from '../../../../context/personalQuotaContext';
 import { UIContext } from '../../../../context/uiContext';
+import LiteLoaderContainer from '../../../../components/Loaders/LiteLoader';
 import ConversationInput from './Input';
 import GeneratedDiff from './GeneratedDiff';
 
@@ -95,7 +100,7 @@ const Conversation = ({
   );
   const [waitingForDiff, setWaitingForDiff] = useState(false);
   const [isDiffApplied, setDiffApplied] = useState(false);
-  const [diff, setDiff] = useState('');
+  const [diff, setDiff] = useState<GeneratedCodeDiff | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const setInput = (value: StudioConversationMessage) => {
     setInputValue(value.message);
@@ -201,7 +206,7 @@ const Conversation = ({
       return;
     }
     setDiffApplied(false);
-    setDiff('');
+    setDiff(null);
     setConversation((prev) => [
       ...prev,
       { message: inputValue, author: inputAuthor },
@@ -374,8 +379,11 @@ const Conversation = ({
   const handleConfirmDiff = useCallback(
     async (e: React.MouseEvent) => {
       e.preventDefault();
+      if (!diff) {
+        return;
+      }
       await confirmStudioDiff(studioId, diff);
-      setDiff('');
+      setDiff(null);
       setDiffApplied(true);
     },
     [studioId, diff],
@@ -432,14 +440,24 @@ const Conversation = ({
             />
           ))}
           {!!diff && <GeneratedDiff diff={diff} />}
-          {isDiffApplied && (
-            <div className="w-full flex items-center justify-center gap-1 py-2 bg-bg-main/15 text-label-link caption">
-              <BranchMerged raw sizeClassName="w-3.5 h-3.5" />
-              <Trans>The diff has been applied locally.</Trans>
+          {(isDiffApplied || waitingForDiff) && (
+            <div className="w-full flex items-center rounded-6 justify-center gap-1 py-2 bg-bg-main/15 text-label-link caption">
+              {waitingForDiff ? (
+                <LiteLoaderContainer sizeClassName="w-3.5 h-3.5" />
+              ) : (
+                <BranchMerged raw sizeClassName="w-3.5 h-3.5" />
+              )}
+              <Trans>
+                {waitingForDiff
+                  ? 'Generating diff...'
+                  : 'The diff has been applied locally.'}
+              </Trans>
             </div>
           )}
           {!isLoading &&
             !isPreviewing &&
+            !waitingForDiff &&
+            !diff &&
             !(
               conversation[conversation.length - 1]?.author ===
               StudioConversationMessageAuthor.USER
@@ -506,14 +524,18 @@ const Conversation = ({
                         onClick={handleApplyChanges}
                         disabled={waitingForDiff}
                       >
-                        <Trans>Apply changes</Trans>
+                        <Trans>
+                          {waitingForDiff
+                            ? 'Generating diff...'
+                            : 'Apply changes'}
+                        </Trans>
                       </Button>
                     ) : (
                       <>
                         <Button
                           variant="secondary"
                           size="small"
-                          onClick={() => setDiff('')}
+                          onClick={() => setDiff(null)}
                         >
                           <Trans>Cancel</Trans>
                         </Button>

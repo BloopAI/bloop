@@ -316,3 +316,14 @@ export type TutorialQuestionType = {
   tag: string;
   question: string;
 };
+
+export type GeneratedCodeDiff = {
+  chunks: {
+    file: string;
+    lang: string;
+    hunks: {
+      line_start: number;
+      patch: string;
+    }[];
+  }[];
+};
