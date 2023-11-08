@@ -15,6 +15,7 @@ module.exports = {
         "bg-border": "rgb(var(--bg-border))",
         "bg-border-hover": "rgb(var(--bg-border-hover))",
         "bg-main": "rgb(var(--bg-main))",
+        "bg-main/8": "rgba(var(--bg-main), 0.08)",
         "bg-main/15": "rgba(var(--bg-main), 0.15)",
         "bg-main/30": "rgba(var(--bg-main), 0.3)",
         "bg-main-hover": "rgb(var(--bg-main-hover))",
@@ -65,6 +66,9 @@ module.exports = {
         low: 'var(--shadow-low)',
         "rings-gray": "var(--shadow-rings-gray",
         "rings-blue": "var(--shadow-rings-blue)",
+      },
+      dropShadow: {
+        float: "0px 16px 34px rgba(0, 0, 0, 0.75)",
       },
       spacing: {
         "4.5": "1.125rem",

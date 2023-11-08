@@ -89,8 +89,8 @@ fn process_languages() {
 
     write!(
         BufWriter::new(File::create(languages_path).unwrap()),
-        "static EXT_MAP: phf::Map<&str, &str> = \n{};\n\
-         static PROPER_CASE_MAP: phf::Map<&str, &str> = \n{};\n",
+        "pub static EXT_MAP: phf::Map<&str, &str> = \n{};\n\
+         pub static PROPER_CASE_MAP: phf::Map<&str, &str> = \n{};\n",
         ext_map.build(),
         case_map.build(),
     )

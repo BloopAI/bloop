@@ -9,22 +9,27 @@ import React, {
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import Button from '../../../components/Button';
-import { CodeStudioColored, PlusSignInCircle } from '../../../icons';
+import { CodeStudioColored, Magazine, PlusSignInCircle } from '../../../icons';
 import KeyboardChip from '../KeyboardChip';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
 import {
+  StudioContextDoc,
   StudioContextFile,
   StudioLeftPanelDataType,
 } from '../../../types/general';
 import { RepositoriesContext } from '../../../context/repositoriesContext';
 import ContextFileRow from './ContextFileRow';
+import ContextDocRow from './ContextDocRow';
 
 type Props = {
   setLeftPanel: Dispatch<SetStateAction<StudioLeftPanelDataType>>;
   setAddContextOpen: Dispatch<SetStateAction<boolean>>;
+  setAddDocsOpen: Dispatch<SetStateAction<boolean>>;
   studioId: string;
   contextFiles: StudioContextFile[];
+  contextDocs: StudioContextDoc[];
   tokensPerFile: (number | null)[];
+  tokensPerDoc: (number | null)[];
   onFileRemove: (
     f:
       | { path: string; repo: string; branch: string | null }
@@ -42,6 +47,13 @@ type Props = {
     filePath: string,
     ranges?: { start: number; end: number }[],
   ) => void;
+  onDocHide: (
+    docId: string,
+    baseUrl: string,
+    relativeUrl: string,
+    hide: boolean,
+  ) => void;
+  onDocRemove: (docId: string, baseUrl: string, relativeUrl: string) => void;
   isPreviewing: boolean;
   isActiveTab: boolean;
 };
@@ -56,12 +68,17 @@ const ContextPanel = ({
   setLeftPanel,
   setAddContextOpen,
   contextFiles,
+  contextDocs,
   tokensPerFile,
+  tokensPerDoc,
   onFileRemove,
   onFileHide,
   onFileAdded,
+  onDocHide,
+  onDocRemove,
   isPreviewing,
   isActiveTab,
+  setAddDocsOpen,
 }: Props) => {
   useTranslation();
   const { repositories } = useContext(RepositoriesContext);
@@ -72,12 +89,17 @@ const ContextPanel = ({
         e.preventDefault();
         setAddContextOpen(true);
       }
+      if (e.key === 'd' && (e.ctrlKey || e.metaKey) && !isPreviewing) {
+        e.preventDefault();
+        setAddDocsOpen(true);
+      }
     },
     [isPreviewing],
   );
   useKeyboardNavigation(handleKeyEvent, !isActiveTab);
 
   const handlePopupOpen = useCallback(() => setAddContextOpen(true), []);
+  const handleDocsPopupOpen = useCallback(() => setAddDocsOpen(true), []);
 
   const fileList = useMemo(
     () =>
@@ -122,22 +144,47 @@ const ContextPanel = ({
             <Trans>Context files</Trans>
           </p>
         </div>
-        <Button size="small" onClick={handlePopupOpen} disabled={isPreviewing}>
-          <PlusSignInCircle />
-          <Trans>Add file</Trans>
-          <div className="flex items-center gap-1 flex-shrink-0">
-            <KeyboardChip
-              type="cmd"
-              variant={isPreviewing ? 'secondary' : 'primary'}
-            />
-            <KeyboardChip
-              type="K"
-              variant={isPreviewing ? 'secondary' : 'primary'}
-            />
-          </div>
-        </Button>
+        <div className="flex gap-3">
+          <Button
+            size="small"
+            variant="secondary"
+            onClick={handleDocsPopupOpen}
+            disabled={isPreviewing}
+          >
+            <Magazine />
+            <Trans>Add docs</Trans>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <KeyboardChip
+                type="cmd"
+                variant={isPreviewing ? 'tertiary' : 'secondary'}
+              />
+              <KeyboardChip
+                type="D"
+                variant={isPreviewing ? 'tertiary' : 'secondary'}
+              />
+            </div>
+          </Button>
+          <Button
+            size="small"
+            onClick={handlePopupOpen}
+            disabled={isPreviewing}
+          >
+            <PlusSignInCircle />
+            <Trans>Add file</Trans>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <KeyboardChip
+                type="cmd"
+                variant={isPreviewing ? 'secondary' : 'primary'}
+              />
+              <KeyboardChip
+                type="K"
+                variant={isPreviewing ? 'secondary' : 'primary'}
+              />
+            </div>
+          </Button>
+        </div>
       </div>
-      {!contextFiles.length ? (
+      {!contextFiles.length && !contextDocs.length ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-3">
           <div className="w-30 h-30">
             <CodeStudioColored />
@@ -196,6 +243,26 @@ const ContextPanel = ({
                 />
               ))}
             </Fragment>
+          ))}
+          {!!contextDocs.length && (
+            <div className="w-full overflow-x-auto border-b border-bg-base bg-bg-main/15 group cursor-pointer flex-shrink-0">
+              <div className={`max-w-full flex gap-3 items-center py-0 px-8`}>
+                <p className={`body-s text-label-title ellipsis`}>
+                  <Trans>Documentation</Trans>
+                </p>
+              </div>
+            </div>
+          )}
+          {contextDocs.map((d, i) => (
+            <ContextDocRow
+              key={d.relative_url}
+              onDocRemove={onDocRemove}
+              onDocHide={onDocHide}
+              isPreviewing={isPreviewing}
+              setLeftPanel={setLeftPanel}
+              tokens={tokensPerDoc[i]}
+              {...d}
+            />
           ))}
         </div>
       )}

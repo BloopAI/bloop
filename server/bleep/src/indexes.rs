@@ -10,11 +10,13 @@ use tantivy::{
     DocAddress, Document, IndexReader, IndexWriter, Score,
 };
 
+pub mod doc;
 pub mod file;
 pub mod reader;
 pub mod repo;
 mod schema;
 
+pub use doc::Doc;
 pub use file::File;
 pub use repo::Repo;
 use tracing::debug;
@@ -76,11 +78,12 @@ impl<'a> GlobalWriteHandle<'a> {
 pub struct Indexes {
     pub repo: Indexer<Repo>,
     pub file: Indexer<File>,
+    pub doc: Doc,
     write_mutex: tokio::sync::Mutex<()>,
 }
 
 impl Indexes {
-    pub fn new(config: &Configuration) -> Result<Self> {
+    pub async fn new(config: &Configuration, sql: crate::SqlDb) -> Result<Self> {
         Ok(Self {
             repo: Indexer::create(
                 Repo::new(),
@@ -91,6 +94,12 @@ impl Indexes {
             file: Indexer::create(
                 File::new(),
                 config.index_path("content").as_ref(),
+                config.buffer_size,
+                config.max_threads,
+            )?,
+            doc: Doc::create(
+                sql,
+                config.index_path("doc").as_ref(),
                 config.buffer_size,
                 config.max_threads,
             )?,
