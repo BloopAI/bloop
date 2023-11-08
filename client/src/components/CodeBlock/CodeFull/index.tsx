@@ -42,13 +42,14 @@ export interface Metadata {
 type Props = {
   code: string;
   language: string;
-  metadata: Metadata;
+  metadata?: Metadata;
   relativePath: string;
   repoPath: string;
   repoName: string;
   containerWidth: number;
   containerHeight: number;
   closePopup?: () => void;
+  isDiff?: boolean;
 };
 
 const CodeFull = ({
@@ -61,6 +62,7 @@ const CodeFull = ({
   containerWidth,
   containerHeight,
   closePopup,
+  isDiff,
 }: Props) => {
   const [foldableRanges, setFoldableRanges] = useState<Record<number, number>>(
     {},
@@ -150,7 +152,7 @@ const CodeFull = ({
 
   useEffect(() => {
     setFoldableRanges(
-      metadata.lexicalBlocks?.reduce(
+      metadata?.lexicalBlocks?.reduce(
         (acc, cur) => ({
           ...acc,
           [cur.start]: cur.end,
@@ -158,11 +160,11 @@ const CodeFull = ({
         {},
       ) || {},
     );
-  }, [metadata.lexicalBlocks]);
+  }, [metadata?.lexicalBlocks]);
 
   useEffect(() => {
     const bb: Record<number, BlameLine> = {};
-    metadata.blame?.forEach((item) => {
+    metadata?.blame?.forEach((item) => {
       bb[item.lineRange.start] = {
         start: true,
         commit: item.commit,
@@ -173,7 +175,7 @@ const CodeFull = ({
     });
 
     setBlameLines(bb);
-  }, [metadata.blame]);
+  }, [metadata?.blame]);
 
   const toggleBlock = useCallback(
     (fold: boolean, start: number) => {
@@ -395,6 +397,7 @@ const CodeFull = ({
             onRefDefClick={onRefDefClick}
             scrollToIndex={scrollToIndex}
             highlightColor={highlightColor}
+            isDiff={isDiff}
           />
           <ExplainButton
             currentSelection={currentSelection}

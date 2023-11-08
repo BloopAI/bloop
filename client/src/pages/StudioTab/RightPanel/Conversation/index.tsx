@@ -450,7 +450,7 @@ const Conversation = ({
               isLast={i === conversation.length - 1}
             />
           ))}
-          {!!diff && <GeneratedDiff diff={diff} />}
+          {!!diff && <GeneratedDiff diff={diff} setLeftPanel={setLeftPanel} />}
           {(isDiffApplied || waitingForDiff || isDiffGenFailed) && (
             <div
               className={`w-full flex items-center rounded-6 justify-center gap-1 py-2 ${
