@@ -18,7 +18,12 @@ import {
   StudioLeftPanelType,
 } from '../../../../types/general';
 import Button from '../../../../components/Button';
-import { ArrowRefresh, BranchMerged, TrashCanFilled } from '../../../../icons';
+import {
+  ArrowRefresh,
+  BranchMerged,
+  TrashCanFilled,
+  WarningSign,
+} from '../../../../icons';
 import KeyboardChip from '../../KeyboardChip';
 import {
   CodeStudioMessageType,
@@ -100,6 +105,7 @@ const Conversation = ({
   );
   const [waitingForDiff, setWaitingForDiff] = useState(false);
   const [isDiffApplied, setDiffApplied] = useState(false);
+  const [isDiffGenFailed, setDiffGenFailed] = useState(false);
   const [diff, setDiff] = useState<GeneratedCodeDiff | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const setInput = (value: StudioConversationMessage) => {
@@ -207,6 +213,7 @@ const Conversation = ({
     }
     setDiffApplied(false);
     setDiff(null);
+    setDiffGenFailed(false);
     setConversation((prev) => [
       ...prev,
       { message: inputValue, author: inputAuthor },
@@ -366,11 +373,13 @@ const Conversation = ({
 
   const handleApplyChanges = useCallback(async () => {
     setWaitingForDiff(true);
+    setDiffGenFailed(false);
     try {
       const resp = await generateStudioDiff(studioId);
       setDiff(resp);
     } catch (err) {
       console.log(err);
+      setDiffGenFailed(true);
     } finally {
       setWaitingForDiff(false);
     }
@@ -440,15 +449,25 @@ const Conversation = ({
             />
           ))}
           {!!diff && <GeneratedDiff diff={diff} />}
-          {(isDiffApplied || waitingForDiff) && (
-            <div className="w-full flex items-center rounded-6 justify-center gap-1 py-2 bg-bg-main/15 text-label-link caption">
-              {waitingForDiff ? (
+          {(isDiffApplied || waitingForDiff || isDiffGenFailed) && (
+            <div
+              className={`w-full flex items-center rounded-6 justify-center gap-1 py-2 ${
+                isDiffGenFailed
+                  ? 'bg-bg-danger/12 text-bg-danger'
+                  : 'bg-bg-main/12 text-label-link'
+              } caption`}
+            >
+              {isDiffGenFailed ? (
+                <WarningSign raw sizeClassName="w-3.5 h-3.5" />
+              ) : waitingForDiff ? (
                 <LiteLoaderContainer sizeClassName="w-3.5 h-3.5" />
               ) : (
                 <BranchMerged raw sizeClassName="w-3.5 h-3.5" />
               )}
               <Trans>
-                {waitingForDiff
+                {isDiffGenFailed
+                  ? 'Diff generation failed'
+                  : waitingForDiff
                   ? 'Generating diff...'
                   : 'The diff has been applied locally.'}
               </Trans>
@@ -476,7 +495,7 @@ const Conversation = ({
             )}
         </div>
       </div>
-      <div className="px-4 flex flex-col gap-8 pb-8 mt-auto">
+      <div className="px-1 flex flex-col gap-8 pb-8 mt-auto">
         <hr className="border-bg-border" />
         {isPreviewing ? (
           <div className="flex items-center justify-end">
