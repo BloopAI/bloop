@@ -735,6 +735,8 @@ pub struct Diff {
 mod structured_diff {
     use std::fmt;
 
+    use crate::repo::RepoRef;
+
     #[derive(serde::Serialize, serde::Deserialize)]
     pub struct Diff {
         pub chunks: Vec<Chunk>,
@@ -766,8 +768,13 @@ mod structured_diff {
     #[derive(serde::Serialize, serde::Deserialize)]
     pub struct Chunk {
         pub file: String,
+        pub repo: RepoRef,
+        pub branch: Option<String>,
         pub lang: Option<String>,
         pub hunks: Vec<Hunk>,
+
+        /// This field is additionally included for simplicity on the front-end.
+        pub raw_patch: String,
     }
 
     #[derive(serde::Serialize, serde::Deserialize)]
@@ -852,8 +859,8 @@ pub async fn diff(
     // use this to reconstructed a "corrected" diff which can be cleanly applied.
     let mut resolved_chunk_map = HashMap::new();
 
-    // Map of `src_file -> lang string`, so that we can pass language information to the front-end.
-    let mut lang_map = HashMap::new();
+    // Map of `src_file -> document`, so that we can pass document information to the front-end.
+    let mut doc_map = HashMap::new();
 
     for (i, chunk) in diff_chunks.iter().enumerate() {
         let context_file = match context.iter().find(|c| c.path == chunk.src) {
@@ -875,9 +882,7 @@ pub async fn diff(
             .await?
             .context("path did not exist in the index")?;
 
-        if let Some(lang) = file.lang {
-            lang_map.insert(chunk.src.to_owned(), lang);
-        }
+        doc_map.insert(chunk.src.to_owned(), file.clone());
 
         let mut file_content = file.content;
 
@@ -948,21 +953,29 @@ pub async fn diff(
 
     let chunks = resolved_chunk_map
         .into_values()
-        .map(|chunk| structured_diff::Chunk {
-            lang: lang_map.get(chunk.src).cloned(),
-            file: chunk.src.to_owned(),
-            hunks: chunk
-                .hunks
-                .into_iter()
-                .map(|hunk| structured_diff::Hunk {
-                    line_start: hunk.src_line,
-                    patch: hunk
-                        .lines
-                        .into_iter()
-                        .map(|line| line.to_string())
-                        .collect::<String>(),
-                })
-                .collect(),
+        .map(|chunk| {
+            let doc = doc_map.get(chunk.src).unwrap();
+
+            structured_diff::Chunk {
+                raw_patch: chunk.to_string(),
+
+                lang: doc.lang.clone(),
+                repo: RepoRef::from(&doc.repo_ref),
+                branch: doc.branches.clone(),
+                file: chunk.src.to_owned(),
+                hunks: chunk
+                    .hunks
+                    .into_iter()
+                    .map(|hunk| structured_diff::Hunk {
+                        line_start: hunk.src_line,
+                        patch: hunk
+                            .lines
+                            .into_iter()
+                            .map(|line| line.to_string())
+                            .collect::<String>(),
+                    })
+                    .collect(),
+            }
         })
         .collect::<Vec<_>>();
 
