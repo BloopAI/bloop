@@ -138,7 +138,7 @@ impl Doc {
 
         section_index
             .tokenizers()
-            .register("trigram", NgramTokenizer::new(1, 3, false).unwrap());
+            .register("trigram", NgramTokenizer::new(1, 3, false));
 
         Ok(Self {
             sql,
