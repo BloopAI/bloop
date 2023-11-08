@@ -203,7 +203,7 @@
 	"Something went wrong": "出错了",
 	"chats in bloop": "在bloop中对话",
 	"Setup bloop": "设置bloop",
-	"Please log into your GitHub account to complete setup": "请登录您的GitHub账户以完成设置",
+	"Please log into your GitHub account to complete setup, this helps us us combat misuse.": "请登录您的GitHub账户以完成设置",
 	"Select color theme:": "选择颜色主题:",
 	"Connect account": "连接账户",
 	"Continue": "继续",
@@ -423,5 +423,6 @@
 	"Search pages": "搜索页",
 	"This page is currently unavailable. Ability to generate will be resumed as soon as this issue is resolved.": "此页面当前不可用。 一旦解决此问题，就会恢复产生的能力。",
 	"Hold <1></1> to add multiple files": "保持<1> </1>添加多个文件",
-	"Clear section": "清除部分"
+	"Clear section": "清除部分",
+	"Let’s get you started with bloop!": "让我们开始开始Bloop！"
 }

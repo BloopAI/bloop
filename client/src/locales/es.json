@@ -200,7 +200,7 @@
 	"Something went wrong": "Algo salió mal",
 	"chats in bloop": "Chats en bloop",
 	"Setup bloop": "Configuración de bloop",
-	"Please log into your GitHub account to complete setup": "Inicie sesión con su cuenta de GitHub para completar la configuración",
+	"Please log into your GitHub account to complete setup, this helps us us combat misuse.": "Inicie sesión con su cuenta de GitHub para completar la configuración",
 	"Select color theme:": "Seleccione el tema:",
 	"Connect account": "Conectar cuenta",
 	"Continue": "Continuar",
@@ -417,5 +417,6 @@
 	"Search pages": "Páginas de búsqueda",
 	"This page is currently unavailable. Ability to generate will be resumed as soon as this issue is resolved.": "Esta página no está disponible. La capacidad de generar se reanudará tan pronto como se resuelva este problema.",
 	"Hold <1></1> to add multiple files": "Mantenga presionada <1> </1> para agregar múltiples archivos",
-	"Clear section": "Borrar sección"
+	"Clear section": "Borrar sección",
+	"Let’s get you started with bloop!": "¡Vamos a comenzar con Bloop!"
 }

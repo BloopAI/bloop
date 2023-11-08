@@ -200,7 +200,7 @@
 	"Something went wrong": "何かがうまくいかなかった",
 	"chats in bloop": "bloopでチャット",
 	"Setup bloop": "bloopをセットアップする",
-	"Please log into your GitHub account to complete setup": "セットアップを完了するため、GitHubアカウントにログインしてください",
+	"Please log into your GitHub account to complete setup, this helps us us combat misuse.": "セットアップを完了するため、GitHubアカウントにログインしてください",
 	"Select color theme:": "カラーテーマを選択する",
 	"Connect account": "アカウントを接続する",
 	"Continue": "次へ",
@@ -414,5 +414,6 @@
 	"Search pages": "検索ページ",
 	"This page is currently unavailable. Ability to generate will be resumed as soon as this issue is resolved.": "このページは現在利用できません。 生成能力は、この問題が解決されるとすぐに再開されます。",
 	"Hold <1></1> to add multiple files": "<1> </1>を保持して複数のファイルを追加する",
-	"Clear section": "クリアセクション"
+	"Clear section": "クリアセクション",
+	"Let’s get you started with bloop!": "Bloopを始めましょう！"
 }

@@ -1,15 +1,15 @@
 import React, { useCallback, useContext, useEffect, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import DialogText from '../DialogText';
-import Button from '../../../components/Button';
-import { ArrowRight } from '../../../icons';
-import SearchableRepoList from '../../../components/RepoList/SearchableRepoList';
-import { scanLocalRepos, syncRepo } from '../../../services/api';
-import { RepoType, RepoUi } from '../../../types/general';
+import DialogText from '../../../../components/SeparateOnboardingStep/DialogText';
+import Button from '../../../../components/Button';
+import { ArrowRight } from '../../../../icons';
+import SearchableRepoList from '../../../../components/RepoList/SearchableRepoList';
+import { scanLocalRepos, syncRepo } from '../../../../services/api';
+import { RepoType, RepoUi } from '../../../../types/general';
 import GoBackButton from '../GoBackButton';
-import { splitPath } from '../../../utils';
-import { DeviceContext } from '../../../context/deviceContext';
-import { RepositoriesContext } from '../../../context/repositoriesContext';
+import { splitPath } from '../../../../utils';
+import { DeviceContext } from '../../../../context/deviceContext';
+import { RepositoriesContext } from '../../../../context/repositoriesContext';
 
 type Props = {
   handleNext: (e?: any) => void;

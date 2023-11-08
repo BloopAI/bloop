@@ -1,19 +1,18 @@
 import React, { useCallback, useContext, useEffect, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import DialogText from '../DialogText';
-import Button from '../../../components/Button';
-import { ArrowRight } from '../../../icons';
-import SearchableRepoList from '../../../components/RepoList/SearchableRepoList';
+import DialogText from '../../../../components/SeparateOnboardingStep/DialogText';
+import Button from '../../../../components/Button';
+import { ArrowRight } from '../../../../icons';
+import SearchableRepoList from '../../../../components/RepoList/SearchableRepoList';
 import {
   RepoProvider,
   RepoType,
   RepoUi,
   SyncStatus,
-} from '../../../types/general';
+} from '../../../../types/general';
 import GoBackButton from '../GoBackButton';
-import { UIContext } from '../../../context/uiContext';
-import { splitPath } from '../../../utils';
-import { RepositoriesContext } from '../../../context/repositoriesContext';
+import { splitPath } from '../../../../utils';
+import { RepositoriesContext } from '../../../../context/repositoriesContext';
 
 type Props = {
   handleNext: (e?: any) => void;
@@ -21,7 +20,6 @@ type Props = {
   disableSkip?: boolean;
 };
 
-export const STEP_KEY = 'STEP_GITHUB_REPOS';
 let intervalId: number;
 
 const GithubReposStep = ({ handleNext, handleBack, disableSkip }: Props) => {

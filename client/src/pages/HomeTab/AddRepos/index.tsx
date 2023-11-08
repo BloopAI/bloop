@@ -1,9 +1,9 @@
 import { memo, useCallback } from 'react';
-import LocalReposStep from '../../Onboarding/LocalReposStep';
-import GithubReposStep from '../../Onboarding/GithubReposStep';
 import SeparateOnboardingStep from '../../../components/SeparateOnboardingStep';
-import PublicGithubReposStep from '../../Onboarding/PublicGithubReposStep';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
+import LocalReposStep from './LocalReposStep';
+import GithubReposStep from './GithubReposStep';
+import PublicGithubReposStep from './PublicGithubReposStep';
 import AddCodeStudio from './AddCodeStudio';
 
 type Props = {
