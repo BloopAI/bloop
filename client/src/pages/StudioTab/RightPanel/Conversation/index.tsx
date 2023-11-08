@@ -535,7 +535,7 @@ const Conversation = ({
                 </Button>
               ) : (
                 <>
-                  {hasCodeBlock &&
+                  {(hasCodeBlock || diff) &&
                     (isDiffApplied ? null : !diff ? (
                       <Button
                         size="small"
