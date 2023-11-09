@@ -201,8 +201,10 @@ impl Agent {
                         let sw = stop_words();
                         let r = Rake::new(sw.clone());
                         r.run_phrase(s)
-                        
                     };
+                    if keywords.is_empty() {
+                        self.code_search(&(s.clone())).await?;
+                    }
                     self.code_search(&keywords).await?;
                 }
                 s.clone()
