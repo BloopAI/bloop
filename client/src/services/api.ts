@@ -326,11 +326,12 @@ export const importCodeStudio = (thread_id: string, studio_id?: string) =>
     .then((r) => r.data);
 export const generateStudioDiff = (id: string): Promise<GeneratedCodeDiff> =>
   http(`/studio/${id}/diff`, { timeout: 5 * 60 * 1000 }).then((r) => r.data);
-export const confirmStudioDiff = (
-  id: string,
-  diff: GeneratedCodeDiff,
-): Promise<void> =>
-  http.post(`/studio/${id}/diff/apply`, diff).then((r) => r.data);
+export const confirmStudioDiff = (id: string, diff: string): Promise<void> =>
+  http
+    .post(`/studio/${id}/diff/apply`, diff, {
+      headers: { 'Content-Type': 'text/plain' },
+    })
+    .then((r) => r.data);
 
 export const getFileTokenCount = (
   path: string,
