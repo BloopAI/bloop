@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, collections::HashSet};
 
 include!(concat!(env!("OUT_DIR"), "/languages.rs"));
 
@@ -16,6 +16,14 @@ pub fn proper_case(lower: Cow<str>) -> Cow<str> {
     } else {
         lower
     }
+}
+
+pub fn list() -> impl Iterator<Item = &'static str> {
+    EXT_MAP
+        .entries()
+        .flat_map(|e| [*e.0, *e.1])
+        .collect::<HashSet<_>>()
+        .into_iter()
 }
 
 #[cfg(test)]

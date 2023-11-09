@@ -85,14 +85,11 @@ fn complete_flag(q: &str) -> impl Iterator<Item = &str> + '_ {
 // in the query string.
 //
 // This should be revisited when we implement cursor-aware autocomplete.
-fn complete_lang(q: &str) -> Option<impl Iterator<Item = &str> + '_> {
+fn complete_lang(q: &str) -> Option<impl Iterator<Item = &'static str> + '_> {
     match q.split_whitespace().rfind(|comp| comp.starts_with("lang:")) {
-        Some(last) => last.strip_prefix("lang:").map(|prefix| {
-            COMMON_LANGUAGES
-                .iter()
-                .filter(move |l| l.starts_with(prefix) && **l != prefix)
-                .copied()
-        }),
+        Some(last) => last
+            .strip_prefix("lang:")
+            .map(|prefix| crate::query::languages::list().filter(move |l| l.starts_with(prefix))),
         _ => None,
     }
 }
@@ -107,74 +104,4 @@ impl super::ApiResponse for AutocompleteResponse {}
 
 const QUERY_FLAGS: &[&str; 8] = &[
     "repo", "path", "content", "symbol", "lang", "case", "or", "open",
-];
-
-// List of common languages
-const COMMON_LANGUAGES: &[&str] = &[
-    "webassembly",
-    "basic",
-    "makefile",
-    "groovy",
-    "haskell",
-    "idris",
-    "typescript",
-    "r",
-    "javascript",
-    "llvm",
-    "jsonnet",
-    "lua",
-    "awk",
-    "solidity",
-    "nim",
-    "hcl",
-    "julia",
-    "ada",
-    "verilog",
-    "python",
-    "go",
-    "sql",
-    "plsql",
-    "fortran",
-    "erlang",
-    "mathematica",
-    "rust",
-    "coffeescript",
-    "zig",
-    "scala",
-    "tsx",
-    "ruby",
-    "apl",
-    "c",
-    "tcl",
-    "kotlin",
-    "vba",
-    "matlab",
-    "hack",
-    "ocaml",
-    "prolog",
-    "scheme",
-    "dockerfile",
-    "assembly",
-    "clojure",
-    "shell",
-    "java",
-    "c++",
-    "php",
-    "perl",
-    "vbscript",
-    "d",
-    "pascal",
-    "elm",
-    "swift",
-    "cuda",
-    "dart",
-    "elixir",
-    "c#",
-    "objective-c",
-    "coq",
-    "forth",
-    "cmake",
-    "nix",
-    "objective-c++",
-    "actionscript",
 ];
