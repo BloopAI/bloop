@@ -1,6 +1,6 @@
 import { Dispatch, memo, SetStateAction, useCallback, useContext } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { BranchMerged } from '../../../../icons';
+import { BranchMerged, WarningSign } from '../../../../icons';
 import CodeDiff from '../../../../components/CodeBlock/CodeDiff';
 import { GeneratedCodeDiff } from '../../../../types/api';
 import {
@@ -15,6 +15,7 @@ type Props = {
   setLeftPanel: Dispatch<SetStateAction<StudioLeftPanelDataType>>;
   onDiffRemoved: (i: number) => void;
   onDiffChanged: (i: number, p: string) => void;
+  applyError?: boolean;
 };
 
 const GeneratedDiff = ({
@@ -22,6 +23,7 @@ const GeneratedDiff = ({
   setLeftPanel,
   onDiffRemoved,
   onDiffChanged,
+  applyError,
 }: Props) => {
   useTranslation();
   const { repositories } = useContext(RepositoriesContext);
@@ -47,9 +49,23 @@ const GeneratedDiff = ({
   return (
     <div className="flex flex-col rounded-6 overflow-hidden border border-transparent hover:shadow-medium hover:border-bg-border-hover focus-within:border-bg-main bg-bg-base hover:focus-within:border-bg-main focus-within:shadow-medium transition-all duration-150 ease-in-out">
       <div className="w-full bg-bg-shade">
-        <div className="w-full flex items-center justify-center gap-1 py-2 bg-bg-main/15 text-label-link caption">
-          <BranchMerged raw sizeClassName="w-3.5 h-3.5" />
-          <Trans>Generated diffs to be applied</Trans>
+        <div
+          className={`w-full flex items-center justify-center gap-1 py-2 ${
+            applyError
+              ? 'bg-bg-danger/12 text-bg-danger'
+              : ' bg-bg-main/15 text-label-link'
+          } caption`}
+        >
+          {applyError ? (
+            <WarningSign raw sizeClassName="w-3.5 h-3.5" />
+          ) : (
+            <BranchMerged raw sizeClassName="w-3.5 h-3.5" />
+          )}
+          <Trans>
+            {applyError
+              ? 'Failed to apply the diff'
+              : 'Generated diffs to be applied'}
+          </Trans>
         </div>
       </div>
       <div className=" p-4">

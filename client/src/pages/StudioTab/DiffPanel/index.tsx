@@ -67,7 +67,7 @@ const DiffPanel = ({ hunks, setLeftPanel, branch, filePath, repo }: Props) => {
       (JSON.parse(JSON.stringify(hunks)) as DiffHunkType[])
         .sort((a, b) => b.line_start - a.line_start)
         .forEach((h, i, arr) => {
-          const patchLines = h.patch.split('\n').slice(0, -1);
+          const patchLines = h.patch.replace(/\n$/, '').split('\n');
           let patchOffset = 0;
           patchLines.forEach((l) => {
             if (l.startsWith('+')) {

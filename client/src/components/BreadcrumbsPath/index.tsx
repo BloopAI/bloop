@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useMemo } from 'react';
 import Breadcrumbs, { PathParts } from '../Breadcrumbs';
 import {
   breadcrumbsItemPath,
@@ -30,7 +30,7 @@ const BreadcrumbsPath = ({
   ...rest
 }: Props) => {
   const { navigateRepoPath, navigateFullResult } = useAppNavigation();
-  const mapPath = useCallback(() => {
+  const pathParts: PathParts[] = useMemo(() => {
     return splitPathForBreadcrumbs(path, (e, item, index, pParts) => {
       e.stopPropagation();
       const isLastPart = index === pParts.length - 1;
@@ -51,13 +51,7 @@ const BreadcrumbsPath = ({
         navigateFullResult(path);
       }
     });
-  }, [path, shouldGoToFile]);
-
-  const [pathParts, setPathParts] = useState<PathParts[]>(mapPath());
-
-  useEffect(() => {
-    setPathParts(mapPath());
-  }, [path]);
+  }, [path, shouldGoToFile, onClick, repo]);
 
   return (
     <div
