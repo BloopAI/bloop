@@ -29,6 +29,7 @@ use super::{
     DocumentRead, Indexable, Indexer,
 };
 use crate::{
+    analytics::RepoEvent,
     background::SyncHandle,
     cache::{CacheKeys, FileCache, FileCacheSnapshot},
     intelligence::TreeSitterFile,
@@ -85,6 +86,7 @@ impl Indexable for File {
             ref reporef,
             ref file_cache,
             ref pipes,
+            ref app,
             ..
         }: &SyncHandle,
         repo: &Repository,
@@ -93,11 +95,19 @@ impl Indexable for File {
     ) -> Result<()> {
         let file_filter = FileFilter::compile(&repo.file_filter)?;
         let cache = file_cache.retrieve(reporef).await;
+        let is_index_job = cache.is_empty(); // not a reindex job if there are no cache hits
         let repo_name = reporef.indexed_name();
         let processed = &AtomicU64::new(0);
 
+        let mut analytics_event = RepoEvent::new("index")
+            .with_payload("repo_ref", &reporef.name())
+            .with_payload("provider", &reporef.backend);
+        let (worker_stats_tx, mut worker_stats_rx) =
+            tokio::sync::mpsc::unbounded_channel::<WorkerStats>(); // collect stats for analytics
+
         let file_worker = |count: usize| {
             let cache = &cache;
+            let worker_stats_tx = worker_stats_tx.clone();
             let callback = move |dir_entry: RepoDirEntry| {
                 let completed = processed.fetch_add(1, Ordering::Relaxed);
                 pipes.index_percent(((completed as f32 / count as f32) * 100f32) as u8);
@@ -124,8 +134,12 @@ impl Indexable for File {
                 };
 
                 trace!(entry_disk_path, "queueing entry");
-                if let Err(err) = self.worker(dir_entry, workload, writer) {
-                    warn!(%err, entry_disk_path, "indexing failed; skipping");
+
+                match self.worker(dir_entry, workload, writer) {
+                    Ok(stats) => {
+                        let _ = worker_stats_tx.send(stats);
+                    }
+                    Err(err) => warn!(%err, entry_disk_path, "indexing failed; skipping"),
                 }
 
                 if let Err(err) = cache.parent().process_embedding_queue() {
@@ -153,6 +167,7 @@ impl Indexable for File {
                 repo.branch_filter.as_ref().map(Into::into),
             )?;
             let count = walker.len();
+            analytics_event.add_payload("file_count", &count);
             walker.for_each(pipes, file_worker(count));
         } else {
             let branch = gix::open::Options::isolated()
@@ -173,6 +188,7 @@ impl Indexable for File {
 
             let walker = FileWalker::index_directory(&repo.disk_path, branch);
             let count = walker.len();
+            analytics_event.add_payload("file_count", &count);
             walker.for_each(pipes, file_worker(count));
         };
 
@@ -180,7 +196,24 @@ impl Indexable for File {
             bail!("cancelled");
         }
 
-        info!(?repo.disk_path, "repo file indexing finished, took {:?}", start.elapsed());
+        // aggregate stats
+        drop(worker_stats_tx);
+        let mut repo_stats = WorkerStats::default();
+        while let Some(stats) = worker_stats_rx.recv().await {
+            repo_stats += stats;
+        }
+        analytics_event.add_payload("chunk_count", &repo_stats.chunks);
+        analytics_event.add_payload("bytes", &human_readable(repo_stats.size));
+
+        let sync_time = start.elapsed();
+        info!(?repo.disk_path, "repo file indexing finished, took {:?}", sync_time);
+        analytics_event.add_payload("sync_time", &format!("{sync_time:?}"));
+
+        // send an analytics event if this is the first time this repo is being indexed
+        if is_index_job {
+            let user = app.user().await;
+            app.with_analytics(|hub| hub.track_repo(analytics_event, &user));
+        }
 
         file_cache
             .synchronize(cache, |key| {
@@ -541,6 +574,21 @@ impl Indexer<File> {
     }
 }
 
+#[derive(Default)]
+struct WorkerStats {
+    // size in bytes
+    size: usize,
+    // number of qdrant chunkc
+    chunks: usize,
+}
+
+impl std::ops::AddAssign for WorkerStats {
+    fn add_assign(&mut self, rhs: Self) {
+        self.size += rhs.size;
+        self.chunks += rhs.chunks;
+    }
+}
+
 impl File {
     #[tracing::instrument(fields(repo=%workload.repo_ref, entry_disk_path=?dir_entry.path()), skip_all)]
     fn worker(
@@ -548,7 +596,7 @@ impl File {
         dir_entry: RepoDirEntry,
         workload: Workload<'_>,
         writer: &IndexWriter,
-    ) -> Result<()> {
+    ) -> Result<WorkerStats> {
         #[cfg(feature = "debug")]
         let start = Instant::now();
         trace!("processing file");
@@ -556,20 +604,22 @@ impl File {
         let cache_keys = workload.cache_keys(&dir_entry);
         let last_commit = workload.repo_metadata.last_commit_unix_secs.unwrap_or(0);
 
-        match dir_entry {
+        let stats = match dir_entry {
             _ if workload.cache.is_fresh(&cache_keys) => {
                 info!("fresh; skipping");
-                return Ok(());
+                return Ok(WorkerStats::default());
             }
             RepoDirEntry::Dir(dir) => {
                 trace!("writing dir document");
-                let doc = dir.build_document(self, &workload, last_commit as u64, &cache_keys);
+                let (doc_stats, doc) =
+                    dir.build_document(self, &workload, last_commit as u64, &cache_keys);
                 writer.add_document(doc)?;
                 trace!("dir document written");
+                doc_stats
             }
             RepoDirEntry::File(file) => {
                 trace!("writing file document");
-                let doc = file
+                let (doc_stats, doc) = file
                     .build_document(
                         self,
                         &workload,
@@ -579,10 +629,10 @@ impl File {
                     )
                     .ok_or(anyhow::anyhow!("failed to build document"))?;
                 writer.add_document(doc)?;
-
                 trace!("file document written");
+                doc_stats
             }
-        }
+        };
 
         #[cfg(feature = "debug")]
         {
@@ -607,7 +657,7 @@ impl File {
             }
         }
 
-        Ok(())
+        Ok(stats)
     }
 }
 
@@ -619,7 +669,7 @@ impl RepoDir {
         workload: &Workload<'_>,
         last_commit: u64,
         cache_keys: &CacheKeys,
-    ) -> tantivy::schema::Document {
+    ) -> (WorkerStats, tantivy::schema::Document) {
         let Workload {
             relative_path,
             repo_name,
@@ -633,30 +683,37 @@ impl RepoDir {
         let relative_path_str = relative_path_str.replace('\\', "/");
 
         let branches = self.branches.join("\n");
+        let stats = WorkerStats {
+            size: self.size(),
+            chunks: 0,
+        };
 
-        doc!(
-            schema.raw_repo_name => repo_name.as_bytes(),
-            schema.raw_relative_path => relative_path_str.as_bytes(),
-            schema.repo_disk_path => repo_disk_path.to_string_lossy().as_ref(),
-            schema.relative_path => relative_path_str,
-            schema.repo_ref => repo_ref.to_string(),
-            schema.repo_name => *repo_name,
-            schema.last_commit_unix_seconds => last_commit,
-            schema.branches => branches,
-            schema.is_directory => true,
-            schema.unique_hash => cache_keys.tantivy(),
+        (
+            stats,
+            doc!(
+                schema.raw_repo_name => repo_name.as_bytes(),
+                schema.raw_relative_path => relative_path_str.as_bytes(),
+                schema.repo_disk_path => repo_disk_path.to_string_lossy().as_ref(),
+                schema.relative_path => relative_path_str,
+                schema.repo_ref => repo_ref.to_string(),
+                schema.repo_name => *repo_name,
+                schema.last_commit_unix_seconds => last_commit,
+                schema.branches => branches,
+                schema.is_directory => true,
+                schema.unique_hash => cache_keys.tantivy(),
 
-            // always indicate dirs as indexed
-            schema.indexed => true,
+                // always indicate dirs as indexed
+                schema.indexed => true,
 
-            // nulls
-            schema.raw_content => Vec::<u8>::default(),
-            schema.content => String::default(),
-            schema.line_end_indices => Vec::<u8>::default(),
-            schema.lang => Vec::<u8>::default(),
-            schema.avg_line_length => f64::default(),
-            schema.symbol_locations => bincode::serialize(&SymbolLocations::default()).unwrap(),
-            schema.symbols => String::default(),
+                // nulls
+                schema.raw_content => Vec::<u8>::default(),
+                schema.content => String::default(),
+                schema.line_end_indices => Vec::<u8>::default(),
+                schema.lang => Vec::<u8>::default(),
+                schema.avg_line_length => f64::default(),
+                schema.symbol_locations => bincode::serialize(&SymbolLocations::default()).unwrap(),
+                schema.symbols => String::default(),
+            ),
         )
     }
 }
@@ -670,7 +727,7 @@ impl RepoFile {
         cache_keys: &CacheKeys,
         last_commit: u64,
         file_cache: &FileCache,
-    ) -> Option<tantivy::schema::Document> {
+    ) -> Option<(WorkerStats, tantivy::schema::Document)> {
         let Workload {
             relative_path,
             repo_name,
@@ -689,6 +746,10 @@ impl RepoFile {
         let branches = self.branches.join("\n");
         let explicitly_allowed = file_filter.is_allowed(relative_path);
         let indexed = explicitly_allowed.unwrap_or_else(|| self.should_index());
+        let mut stats = WorkerStats {
+            size: self.size(),
+            ..Default::default()
+        };
 
         if !indexed {
             let lang_str = repo_metadata
@@ -699,25 +760,28 @@ impl RepoFile {
                     ""
                 });
 
-            return Some(doc!(
-                schema.raw_content => vec![],
-                schema.content => "",
-                schema.line_end_indices => vec![],
-                schema.avg_line_length => 0f64,
-                schema.symbol_locations => vec![],
-                schema.symbols => vec![],
-                schema.raw_repo_name => repo_name.as_bytes(),
-                schema.raw_relative_path => relative_path_str.as_bytes(),
-                schema.unique_hash => cache_keys.tantivy(),
-                schema.repo_disk_path => repo_disk_path.to_string_lossy().as_ref(),
-                schema.relative_path => relative_path_str,
-                schema.repo_ref => repo_ref.to_string(),
-                schema.repo_name => *repo_name,
-                schema.lang => lang_str.to_ascii_lowercase().as_bytes(),
-                schema.last_commit_unix_seconds => last_commit,
-                schema.branches => branches,
-                schema.is_directory => false,
-                schema.indexed => false,
+            return Some((
+                stats,
+                doc!(
+                    schema.raw_content => vec![],
+                    schema.content => "",
+                    schema.line_end_indices => vec![],
+                    schema.avg_line_length => 0f64,
+                    schema.symbol_locations => vec![],
+                    schema.symbols => vec![],
+                    schema.raw_repo_name => repo_name.as_bytes(),
+                    schema.raw_relative_path => relative_path_str.as_bytes(),
+                    schema.unique_hash => cache_keys.tantivy(),
+                    schema.repo_disk_path => repo_disk_path.to_string_lossy().as_ref(),
+                    schema.relative_path => relative_path_str,
+                    schema.repo_ref => repo_ref.to_string(),
+                    schema.repo_name => *repo_name,
+                    schema.lang => lang_str.to_ascii_lowercase().as_bytes(),
+                    schema.last_commit_unix_seconds => last_commit,
+                    schema.branches => branches,
+                    schema.is_directory => false,
+                    schema.indexed => false,
+                ),
             ));
         }
 
@@ -779,7 +843,7 @@ impl RepoFile {
 
         let lines_avg = buffer.len() as f64 / buffer.lines().count() as f64;
 
-        tokio::task::block_in_place(|| {
+        let insert_stats = tokio::task::block_in_place(|| {
             Handle::current().block_on(async {
                 file_cache
                     .process_semantic(
@@ -791,29 +855,34 @@ impl RepoFile {
                         lang_str,
                         &self.branches,
                     )
-                    .await;
+                    .await
             })
         });
 
-        Some(doc!(
-            schema.raw_content => buffer.as_bytes(),
-            schema.raw_repo_name => repo_name.as_bytes(),
-            schema.raw_relative_path => relative_path_str.as_bytes(),
-            schema.unique_hash => cache_keys.tantivy(),
-            schema.repo_disk_path => repo_disk_path.to_string_lossy().as_ref(),
-            schema.relative_path => relative_path_str,
-            schema.repo_ref => repo_ref.to_string(),
-            schema.repo_name => *repo_name,
-            schema.content => buffer,
-            schema.line_end_indices => line_end_indices,
-            schema.lang => lang_str.to_ascii_lowercase().as_bytes(),
-            schema.avg_line_length => lines_avg,
-            schema.last_commit_unix_seconds => last_commit,
-            schema.symbol_locations => bincode::serialize(&symbol_locations).unwrap(),
-            schema.symbols => symbols,
-            schema.branches => branches,
-            schema.is_directory => false,
-            schema.indexed => true,
+        stats.chunks += insert_stats.new;
+
+        Some((
+            stats,
+            doc!(
+                schema.raw_content => buffer.as_bytes(),
+                schema.raw_repo_name => repo_name.as_bytes(),
+                schema.raw_relative_path => relative_path_str.as_bytes(),
+                schema.unique_hash => cache_keys.tantivy(),
+                schema.repo_disk_path => repo_disk_path.to_string_lossy().as_ref(),
+                schema.relative_path => relative_path_str,
+                schema.repo_ref => repo_ref.to_string(),
+                schema.repo_name => *repo_name,
+                schema.content => buffer,
+                schema.line_end_indices => line_end_indices,
+                schema.lang => lang_str.to_ascii_lowercase().as_bytes(),
+                schema.avg_line_length => lines_avg,
+                schema.last_commit_unix_seconds => last_commit,
+                schema.symbol_locations => bincode::serialize(&symbol_locations).unwrap(),
+                schema.symbols => symbols,
+                schema.branches => branches,
+                schema.is_directory => false,
+                schema.indexed => true,
+            ),
         ))
     }
 }
@@ -880,6 +949,18 @@ fn build_fuzzy_regex_filter(query_str: &str) -> Option<regex::RegexSet> {
         .ok()
 }
 
+fn human_readable(size: usize) -> String {
+    let suffixes = ["B", "KB", "MB", "GB"];
+    let s = suffixes
+        .iter()
+        .zip(0..10)
+        .rev()
+        .map(|(suf, exp)| (suf, size as f64 / (1024_f64.powi(exp))))
+        .find(|(_, t)| t >= &1.0);
+    s.map(|(suffix, value)| format!("{value:.2}{suffix}"))
+        .unwrap_or_else(|| size.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -898,5 +979,12 @@ mod tests {
 
         // tests addition of character `n`
         assert!(filter.as_ref().unwrap().is_match("查询解析器在哪n"));
+    }
+
+    #[test]
+    fn human_readable() {
+        assert_eq!(super::human_readable(15), "15.00B");
+        assert_eq!(super::human_readable(1024), "1.00KB");
+        assert_eq!(super::human_readable(7616597515), "7.09GB");
     }
 }

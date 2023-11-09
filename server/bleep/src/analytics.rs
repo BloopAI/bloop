@@ -73,6 +73,36 @@ impl DocEvent {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct RepoEvent {
+    pub name: String,
+    pub payload: Vec<(String, Value)>,
+}
+
+impl RepoEvent {
+    pub fn new(name: &str) -> Self {
+        Self {
+            name: name.to_owned(),
+            payload: vec![],
+        }
+    }
+
+    pub fn with_payload<T: Serialize + Clone>(mut self, name: &str, payload: &T) -> Self {
+        self.payload.push((
+            name.to_owned(),
+            serde_json::to_value(payload.clone()).unwrap(),
+        ));
+        self
+    }
+
+    pub fn add_payload<T: Serialize + Clone>(&mut self, name: &str, payload: &T) {
+        self.payload.push((
+            name.to_owned(),
+            serde_json::to_value(payload.clone()).unwrap(),
+        ));
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct EventData {
     kind: EventKind,
@@ -258,6 +288,17 @@ impl RudderHub {
             user_id: Some(self.tracking_id(username)),
             event: "track_synced_repos".into(),
             properties: Some(serde_json::json!({ "count": count, "org_name": org_name })),
+            ..Default::default()
+        }));
+    }
+
+    pub fn track_repo(&self, event: RepoEvent, user: &crate::webserver::middleware::User) {
+        self.send(Message::Track(Track {
+            user_id: Some(self.tracking_id(user.username())),
+            event: "track_repo_index".into(),
+            properties: Some(serde_json::json!({
+                "payload": event.payload
+            })),
             ..Default::default()
         }));
     }

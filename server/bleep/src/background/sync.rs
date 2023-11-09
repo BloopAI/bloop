@@ -19,7 +19,7 @@ pub struct SyncHandle {
     pub(crate) filter_updates: FilterUpdate,
     pub(crate) pipes: SyncPipes,
     pub(crate) file_cache: FileCache,
-    app: Application,
+    pub(crate) app: Application,
     exited: flume::Sender<SyncStatus>,
     exit_signal: flume::Receiver<SyncStatus>,
 }

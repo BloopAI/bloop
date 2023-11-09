@@ -150,6 +150,19 @@ pub struct FileCache {
     embed_queue: EmbedQueue,
 }
 
+#[derive(Default)]
+pub struct InsertStats {
+    pub new: usize,
+    pub updated: usize,
+    pub deleted: usize,
+}
+
+impl InsertStats {
+    fn empty() -> Self {
+        Self::default()
+    }
+}
+
 impl<'a> FileCache {
     pub(crate) fn new(db: SqlDb, semantic: Semantic) -> Self {
         Self {
@@ -396,7 +409,7 @@ impl<'a> FileCache {
         buffer: &str,
         lang_str: &str,
         branches: &[String],
-    ) {
+    ) -> InsertStats {
         let chunk_cache = self.chunks_for_file(repo_ref, cache_keys).await;
         self.semantic
             .chunks_for_buffer(
@@ -420,10 +433,16 @@ impl<'a> FileCache {
                 info!(
                     repo_name,
                     relative_path, new, updated, deleted, "Successful commit"
-                )
+                );
+                InsertStats {
+                    new,
+                    updated,
+                    deleted,
+                }
             }
             Err(err) => {
-                warn!(repo_name, relative_path, ?err, "Failed to upsert vectors")
+                warn!(repo_name, relative_path, ?err, "Failed to upsert vectors");
+                InsertStats::empty()
             }
         }
     }
