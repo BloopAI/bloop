@@ -3,7 +3,7 @@ use std::sync::Arc;
 use super::prelude::*;
 use crate::{
     indexes::{
-        reader::{ContentReader, FileReader, OpenReader, RepoReader},
+        reader::{ContentReader, FileReader, RepoReader},
         Indexes,
     },
     query::{

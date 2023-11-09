@@ -64,6 +64,7 @@ pub struct FileDocument {
     pub lang: Option<String>,
     pub branches: String,
     pub indexed: bool,
+    pub is_dir: bool,
 }
 
 pub struct RepoDocument {
@@ -206,6 +207,7 @@ impl DocumentRead for FileReader {
         let lang = read_lang_field(&doc, schema.lang);
         let branches = read_text_field(&doc, schema.branches);
         let indexed = read_bool_field(&doc, schema.indexed);
+        let is_dir = read_bool_field(&doc, schema.is_directory);
 
         FileDocument {
             relative_path,
@@ -214,6 +216,7 @@ impl DocumentRead for FileReader {
             lang,
             branches,
             indexed,
+            is_dir,
         }
     }
 }
