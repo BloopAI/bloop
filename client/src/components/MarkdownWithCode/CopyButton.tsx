@@ -1,4 +1,5 @@
-import { memo, useCallback, useState } from 'react';
+import React, { memo, useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import Button from '../Button';
 import { copyToClipboard } from '../../utils';
 import { CheckIcon, Clipboard, CopyMD } from '../../icons';
@@ -10,13 +11,18 @@ type Props = {
 };
 
 const CopyButton = ({ isInHeader, code, className }: Props) => {
+  const { t } = useTranslation();
   const [codeCopied, setCodeCopied] = useState(false);
 
-  const onClick = useCallback(() => {
-    copyToClipboard(code);
-    setCodeCopied(true);
-    setTimeout(() => setCodeCopied(false), 2000);
-  }, [code]);
+  const onClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      copyToClipboard(code);
+      setCodeCopied(true);
+      setTimeout(() => setCodeCopied(false), 2000);
+    },
+    [code],
+  );
 
   return (
     <div
@@ -40,7 +46,7 @@ const CopyButton = ({ isInHeader, code, className }: Props) => {
         ) : (
           <Clipboard />
         )}
-        {codeCopied ? 'Copied' : 'Copy'}
+        {codeCopied ? t('Copied') : t('Copy')}
       </Button>
     </div>
   );
