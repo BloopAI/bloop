@@ -400,7 +400,8 @@ const Conversation = ({
       if (!diff) {
         return;
       }
-      await confirmStudioDiff(studioId, diff);
+      const result = diff.chunks.map((c) => c.raw_patch).join('\n');
+      await confirmStudioDiff(studioId, result);
       setDiff(null);
       setDiffApplied(true);
     },
