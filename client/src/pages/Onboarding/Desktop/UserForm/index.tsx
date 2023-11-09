@@ -53,7 +53,7 @@ const UserForm = ({ form, setForm, onContinue }: Props) => {
             ) : (
               <Trans>
                 Please log into your GitHub account to complete setup, this
-                helps us us combat misuse.
+                helps us combat misuse.
               </Trans>
             )}
           </p>
