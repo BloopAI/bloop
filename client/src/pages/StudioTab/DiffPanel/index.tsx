@@ -76,17 +76,11 @@ const DiffPanel = ({ hunks, setLeftPanel, branch, filePath, repo }: Props) => {
               patchOffset--;
             }
           });
-          if (
-            h.line_start - 1 + (patchLines.length - 1 - patchOffset) <
-            fileLines.length
-          ) {
+          const firstLineAfterLastDiff =
+            h.line_start - 1 + Math.max(0, patchLines.length - 1 - patchOffset);
+          if (firstLineAfterLastDiff < fileLines.length) {
             result.push(
-              ...fileLines
-                .slice(
-                  h.line_start - 1 + (patchLines.length - 1 - patchOffset),
-                  prevStart,
-                )
-                .reverse(),
+              ...fileLines.slice(firstLineAfterLastDiff, prevStart).reverse(),
             );
           }
           result.push(...patchLines.reverse());

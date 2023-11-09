@@ -84,10 +84,9 @@ ${editedValue}
   );
 
   return (
-    <a
-      href="#"
+    <div
       onClick={handleClick}
-      className={`my-4 block bg-bg-sub text-xs border-bg-border border rounded-md relative group-code`}
+      className={`my-4 block bg-bg-sub text-xs border-bg-border border rounded-md relative group-code cursor-pointer`}
     >
       <div
         className={`bg-bg-shade border-bg-border border-b rounded-t-md p-2 flex items-center justify-between gap-2`}
@@ -106,7 +105,7 @@ ${editedValue}
           )}
         </div>
         <div className="flex items-center gap-2">
-          {repo.startsWith('github.com/') ? (
+          {!repo.startsWith('local//') ? (
             <CopyButton isInHeader code={raw_patch} />
           ) : isEditMode ? (
             <>
@@ -185,7 +184,7 @@ ${editedValue}
           ))
         )}
       </div>
-    </a>
+    </div>
   );
 };
 
