@@ -134,25 +134,27 @@ const PagesWithPreview = ({
                   setHighlightedIndex={setHighlightedIndex}
                   handleDocSubmit={handleSelectSection}
                   displayTitle={
-                    <Tooltip
-                      placement="top-start"
-                      text={constructSectionTitle(
-                        s.doc_title,
-                        s.ancestry,
-                        s.header,
-                      )}
-                    >
-                      <BreadcrumbsPath
-                        path={constructSectionTitle(
+                    <div className="w-full overflow-hidden">
+                      <Tooltip
+                        placement="top-start"
+                        text={constructSectionTitle(
                           s.doc_title,
                           s.ancestry,
                           s.header,
                         )}
-                        repo={''}
-                        limitSectionWidth
-                        nonInteractive
-                      />
-                    </Tooltip>
+                      >
+                        <BreadcrumbsPath
+                          path={constructSectionTitle(
+                            s.doc_title,
+                            s.ancestry,
+                            s.header,
+                          )}
+                          repo={''}
+                          limitSectionWidth
+                          nonInteractive
+                        />
+                      </Tooltip>
+                    </div>
                   }
                   doc_title={s.doc_title}
                   i={i}
