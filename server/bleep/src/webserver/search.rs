@@ -63,6 +63,7 @@ pub(super) async fn fuzzy_path(
                 c.lang,
                 c.branches,
                 c.indexed,
+                c.is_dir,
             ))
         })
         .collect::<Vec<QueryResult>>();
