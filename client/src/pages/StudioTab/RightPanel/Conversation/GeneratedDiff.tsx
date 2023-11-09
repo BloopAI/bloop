@@ -1,11 +1,4 @@
-import {
-  Dispatch,
-  memo,
-  SetStateAction,
-  useCallback,
-  useContext,
-  useMemo,
-} from 'react';
+import { Dispatch, memo, SetStateAction, useCallback, useContext } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { BranchMerged } from '../../../../icons';
 import CodeDiff from '../../../../components/CodeBlock/CodeDiff';
@@ -20,9 +13,16 @@ import { RepositoriesContext } from '../../../../context/repositoriesContext';
 type Props = {
   diff: GeneratedCodeDiff;
   setLeftPanel: Dispatch<SetStateAction<StudioLeftPanelDataType>>;
+  onDiffRemoved: (i: number) => void;
+  onDiffChanged: (i: number, p: string) => void;
 };
 
-const GeneratedDiff = ({ diff, setLeftPanel }: Props) => {
+const GeneratedDiff = ({
+  diff,
+  setLeftPanel,
+  onDiffRemoved,
+  onDiffChanged,
+}: Props) => {
   useTranslation();
   const { repositories } = useContext(RepositoriesContext);
 
@@ -59,13 +59,16 @@ const GeneratedDiff = ({ diff, setLeftPanel }: Props) => {
             the generated diffs are valid before you apply the changes.
           </Trans>
         </p>
-        {diff.chunks.map((d) => (
+        {diff.chunks.map((d, i) => (
           <CodeDiff
             key={d.file}
             filePath={d.file}
             language={d.lang || 'diff'}
             {...d}
+            i={i}
             onClick={onDiffClick}
+            onDiffChanged={onDiffChanged}
+            onDiffRemoved={onDiffRemoved}
           />
         ))}
       </div>

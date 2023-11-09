@@ -12,6 +12,7 @@ import React, {
 import { Trans, useTranslation } from 'react-i18next';
 import throttle from 'lodash.throttle';
 import {
+  DiffHunkType,
   StudioConversationMessage,
   StudioConversationMessageAuthor,
   StudioLeftPanelDataType,
@@ -400,6 +401,40 @@ const Conversation = ({
     [studioId, diff],
   );
 
+  const onDiffChanged = useCallback((i: number, v: string) => {
+    setDiff((prev) => {
+      const newValue: GeneratedCodeDiff = JSON.parse(JSON.stringify(prev));
+      newValue.chunks[i].raw_patch = v;
+      const newHunks: DiffHunkType[] = v
+        .split(/\n(?=@@ -)/)
+        .slice(1)
+        .map((h) => {
+          const startLine = h.match(/@@ -(\d+)/)?.[1];
+          return {
+            line_start: Number(startLine),
+            patch: h.split('\n').slice(1).join('\n'),
+          };
+        });
+      newValue.chunks[i].hunks = newHunks;
+      return newValue;
+    });
+  }, []);
+
+  const onDiffRemoved = useCallback((i: number) => {
+    setDiff((prev) => {
+      const newValue: GeneratedCodeDiff = JSON.parse(JSON.stringify(prev));
+      newValue.chunks.splice(i, 1);
+      if (!newValue.chunks.length) {
+        return null;
+      }
+      return newValue;
+    });
+  }, []);
+
+  const isDiffForLocalRepo = useMemo(() => {
+    return diff?.chunks.find((c) => c.repo.startsWith('local//'));
+  }, [diff]);
+
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
@@ -450,7 +485,14 @@ const Conversation = ({
               isLast={i === conversation.length - 1}
             />
           ))}
-          {!!diff && <GeneratedDiff diff={diff} setLeftPanel={setLeftPanel} />}
+          {!!diff && (
+            <GeneratedDiff
+              diff={diff}
+              setLeftPanel={setLeftPanel}
+              onDiffRemoved={onDiffRemoved}
+              onDiffChanged={onDiffChanged}
+            />
+          )}
           {(isDiffApplied || waitingForDiff || isDiffGenFailed) && (
             <div
               className={`w-full flex items-center rounded-6 justify-center gap-1 py-2 ${
@@ -558,11 +600,15 @@ const Conversation = ({
                           size="small"
                           onClick={() => setDiff(null)}
                         >
-                          <Trans>Cancel</Trans>
+                          <Trans>
+                            {isDiffForLocalRepo ? 'Cancel' : 'Close'}
+                          </Trans>
                         </Button>
-                        <Button size="small" onClick={handleConfirmDiff}>
-                          <Trans>Confirm</Trans>
-                        </Button>
+                        {isDiffForLocalRepo && (
+                          <Button size="small" onClick={handleConfirmDiff}>
+                            <Trans>Confirm</Trans>
+                          </Button>
+                        )}
                       </>
                     ))}
                   {!diff && (

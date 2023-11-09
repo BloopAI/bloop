@@ -63,7 +63,7 @@ const DiffPanel = ({ hunks, setLeftPanel, branch, filePath, repo }: Props) => {
       const result: string[] = [];
       const fileLines = file?.contents.split('\n');
 
-      let prevStart = -1;
+      let prevStart: number;
       (JSON.parse(JSON.stringify(hunks)) as DiffHunkType[])
         .sort((a, b) => b.line_start - a.line_start)
         .forEach((h, i, arr) => {
@@ -76,18 +76,23 @@ const DiffPanel = ({ hunks, setLeftPanel, branch, filePath, repo }: Props) => {
               patchOffset--;
             }
           });
-          result.push(
-            ...fileLines
-              .slice(
-                h.line_start + (patchLines.length - patchOffset),
-                prevStart,
-              )
-              .reverse(),
-          );
+          if (
+            h.line_start - 1 + (patchLines.length - 1 - patchOffset) <
+            fileLines.length
+          ) {
+            result.push(
+              ...fileLines
+                .slice(
+                  h.line_start - 1 + (patchLines.length - 1 - patchOffset),
+                  prevStart,
+                )
+                .reverse(),
+            );
+          }
           result.push(...patchLines.reverse());
-          prevStart = h.line_start;
+          prevStart = h.line_start - 1;
           if (i === arr.length - 1 && h.line_start > 0) {
-            result.push(...fileLines.slice(0, h.line_start).reverse());
+            result.push(...fileLines.slice(0, h.line_start - 1).reverse());
           }
         });
 
