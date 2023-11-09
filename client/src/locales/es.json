@@ -425,7 +425,9 @@
 	"The following changes can be applied to your repository. Make sure the generated diffs are valid before you apply the changes.": "Los siguientes cambios se pueden aplicar a su repositorio. Asegúrese de que las diferencias generadas sean válidas antes de aplicar los cambios.",
 	"The diff has been applied locally.": "La diferencia se ha aplicado localmente.",
 	"Generating diff...": "Generando diff ...",
-	"Diff generation failed": "Falló la generación de diff"
+	"Diff generation failed": "Falló la generación de diff",
+	"Failed to apply the diff": "No se pudo aplicar la diferencia"
 }
+
 
 

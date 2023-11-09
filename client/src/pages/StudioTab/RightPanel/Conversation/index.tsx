@@ -106,6 +106,7 @@ const Conversation = ({
   );
   const [waitingForDiff, setWaitingForDiff] = useState(false);
   const [isDiffApplied, setDiffApplied] = useState(false);
+  const [isDiffApplyError, setDiffApplyError] = useState(false);
   const [isDiffGenFailed, setDiffGenFailed] = useState(false);
   const [diff, setDiff] = useState<GeneratedCodeDiff | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -215,6 +216,7 @@ const Conversation = ({
       return;
     }
     setDiffApplied(false);
+    setDiffApplyError(false);
     setDiff(null);
     setDiffGenFailed(false);
     setConversation((prev) => [
@@ -327,6 +329,7 @@ const Conversation = ({
         setDiffGenFailed(false);
         setDiff(null);
         setDiffApplied(false);
+        setDiffApplyError(false);
       }
       if (
         i === conversation.length - 1 &&
@@ -366,6 +369,7 @@ const Conversation = ({
     setDiff(null);
     setWaitingForDiff(false);
     setDiffApplied(false);
+    setDiffApplyError(false);
     setDiffGenFailed(false);
     setInput({
       author: StudioConversationMessageAuthor.USER,
@@ -403,9 +407,13 @@ const Conversation = ({
         return;
       }
       const result = diff.chunks.map((c) => c.raw_patch).join('\n');
-      await confirmStudioDiff(studioId, result);
-      setDiff(null);
-      setDiffApplied(true);
+      try {
+        await confirmStudioDiff(studioId, result);
+        setDiff(null);
+        setDiffApplied(true);
+      } catch (err) {
+        setDiffApplyError(true);
+      }
     },
     [studioId, diff],
   );
@@ -500,6 +508,7 @@ const Conversation = ({
               setLeftPanel={setLeftPanel}
               onDiffRemoved={onDiffRemoved}
               onDiffChanged={onDiffChanged}
+              applyError={isDiffApplyError}
             />
           )}
           {(isDiffApplied || waitingForDiff || isDiffGenFailed) && (
