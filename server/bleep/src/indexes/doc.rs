@@ -134,9 +134,9 @@ impl Doc {
         })
     }
 
-    async fn set_title<'a, E>(&self, title: &str, id: i64, executor: E) -> Result<(), Error>
+    async fn set_title<'a, E>(&self, title: &str, id: i64, executor: &'a mut E) -> Result<(), Error>
     where
-        E: sqlx::Executor<'a, Database = sqlx::Sqlite>,
+        &'a mut E: sqlx::Executor<'a, Database = sqlx::Sqlite>,
     {
         sqlx::query! {
             "UPDATE docs SET name = ? WHERE id = ?",
@@ -149,9 +149,14 @@ impl Doc {
         .map_err(Error::Sql)
     }
 
-    async fn set_favicon<'a, E>(&self, favicon: &str, id: i64, executor: E) -> Result<(), Error>
+    async fn set_favicon<'a, E>(
+        &self,
+        favicon: &str,
+        id: i64,
+        executor: &'a mut E,
+    ) -> Result<(), Error>
     where
-        E: sqlx::Executor<'a, Database = sqlx::Sqlite>,
+        &'a mut E: sqlx::Executor<'a, Database = sqlx::Sqlite>,
     {
         sqlx::query! {
             "UPDATE docs SET favicon = ? WHERE id = ?",
@@ -168,10 +173,10 @@ impl Doc {
         &self,
         description: &str,
         id: i64,
-        executor: E,
+        executor: &'a mut E,
     ) -> Result<(), Error>
     where
-        E: sqlx::Executor<'a, Database = sqlx::Sqlite>,
+        &'a mut E: sqlx::Executor<'a, Database = sqlx::Sqlite>,
     {
         sqlx::query! {
             "UPDATE docs SET description = ? WHERE id = ?",
@@ -182,6 +187,45 @@ impl Doc {
         .await
         .map(|_| ())
         .map_err(Error::Sql)
+    }
+
+    async fn set_metadata<'a, E>(
+        &self,
+        metadata: &scraper::Meta,
+        id: i64,
+        doc_source: &url::Url,
+        executor: &'a mut E,
+    ) where
+        for<'t> &'t mut E: sqlx::Executor<'t, Database = sqlx::Sqlite>,
+    {
+        // set title
+        if let Some(title) = &metadata.title {
+            if let Err(e) = self.set_title(title, id, executor).await {
+                error!(%e, %title, %id, "failed to set doc title");
+            } else {
+                info!(%id, %title, "doc title set");
+            };
+        }
+
+        // set favicon
+        if let Some(favicon) = &metadata.icon {
+            let resolved_url = url::Url::parse(favicon)
+                .unwrap_or_else(|_| normalize_absolute_url(&doc_source, favicon));
+            if let Err(e) = self.set_favicon(resolved_url.as_str(), id, executor).await {
+                error!(%e, %favicon, %id, "failed to set doc icon");
+            } else {
+                info!(%id, %favicon, "doc icon set");
+            };
+        }
+
+        // set description
+        if let Some(description) = &metadata.description {
+            if let Err(e) = self.set_description(description, id, executor).await {
+                error!(%e, %description, %id, "failed to set doc description");
+            } else {
+                info!(%id, %description, "doc description set");
+            };
+        }
     }
 
     async fn set_index_status<'a, E>(&self, status: &str, id: i64, executor: E) -> Result<(), Error>
@@ -236,38 +280,10 @@ impl Doc {
                 // scraped url
                 if let Progress::Update(update) = progress.clone() {
                     discovered_count = update.discovered_count;
-                    if !update.metadata.is_empty() && !is_meta_set {
+                    if update.url == url || (!update.metadata.is_empty() && !is_meta_set) {
                         // do not set meta for this doc provider in subsequent turns
                         is_meta_set = true;
-
-                        // set title
-                        if let Some(title) = &update.metadata.title {
-                            if let Err(e) = self.set_title(title, id, &mut transaction).await {
-                                error!(%e, %title, %id, "failed to set doc title");
-                            } else {
-                                info!(%id, %title, "doc title set");
-                            };
-                        }
-
-                        // set favicon
-                        if let Some(favicon) = &update.metadata.icon {
-                            let resolved_url = url::Url::parse(favicon)
-                                .unwrap_or_else(|_| normalize_absolute_url(&url, favicon));
-                            if let Err(e) = self.set_favicon(resolved_url.as_str(), id, &mut transaction).await {
-                                error!(%e, %favicon, %id, "failed to set doc icon");
-                            } else {
-                                info!(%id, %favicon, "doc icon set");
-                            };
-                        }
-
-                        // set description
-                        if let Some(description) = &update.metadata.description {
-                            if let Err(e) = self.set_description(description, id, &mut transaction).await {
-                                error!(%e, %description, %id, "failed to set doc description");
-                            } else {
-                                info!(%id, %description, "doc description set");
-                            };
-                        }
+                        self.set_metadata(&update.metadata, id, &url, &mut transaction).await;
                     };
                 }
                 yield progress;
@@ -708,6 +724,9 @@ impl Doc {
                     metadata: doc.meta.clone(),
                 });
                 yield progress;
+                if doc.is_empty() {
+                    continue;
+                }
                 let doc_source = doc_source.clone();
                 let section_schema = self.section_schema.clone();
                 let index_writer = Arc::clone(&index_writer);
@@ -760,7 +779,7 @@ impl scraper::Document {
             doc_id = %id,
             "indexing doc",
         );
-        scraper::chunk::by_section(&self.content)
+        scraper::chunk::by_section(self.content.as_deref().unwrap_or_default()) // this is an infallible unwrap however
             .into_par_iter()
             .filter_map(|section| {
                 let point_id = {
