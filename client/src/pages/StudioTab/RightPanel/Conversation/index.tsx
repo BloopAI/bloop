@@ -321,6 +321,10 @@ const Conversation = ({
       if (andSubsequent) {
         // Set input to the message being removed
         setInput(conversation[i]);
+        setWaitingForDiff(false);
+        setDiffGenFailed(false);
+        setDiff(null);
+        setDiffApplied(false);
       }
       if (
         i === conversation.length - 1 &&
@@ -357,6 +361,10 @@ const Conversation = ({
     await patchCodeStudio(studioId, {
       messages: [],
     });
+    setDiff(null);
+    setWaitingForDiff(false);
+    setDiffApplied(false);
+    setDiffGenFailed(false);
     setInput({
       author: StudioConversationMessageAuthor.USER,
       message: '',
