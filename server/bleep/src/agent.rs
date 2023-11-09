@@ -203,7 +203,6 @@ impl Agent {
                         r.run_phrase(s)
                         
                     };
-
                     self.code_search(&keywords).await?;
                 }
                 s.clone()
