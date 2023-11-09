@@ -900,7 +900,7 @@ pub async fn diff(
                     diff::Line::AddLine(..) | diff::Line::DelLine(..) => true,
                     diff::Line::Context(..) => false,
                 });
-                singular_chunk.fixup();
+                singular_chunk.fixup_hunks();
 
                 let diff = if singular_chunk.hunks[0]
                     .lines
@@ -928,10 +928,10 @@ pub async fn diff(
             }
 
             let chunk = resolved_chunk_map
-                .entry((singular_chunk.src, singular_chunk.dst))
+                .entry((singular_chunk.src.clone(), singular_chunk.dst.clone()))
                 .or_insert_with(|| DiffChunk {
-                    src: singular_chunk.src,
-                    dst: singular_chunk.dst,
+                    src: singular_chunk.src.clone(),
+                    dst: singular_chunk.dst.clone(),
                     hunks: Vec::new(),
                 });
 
@@ -954,7 +954,7 @@ pub async fn diff(
     let chunks = resolved_chunk_map
         .into_values()
         .map(|chunk| {
-            let doc = doc_map.get(chunk.src).unwrap();
+            let doc = doc_map.get(&chunk.src).unwrap();
 
             structured_diff::Chunk {
                 raw_patch: chunk.to_string(),

@@ -3,7 +3,7 @@ use std::fmt;
 use anyhow::{Context, Result};
 use lazy_regex::regex;
 
-pub fn extract(chat_response: &str) -> Result<impl Iterator<Item = DiffChunk>> {
+pub fn extract(chat_response: &str) -> Result<impl Iterator<Item = DiffChunk> + '_> {
     Ok(relaxed_parse(extract_diff(chat_response)?))
 }
 
@@ -18,58 +18,43 @@ fn extract_diff(chat_response: &str) -> Result<&str> {
 }
 
 /// Parse a diff, allowing for some formatting errors.
-pub fn relaxed_parse(diff: &str) -> impl Iterator<Item = DiffChunk> {
+pub fn relaxed_parse(diff: &str) -> impl Iterator<Item = DiffChunk> + '_ {
     split_chunks(diff).map(|mut chunk| {
-        chunk.fixup();
+        chunk.fixup_hunks();
         chunk
     })
 }
 
-fn split_chunks(diff: &str) -> impl Iterator<Item = DiffChunk> {
+fn split_chunks(diff: &str) -> impl Iterator<Item = DiffChunk> + '_ {
     let chunk_regex = regex!(r#"(?: (.*)$\n^\+\+\+ (.*)$)\n((?:^$\n?|^[-+@ ].*\n?)+)"#m);
 
     regex!("^---"m).split(diff).filter_map(|chunk| {
         let caps = chunk_regex.captures(chunk)?;
         Some(DiffChunk {
-            src: caps.get(1).unwrap().as_str(),
-            dst: caps.get(2).unwrap().as_str(),
+            src: caps.get(1).unwrap().as_str().to_owned(),
+            dst: caps.get(2).unwrap().as_str().to_owned(),
             hunks: split_hunks(caps.get(3).unwrap().as_str()).collect(),
         })
     })
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct DiffChunk<'a> {
-    pub src: &'a str,
-    pub dst: &'a str,
-    pub hunks: Vec<DiffHunk<'a>>,
+pub struct DiffChunk {
+    pub src: String,
+    pub dst: String,
+    pub hunks: Vec<DiffHunk>,
 }
 
-impl DiffChunk<'_> {
-    pub fn fixup(&mut self) {
-        for hunk in &mut self.hunks {
-            hunk.src_count = hunk
-                .lines
-                .iter()
-                .map(|l| match l {
-                    Line::Context(_) | Line::DelLine(_) => 1,
-                    Line::AddLine(_) => 0,
-                })
-                .sum();
-
-            hunk.dst_count = hunk
-                .lines
-                .iter()
-                .map(|l| match l {
-                    Line::Context(_) | Line::AddLine(_) => 1,
-                    Line::DelLine(_) => 0,
-                })
-                .sum();
-        }
+impl DiffChunk {
+    pub fn fixup_hunks(&mut self) {
+        self.hunks.retain_mut(|h| {
+            h.fixup();
+            h.lines.iter().any(|l| !matches!(l, Line::Context(_)))
+        });
     }
 }
 
-impl fmt::Display for DiffChunk<'_> {
+impl fmt::Display for DiffChunk {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let hunks_str = self.hunks.iter().map(|h| h.to_string()).collect::<String>();
 
@@ -77,14 +62,21 @@ impl fmt::Display for DiffChunk<'_> {
     }
 }
 
-fn split_hunks(hunks: &str) -> impl Iterator<Item = DiffHunk> {
-    let hunk_regex = regex!(r#"@@ -(\d+),(\d+) \+(\d+),(\d+) @@.*\n((?:^\n|^[-+ ].*\n?)*)"#m);
+fn split_hunks(hunks: &str) -> impl Iterator<Item = DiffHunk> + '_ {
+    let hunk_regex =
+        regex!(r#"@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@.*\n((?:^\n|^[-+ ].*\n?)*)"#m);
 
     hunk_regex.captures_iter(hunks).map(|caps| DiffHunk {
         src_line: caps.get(1).unwrap().as_str().parse().unwrap(),
-        src_count: caps.get(2).unwrap().as_str().parse().unwrap(),
+        src_count: caps
+            .get(2)
+            .and_then(|m| m.as_str().parse().ok())
+            .unwrap_or(0),
         dst_line: caps.get(3).unwrap().as_str().parse().unwrap(),
-        dst_count: caps.get(4).unwrap().as_str().parse().unwrap(),
+        dst_count: caps
+            .get(4)
+            .and_then(|m| m.as_str().parse().ok())
+            .unwrap_or(0),
         lines: {
             caps.get(5)
                 .unwrap()
@@ -98,9 +90,9 @@ fn split_hunks(hunks: &str) -> impl Iterator<Item = DiffHunk> {
                     }
                 })
                 .map(|(type_, line)| match type_ {
-                    " " => Line::Context(line),
-                    "+" => Line::AddLine(line),
-                    "-" => Line::DelLine(line),
+                    " " => Line::Context(line.into()),
+                    "+" => Line::AddLine(line.into()),
+                    "-" => Line::DelLine(line.into()),
                     _ => unreachable!("unknown character slipped through regex"),
                 })
                 .collect()
@@ -109,16 +101,71 @@ fn split_hunks(hunks: &str) -> impl Iterator<Item = DiffHunk> {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct DiffHunk<'a> {
+pub struct DiffHunk {
     pub src_line: usize,
     pub dst_line: usize,
     pub src_count: usize,
     pub dst_count: usize,
 
-    pub lines: Vec<Line<'a>>,
+    pub lines: Vec<Line>,
 }
 
-impl fmt::Display for DiffHunk<'_> {
+impl DiffHunk {
+    fn fixup(&mut self) {
+        let src = self
+            .lines
+            .iter()
+            .filter_map(|line| match line {
+                Line::Context(l) => Some(format!("{l}\n")),
+                Line::AddLine(_) => None,
+                Line::DelLine(l) => Some(format!("{l}\n")),
+            })
+            .collect::<String>();
+
+        let dst = self
+            .lines
+            .iter()
+            .filter_map(|line| match line {
+                Line::Context(l) => Some(format!("{l}\n")),
+                Line::AddLine(l) => Some(format!("{l}\n")),
+                Line::DelLine(_) => None,
+            })
+            .collect::<String>();
+
+        let patch = diffy::DiffOptions::default()
+            .set_context_len(usize::MAX)
+            .create_patch(&src, &dst);
+        let patch = patch.to_string();
+
+        let mut new_hunks = split_hunks(&patch).collect::<Vec<_>>();
+        assert_eq!(
+            new_hunks.len(),
+            1,
+            "regenerated hunk's patch was malformed:\n\n{patch}"
+        );
+        self.lines = new_hunks.pop().unwrap().lines.into_iter().collect();
+
+        self.src_count = self
+            .lines
+            .iter()
+            .map(|l| match l {
+                Line::Context(_) | Line::DelLine(_) => 1,
+                Line::AddLine(_) => 0,
+            })
+            .sum();
+
+        self.dst_count = self
+            .lines
+            .iter()
+            .map(|l| match l {
+                Line::Context(_) | Line::AddLine(_) => 1,
+                Line::DelLine(_) => 0,
+            })
+            .sum();
+    }
+}
+
+impl fmt::Display for DiffHunk {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(
             f,
@@ -134,14 +181,14 @@ impl fmt::Display for DiffHunk<'_> {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Line<'a> {
-    Context(&'a str),
-    AddLine(&'a str),
-    DelLine(&'a str),
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Line {
+    Context(String),
+    AddLine(String),
+    DelLine(String),
 }
 
-impl fmt::Display for Line<'_> {
+impl fmt::Display for Line {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Line::Context(line) => writeln!(f, " {line}"),
@@ -194,7 +241,7 @@ foo bar
  quux4
 --- bar.rs
 +++ bar.rs
-@@ -1,1 +1,1 @@
+@@ -10 +10 @@
 -bar
 +fred
 @@ -100,1 +100,1 @@
@@ -218,7 +265,7 @@ foo bar
  quux4
 --- bar.rs
 +++ bar.rs
-@@ -1,1 +1,1 @@
+@@ -10,1 +10,1 @@
 -bar
 +fred
 @@ -100,4 +100,5 @@
@@ -255,11 +302,13 @@ foo bar
                 dst_line: 1,
                 dst_count: 1,
                 lines: vec![
-                    Line::Context("context"),
-                    Line::Context("the line right below this one is intentionally empty"),
-                    Line::Context(""),
-                    Line::DelLine("foo"),
-                    Line::AddLine("bar"),
+                    Line::Context("context".to_owned()),
+                    Line::Context(
+                        "the line right below this one is intentionally empty".to_owned(),
+                    ),
+                    Line::Context("".to_owned()),
+                    Line::DelLine("foo".to_owned()),
+                    Line::AddLine("bar".to_owned()),
                 ],
             },
             DiffHunk {
@@ -268,9 +317,9 @@ foo bar
                 dst_line: 10,
                 dst_count: 2,
                 lines: vec![
-                    Line::DelLine("bar"),
-                    Line::AddLine("quux"),
-                    Line::AddLine("quux2"),
+                    Line::DelLine("bar".to_owned()),
+                    Line::AddLine("quux".to_owned()),
+                    Line::AddLine("quux2".to_owned()),
                 ],
             },
         ];
@@ -301,34 +350,36 @@ foo bar
 
         let expected = vec![
             DiffChunk {
-                src: "foo.rs",
-                dst: "foo.rs",
+                src: "foo.rs".to_owned(),
+                dst: "foo.rs".to_owned(),
                 hunks: vec![DiffHunk {
                     src_line: 1,
                     src_count: 1,
                     dst_line: 1,
                     dst_count: 1,
                     lines: vec![
-                        Line::Context("context"),
-                        Line::Context("the line right below this one is intentionally empty"),
-                        Line::Context(""),
-                        Line::DelLine("foo"),
-                        Line::AddLine("bar"),
+                        Line::Context("context".to_owned()),
+                        Line::Context(
+                            "the line right below this one is intentionally empty".to_owned(),
+                        ),
+                        Line::Context("".to_owned()),
+                        Line::DelLine("foo".to_owned()),
+                        Line::AddLine("bar".to_owned()),
                     ],
                 }],
             },
             DiffChunk {
-                src: "bar.rs",
-                dst: "bar.rs",
+                src: "bar.rs".to_owned(),
+                dst: "bar.rs".to_owned(),
                 hunks: vec![DiffHunk {
                     src_line: 10,
                     src_count: 1,
                     dst_line: 10,
                     dst_count: 2,
                     lines: vec![
-                        Line::DelLine("bar"),
-                        Line::AddLine("quux"),
-                        Line::AddLine("quux2"),
+                        Line::DelLine("bar".to_owned()),
+                        Line::AddLine("quux".to_owned()),
+                        Line::AddLine("quux2".to_owned()),
                     ],
                 }],
             },
@@ -393,42 +444,42 @@ foo bar
 ```"#;
         let expected = vec![
             DiffChunk {
-                src: "server/bleep/src/analytics.rs",
-                dst: "server/bleep/src/analytics.rs",
+                src: "server/bleep/src/analytics.rs".to_owned(),
+                dst: "server/bleep/src/analytics.rs".to_owned(),
                 hunks: vec![DiffHunk {
                     src_line: 215,
                     src_count: 7,
                     dst_line: 215,
                     dst_count: 22,
                     lines: vec![
-                        Line::Context("            }));"),
-                        Line::Context("        }"),
-                        Line::Context("    }"),
-                        Line::AddLine("    "),
-                        Line::AddLine("    pub fn track_index_repo(&self, user: &crate::webserver::middleware::User, repo_ref: RepoRef) {"),
-                        Line::AddLine(r#"        if let Some(options) = &self.options {"#),
-                        Line::AddLine(r#"            self.send(Message::Track(Track {"#),
-                        Line::AddLine(r#"                user_id: Some(self.tracking_id(user.username())),"#),
-                        Line::AddLine(r#"                event: "index repo".to_owned(),"#),
-                        Line::AddLine(r#"                properties: Some(json!({"#),
-                        Line::AddLine(r#"                    "device_id": self.device_id(),"#),
-                        Line::AddLine(r#"                    "repo_ref": repo_ref.to_string(),"#),
-                        Line::AddLine(r#"                    "package_metadata": options.package_metadata,"#),
-                        Line::AddLine(r#"                })),"#),
-                        Line::AddLine(r#"                ..Default::default()"#),
-                        Line::AddLine(r#"            }));"#),
-                        Line::AddLine(r#"        }"#),
-                        Line::AddLine(r#"    }"#),
-                        Line::Context("}"),
-                        Line::Context(""),
-                        Line::Context("impl From<Option<String>> for DeviceId {"),
-                        Line::Context(""),
+                        Line::Context("            }));".to_owned()),
+                        Line::Context("        }".to_owned()),
+                        Line::Context("    }".to_owned()),
+                        Line::AddLine("    ".to_owned()),
+                        Line::AddLine("    pub fn track_index_repo(&self, user: &crate::webserver::middleware::User, repo_ref: RepoRef) {".to_owned()),
+                        Line::AddLine(r#"        if let Some(options) = &self.options {"#.to_owned()),
+                        Line::AddLine(r#"            self.send(Message::Track(Track {"#.to_owned()),
+                        Line::AddLine(r#"                user_id: Some(self.tracking_id(user.username())),"#.to_owned()),
+                        Line::AddLine(r#"                event: "index repo".to_owned(),"#.to_owned()),
+                        Line::AddLine(r#"                properties: Some(json!({"#.to_owned()),
+                        Line::AddLine(r#"                    "device_id": self.device_id(),"#.to_owned()),
+                        Line::AddLine(r#"                    "repo_ref": repo_ref.to_string(),"#.to_owned()),
+                        Line::AddLine(r#"                    "package_metadata": options.package_metadata,"#.to_owned()),
+                        Line::AddLine(r#"                })),"#.to_owned()),
+                        Line::AddLine(r#"                ..Default::default()"#.to_owned()),
+                        Line::AddLine(r#"            }));"#.to_owned()),
+                        Line::AddLine(r#"        }"#.to_owned()),
+                        Line::AddLine(r#"    }"#.to_owned()),
+                        Line::Context("}".to_owned()),
+                        Line::Context("".to_owned()),
+                        Line::Context("impl From<Option<String>> for DeviceId {".to_owned()),
+                        Line::Context("".to_owned()),
                     ],
                 }],
             },
             DiffChunk {
-                src: "server/bleep/src/indexes.rs",
-                dst: "server/bleep/src/indexes.rs",
+                src: "server/bleep/src/indexes.rs".to_owned(),
+                dst: "server/bleep/src/indexes.rs".to_owned(),
                 hunks: vec![
                     DiffHunk {
                         src_line: 61,
@@ -436,16 +487,15 @@ foo bar
                         dst_line: 61,
                         dst_count: 9,
                         lines: vec![
-                            Line::Context(r#"    }"#),
-                            Line::Context(r#""#),
-                            Line::Context(r#"    pub(crate) async fn index("#),
-                            Line::DelLine(r#"        &self,"#),
-                            Line::AddLine(r#"        &self,"#),
-                            Line::AddLine(r#"        analytics: &RudderHub,  // Pass in the RudderHub instance"#),
-                            Line::AddLine(r#"        user: &crate::webserver::middleware::User,  // Pass in the current user"#),
-                            Line::Context(r#"        sync_handle: &SyncHandle,"#),
-                            Line::Context(r#"        repo: &Repository,"#),
-                            Line::Context(r#"    ) -> Result<Arc<RepoMetadata>, RepoError> {"#),
+                            Line::Context(r#"    }"#.to_owned()),
+                            Line::Context(r#""#.to_owned()),
+                            Line::Context(r#"    pub(crate) async fn index("#.to_owned()),
+                            Line::Context(r#"        &self,"#.to_owned()),
+                            Line::AddLine(r#"        analytics: &RudderHub,  // Pass in the RudderHub instance"#.to_owned()),
+                            Line::AddLine(r#"        user: &crate::webserver::middleware::User,  // Pass in the current user"#.to_owned()),
+                            Line::Context(r#"        sync_handle: &SyncHandle,"#.to_owned()),
+                            Line::Context(r#"        repo: &Repository,"#.to_owned()),
+                            Line::Context(r#"    ) -> Result<Arc<RepoMetadata>, RepoError> {"#.to_owned()),
                         ],
                     },
                     DiffHunk {
@@ -454,15 +504,15 @@ foo bar
                         dst_line: 72,
                         dst_count: 9,
                         lines: vec![
-                            Line::Context(r#""#),
-                            Line::Context(r#"        for h in &self.handles {"#),
-                            Line::Context(r#"            h.index(sync_handle, repo, &metadata).await?;"#),
-                            Line::AddLine(r#"            "#),
-                            Line::AddLine(r#"            // Track the repo indexing event"#),
-                            Line::AddLine(r#"            analytics.track_index_repo(user, repo.repo_ref.clone());"#),
-                            Line::Context(r#"        }"#),
-                            Line::Context(r#""#),
-                            Line::Context(r#"        Ok(metadata)"#),
+                            Line::Context(r#""#.to_owned()),
+                            Line::Context(r#"        for h in &self.handles {"#.to_owned()),
+                            Line::Context(r#"            h.index(sync_handle, repo, &metadata).await?;"#.to_owned()),
+                            Line::AddLine(r#"            "#.to_owned()),
+                            Line::AddLine(r#"            // Track the repo indexing event"#.to_owned()),
+                            Line::AddLine(r#"            analytics.track_index_repo(user, repo.repo_ref.clone());"#.to_owned()),
+                            Line::Context(r#"        }"#.to_owned()),
+                            Line::Context(r#""#.to_owned()),
+                            Line::Context(r#"        Ok(metadata)"#.to_owned()),
                         ],
                     },
                 ],
@@ -472,5 +522,46 @@ foo bar
         let output = extract(chat_response).unwrap().collect::<Vec<_>>();
 
         assert_eq!(expected, output);
+    }
+
+    #[test]
+    fn test_split_chunks_no_count() {}
+
+    #[test]
+    fn test_fixup_remove_redundancy() {
+        let mut hunk = DiffHunk {
+            src_line: 10,
+            src_count: 5,
+            dst_line: 10,
+            dst_count: 5,
+            lines: vec![
+                Line::DelLine("fn main() {".to_owned()),
+                Line::AddLine("fn main() {".to_owned()),
+                Line::Context("    let a = 123;".to_owned()),
+                Line::DelLine("    println!(\"the value of `a` is {a:?}\");".to_owned()),
+                Line::AddLine("    dbg!(&a);".to_owned()),
+                Line::Context("    drop(a);".to_owned()),
+                Line::Context("}".to_owned()),
+            ],
+        };
+
+        hunk.fixup();
+
+        let expected = DiffHunk {
+            src_line: 10,
+            src_count: 5,
+            dst_line: 10,
+            dst_count: 5,
+            lines: vec![
+                Line::Context("fn main() {".to_owned()),
+                Line::Context("    let a = 123;".to_owned()),
+                Line::DelLine("    println!(\"the value of `a` is {a:?}\");".to_owned()),
+                Line::AddLine("    dbg!(&a);".to_owned()),
+                Line::Context("    drop(a);".to_owned()),
+                Line::Context("}".to_owned()),
+            ],
+        };
+
+        assert_eq!(expected, hunk);
     }
 }
