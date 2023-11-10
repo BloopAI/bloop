@@ -30,33 +30,30 @@ DEALINGS IN THE SOFTWARE.
 */
 
 use lazy_regex::regex;
-use once_cell::sync::OnceCell;
+use once_cell::sync::Lazy;
 use std::collections::HashSet;
 
-type StopWords = HashSet<String>;
-static STOPWORDS: OnceCell<StopWords> = OnceCell::new();
-static STOP_WORDS_LIST: &str = include_str!("stopwords.txt");
+type StopWords = HashSet<&'static str>;
 
-fn stop_words() -> &'static StopWords {
-    STOPWORDS.get_or_init(|| {
-        let mut sw = StopWords::new();
-        for w in STOP_WORDS_LIST.lines() {
-            sw.insert(w.to_string());
-        }
-        sw
-    })
-}
+static STOPWORDS: Lazy<StopWords> = Lazy::new(|| {
+    let word_list = include_str!("stopwords.txt");
+    let mut sw = StopWords::new();
+    for w in word_list.lines() {
+        sw.insert(w);
+    }
+    sw
+});
 
+/// Extract `phrases`, where each phrase is a sequence of non-stopwords
 fn phrases<'a>(phrases_iter: impl IntoIterator<Item = &'a str>) -> Vec<Vec<&'a str>> {
     let phrases_iter = phrases_iter.into_iter();
     let mut phrases = Vec::with_capacity(2 * phrases_iter.size_hint().0);
     for s in phrases_iter.filter(|s| !s.is_empty()) {
         let mut phrase = Vec::new();
         for word in s.split_whitespace() {
-            if stop_words().contains(&word.to_lowercase()) {
+            if STOPWORDS.contains::<&str>(&word.to_lowercase().as_str()) {
                 if !phrase.is_empty() {
-                    phrases.push(phrase.clone());
-                    phrase.clear();
+                    phrases.push(phrase.drain(..).collect());
                 }
             } else {
                 phrase.push(word);
