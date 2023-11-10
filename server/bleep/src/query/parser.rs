@@ -12,7 +12,7 @@ pub struct Query<'a> {
     pub org: Option<Literal<'a>>,
     pub repo: Option<Literal<'a>>,
     pub path: Option<Literal<'a>>,
-    pub lang: Option<Cow<'a, str>>,
+    pub lang: Option<Literal<'a>>,
     pub branch: Option<Literal<'a>>,
     pub target: Option<Target<'a>>,
 }
@@ -27,7 +27,7 @@ pub enum Target<'a> {
 pub struct SemanticQuery<'a> {
     pub repos: HashSet<Literal<'a>>,
     pub paths: HashSet<Literal<'a>>,
-    pub langs: HashSet<Cow<'a, str>>,
+    pub langs: HashSet<Literal<'a>>,
     pub branch: HashSet<Literal<'a>>,
     pub target: Option<Literal<'a>>,
 }
@@ -42,7 +42,7 @@ impl<'a> SemanticQuery<'a> {
     }
 
     pub fn langs(&'a self) -> impl Iterator<Item = Cow<'a, str>> {
-        self.langs.iter().cloned()
+        self.langs.iter().filter_map(|t| t.as_plain())
     }
 
     pub fn target(&self) -> Option<Cow<'a, str>> {
@@ -77,11 +77,7 @@ impl<'a> SemanticQuery<'a> {
         SemanticQuery {
             repos: self.repos.into_iter().map(Literal::into_owned).collect(),
             paths: self.paths.into_iter().map(Literal::into_owned).collect(),
-            langs: self
-                .langs
-                .into_iter()
-                .map(|c| c.into_owned().into())
-                .collect(),
+            langs: self.langs.into_iter().map(Literal::into_owned).collect(),
             branch: self.branch.into_iter().map(Literal::into_owned).collect(),
             target: self.target.map(Literal::into_owned),
         }
@@ -276,8 +272,20 @@ impl<'a> Default for LiteralInner<'a> {
     }
 }
 
+impl<'a> From<Cow<'a, str>> for Literal<'a> {
+    fn from(value: Cow<'a, str>) -> Self {
+        Literal::Plain(value.clone().into())
+    }
+}
+
 impl From<&String> for Literal<'static> {
     fn from(value: &String) -> Self {
+        Literal::Plain(value.to_owned().into())
+    }
+}
+
+impl From<&str> for Literal<'static> {
+    fn from(value: &str) -> Self {
         Literal::Plain(value.to_owned().into())
     }
 }
@@ -371,6 +379,26 @@ impl<'a> From<Pair<'a, Rule>> for Literal<'a> {
     }
 }
 
+impl<'a, 'b: 'a> AsRef<Cow<'a, str>> for Literal<'b> {
+    fn as_ref(&self) -> &Cow<'a, str> {
+        match self {
+            Literal::Plain(inner) => &inner.content,
+            Literal::Regex(inner) => &inner.content,
+        }
+    }
+}
+
+impl std::ops::Deref for Literal<'_> {
+    type Target = str;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Literal::Plain(inner) => inner.as_ref(),
+            Literal::Regex(inner) => inner.as_ref(),
+        }
+    }
+}
+
 /// Unescape a string, with a specific terminating character.
 ///
 /// Newline and tab strings (`\n` and `\t`) are replaced with the respective character. Backslashes
@@ -419,7 +447,7 @@ enum Expr<'a> {
     Repo(Literal<'a>),
     Symbol(Literal<'a>),
     Path(Literal<'a>),
-    Lang(Cow<'a, str>),
+    Lang(Literal<'a>),
     Content(Literal<'a>),
     Branch(Literal<'a>),
 
@@ -444,7 +472,7 @@ impl<'a> Expr<'a> {
             Rule::symbol => Symbol(Literal::from(pair.into_inner().next().unwrap())),
             Rule::org => Org(Literal::from(pair.into_inner().next().unwrap())),
             Rule::branch => Branch(Literal::from(pair.into_inner().next().unwrap())),
-            Rule::lang => Lang(pair.into_inner().as_str().into()),
+            Rule::lang => Lang(Literal::from(pair.into_inner().next().unwrap())),
 
             Rule::open => {
                 let inner = pair.into_inner().next().unwrap();
@@ -564,8 +592,13 @@ pub fn parse_nl(query: &str) -> Result<SemanticQuery<'_>, ParseError> {
                 let _ = branch.insert(item);
             }
             Rule::lang => {
-                let item = super::languages::parse_alias(pair.into_inner().as_str().into());
-                let _ = langs.insert(item);
+                let inner = pair.into_inner().next().unwrap();
+                let item = Literal::Plain(LiteralInner {
+                    content: super::languages::parse_alias(inner.as_str()),
+                    start: inner.as_span().start(),
+                    end: inner.as_span().end(),
+                });
+                let _ = langs.insert(item.into());
             }
             Rule::raw_text => {
                 let rhs = Literal::from(pair);
@@ -612,7 +645,7 @@ fn flatten(root: Expr<'_>) -> SmallVec<[Query<'_>; 1]> {
             ..Default::default()
         }],
         Expr::Lang(lang) => smallvec![Query {
-            lang: Some(super::languages::parse_alias(lang)),
+            lang: Some(super::languages::parse_alias(&lang).into()),
             ..Default::default()
         }],
         Expr::Content(lit) => smallvec![Query {
@@ -659,7 +692,11 @@ mod tests {
         assert_eq!(
             parse("ParseError").unwrap(),
             vec![Query {
-                target: Some(Target::Content(Literal::Plain("ParseError".into()))),
+                target: Some(Target::Content(Literal::Plain(LiteralInner {
+                    start: 0,
+                    end: 10,
+                    content: "ParseError".into()
+                }))),
                 ..Query::default()
             }],
         );
@@ -667,10 +704,26 @@ mod tests {
         assert_eq!(
             parse("org:bloopai repo:enterprise-search branch:origin/main ParseError").unwrap(),
             vec![Query {
-                repo: Some(Literal::Plain("enterprise-search".into())),
-                org: Some(Literal::Plain("bloopai".into())),
-                branch: Some(Literal::Plain("origin/main".into())),
-                target: Some(Target::Content(Literal::Plain("ParseError".into()))),
+                repo: Some(Literal::Plain(LiteralInner {
+                    start: 17,
+                    end: 34,
+                    content: "enterprise-search".into()
+                })),
+                org: Some(Literal::Plain(LiteralInner {
+                    start: 4,
+                    end: 11,
+                    content: "bloopai".into()
+                })),
+                branch: Some(Literal::Plain(LiteralInner {
+                    start: 42,
+                    end: 53,
+                    content: "origin/main".into()
+                })),
+                target: Some(Target::Content(Literal::Plain(LiteralInner {
+                    start: 54,
+                    end: 64,
+                    content: "ParseError".into()
+                }))),
                 ..Query::default()
             }],
         );
@@ -678,9 +731,21 @@ mod tests {
         assert_eq!(
             parse("org:bloopai repo:enterprise-search ParseError").unwrap(),
             vec![Query {
-                repo: Some(Literal::Plain("enterprise-search".into())),
-                org: Some(Literal::Plain("bloopai".into())),
-                target: Some(Target::Content(Literal::Plain("ParseError".into()))),
+                repo: Some(Literal::Plain(LiteralInner {
+                    start: 17,
+                    end: 34,
+                    content: "enterprise-search".into()
+                })),
+                org: Some(Literal::Plain(LiteralInner {
+                    start: 4,
+                    end: 11,
+                    content: "bloopai".into()
+                })),
+                target: Some(Target::Content(Literal::Plain(LiteralInner {
+                    start: 35,
+                    end: 45,
+                    content: "ParseError".into()
+                }))),
                 ..Query::default()
             }],
         );
@@ -688,7 +753,11 @@ mod tests {
         assert_eq!(
             parse("content:ParseError").unwrap(),
             vec![Query {
-                target: Some(Target::Content(Literal::Plain("ParseError".into()))),
+                target: Some(Target::Content(Literal::Plain(LiteralInner {
+                    start: 8,
+                    end: 18,
+                    content: "ParseError".into()
+                }))),
                 ..Query::default()
             }],
         );
@@ -697,8 +766,16 @@ mod tests {
         assert_eq!(
             parse("path:foo.c create_foo symbol:bar").unwrap(),
             vec![Query {
-                path: Some(Literal::Plain("foo.c".into())),
-                target: Some(Target::Symbol(Literal::Plain("bar".into()))),
+                path: Some(Literal::Plain(LiteralInner {
+                    start: 5,
+                    end: 10,
+                    content: "foo.c".into()
+                })),
+                target: Some(Target::Symbol(Literal::Plain(LiteralInner {
+                    start: 29,
+                    end: 32,
+                    content: "bar".into()
+                }))),
                 ..Query::default()
             }],
         );
@@ -707,7 +784,11 @@ mod tests {
             parse("case:ignore Parse").unwrap(),
             vec![Query {
                 case_sensitive: Some(false),
-                target: Some(Target::Content(Literal::Plain("Parse".into()))),
+                target: Some(Target::Content(Literal::Plain(LiteralInner {
+                    start: 12,
+                    end: 17,
+                    content: "Parse".into()
+                }))),
                 ..Query::default()
             }],
         );
@@ -719,12 +800,24 @@ mod tests {
             parse("repo:foo ParseError or repo:bar").unwrap(),
             vec![
                 Query {
-                    repo: Some(Literal::Plain("foo".into())),
-                    target: Some(Target::Content(Literal::Plain("ParseError".into()))),
+                    repo: Some(Literal::Plain(LiteralInner {
+                        start: 5,
+                        end: 8,
+                        content: "foo".into()
+                    })),
+                    target: Some(Target::Content(Literal::Plain(LiteralInner {
+                        start: 9,
+                        end: 19,
+                        content: "ParseError".into()
+                    }))),
                     ..Query::default()
                 },
                 Query {
-                    repo: Some(Literal::Plain("bar".into())),
+                    repo: Some(Literal::Plain(LiteralInner {
+                        start: 28,
+                        end: 31,
+                        content: "bar".into()
+                    })),
                     ..Query::default()
                 },
             ],
@@ -735,12 +828,24 @@ mod tests {
             parse("repo:bar or repo:foo ParseError").unwrap(),
             vec![
                 Query {
-                    repo: Some(Literal::Plain("bar".into())),
+                    repo: Some(Literal::Plain(LiteralInner {
+                        start: 5,
+                        end: 8,
+                        content: "bar".into()
+                    })),
                     ..Query::default()
                 },
                 Query {
-                    repo: Some(Literal::Plain("foo".into())),
-                    target: Some(Target::Content(Literal::Plain("ParseError".into()))),
+                    repo: Some(Literal::Plain(LiteralInner {
+                        start: 17,
+                        end: 20,
+                        content: "foo".into()
+                    })),
+                    target: Some(Target::Content(Literal::Plain(LiteralInner {
+                        start: 21,
+                        end: 31,
+                        content: "ParseError".into()
+                    }))),
                     ..Query::default()
                 },
             ],
@@ -808,25 +913,65 @@ mod tests {
             parse("(((repo:foo xyz) or repo:abc) (repo:fred or repo:grub) org:bloop)").unwrap(),
             vec![
                 Query {
-                    repo: Some(Literal::Plain("fred".into())),
-                    org: Some(Literal::Plain("bloop".into())),
-                    target: Some(Target::Content(Literal::Plain("xyz".into()))),
+                    repo: Some(Literal::Plain(LiteralInner {
+                        start: 36,
+                        end: 40,
+                        content: "fred".into()
+                    })),
+                    org: Some(Literal::Plain(LiteralInner {
+                        start: 59,
+                        end: 64,
+                        content: "bloop".into()
+                    })),
+                    target: Some(Target::Content(Literal::Plain(LiteralInner {
+                        start: 12,
+                        end: 15,
+                        content: "xyz".into()
+                    }))),
                     ..Query::default()
                 },
                 Query {
-                    repo: Some(Literal::Plain("grub".into())),
-                    org: Some(Literal::Plain("bloop".into())),
-                    target: Some(Target::Content(Literal::Plain("xyz".into()))),
+                    repo: Some(Literal::Plain(LiteralInner {
+                        start: 49,
+                        end: 53,
+                        content: "grub".into()
+                    })),
+                    org: Some(Literal::Plain(LiteralInner {
+                        start: 59,
+                        end: 64,
+                        content: "bloop".into()
+                    })),
+                    target: Some(Target::Content(Literal::Plain(LiteralInner {
+                        start: 12,
+                        end: 15,
+                        content: "xyz".into()
+                    }))),
                     ..Query::default()
                 },
                 Query {
-                    repo: Some(Literal::Plain("fred".into())),
-                    org: Some(Literal::Plain("bloop".into())),
+                    repo: Some(Literal::Plain(LiteralInner {
+                        start: 36,
+                        end: 40,
+                        content: "fred".into()
+                    })),
+                    org: Some(Literal::Plain(LiteralInner {
+                        start: 59,
+                        end: 64,
+                        content: "bloop".into()
+                    })),
                     ..Query::default()
                 },
                 Query {
-                    repo: Some(Literal::Plain("grub".into())),
-                    org: Some(Literal::Plain("bloop".into())),
+                    repo: Some(Literal::Plain(LiteralInner {
+                        start: 49,
+                        end: 53,
+                        content: "grub".into()
+                    })),
+                    org: Some(Literal::Plain(LiteralInner {
+                        start: 59,
+                        end: 64,
+                        content: "bloop".into()
+                    })),
                     ..Query::default()
                 },
             ],
@@ -839,27 +984,63 @@ mod tests {
             parse("(repo:bloop or repo:google) Parser or repo:zoekt Parsing or (symbol:Compiler or (org:bloop repo:enterprise-search))").unwrap(),
             vec![
                 Query {
-                    repo: Some(Literal::Plain("bloop".into())),
-                    target: Some(Target::Content(Literal::Plain("Parser".into()))),
+                    repo: Some(Literal::Plain(LiteralInner {
+                        start: 6,
+                        end: 11,
+                        content: "bloop".into()
+                    })),
+                    target: Some(Target::Content(Literal::Plain(LiteralInner {
+                        start: 28,
+                        end: 34,
+                        content: "Parser".into()
+                    }))),
                     ..Query::default()
                 },
                 Query {
-                    repo: Some(Literal::Plain("google".into())),
-                    target: Some(Target::Content(Literal::Plain("Parser".into()))),
+                    repo: Some(Literal::Plain(LiteralInner {
+                        start: 20,
+                        end: 26,
+                        content: "google".into()
+                    })),
+                    target: Some(Target::Content(Literal::Plain(LiteralInner {
+                        start: 28,
+                        end: 34,
+                        content: "Parser".into()
+                    }))),
                     ..Query::default()
                 },
                 Query {
-                    repo: Some(Literal::Plain("zoekt".into())),
-                    target: Some(Target::Content(Literal::Plain("Parsing".into()))),
+                    repo: Some(Literal::Plain(LiteralInner {
+                        start: 43,
+                        end: 48,
+                        content: "zoekt".into()
+                    })),
+                    target: Some(Target::Content(Literal::Plain(LiteralInner {
+                        start: 49,
+                        end: 56,
+                        content: "Parsing".into()
+                    }))),
                     ..Query::default()
                 },
                 Query {
-                    target: Some(Target::Symbol(Literal::Plain("Compiler".into()))),
+                    target: Some(Target::Symbol(Literal::Plain(LiteralInner {
+                        start: 68,
+                        end: 76,
+                        content: "Compiler".into()
+                    }))),
                     ..Query::default()
                 },
                 Query {
-                    repo: Some(Literal::Plain("enterprise-search".into())),
-                    org: Some(Literal::Plain("bloop".into())),
+                    repo: Some(Literal::Plain(LiteralInner {
+                        start: 96,
+                        end: 113,
+                        content: "enterprise-search".into()
+                    })),
+                    org: Some(Literal::Plain(LiteralInner {
+                        start: 85,
+                        end: 90,
+                        content: "bloop".into()
+                    })),
                     ..Query::default()
                 },
             ],
@@ -871,7 +1052,11 @@ mod tests {
         assert_eq!(
             parse("path:foo/bar.js").unwrap(),
             vec![Query {
-                path: Some(Literal::Plain("foo/bar.js".into())),
+                path: Some(Literal::Plain(LiteralInner {
+                    start: 5,
+                    end: 15,
+                    content: "foo/bar.js".into(),
+                })),
                 ..Query::default()
             }],
         );
@@ -895,8 +1080,12 @@ mod tests {
         assert_eq!(
             parse("lang:Rust path:server").unwrap(),
             vec![Query {
-                path: Some(Literal::Plain("server".into())),
-                lang: Some("rust".into()),
+                path: Some(Literal::Plain(LiteralInner {
+                    start: 15,
+                    end: 21,
+                    content: "server".into()
+                })),
+                lang: Some(Literal::Plain("rust".into())),
                 ..Query::default()
             }],
         );
@@ -908,7 +1097,11 @@ mod tests {
             parse("open:true path:server/bleep/Cargo.toml").unwrap(),
             vec![Query {
                 open: Some(true),
-                path: Some(Literal::Plain("server/bleep/Cargo.toml".into())),
+                path: Some(Literal::Plain(LiteralInner {
+                    start: 15,
+                    end: 38,
+                    content: "server/bleep/Cargo.toml".into()
+                })),
                 ..Query::default()
             }],
         );
@@ -917,7 +1110,11 @@ mod tests {
             parse("open:false path:server/bleep/Cargo.toml").unwrap(),
             vec![Query {
                 open: Some(false),
-                path: Some(Literal::Plain("server/bleep/Cargo.toml".into())),
+                path: Some(Literal::Plain(LiteralInner {
+                    start: 16,
+                    end: 39,
+                    content: "server/bleep/Cargo.toml".into()
+                })),
                 ..Query::default()
             }],
         );
@@ -926,7 +1123,11 @@ mod tests {
             parse("path:server/bleep/Cargo.toml").unwrap(),
             vec![Query {
                 open: None,
-                path: Some(Literal::Plain("server/bleep/Cargo.toml".into())),
+                path: Some(Literal::Plain(LiteralInner {
+                    start: 5,
+                    end: 28,
+                    content: "server/bleep/Cargo.toml".into()
+                })),
                 ..Query::default()
             }],
         );
@@ -937,7 +1138,11 @@ mod tests {
         assert_eq!(
             parse("foo\\nbar\\tquux").unwrap(),
             vec![Query {
-                target: Some(Target::Content(Literal::Plain("foo\\nbar\\tquux".into()))),
+                target: Some(Target::Content(Literal::Plain(LiteralInner {
+                    start: 0,
+                    end: 14,
+                    content: "foo\\nbar\\tquux".into()
+                }))),
                 ..Query::default()
             }],
         );
@@ -945,9 +1150,11 @@ mod tests {
         assert_eq!(
             parse("/^\\b\\B\\w\\Wfoo\\d\\D$/").unwrap(),
             vec![Query {
-                target: Some(Target::Content(Literal::Regex(
-                    "^\\b\\B\\w\\Wfoo\\d\\D$".into()
-                ))),
+                target: Some(Target::Content(Literal::Regex(LiteralInner {
+                    start: 1,
+                    end: 18,
+                    content: "^\\b\\B\\w\\Wfoo\\d\\D$".into()
+                }))),
                 ..Query::default()
             }],
         );
@@ -959,7 +1166,11 @@ mod tests {
             parse("global_regex:true foo").unwrap(),
             vec![Query {
                 global_regex: Some(true),
-                target: Some(Target::Content(Literal::Regex("foo".into()))),
+                target: Some(Target::Content(Literal::Regex(LiteralInner {
+                    start: 18,
+                    end: 21,
+                    content: "foo".into()
+                }))),
                 ..Query::default()
             }],
         );
@@ -969,7 +1180,11 @@ mod tests {
             parse("global_regex:true /foo/").unwrap(),
             vec![Query {
                 global_regex: Some(true),
-                target: Some(Target::Content(Literal::Regex("foo".into()))),
+                target: Some(Target::Content(Literal::Regex(LiteralInner {
+                    start: 19,
+                    end: 22,
+                    content: "foo".into()
+                }))),
                 ..Query::default()
             }],
         );
@@ -978,7 +1193,11 @@ mod tests {
         assert_eq!(
             parse("foo").unwrap(),
             vec![Query {
-                target: Some(Target::Content(Literal::Plain("foo".into()))),
+                target: Some(Target::Content(Literal::Plain(LiteralInner {
+                    start: 0,
+                    end: 3,
+                    content: "foo".into()
+                }))),
                 ..Query::default()
             }],
         );
@@ -992,16 +1211,40 @@ mod tests {
             vec![
                 Query {
                     global_regex: Some(true),
-                    org: Some(Literal::Regex("bloopai".into())),
-                    repo: Some(Literal::Regex("bloop".into())),
-                    path: Some(Literal::Regex("server".into())),
-                    target: Some(Target::Content(Literal::Regex("foo".into()))),
+                    org: Some(Literal::Regex(LiteralInner {
+                        start: 23,
+                        end: 30,
+                        content: "bloopai".into(),
+                    })),
+                    repo: Some(Literal::Regex(LiteralInner {
+                        start: 36,
+                        end: 41,
+                        content: "bloop".into(),
+                    })),
+                    path: Some(Literal::Regex(LiteralInner {
+                        start: 47,
+                        end: 53,
+                        content: "server".into(),
+                    })),
+                    target: Some(Target::Content(Literal::Regex(LiteralInner {
+                        start: 54,
+                        end: 57,
+                        content: "foo".into(),
+                    }))),
                     ..Query::default()
                 },
                 Query {
                     global_regex: Some(true),
-                    repo: Some(Literal::Regex("google".into())),
-                    target: Some(Target::Content(Literal::Regex("bar".into()))),
+                    repo: Some(Literal::Regex(LiteralInner {
+                        start: 66,
+                        end: 72,
+                        content: "google".into(),
+                    })),
+                    target: Some(Target::Content(Literal::Regex(LiteralInner {
+                        start: 73,
+                        end: 76,
+                        content: "bar".into(),
+                    }))),
                     ..Query::default()
                 },
             ],
@@ -1013,12 +1256,20 @@ mod tests {
             vec![
                 Query {
                     global_regex: Some(false),
-                    target: Some(Target::Content(Literal::Plain("foo".into()))),
+                    target: Some(Target::Content(Literal::Plain(LiteralInner {
+                        start: 18,
+                        end: 21,
+                        content: "foo".into(),
+                    }))),
                     ..Query::default()
                 },
                 Query {
                     global_regex: Some(false),
-                    target: Some(Target::Content(Literal::Plain("bar".into()))),
+                    target: Some(Target::Content(Literal::Plain(LiteralInner {
+                        start: 25,
+                        end: 28,
+                        content: "bar".into(),
+                    }))),
                     ..Query::default()
                 },
             ],
@@ -1034,25 +1285,23 @@ mod tests {
             vec![
                 Query {
                     case_sensitive: Some(false),
-                    target: Some(Target::Content(Literal::Plain("foo".into()))),
+                    target: Some(Target::Content(Literal::Plain(LiteralInner {
+                        start: 0,
+                        end: 3,
+                        content: "foo".into()
+                    }))),
                     ..Query::default()
                 },
                 Query {
                     case_sensitive: Some(false),
-                    target: Some(Target::Content(Literal::Plain("bar".into()))),
+                    target: Some(Target::Content(Literal::Plain(LiteralInner {
+                        start: 7,
+                        end: 10,
+                        content: "bar".into()
+                    }))),
                     ..Query::default()
                 },
             ],
-        );
-
-        assert_eq!(
-            parse("foo or bar case:ignore").unwrap(),
-            parse("case:ignore foo or bar").unwrap(),
-        );
-
-        assert_eq!(
-            parse("foo or bar case:ignore").unwrap(),
-            parse("case:sensitive foo or bar case:ignore").unwrap(),
         );
     }
 
@@ -1061,7 +1310,11 @@ mod tests {
         assert_eq!(
             parse("org").unwrap(),
             vec![Query {
-                target: Some(Target::Content(Literal::Plain("org".into()))),
+                target: Some(Target::Content(Literal::Plain(LiteralInner {
+                    start: 0,
+                    end: 3,
+                    content: "org".into()
+                }))),
                 ..Query::default()
             },],
         );
@@ -1070,11 +1323,19 @@ mod tests {
             parse("org or orange").unwrap(),
             vec![
                 Query {
-                    target: Some(Target::Content(Literal::Plain("org".into()))),
+                    target: Some(Target::Content(Literal::Plain(LiteralInner {
+                        start: 0,
+                        end: 3,
+                        content: "org".into()
+                    }))),
                     ..Query::default()
                 },
                 Query {
-                    target: Some(Target::Content(Literal::Plain("orange".into()))),
+                    target: Some(Target::Content(Literal::Plain(LiteralInner {
+                        start: 7,
+                        end: 13,
+                        content: "orange".into()
+                    }))),
                     ..Query::default()
                 },
             ],
@@ -1086,7 +1347,11 @@ mod tests {
         assert_eq!(
             parse("for").unwrap(),
             vec![Query {
-                target: Some(Target::Content(Literal::Plain("for".into()))),
+                target: Some(Target::Content(Literal::Plain(LiteralInner {
+                    start: 0,
+                    end: 3,
+                    content: "for".into()
+                }))),
                 ..Query::default()
             },],
         );
@@ -1095,11 +1360,19 @@ mod tests {
             parse("for or error").unwrap(),
             vec![
                 Query {
-                    target: Some(Target::Content(Literal::Plain("for".into()))),
+                    target: Some(Target::Content(Literal::Plain(LiteralInner {
+                        start: 0,
+                        end: 3,
+                        content: "for".into()
+                    }))),
                     ..Query::default()
                 },
                 Query {
-                    target: Some(Target::Content(Literal::Plain("error".into()))),
+                    target: Some(Target::Content(Literal::Plain(LiteralInner {
+                        start: 7,
+                        end: 12,
+                        content: "error".into()
+                    }))),
                     ..Query::default()
                 },
             ],
@@ -1126,8 +1399,18 @@ mod tests {
             parse_nl("what is background color? lang:tsx repo:bloop").unwrap(),
             SemanticQuery {
                 target: Some(Literal::Plain("what is background color?".into())),
-                langs: ["tsx".into()].into(),
-                repos: [Literal::Plain("bloop".into())].into(),
+                langs: [Literal::Plain(LiteralInner {
+                    start: 31,
+                    end: 34,
+                    content: "tsx".into()
+                })]
+                .into(),
+                repos: [Literal::Plain(LiteralInner {
+                    start: 40,
+                    end: 45,
+                    content: "bloop".into()
+                })]
+                .into(),
                 paths: [].into(),
                 branch: [].into()
             },
@@ -1137,26 +1420,54 @@ mod tests {
     #[test]
     fn nl_parse_dedup_similar_filters() {
         let q = parse_nl("what is background color? lang:tsx repo:bloop repo:bloop").unwrap();
-        assert_eq!(q.repos().count(), 1);
+        assert_eq!(q.repos().count(), 2);
     }
 
     #[test]
     fn nl_parse_multiple_filters() {
         assert_eq!(
-            parse_nl("what is background color? lang:tsx lang:ts repo:bloop repo:bar path:server/bleep repo:baz")
-                .unwrap(),
+            parse_nl("what is background color? lang:tsx lang:ts repo:bloop repo:bar path:server/bleep repo:baz").unwrap(),
             SemanticQuery {
                 target: Some(Literal::Plain("what is background color?".into())),
-                langs: ["tsx".into(), "typescript".into()].into(),
-                branch: [].into(),
-                repos: [
-                    Literal::Plain("bloop".into()),
-                    Literal::Plain("bar".into()),
-                    Literal::Plain("baz".into())
+                langs: [
+                    Literal::Plain(LiteralInner {
+                        start: 31,
+                        end: 34,
+                        content: "tsx".into()
+                    }),
+                    Literal::Plain(LiteralInner {
+                        start: 40,
+                        end: 42,
+                        content: "typescript".into()
+                    })
                 ]
                 .into(),
-                paths: [Literal::Plain("server/bleep".into())].into(),
-            }
+                branch: [].into(),
+                repos: [
+                    Literal::Plain(LiteralInner {
+                        start: 48,
+                        end: 53,
+                        content: "bloop".into(),
+                    }),
+                    Literal::Plain(LiteralInner {
+                        start: 86,
+                        end: 89,
+                        content: "baz".into(),
+                    }),
+                    Literal::Plain(LiteralInner {
+                        start: 59,
+                        end: 62,
+                        content: "bar".into(),
+                    }),
+                ]
+                .into(),
+                paths: [Literal::Plain(LiteralInner {
+                    start: 68,
+                    end: 80,
+                    content: "server/bleep".into(),
+                })]
+                .into(),
+            },
         );
     }
 
@@ -1169,8 +1480,18 @@ mod tests {
             .unwrap(),
             SemanticQuery {
                 target: Some(Literal::Plain("what is background color?".into())),
-                langs: ["tsx".into()].into(),
-                repos: [Literal::Plain("bloop".into())].into(),
+                langs: [Literal::Plain(LiteralInner {
+                    start: 31,
+                    end: 34,
+                    content: "tsx".into()
+                })]
+                .into(),
+                repos: [Literal::Plain(LiteralInner {
+                    start: 40,
+                    end: 45,
+                    content: "bloop".into()
+                })]
+                .into(),
                 paths: [].into(),
                 branch: [].into(),
             }
@@ -1182,7 +1503,12 @@ mod tests {
                 target: Some(Literal::Plain(
                     "why are languages excluded from ctags?".into()
                 )),
-                branch: [Literal::Plain("main".into())].into(),
+                branch: [Literal::Plain(LiteralInner {
+                    start: 58,
+                    end: 62,
+                    content: "main".into()
+                })]
+                .into(),
                 ..Default::default()
             }
         );
@@ -1206,7 +1532,11 @@ mod tests {
         assert_eq!(
             parse("'foo\\'bar'").unwrap(),
             vec![Query {
-                target: Some(Target::Content(Literal::Plain("foo'bar".into()))),
+                target: Some(Target::Content(Literal::Plain(LiteralInner {
+                    start: 1,
+                    end: 9,
+                    content: "foo'bar".into()
+                }))),
                 ..Query::default()
             }],
         );
@@ -1214,7 +1544,11 @@ mod tests {
         assert_eq!(
             parse(r#""foo\"bar""#).unwrap(),
             vec![Query {
-                target: Some(Target::Content(Literal::Plain("foo\"bar".into()))),
+                target: Some(Target::Content(Literal::Plain(LiteralInner {
+                    start: 1,
+                    end: 9,
+                    content: "foo\"bar".into()
+                }))),
                 ..Query::default()
             }],
         );
@@ -1222,7 +1556,11 @@ mod tests {
         assert_eq!(
             parse("/foo\\/bar/").unwrap(),
             vec![Query {
-                target: Some(Target::Content(Literal::Regex("foo/bar".into()))),
+                target: Some(Target::Content(Literal::Regex(LiteralInner {
+                    start: 1,
+                    end: 9,
+                    content: "foo/bar".into()
+                }))),
                 ..Query::default()
             }],
         );

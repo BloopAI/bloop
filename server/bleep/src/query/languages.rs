@@ -2,8 +2,8 @@ use std::{borrow::Cow, collections::HashSet};
 
 include!(concat!(env!("OUT_DIR"), "/languages.rs"));
 
-pub fn parse_alias(lang: Cow<str>) -> Cow<str> {
-    if let Some(s) = EXT_MAP.get(&lang) {
+pub fn parse_alias(lang: &str) -> Cow<'static, str> {
+    if let Some(s) = EXT_MAP.get(lang) {
         (*s).into()
     } else {
         lang.to_ascii_lowercase().into()
