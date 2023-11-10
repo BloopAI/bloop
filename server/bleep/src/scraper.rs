@@ -79,11 +79,8 @@ impl Scraper {
                     trace!("task finished");
                     match h.await {
                         Ok(Ok(mut scraper_result)) => {
-                            // insert doc into the stream if any
-                            if let Some(d) = scraper_result.doc.take() {
-                                self.visited_links.insert(d.url.to_string());
-                                yield d;
-                            }
+                            // insert doc into the stream
+                            yield scraper_result.doc;
 
                             // there could be dupes among the new urls, collect them into a set first
                             let new_urls = scraper_result
@@ -155,7 +152,7 @@ pub struct ScraperRequest {
 }
 
 pub struct ScraperResult {
-    pub doc: Option<Document>,
+    pub doc: Document,
     pub new_urls: Vec<(usize, Url)>,
 }
 
@@ -182,7 +179,7 @@ impl Config {
 pub struct Document {
     pub url: Url,
     pub path: PathBuf,
-    pub content: String,
+    pub content: Option<String>,
     pub meta: Meta,
 }
 
@@ -195,6 +192,10 @@ impl Document {
         other.set_host(base.host_str()).ok()?;
 
         base.make_relative(&other)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.content.is_none()
     }
 }
 
@@ -257,12 +258,12 @@ async fn visit(ScraperRequest { url, depth }: ScraperRequest) -> Result<ScraperR
         icon: article.content.icon.map(|c| c.to_string()),
     };
 
-    let doc = content.map(|content| Document {
+    let doc = Document {
         url,
         path: doc_path,
         content,
         meta,
-    });
+    };
 
     Ok(ScraperResult { doc, new_urls })
 }
