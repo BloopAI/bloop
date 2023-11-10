@@ -10,4 +10,4 @@ CREATE TABLE docs (
 
     modified_at DATETIME NOT NULL DEFAULT (datetime('now'))
 );
-ALTER TABLE studio_snapshots ADD COLUMN doc_context TEXT NOT NULL;
+ALTER TABLE studio_snapshots ADD COLUMN doc_context TEXT NOT NULL DEFAULT '[]';
