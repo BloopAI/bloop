@@ -598,7 +598,7 @@ pub fn parse_nl(query: &str) -> Result<SemanticQuery<'_>, ParseError> {
                     start: inner.as_span().start(),
                     end: inner.as_span().end(),
                 });
-                let _ = langs.insert(item.into());
+                let _ = langs.insert(item);
             }
             Rule::raw_text => {
                 let rhs = Literal::from(pair);
