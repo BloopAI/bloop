@@ -199,9 +199,11 @@ impl Indexable for File {
 
         // aggregate stats
         drop(worker_stats_tx);
-        let mut repo_stats = WorkerStats::default();
-        repo_stats.is_first_index = is_first_index;
-        repo_stats.was_index_reset = app.indexes.was_index_reset;
+        let mut repo_stats = WorkerStats {
+            is_first_index,
+            was_index_reset: app.indexes.was_index_reset,
+            ..Default::default()
+        };
         while let Ok(Some(stats)) =
             tokio::time::timeout(Duration::from_millis(10), worker_stats_rx.recv()).await
         {
