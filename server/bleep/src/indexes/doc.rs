@@ -210,7 +210,7 @@ impl Doc {
         // set favicon
         if let Some(favicon) = &metadata.icon {
             let resolved_url = url::Url::parse(favicon)
-                .unwrap_or_else(|_| normalize_absolute_url(&doc_source, favicon));
+                .unwrap_or_else(|_| normalize_absolute_url(doc_source, favicon));
             if let Err(e) = self.set_favicon(resolved_url.as_str(), id, executor).await {
                 error!(%e, %favicon, %id, "failed to set doc icon");
             } else {
