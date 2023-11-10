@@ -154,9 +154,10 @@ impl Application {
                 .context("qdrant initialization failed")?;
 
         // Wipe existing dbs & caches if the schema has changed
+        let mut was_index_reset = false;
         if config.source.index_version_mismatch() {
             debug!("schema version mismatch, resetting state");
-
+            was_index_reset = true;
             Indexes::reset_databases(&config)?;
             debug!("tantivy indexes deleted");
 
@@ -173,7 +174,10 @@ impl Application {
         config.source.save_index_version()?;
         debug!("index version saved");
 
-        let indexes = Indexes::new(&config, sql.clone()).await?.into();
+        let indexes = Indexes::new(&config, sql.clone())
+            .await?
+            .was_index_reset(dbg!(was_index_reset))
+            .into();
         debug!("indexes initialized");
 
         // Enforce capabilies and features depending on environment

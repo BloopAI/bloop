@@ -3,6 +3,7 @@ use std::{
     panic::AssertUnwindSafe,
     path::{Path, PathBuf},
     sync::atomic::{AtomicU64, Ordering},
+    time::Duration,
 };
 
 use anyhow::{bail, Result};
@@ -95,7 +96,7 @@ impl Indexable for File {
     ) -> Result<()> {
         let file_filter = FileFilter::compile(&repo.file_filter)?;
         let cache = file_cache.retrieve(reporef).await;
-        let is_index_job = cache.is_empty(); // not a reindex job if there are no cache hits
+        let is_first_index = cache.is_empty();
         let repo_name = reporef.indexed_name();
         let processed = &AtomicU64::new(0);
 
@@ -199,18 +200,25 @@ impl Indexable for File {
         // aggregate stats
         drop(worker_stats_tx);
         let mut repo_stats = WorkerStats::default();
-        while let Some(stats) = worker_stats_rx.recv().await {
+        repo_stats.is_first_index = is_first_index;
+        repo_stats.was_index_reset = app.indexes.was_index_reset;
+        while let Ok(Some(stats)) =
+            tokio::time::timeout(Duration::from_millis(10), worker_stats_rx.recv()).await
+        {
             repo_stats += stats;
         }
         analytics_event.add_payload("chunk_count", &repo_stats.chunks);
         analytics_event.add_payload("bytes", &human_readable(repo_stats.size));
+        analytics_event.add_payload("index_job_kind", &repo_stats.index_job_kind());
 
         let sync_time = start.elapsed();
         info!(?repo.disk_path, "repo file indexing finished, took {:?}", sync_time);
         analytics_event.add_payload("sync_time", &format!("{sync_time:?}"));
 
+        dbg!(&analytics_event);
+
         // send an analytics event if this is the first time this repo is being indexed
-        if is_index_job {
+        if repo_stats.reindex_count > 0 {
             let user = app.user().await;
             app.with_analytics(|hub| hub.track_repo(analytics_event, &user));
         }
@@ -580,12 +588,43 @@ struct WorkerStats {
     size: usize,
     // number of qdrant chunkc
     chunks: usize,
+    // number of dir-entries reindexed by this worker
+    reindex_count: usize,
+    // set to true if this is the first index of this reporef
+    is_first_index: bool,
+
+    // set to true if the index was reset on startup
+    was_index_reset: bool,
+}
+
+impl WorkerStats {
+    fn index_job_kind(&self) -> IndexJobKind {
+        if self.was_index_reset {
+            IndexJobKind::SchemaUpgrade {
+                reindex_file_count: self.reindex_count,
+            }
+        } else if self.is_first_index {
+            IndexJobKind::Index
+        } else {
+            IndexJobKind::PeriodicSync {
+                reindex_file_count: self.reindex_count,
+            }
+        }
+    }
+}
+
+#[derive(serde::Serialize, Clone, Copy, PartialEq, Eq)]
+enum IndexJobKind {
+    Index,
+    PeriodicSync { reindex_file_count: usize },
+    SchemaUpgrade { reindex_file_count: usize },
 }
 
 impl std::ops::AddAssign for WorkerStats {
     fn add_assign(&mut self, rhs: Self) {
         self.size += rhs.size;
         self.chunks += rhs.chunks;
+        self.reindex_count += rhs.reindex_count;
     }
 }
 
@@ -686,6 +725,8 @@ impl RepoDir {
         let stats = WorkerStats {
             size: self.size(),
             chunks: 0,
+            reindex_count: 1,
+            ..Default::default()
         };
 
         (
@@ -748,6 +789,7 @@ impl RepoFile {
         let indexed = explicitly_allowed.unwrap_or_else(|| self.should_index());
         let mut stats = WorkerStats {
             size: self.size(),
+            reindex_count: 1,
             ..Default::default()
         };
 

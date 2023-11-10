@@ -79,6 +79,7 @@ pub struct Indexes {
     pub repo: Indexer<Repo>,
     pub file: Indexer<File>,
     pub doc: Doc,
+    was_index_reset: bool,
     write_mutex: tokio::sync::Mutex<()>,
 }
 
@@ -104,7 +105,13 @@ impl Indexes {
                 config.max_threads,
             )?,
             write_mutex: Default::default(),
+            was_index_reset: false,
         })
+    }
+
+    pub fn was_index_reset(mut self, was_index_reset: bool) -> Self {
+        self.was_index_reset = was_index_reset;
+        self
     }
 
     pub fn reset_databases(config: &Configuration) -> Result<()> {
