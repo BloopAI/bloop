@@ -526,7 +526,6 @@ dependencies = [
  "pretty_assertions",
  "qdrant-client",
  "quick-xml 0.29.0",
- "rake",
  "rand 0.8.5",
  "rayon",
  "regex",
@@ -5521,16 +5520,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5267fca4496028628a95160fc423a33e8b2e6af8a5302579e322e4b520293cae"
 dependencies = [
  "proc-macro2",
-]
-
-[[package]]
-name = "rake"
-version = "0.3.3"
-source = "git+https://github.com/rmuller-ml/rake-rs.git?branch=determism_special_characters#cf2322f08d15852e79ad02a34e79404be9939c82"
-dependencies = [
- "lazy_static",
- "regex",
- "serde",
 ]
 
 [[package]]
