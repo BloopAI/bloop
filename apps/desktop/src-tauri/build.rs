@@ -33,23 +33,30 @@ fn main() {
 fn copy(profile_dir: &Path) {
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
 
-    let (dylib_name, target_path) = match target_os.as_str() {
+    let (dylib_names, target_parent) = match target_os.as_str() {
         "macos" => {
             let name = "libonnxruntime.dylib";
-            (name, Path::new(".").join("frameworks").join(name))
+            (vec![name], Path::new(".").join("frameworks"))
         }
         "linux" => {
             let name = "libonnxruntime.so";
-            (name, Path::new(".").join("dylibs").join(name))
+            (vec![name], Path::new(".").join("dylibs"))
         }
-        "windows" => return,
+        "windows" => {
+            let main = "onnxruntime.dll";
+            let providers = "onnxruntime_providers_shared.dll";
+            (vec![main, providers], Path::new(".").join("dylibs"))
+        }
         other => panic!("unknown OS {other}"),
     };
 
-    let dylib_path = profile_dir.join(dylib_name);
-    wait_for(&dylib_path);
-    println!("target: {target_path:?}, {:?}", env::current_dir());
-    fs::copy(dylib_path, target_path).unwrap();
+    for dylib_name in dylib_names {
+        let dylib_path = profile_dir.join(dylib_name);
+        let target_path = target_parent.join(dylib_name);
+        wait_for(&dylib_path);
+        println!("target: {target_path:?}, {:?}", env::current_dir());
+        fs::copy(dylib_path, target_path).unwrap();
+    }
 }
 
 fn wait_for(dylib_path: &Path) {
