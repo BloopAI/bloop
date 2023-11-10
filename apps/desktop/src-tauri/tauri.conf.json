@@ -71,7 +71,7 @@
         "config/config.json"
       ],
       "shortDescription": "",
-      "targets": ["nsis", "updater"],
+      "targets": "all",
       "windows": {
         "certificateThumbprint": "b955de6f8483ad3b14497e798a6eef48a137931b",
         "digestAlgorithm": "sha256",
