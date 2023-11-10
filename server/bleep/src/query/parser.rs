@@ -67,8 +67,8 @@ impl<'a> SemanticQuery<'a> {
 
     pub fn from_str(query: String, repo_ref: String) -> Self {
         Self {
-            target: Some(Literal::Plain(Cow::Owned(query))),
-            repos: [Literal::Plain(Cow::Owned(repo_ref))].into(),
+            target: Some(Literal::Plain(query.into())),
+            repos: [Literal::Plain(repo_ref.into())].into(),
             ..Default::default()
         }
     }
@@ -217,10 +217,63 @@ pub enum ParseError {
     MultiMode,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum Literal<'a> {
-    Plain(Cow<'a, str>),
-    Regex(Cow<'a, str>),
+    Plain(LiteralInner<'a>),
+    Regex(LiteralInner<'a>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+pub struct LiteralInner<'a> {
+    start: usize,
+    end: usize,
+    content: Cow<'a, str>,
+}
+
+impl<'a> LiteralInner<'a> {
+    fn new(start: usize, end: usize, content: impl Into<Cow<'a, str>>) -> Self {
+        Self {
+            start,
+            end,
+            content: content.into(),
+        }
+    }
+
+    fn to_owned(&self) -> LiteralInner<'static> {
+        LiteralInner {
+            start: self.start,
+            end: self.end,
+            content: Cow::Owned(self.content.to_string()),
+        }
+    }
+}
+
+impl<'a, T: AsRef<str>> From<T> for LiteralInner<'a> {
+    fn from(value: T) -> Self {
+        Self {
+            start: 0,
+            end: 0,
+            content: value.as_ref().to_owned().into(),
+        }
+    }
+}
+
+impl<'a> std::ops::Deref for LiteralInner<'a> {
+    type Target = str;
+
+    fn deref(&self) -> &Self::Target {
+        self.content.as_ref()
+    }
+}
+
+impl<'a> Default for LiteralInner<'a> {
+    fn default() -> Self {
+        Self {
+            start: 0,
+            end: 0,
+            content: Cow::Borrowed(""),
+        }
+    }
 }
 
 impl From<&String> for Literal<'static> {
@@ -231,21 +284,23 @@ impl From<&String> for Literal<'static> {
 
 impl<'a> Default for Literal<'a> {
     fn default() -> Self {
-        Self::Plain(Cow::Borrowed(""))
+        Literal::Plain(Default::default())
     }
 }
 
 impl<'a> Literal<'a> {
-    fn join_as_regex(self, rhs: Self) -> Self {
+    /// This drops position information, as it's not intelligible after the merge
+    fn join_as_regex(self, rhs: Self) -> Literal<'static> {
         let lhs = self.regex_str();
         let rhs = rhs.regex_str();
-        Self::Regex(Cow::Owned(format!("{lhs}\\s+{rhs}")))
+        Literal::Regex(format!("{lhs}\\s+{rhs}").into())
     }
 
-    fn join_as_plain(self, rhs: Self) -> Option<Self> {
+    /// This drops position information, as it's not intelligible after the merge
+    fn join_as_plain(self, rhs: Self) -> Option<Literal<'static>> {
         let lhs = self.as_plain()?;
         let rhs = rhs.as_plain()?;
-        Some(Self::Plain(Cow::Owned(format!("{lhs} {rhs}"))))
+        Some(Literal::Plain(format!("{lhs} {rhs}").into()))
     }
 
     /// Convert this literal into a regex string.
@@ -255,7 +310,7 @@ impl<'a> Literal<'a> {
     pub fn regex_str(&self) -> Cow<'a, str> {
         match self {
             Self::Plain(text) => regex::escape(text).into(),
-            Self::Regex(r) => r.clone(),
+            Self::Regex(r) => r.content.clone(),
         }
     }
 
@@ -265,7 +320,7 @@ impl<'a> Literal<'a> {
 
     pub fn as_plain(&self) -> Option<Cow<'a, str>> {
         match self {
-            Self::Plain(p) => Some(p.clone()),
+            Self::Plain(p) => Some(p.content.clone()),
             Self::Regex(..) => None,
         }
     }
@@ -279,27 +334,38 @@ impl<'a> Literal<'a> {
 
     pub fn unwrap(self) -> Cow<'a, str> {
         match self {
-            Literal::Plain(v) => v,
-            Literal::Regex(v) => v,
+            Literal::Plain(v) => v.content,
+            Literal::Regex(v) => v.content,
         }
     }
 
     pub fn into_owned(self) -> Literal<'static> {
         match self {
-            Literal::Plain(cow) => Literal::Plain(Cow::Owned(cow.into_owned())),
-            Literal::Regex(cow) => Literal::Regex(Cow::Owned(cow.into_owned())),
+            Literal::Plain(cow) => Literal::Plain(cow.to_owned()),
+            Literal::Regex(cow) => Literal::Regex(cow.to_owned()),
         }
     }
 }
 
 impl<'a> From<Pair<'a, Rule>> for Literal<'a> {
     fn from(pair: Pair<'a, Rule>) -> Self {
+        let start = pair.as_span().start();
+        let end = pair.as_span().end();
+
         match pair.as_rule() {
-            Rule::unquoted_literal => Self::Plain(pair.as_str().trim().into()),
-            Rule::quoted_literal => Self::Plain(unescape(pair.as_str(), '"').into()),
-            Rule::single_quoted_literal => Self::Plain(unescape(pair.as_str(), '\'').into()),
-            Rule::regex_quoted_literal => Self::Regex(unescape(pair.as_str(), '/').into()),
-            Rule::raw_text => Self::Plain(pair.as_str().trim().into()),
+            Rule::unquoted_literal => {
+                Self::Plain(LiteralInner::new(start, end, pair.as_str().trim()))
+            }
+            Rule::quoted_literal => {
+                Self::Plain(LiteralInner::new(start, end, unescape(pair.as_str(), '"')))
+            }
+            Rule::single_quoted_literal => {
+                Self::Plain(LiteralInner::new(start, end, unescape(pair.as_str(), '\'')))
+            }
+            Rule::regex_quoted_literal => {
+                Self::Regex(LiteralInner::new(start, end, unescape(pair.as_str(), '/')))
+            }
+            Rule::raw_text => Self::Plain(LiteralInner::new(start, end, pair.as_str().trim())),
             _ => unreachable!(),
         }
     }
