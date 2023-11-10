@@ -139,7 +139,7 @@ pub(super) async fn answer(
     debug!(?query_target, "parsed query target");
 
     let action = Action::Query(query_target);
-    exchanges.push(Exchange::new(query_id, query));
+    exchanges.push(Exchange::new(query_id, q.to_string(), query));
 
     execute_agent(
         params.clone(),
@@ -426,7 +426,7 @@ pub async fn explain(
         .collect::<Vec<_>>()
         .join("\n");
 
-    let mut exchange = Exchange::new(query_id, query);
+    let mut exchange = Exchange::new(query_id, virtual_req.q.to_string(), query);
 
     exchange.focused_chunk = Some(FocusedChunk {
         file_path: params.relative_path.clone(),

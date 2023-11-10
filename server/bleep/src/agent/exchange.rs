@@ -12,6 +12,7 @@ use rand::seq::SliceRandom;
 pub struct Exchange {
     pub id: uuid::Uuid,
     pub query: SemanticQuery<'static>,
+    pub raw_query: String,
     pub answer: Option<String>,
     pub search_steps: Vec<SearchStep>,
     pub paths: Vec<String>,
@@ -35,10 +36,11 @@ pub struct Exchange {
 }
 
 impl Exchange {
-    pub fn new(id: uuid::Uuid, query: SemanticQuery<'static>) -> Self {
+    pub fn new(id: uuid::Uuid, raw_query: String, query: SemanticQuery<'static>) -> Self {
         Self {
             id,
             query,
+            raw_query,
             query_timestamp: Some(Utc::now()),
             ..Default::default()
         }
