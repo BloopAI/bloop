@@ -51,7 +51,7 @@ fn phrases<'a>(phrases_iter: impl IntoIterator<Item = &'a str>) -> Vec<Vec<&'a s
     for s in phrases_iter.filter(|s| !s.is_empty()) {
         let mut phrase = Vec::new();
         for word in s.split_whitespace() {
-            if STOPWORDS.contains::<&str>(&word.to_lowercase().as_str()) {
+            if STOPWORDS.contains(word.to_lowercase().as_str()) {
                 if !phrase.is_empty() {
                     phrases.push(phrase.clone());
                     phrase.clear();
@@ -69,9 +69,5 @@ fn phrases<'a>(phrases_iter: impl IntoIterator<Item = &'a str>) -> Vec<Vec<&'a s
 
 pub fn remove_stopwords(text: &str) -> String {
     let phrases = phrases(regex!("[^a-zA-Z0-9_/ -]").split(text));
-    phrases
-        .iter()
-        .map(|p| p.join(" ").to_string())
-        .collect::<Vec<String>>()
-        .join(" ")
+    phrases.into_iter().flatten().collect::<Vec<_>>().join(" ")
 }
