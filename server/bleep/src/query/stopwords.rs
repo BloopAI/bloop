@@ -53,7 +53,8 @@ fn phrases<'a>(phrases_iter: impl IntoIterator<Item = &'a str>) -> Vec<Vec<&'a s
         for word in s.split_whitespace() {
             if STOPWORDS.contains::<&str>(&word.to_lowercase().as_str()) {
                 if !phrase.is_empty() {
-                    phrases.push(phrase.drain(..).collect());
+                    phrases.push(phrase.clone());
+                    phrase.clear();
                 }
             } else {
                 phrase.push(word);
