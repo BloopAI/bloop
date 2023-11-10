@@ -21,7 +21,10 @@ import {
   OpenChatHistoryItem,
 } from '../../../../types/general';
 import { conversationsCache } from '../../../../services/cache';
-import { mapLoadingSteps } from '../../../../mappers/conversation';
+import {
+  mapLoadingSteps,
+  mapUserQuery,
+} from '../../../../mappers/conversation';
 import { LocaleContext } from '../../../../context/localeContext';
 import { getDateFnsLocale } from '../../../../utils';
 import ConversationListItem from './ConversationListItem';
@@ -63,9 +66,11 @@ const AllConversations = ({
       resp.forEach((m) => {
         // @ts-ignore
         const userQuery = m.search_steps.find((s) => s.type === 'QUERY');
+        const parsedQuery = mapUserQuery(m);
         conv.push({
           author: ChatMessageAuthor.User,
-          text: m.query?.target?.Plain || userQuery?.content?.query || '',
+          text: m.raw_query || userQuery?.content?.query || '',
+          parsedQuery,
           isFromHistory: true,
         });
         conv.push({

@@ -396,5 +396,6 @@
 	"Token limit reached, this answer may be incomplete. To generate a full answer, please reduce the number of tokens used and regenerate.": "Token limit reached, this answer may be incomplete. To generate a full answer, please reduce the number of tokens used and regenerate.",
 	"<0></0><1></1> to navigate.": "<0></0><1></1> to navigate.",
 	"Below are a few questions you can ask me to get started:": "Below are a few questions you can ask me to get started:",
-	"Check context files for any errors": "Check context files for any errors"
+	"Check context files for any errors": "Check context files for any errors",
+	"Indexing": "Indexing"
 }

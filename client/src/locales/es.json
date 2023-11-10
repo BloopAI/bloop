@@ -397,5 +397,6 @@
 	"Token limit reached, this answer may be incomplete. To generate a full answer, please reduce the number of tokens used and regenerate.": "Límite de token alcanzado, esta respuesta puede estar incompleta. Para generar una respuesta completa, reduzca el número de tokens utilizados y regenerados.",
 	"<0></0><1></1> to navigate.": "<0> </0> <1> </1> para navegar.",
 	"Below are a few questions you can ask me to get started:": "A continuación hay algunas preguntas que puede pedirme que comience:",
-	"Check context files for any errors": "Verifique los archivos de contexto para cualquier error"
+	"Check context files for any errors": "Verifique los archivos de contexto para cualquier error",
+	"Indexing": "Indexación"
 }

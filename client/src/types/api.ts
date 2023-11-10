@@ -244,7 +244,34 @@ export type SearchStepType = ProcStep | CodeStep | PathStep;
 export type ConversationType = {
   id: string;
   search_steps: SearchStepType[];
-  query: { target: { Plain: string } };
+  raw_query: string;
+  query: {
+    repos: [];
+    paths: {
+      Plain: { start: number; end: number; content: string };
+    }[];
+    langs: {
+      Plain: {
+        start: number;
+        end: number;
+        content: string;
+      };
+    }[];
+    branch: {
+      Plain: {
+        start: number;
+        end: number;
+        content: string;
+      };
+    }[];
+    target: {
+      Plain: {
+        start: number;
+        end: number;
+        content: string;
+      };
+    };
+  };
   conclusion: string;
   answer: string;
   paths: string[];

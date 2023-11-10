@@ -169,9 +169,18 @@ export enum ChatMessageAuthor {
   Server = 'server',
 }
 
+export enum ParsedQueryTypeEnum {
+  TEXT = 'text',
+  PATH = 'path',
+  LANG = 'lang',
+  BRANCH = 'branch',
+}
+export type ParsedQueryType = { type: ParsedQueryTypeEnum; text: string };
+
 type ChatMessageUser = {
   author: ChatMessageAuthor.User;
   text: string;
+  parsedQuery?: ParsedQueryType[];
   isFromHistory?: boolean;
 };
 
