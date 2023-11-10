@@ -51,7 +51,7 @@ fn phrases<'a>(phrases_iter: impl IntoIterator<Item = &'a str>) -> Vec<Vec<&'a s
     for s in phrases_iter.filter(|s| !s.is_empty()) {
         let mut phrase = Vec::new();
         for word in s.split_whitespace() {
-            if STOPWORDS.contains::<&str>(&word.to_lowercase().as_str()) {
+            if STOPWORDS.contains(word.to_lowercase().as_str()) {
                 if !phrase.is_empty() {
                     phrases.push(phrase.clone());
                     phrase.clear();
