@@ -399,5 +399,6 @@
 	"Check context files for any errors": "Check context files for any errors",
 	"Indexing": "Indexing",
 	"Cloning": "Cloning",
-	"Directories": "Directories"
+	"Directories": "Directories",
+	"Languages": "Languages"
 }

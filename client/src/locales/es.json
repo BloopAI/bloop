@@ -400,5 +400,6 @@
 	"Check context files for any errors": "Verifique los archivos de contexto para cualquier error",
 	"Indexing": "Indexación",
 	"Cloning": "Clonación",
-	"Directories": "Directorios"
+	"Directories": "Directorios",
+	"Languages": "Lenguas"
 }

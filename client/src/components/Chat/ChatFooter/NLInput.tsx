@@ -149,9 +149,7 @@ const NLInput = ({
       search: string,
       callback: (a: { id: string; display: string }[]) => void,
     ) => {
-      const respPath = await getAutocomplete(
-        `repo:${tab.repoName} path:${search}`,
-      );
+      const respPath = await getAutocomplete(`path:${search} repo:${tab.name}`);
       const fileResults = respPath.data.filter(
         (d): d is FileResItem => d.kind === 'file_result',
       );
@@ -178,9 +176,7 @@ const NLInput = ({
       search: string,
       callback: (a: { id: string; display: string }[]) => void,
     ) => {
-      const respLang = await getAutocomplete(
-        `repo:${tab.repoName} lang:${search}`,
-      );
+      const respLang = await getAutocomplete(`lang:${search} repo:${tab.name}`);
       const langResults = respLang.data
         .filter((d): d is LangItem => d.kind === 'lang')
         .map((d) => d.data);
@@ -190,7 +186,7 @@ const NLInput = ({
       });
       callback(results);
     },
-    [],
+    [tab.name],
   );
 
   const renderPathSuggestion = useCallback(

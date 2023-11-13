@@ -405,5 +405,6 @@
 	"Check context files for any errors": "检查上下文文件是否有任何错误",
 	"Indexing": "索引",
 	"Cloning": "克隆",
-	"Directories": "目录"
+	"Directories": "目录",
+	"Languages": "语言"
 }

@@ -397,5 +397,6 @@
 	"Check context files for any errors": "エラーがない場合は、コンテキストファイルを確認してください",
 	"Indexing": "インデックス付け",
 	"Cloning": "クローニング",
-	"Directories": "ディレクトリ"
+	"Directories": "ディレクトリ",
+	"Languages": "言語"
 }
