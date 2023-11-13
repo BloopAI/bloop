@@ -72,9 +72,12 @@ pub(super) async fn handle(
 
         autocomplete_results.extend(list);
 
-        let mut ranked_langs = langs.into_iter().collect::<Vec<_>>();
-        ranked_langs.sort_by(|(_, a_count), (_, b_count)| a_count.cmp(b_count));
-        autocomplete_results.extend(ranked_langs.into_iter().map(|(l, _)| QueryResult::Lang(l)));
+        if queries.iter().any(|q| q.lang.is_some()) {
+            let mut ranked_langs = langs.into_iter().collect::<Vec<_>>();
+            ranked_langs.sort_by(|(_, a_count), (_, b_count)| a_count.cmp(b_count));
+            autocomplete_results
+                .extend(ranked_langs.into_iter().map(|(l, _)| QueryResult::Lang(l)));
+        }
     }
 
     Ok(json(AutocompleteResponse {
