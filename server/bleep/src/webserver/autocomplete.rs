@@ -17,8 +17,25 @@ use axum::{extract::Query, response::IntoResponse as IntoAxumResponse, Extension
 use futures::{stream, StreamExt, TryStreamExt};
 use serde::Serialize;
 
+fn default_true() -> bool {
+    true
+}
+
+#[derive(Deserialize)]
+pub struct AutocompleteParams {
+    #[serde(default = "default_true")]
+    content: bool,
+    #[serde(default = "default_true")]
+    file: bool,
+    #[serde(default = "default_true")]
+    repo: bool,
+    #[serde(default = "default_true")]
+    lang: bool,
+}
+
 pub(super) async fn handle(
     Query(mut api_params): Query<ApiQuery>,
+    Query(ac_params): Query<AutocompleteParams>,
     Extension(indexes): Extension<Arc<Indexes>>,
 ) -> Result<impl IntoAxumResponse> {
     // Override page_size and set to low value
@@ -43,11 +60,20 @@ pub(super) async fn handle(
 
     // If no flags completion, run a search with full query
     if autocomplete_results.is_empty() {
-        let contents = ContentReader.execute(&indexes.file, &queries, &api_params);
-        let repos = RepoReader.execute(&indexes.repo, &queries, &api_params);
-        let files = FileReader.execute(&indexes.file, &queries, &api_params);
+        let mut engines = vec![];
+        if ac_params.content {
+            engines.push(ContentReader.execute(&indexes.file, &queries, &api_params));
+        }
 
-        let (langs, list) = stream::iter([contents, repos, files])
+        if ac_params.file {
+            engines.push(RepoReader.execute(&indexes.repo, &queries, &api_params));
+        }
+
+        if ac_params.repo {
+            engines.push(FileReader.execute(&indexes.file, &queries, &api_params));
+        }
+
+        let (langs, list) = stream::iter(engines)
             // Buffer several readers at the same time. The exact number is not important; this is
             // simply an upper bound.
             .buffered(10)
@@ -72,9 +98,12 @@ pub(super) async fn handle(
 
         autocomplete_results.extend(list);
 
-        let mut ranked_langs = langs.into_iter().collect::<Vec<_>>();
-        ranked_langs.sort_by(|(_, a_count), (_, b_count)| a_count.cmp(b_count));
-        autocomplete_results.extend(ranked_langs.into_iter().map(|(l, _)| QueryResult::Lang(l)));
+        if ac_params.lang {
+            let mut ranked_langs = langs.into_iter().collect::<Vec<_>>();
+            ranked_langs.sort_by(|(_, a_count), (_, b_count)| a_count.cmp(b_count));
+            autocomplete_results
+                .extend(ranked_langs.into_iter().map(|(l, _)| QueryResult::Lang(l)));
+        }
     }
 
     Ok(json(AutocompleteResponse {
