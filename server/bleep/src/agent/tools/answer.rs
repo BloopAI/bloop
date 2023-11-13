@@ -159,10 +159,7 @@ impl Agent {
                 .map(|(i, line)| format!("{} {line}\n", i + chunk.start_line + 1))
                 .collect::<String>();
 
-            let formatted_snippet = format!(
-                "### {} {} ###\n{snippet}\n\n",
-                chunk.repo_path.repo, chunk.repo_path.path
-            );
+            let formatted_snippet = format!("### {} ###\n{snippet}\n\n", chunk.repo_path);
 
             let snippet_tokens = bpe.encode_ordinary(&formatted_snippet).len();
 

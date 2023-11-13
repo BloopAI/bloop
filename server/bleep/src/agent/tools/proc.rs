@@ -11,11 +11,12 @@ use crate::{
 };
 
 impl Agent {
+    #[instrument(skip(self))]
     pub async fn process_files(&mut self, query: &str, aliases: &[usize]) -> Result<String> {
         let paths = aliases
             .iter()
             .copied()
-            .map(|i| self.paths().nth(i).ok_or(i).map(|r| r.clone()))
+            .map(|i| self.paths().nth(i).ok_or(i).map(Clone::clone))
             .collect::<Result<Vec<_>, _>>()
             .map_err(|i| anyhow!("invalid path alias {i}"))?;
 
