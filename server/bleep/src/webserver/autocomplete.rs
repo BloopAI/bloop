@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use super::prelude::*;
 use crate::{
@@ -23,7 +23,7 @@ pub(super) async fn handle(
 ) -> Result<impl IntoAxumResponse> {
     // Override page_size and set to low value
     api_params.page = 0;
-    api_params.page_size = 3;
+    api_params.page_size = 10;
 
     let queries = parser::parse(&api_params.q).map_err(Error::user)?;
     let mut autocomplete_results = vec![];
@@ -41,37 +41,46 @@ pub(super) async fn handle(
         );
     }
 
-    if let Some(matched_langs) = complete_lang(&api_params.q) {
-        autocomplete_results.append(
-            &mut matched_langs
-                .map(|l| QueryResult::Lang(l.to_string()))
-                .collect(),
-        );
-    }
-
     // If no flags completion, run a search with full query
     if autocomplete_results.is_empty() {
         let contents = ContentReader.execute(&indexes.file, &queries, &api_params);
         let repos = RepoReader.execute(&indexes.repo, &queries, &api_params);
         let files = FileReader.execute(&indexes.file, &queries, &api_params);
 
-        autocomplete_results = stream::iter([contents, repos, files])
+        let (langs, list) = stream::iter([contents, repos, files])
             // Buffer several readers at the same time. The exact number is not important; this is
             // simply an upper bound.
             .buffered(10)
-            .try_fold(Vec::new(), |mut a, e| async {
-                a.extend(e.data.into_iter());
-                Ok(a)
-            })
+            .try_fold(
+                (HashMap::<String, usize>::new(), Vec::new()),
+                |(mut langs, mut list), e| async {
+                    for (lang, count) in e.stats.lang {
+                        // The exact number here isn't relevant, and
+                        // this may be off.
+                        //
+                        // We're trying to scale the results compared
+                        // to each other which means this will still
+                        // serve the purpose for ranking.
+                        *langs.entry(lang).or_default() += count;
+                    }
+                    list.extend(e.data.into_iter());
+                    Ok((langs, list))
+                },
+            )
             .await
             .map_err(Error::internal)?;
+
+        autocomplete_results.extend(list);
+
+        let mut ranked_langs = langs.into_iter().collect::<Vec<_>>();
+        ranked_langs.sort_by(|(_, a_count), (_, b_count)| a_count.cmp(b_count));
+        autocomplete_results.extend(ranked_langs.into_iter().map(|(l, _)| QueryResult::Lang(l)));
     }
 
-    let count = autocomplete_results.len();
-    let data = autocomplete_results;
-    let response = AutocompleteResponse { count, data };
-
-    Ok(json(response))
+    Ok(json(AutocompleteResponse {
+        count: autocomplete_results.len(),
+        data: autocomplete_results,
+    }))
 }
 
 fn complete_flag(q: &str) -> impl Iterator<Item = &str> + '_ {
@@ -79,19 +88,6 @@ fn complete_flag(q: &str) -> impl Iterator<Item = &str> + '_ {
         .iter()
         .filter(move |f| f.starts_with(q))
         .copied()
-}
-
-// Bypass the parser and execute a prefix search using the rightmost whitespace-split token
-// in the query string.
-//
-// This should be revisited when we implement cursor-aware autocomplete.
-fn complete_lang(q: &str) -> Option<impl Iterator<Item = &'static str> + '_> {
-    match q.split_whitespace().rfind(|comp| comp.starts_with("lang:")) {
-        Some(last) => last
-            .strip_prefix("lang:")
-            .map(|prefix| crate::query::languages::list().filter(move |l| l.starts_with(prefix))),
-        _ => None,
-    }
 }
 
 #[derive(Serialize)]
