@@ -398,8 +398,8 @@ export function mergeRanges(ranges: [number, number][]): [number, number][] {
 export function splitUserInputAfterAutocomplete(
   input: string,
 ): ParsedQueryType[] {
-  const pathRegex = /\(path:(.*?)\)/g;
-  const langRegex = /\(lang:(.*?)\)/g;
+  const pathRegex = /\|path:(.*?)\|/g;
+  const langRegex = /\|lang:(.*?)\|/g;
   const result: ParsedQueryType[] = [];
 
   let lastIndex = 0;
@@ -437,9 +437,9 @@ export function concatenateParsedQuery(query: ParsedQueryType[]) {
     if (q.type === ParsedQueryTypeEnum.TEXT) {
       result += q.text;
     } else if (q.type === ParsedQueryTypeEnum.PATH) {
-      result += `(path:${q.text})`;
+      result += `|path:${q.text}|`;
     } else if (q.type === ParsedQueryTypeEnum.LANG) {
-      result += `(lang:${q.text})`;
+      result += `|lang:${q.text}|`;
     }
   });
   return result;

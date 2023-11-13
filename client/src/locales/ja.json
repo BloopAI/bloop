@@ -396,5 +396,6 @@
 	"Below are a few questions you can ask me to get started:": "以下は、あなたが私に始めるように頼むことができるいくつかの質問です：",
 	"Check context files for any errors": "エラーがない場合は、コンテキストファイルを確認してください",
 	"Indexing": "インデックス付け",
-	"Cloning": "クローニング"
+	"Cloning": "クローニング",
+	"Directories": "ディレクトリ"
 }

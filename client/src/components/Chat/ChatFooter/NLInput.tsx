@@ -1,5 +1,6 @@
 import React, {
   memo,
+  ReactNode,
   useCallback,
   useContext,
   useEffect,
@@ -8,7 +9,12 @@ import React, {
   useState,
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { MentionsInput, Mention, OnChangeHandlerFunc } from 'react-mentions';
+import {
+  MentionsInput,
+  Mention,
+  OnChangeHandlerFunc,
+  SuggestionDataItem,
+} from 'react-mentions';
 import {
   FeatherSelected,
   FolderFilled,
@@ -96,7 +102,6 @@ const NLInput = ({
 }: Props) => {
   const { t } = useTranslation();
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   const [isComposing, setComposition] = useState(false);
   const { setPromptGuideOpen } = useContext(UIContext.PromptGuide);
   const { tab } = useContext(UIContext.Tab);
@@ -188,6 +193,89 @@ const NLInput = ({
     [],
   );
 
+  const renderPathSuggestion = useCallback(
+    (
+      entry: SuggestionDataItem,
+      search: string,
+      highlightedDisplay: ReactNode,
+      index: number,
+      focused: boolean,
+    ) => {
+      const d = entry as SuggestionType;
+      return (
+        <div>
+          {d.isFirst ? (
+            <div className="flex items-center rounded-6 gap-2 px-2 py-1 text-label-muted caption cursor-default">
+              <Trans>{d.type === 'dir' ? 'Directories' : 'Files'}</Trans>
+            </div>
+          ) : null}
+          <div
+            className={`flex items-center justify-start rounded-6 gap-2 px-2 py-1 ${
+              focused ? 'bg-chat-bg-base-hover' : ''
+            } body-s text-label-title`}
+          >
+            {d.type === 'dir' ? (
+              <FolderFilled />
+            ) : (
+              <FileIcon filename={d.display} />
+            )}
+            {d.display}
+          </div>
+        </div>
+      );
+    },
+    [],
+  );
+
+  const pathTransform = useCallback((id: string, trans: string) => {
+    const split = splitPath(trans);
+    return ` ${split[split.length - 1] || split[split.length - 2]} `;
+  }, []);
+
+  const onCompositionStart = useCallback(() => {
+    setComposition(true);
+  }, []);
+
+  const onCompositionEnd = useCallback(() => {
+    // this event comes before keydown and sets state faster causing unintentional submit
+    setTimeout(() => setComposition(false), 10);
+  }, []);
+
+  const renderLangSuggestion = useCallback(
+    (
+      entry: SuggestionDataItem,
+      search: string,
+      highlightedDisplay: ReactNode,
+      index: number,
+      focused: boolean,
+    ) => {
+      const d = entry as SuggestionType;
+      return (
+        <div>
+          {d.isFirst ? (
+            <div className="flex items-center rounded-6 gap-2 px-2 py-1 text-label-muted caption cursor-default">
+              <Trans>Languages</Trans>
+            </div>
+          ) : null}
+          <div
+            className={`flex items-center justify-start rounded-6 gap-2 px-2 py-1 ${
+              focused ? 'bg-chat-bg-base-hover' : ''
+            } body-s text-label-title`}
+          >
+            <FileIcon filename={getFileExtensionForLang(d.display, true)} />
+            {d.display}
+          </div>
+        </div>
+      );
+    },
+    [],
+  );
+
+  const langTransform = useCallback(
+    (id: string, trans: string) => ` ${trans} `,
+    [],
+  );
+
   return (
     <div
       className={`w-full rounded-lg border border-chat-bg-border focus-within:border-chat-bg-border-hover px-4 ${
@@ -195,7 +283,6 @@ const NLInput = ({
           ? 'bg-transparent'
           : 'bg-chat-bg-base hover:text-label-title hover:border-chat-bg-border-hover'
       } transition-all ease-out duration-150 flex-grow-0 relative z-100`}
-      ref={containerRef}
     >
       <div
         className={`w-full flex items-start gap-2 
@@ -224,92 +311,31 @@ const NLInput = ({
           placeholder={shouldShowLoader ? '' : t(defaultPlaceholder)}
           inputRef={inputRef}
           disabled={isStoppable && generationInProgress}
-          onCompositionStart={() => setComposition(true)}
-          onCompositionEnd={() => {
-            // this event comes before keydown and sets state faster causing unintentional submit
-            setTimeout(() => setComposition(false), 10);
-          }}
+          onCompositionStart={onCompositionStart}
+          onCompositionEnd={onCompositionEnd}
           // @ts-ignore
           onKeyDown={handleKeyDown}
           onFocus={handleInputFocus}
           style={inputStyle}
-          // @ts-ignore
-          suggestionsPortalHost={containerRef.current}
           forceSuggestionsAboveCursor
         >
           <Mention
             trigger="@"
-            markup="(path:__id__)"
+            markup="|path:__id__|"
             data={getDataPath}
-            renderSuggestion={(
-              entry,
-              search,
-              highlightedDisplay,
-              index,
-              focused,
-            ) => {
-              const d = entry as SuggestionType;
-              return (
-                <div>
-                  {d.isFirst ? (
-                    <div className="flex items-center rounded-6 gap-2 px-2 py-1 text-label-muted caption cursor-default">
-                      {d.type}
-                    </div>
-                  ) : null}
-                  <div
-                    className={`flex items-center justify-start rounded-6 gap-2 px-2 py-1 ${
-                      focused ? 'bg-chat-bg-base-hover' : ''
-                    } body-s text-label-title`}
-                  >
-                    {d.type === 'dir' ? (
-                      <FolderFilled />
-                    ) : (
-                      <FileIcon filename={d.display} />
-                    )}
-                    {d.display}
-                  </div>
-                </div>
-              );
-            }}
+            renderSuggestion={renderPathSuggestion}
             className="bg-chat-bg-shade border border-chat-bg-border py-0.5 rounded has-path"
             appendSpaceOnAdd
-            displayTransform={(id, trans) => ` ${splitPath(trans).pop()} `}
+            displayTransform={pathTransform}
           />
           <Mention
             trigger="@"
-            markup="(lang:__id__)"
+            markup="|lang:__id__|"
             data={getDataLang}
             appendSpaceOnAdd
-            renderSuggestion={(
-              entry,
-              search,
-              highlightedDisplay,
-              index,
-              focused,
-            ) => {
-              const d = entry as SuggestionType;
-              return (
-                <div>
-                  {d.isFirst ? (
-                    <div className="flex items-center rounded-6 gap-2 px-2 py-1 text-label-muted caption cursor-default">
-                      {d.type}
-                    </div>
-                  ) : null}
-                  <div
-                    className={`flex items-center justify-start rounded-6 gap-2 px-2 py-1 ${
-                      focused ? 'bg-chat-bg-base-hover' : ''
-                    } body-s text-label-title`}
-                  >
-                    <FileIcon
-                      filename={getFileExtensionForLang(d.display, true)}
-                    />
-                    {d.display}
-                  </div>
-                </div>
-              );
-            }}
+            renderSuggestion={renderLangSuggestion}
             className="bg-chat-bg-shade border border-chat-bg-border py-0.5 rounded has-path"
-            displayTransform={(id, trans) => ` ${trans} `}
+            displayTransform={langTransform}
           />
         </MentionsInput>
         {isStoppable || selectedLines ? (

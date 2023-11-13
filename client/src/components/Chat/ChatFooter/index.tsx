@@ -113,7 +113,7 @@ const ChatFooter = ({
   }, [isHistoryOpen, openHistoryItem, setHistoryOpen]);
 
   return (
-    <div className="flex flex-col gap-3 w-full absolute bottom-0 left-0 p-4 bg-chat-bg-base/25 backdrop-blur-6 border-t border-chat-bg-border">
+    <div className="flex flex-col gap-3 w-full absolute bottom-0 left-0 p-4 bg-chat-bg-base/25 backdrop-blur-6 border-t border-chat-bg-border z-20">
       <form onSubmit={onSubmit} className="w-full" onClick={onFormClick}>
         <NLInput
           id="question-input"

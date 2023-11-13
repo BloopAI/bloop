@@ -71,10 +71,10 @@ const Chat = () => {
       if (!query) {
         return;
       }
-      console.log('query', query);
       const cleanQuery = query
-        .replace(/\((path:.*?)\)/, '$1')
-        .replace(/\((lang:.*?)\)/, '$1'); // clean up after autocomplete
+        .replace(/\|(path:.*?)\|/, '$1')
+        .replace(/\|(lang:.*?)\|/, '$1'); // clean up after autocomplete
+      console.log('query', query, 'cleanQuery', cleanQuery);
       prevEventSource?.close();
       setInputValue('');
       setLoading(true);
