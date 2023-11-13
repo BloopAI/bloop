@@ -6,6 +6,7 @@ import {
   ChatMessage,
   ChatMessageAuthor,
   ChatMessageServer,
+  ChatMessageUser,
   OpenChatHistoryItem,
 } from '../../types/general';
 import { AppNavigationContext } from '../../context/appNavigationContext';
@@ -15,6 +16,10 @@ import { mapLoadingSteps } from '../../mappers/conversation';
 import { findElementInCurrentTab } from '../../utils/domUtils';
 import { conversationsCache } from '../../services/cache';
 import useResizeableWidth from '../../hooks/useResizeableWidth';
+import {
+  concatenateParsedQuery,
+  splitUserInputAfterAutocomplete,
+} from '../../utils';
 import DeprecatedClientModal from './ChatFooter/DeprecatedClientModal';
 import ChatHeader from './ChatHeader';
 import ChatBody from './ChatBody';
@@ -303,6 +308,7 @@ const Chat = () => {
       {
         author: ChatMessageAuthor.User,
         text: userQuery,
+        parsedQuery: splitUserInputAfterAutocomplete(userQuery),
         isLoading: false,
       },
     ]);
@@ -353,7 +359,10 @@ const Chat = () => {
         stopGenerating();
       }
       setHideMessagesFrom(i);
-      setInputValue(conversation[i].text!);
+      const mes = conversation[i] as ChatMessageUser;
+      setInputValue(
+        mes.parsedQuery ? concatenateParsedQuery(mes.parsedQuery) : mes.text!,
+      );
     },
     [isLoading, conversation],
   );

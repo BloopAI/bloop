@@ -177,7 +177,7 @@ export enum ParsedQueryTypeEnum {
 }
 export type ParsedQueryType = { type: ParsedQueryTypeEnum; text: string };
 
-type ChatMessageUser = {
+export type ChatMessageUser = {
   author: ChatMessageAuthor.User;
   text: string;
   parsedQuery?: ParsedQueryType[];
