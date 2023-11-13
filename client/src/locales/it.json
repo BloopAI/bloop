@@ -397,5 +397,6 @@
 	"<0></0><1></1> to navigate.": "<0></0><1></1> per navigare.",
 	"Below are a few questions you can ask me to get started:": "Di seguito alcune domande che puoi pormi per iniziare:",
 	"Check context files for any errors": "Controlla eventuali errori nei file di contesto",
-	"Indexing": "Indicizzazione"
+	"Indexing": "Indicizzazione",
+	"Cloning": "Clonazione"
 }

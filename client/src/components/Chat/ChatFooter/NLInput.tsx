@@ -26,7 +26,7 @@ import Button from '../../Button';
 import { getAutocomplete } from '../../../services/api';
 import { FileResItem, LangItem } from '../../../types/api';
 import FileIcon from '../../FileIcon';
-import { getFileExtensionForLang } from '../../../utils';
+import { getFileExtensionForLang, splitPath } from '../../../utils';
 import InputLoader from './InputLoader';
 
 type Props = {
@@ -273,7 +273,7 @@ const NLInput = ({
             }}
             className="bg-chat-bg-shade border border-chat-bg-border py-0.5 rounded has-path"
             appendSpaceOnAdd
-            displayTransform={(id, trans) => ` ${trans} `}
+            displayTransform={(id, trans) => ` ${splitPath(trans).pop()} `}
           />
           <Mention
             trigger="@"
