@@ -1,7 +1,7 @@
 use pest::{iterators::Pair, Parser};
 use regex::Regex;
 use smallvec::{smallvec, SmallVec};
-use std::{borrow::Cow, collections::HashSet, mem};
+use std::{borrow::Cow, collections::HashSet, mem, ops::Deref};
 
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
 pub struct Query<'a> {
@@ -168,6 +168,14 @@ impl<'a> Query<'a> {
 
 impl<'a> Target<'a> {
     /// Get the inner literal for this target, regardless of the variant.
+    pub fn literal_mut(&'a mut self) -> &mut Literal<'a> {
+        match self {
+            Self::Symbol(lit) => lit,
+            Self::Content(lit) => lit,
+        }
+    }
+
+    /// Get the inner literal for this target, regardless of the variant.
     pub fn literal(&self) -> &Literal<'_> {
         match self {
             Self::Symbol(lit) => lit,
@@ -254,7 +262,7 @@ impl<'a, T: AsRef<str>> From<T> for LiteralInner<'a> {
     }
 }
 
-impl<'a> std::ops::Deref for LiteralInner<'a> {
+impl<'a> Deref for LiteralInner<'a> {
     type Target = str;
 
     fn deref(&self) -> &Self::Target {
@@ -388,7 +396,7 @@ impl<'a, 'b: 'a> AsRef<Cow<'a, str>> for Literal<'b> {
     }
 }
 
-impl std::ops::Deref for Literal<'_> {
+impl Deref for Literal<'_> {
     type Target = str;
 
     fn deref(&self) -> &Self::Target {

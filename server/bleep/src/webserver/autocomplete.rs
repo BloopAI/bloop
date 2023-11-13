@@ -42,7 +42,32 @@ pub(super) async fn handle(
     api_params.page = 0;
     api_params.page_size = 10;
 
-    let queries = parser::parse(&api_params.q).map_err(Error::user)?;
+    let queries = parser::parse(&api_params.q)
+        .map_err(Error::user)?
+        .into_iter()
+        .map(|mut q| {
+            let target = q.target.get_or_insert_with(|| Target::Content(" ".into()));
+
+            for keyword in &["path:", "repo:"] {
+                if let Some(pos) = target.literal().find(keyword) {
+                    let new = format!(
+                        "{}{}",
+                        &target.literal()[..pos],
+                        &target.literal()[pos + keyword.len()..]
+                    );
+
+                    *target = Target::Content(Literal::Plain(if new.is_empty() {
+                        " ".into()
+                    } else {
+                        new.into()
+                    }));
+                }
+            }
+
+            q.lang = None;
+            q
+        })
+        .collect::<Vec<_>>();
     let mut autocomplete_results = vec![];
 
     // Only execute prefix search on flag names if there is a non-regex content target.
@@ -101,6 +126,8 @@ pub(super) async fn handle(
         if ac_params.lang {
             let mut ranked_langs = langs.into_iter().collect::<Vec<_>>();
             ranked_langs.sort_by(|(_, a_count), (_, b_count)| a_count.cmp(b_count));
+            ranked_langs.reverse();
+            ranked_langs.truncate(5);
             autocomplete_results
                 .extend(ranked_langs.into_iter().map(|(l, _)| QueryResult::Lang(l)));
         }
