@@ -5,7 +5,7 @@ use tracing::instrument;
 
 use crate::{
     agent::{
-        exchange::{SearchStep, Update},
+        exchange::{RepoPath, SearchStep, Update},
         Agent,
     },
     analytics::EventData,
@@ -46,7 +46,15 @@ impl Agent {
 
         let mut paths = paths
             .iter()
-            .map(|p| (self.get_path_alias(&p.0, &p.1), p.0.to_string()))
+            .map(|(repo, path)| {
+                (
+                    self.get_path_alias(&RepoPath {
+                        repo: repo.clone(),
+                        path: path.clone(),
+                    }),
+                    path.to_string(),
+                )
+            })
             .collect::<Vec<_>>();
         paths.sort_by(|a: &(usize, String), b| a.0.cmp(&b.0)); // Sort by alias
 

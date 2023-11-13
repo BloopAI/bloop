@@ -4,7 +4,7 @@ use std::{fmt, mem};
 use chrono::prelude::{DateTime, Utc};
 use rand::seq::SliceRandom;
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default, PartialEq)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default, Hash, PartialEq, Eq)]
 pub struct RepoPath {
     pub repo: String,
     pub path: String,
@@ -180,8 +180,7 @@ impl SearchStep {
 
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct CodeChunk {
-    pub repo: String,
-    pub path: String,
+    pub repo_path: RepoPath,
     pub alias: usize,
     pub snippet: String,
     #[serde(rename = "start")]
@@ -202,15 +201,14 @@ impl fmt::Display for CodeChunk {
         write!(
             f,
             "{}: {}\t{}\n{}",
-            self.alias, self.repo, self.path, self.snippet
+            self.alias, self.repo_path.repo, self.repo_path.path, self.snippet
         )
     }
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
 pub struct FocusedChunk {
-    pub repo: String,
-    pub path: String,
+    pub repo_path: RepoPath,
     pub start_line: usize,
     pub end_line: usize,
 }

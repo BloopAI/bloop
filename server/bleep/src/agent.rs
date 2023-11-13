@@ -155,19 +155,15 @@ impl Agent {
         self.exchanges.iter().flat_map(|e| e.paths.iter())
     }
 
-    fn get_path_alias(&mut self, repo: &str, path: &str) -> usize {
-        let repo_path = RepoPath {
-            repo: repo.into(),
-            path: path.into(),
-        };
+    fn get_path_alias(&mut self, repo_path: &RepoPath) -> usize {
         // This has to be stored a variable due to a Rust NLL bug:
         // https://github.com/rust-lang/rust/issues/51826
-        let pos = self.paths().position(|p| *p == repo_path);
+        let pos = self.paths().position(|p| p == repo_path);
         if let Some(i) = pos {
             i
         } else {
             let i = self.paths().count();
-            self.last_exchange_mut().paths.push(repo_path);
+            self.last_exchange_mut().paths.push(repo_path.clone());
             i
         }
     }
@@ -340,6 +336,7 @@ impl Agent {
         Ok(history)
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn semantic_search(
         &self,
         query: parser::Literal<'_>,
@@ -370,7 +367,10 @@ impl Agent {
             .await
     }
 
-    async fn get_file_content(&self, repo: &str, path: &str) -> Result<Option<ContentDocument>> {
+    async fn get_file_content(
+        &self,
+        RepoPath { repo, path }: &RepoPath,
+    ) -> Result<Option<ContentDocument>> {
         let branch = self.last_exchange().query.first_branch();
 
         debug!(%repo, path, ?branch, %self.thread_id, "executing file search");

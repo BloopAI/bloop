@@ -103,7 +103,7 @@ pub(super) async fn answer(
 
     let mut exchanges = conversations::load(&app.sql, &conversation_id)
         .await?
-        .unwrap_or_else(|| Vec::new());
+        .unwrap_or_default();
 
     let Answer {
         parent_exchange_id,

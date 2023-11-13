@@ -7,7 +7,7 @@ use tracing::{debug, info, instrument, trace};
 
 use crate::{
     agent::{
-        exchange::{CodeChunk, FocusedChunk, Update},
+        exchange::{CodeChunk, FocusedChunk, RepoPath, Update},
         model, transcoder, Agent,
     },
     analytics::EventData,
@@ -22,19 +22,18 @@ impl Agent {
         debug!("creating article response");
 
         if aliases.len() == 1 {
-            let path = self
+            let repo_path = self
                 .paths()
                 .nth(aliases[0])
                 .context("invalid path alias passed")?;
 
             let doc = self
-                .get_file_content(&path.repo, &path.path)
+                .get_file_content(repo_path)
                 .await?
                 .context("path did not exist")?;
 
             self.update(Update::Focus(FocusedChunk {
-                repo: path.repo.to_owned(),
-                path: path.path.to_owned(),
+                repo_path: repo_path.clone(),
                 start_line: 0,
                 end_line: doc.content.lines().count(),
             }))
@@ -160,7 +159,10 @@ impl Agent {
                 .map(|(i, line)| format!("{} {line}\n", i + chunk.start_line + 1))
                 .collect::<String>();
 
-            let formatted_snippet = format!("### {} {} ###\n{snippet}\n\n", chunk.repo, chunk.path);
+            let formatted_snippet = format!(
+                "### {} {} ###\n{snippet}\n\n",
+                chunk.repo_path.repo, chunk.repo_path.path
+            );
 
             let snippet_tokens = bpe.encode_ordinary(&formatted_snippet).len();
 
@@ -257,16 +259,16 @@ impl Agent {
         let mut spans_by_path = HashMap::<_, Vec<_>>::new();
         for c in self.code_chunks().filter(|c| aliases.contains(&c.alias)) {
             spans_by_path
-                .entry((c.repo.clone(), c.path.clone()))
+                .entry(c.repo_path.clone())
                 .or_default()
                 .push(c.start_line..c.end_line);
         }
 
         // If there are no relevant code chunks, but there is a focused chunk, we use that.
         if spans_by_path.is_empty() {
-            if let Some(chunk) = &self.last_exchange().focused_chunk {
+            if let Some(ref chunk) = self.last_exchange().focused_chunk {
                 spans_by_path
-                    .entry((chunk.repo.clone(), chunk.path.clone()))
+                    .entry(chunk.repo_path.clone())
                     .or_default()
                     .push(chunk.start_line..chunk.end_line);
             }
@@ -279,11 +281,8 @@ impl Agent {
         let lines_by_file = futures::stream::iter(&mut spans_by_path)
             .then(|(path, spans)| async move {
                 spans.sort_by_key(|c| c.start);
-                let repo = path.0.clone();
-                let path = path.1.clone();
-
                 let lines = self_
-                    .get_file_content(&repo, &path)
+                    .get_file_content(path)
                     .await
                     .unwrap()
                     .unwrap_or_else(|| panic!("path did not exist in the index: {path}"))
@@ -292,7 +291,7 @@ impl Agent {
                     .map(str::to_owned)
                     .collect::<Vec<_>>();
 
-                ((repo.clone(), path.clone()), lines)
+                (path.clone(), lines)
             })
             .collect::<HashMap<_, _>>()
             .await;
@@ -376,17 +375,15 @@ impl Agent {
         let code_chunks = spans_by_path
             .into_iter()
             .flat_map(|(path, spans)| spans.into_iter().map(move |s| (path.clone(), s)))
-            .map(|(path, span)| {
-                let snippet = lines_by_file.get(&path).unwrap()[span.clone()].join("\n");
-                let (repo, path) = path;
+            .map(|(repo_path, span)| {
+                let snippet = lines_by_file.get(&repo_path).unwrap()[span.clone()].join("\n");
 
                 CodeChunk {
-                    alias: self.get_path_alias(&repo, &path),
-                    repo,
-                    path,
-                    snippet,
+                    alias: self.get_path_alias(&repo_path),
                     start_line: span.start,
                     end_line: span.end,
+                    snippet,
+                    repo_path,
                 }
             })
             .collect::<Vec<CodeChunk>>();
@@ -399,8 +396,7 @@ impl Agent {
             let num_trimmed_lines = trimmed_snippet.lines().count();
             vec![CodeChunk {
                 alias: chunk.alias,
-                repo: chunk.repo.clone(),
-                path: chunk.path.clone(),
+                repo_path: chunk.repo_path.clone(),
                 snippet: trimmed_snippet.to_string(),
                 start_line: chunk.start_line,
                 end_line: (chunk.start_line + num_trimmed_lines).saturating_sub(1),
