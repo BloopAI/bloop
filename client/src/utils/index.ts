@@ -78,7 +78,7 @@ export const getFileExtensionForLang = (lang: string, lowercased?: boolean) => {
       ext = langs[key]?.[0];
     }
   }
-  return 'index' + ext;
+  return 'index' + (ext || `.${lang}`);
 };
 
 export const getPrettyLangName = (lang: string) => {

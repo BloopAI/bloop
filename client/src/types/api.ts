@@ -74,6 +74,7 @@ export interface SearchResponseFile {
   repo_name: string;
   repo_ref: string;
   lang: string;
+  is_dir: boolean;
 }
 
 export interface FlagItem {

@@ -67,6 +67,9 @@ const Chat = () => {
         return;
       }
       console.log('query', query);
+      const cleanQuery = query
+        .replace(/\((path:.*?)\)/, '$1')
+        .replace(/\((lang:.*?)\)/, '$1'); // clean up after autocomplete
       prevEventSource?.close();
       setInputValue('');
       setLoading(true);
@@ -77,7 +80,7 @@ const Chat = () => {
           ? `/explain?relative_path=${encodeURIComponent(
               options.filePath,
             )}&line_start=${options.lineStart}&line_end=${options.lineEnd}`
-          : `?q=${encodeURIComponent(query)}${
+          : `?q=${encodeURIComponent(cleanQuery)}${
               selectedBranch ? ` branch:${selectedBranch}` : ''
             }`
       }&repo_ref=${tab.repoRef}${

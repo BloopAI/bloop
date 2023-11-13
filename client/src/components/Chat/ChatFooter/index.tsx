@@ -1,5 +1,4 @@
 import React, {
-  ChangeEvent,
   Dispatch,
   FormEvent,
   memo,
@@ -9,6 +8,7 @@ import React, {
   useMemo,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { OnChangeHandlerFunc } from 'react-mentions';
 import {
   ChatMessageAuthor,
   ChatMessageServer,
@@ -98,10 +98,9 @@ const ChatFooter = ({
       : undefined;
   }, [JSON.stringify(conversation[conversation.length - 1])]);
 
-  const handleInputChange = useCallback(
-    (e: ChangeEvent<HTMLTextAreaElement>) => setInputValue(e.target.value),
-    [],
-  );
+  const handleInputChange = useCallback<OnChangeHandlerFunc>((e) => {
+    setInputValue(e.target.value);
+  }, []);
 
   const onFormClick = useCallback(() => {
     if (isHistoryOpen) {
@@ -134,6 +133,14 @@ const ChatFooter = ({
           onMessageEditCancel={onMessageEditCancel}
         />
       </form>
+      {/*{isAutocompleteActive && (*/}
+      {/*  <Suggestions*/}
+      {/*    pathOptions={pathOptions}*/}
+      {/*    langOptions={langOptions}*/}
+      {/*    dirOptions={dirOptions}*/}
+      {/*    onSubmit={onSuggestionSelected}*/}
+      {/*  />*/}
+      {/*)}*/}
     </div>
   );
 };

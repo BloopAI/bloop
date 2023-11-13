@@ -1,5 +1,4 @@
 import React, {
-  ChangeEvent,
   memo,
   useCallback,
   useContext,
@@ -9,7 +8,14 @@ import React, {
   useState,
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { FeatherSelected, QuillIcon, SendIcon, Sparkles } from '../../../icons';
+import { MentionsInput, Mention, OnChangeHandlerFunc } from 'react-mentions';
+import {
+  FeatherSelected,
+  FolderFilled,
+  QuillIcon,
+  SendIcon,
+  Sparkles,
+} from '../../../icons';
 import ClearButton from '../../ClearButton';
 import Tooltip from '../../Tooltip';
 import { ChatLoadingStep } from '../../../types/general';
@@ -17,6 +23,10 @@ import LiteLoader from '../../Loaders/LiteLoader';
 import { UIContext } from '../../../context/uiContext';
 import { DeviceContext } from '../../../context/deviceContext';
 import Button from '../../Button';
+import { getAutocomplete } from '../../../services/api';
+import { FileResItem, LangItem } from '../../../types/api';
+import FileIcon from '../../FileIcon';
+import { getFileExtensionForLang } from '../../../utils';
 import InputLoader from './InputLoader';
 
 type Props = {
@@ -27,7 +37,7 @@ type Props = {
   showTooltip?: boolean;
   tooltipText?: string;
   onStop?: () => void;
-  onChange?: (e: ChangeEvent<HTMLTextAreaElement>) => void;
+  onChange?: OnChangeHandlerFunc;
   onSubmit?: () => void;
   loadingSteps?: ChatLoadingStep[];
   selectedLines?: [number, number] | null;
@@ -36,7 +46,39 @@ type Props = {
   onMessageEditCancel?: () => void;
 };
 
+type SuggestionType = {
+  id: string;
+  display: string;
+  type: 'file' | 'dir' | 'lang';
+  isFirst: boolean;
+};
+
 const defaultPlaceholder = 'Send a message';
+
+const inputStyle = {
+  '&multiLine': {
+    highlighter: {
+      paddingTop: 16,
+      paddingBottom: 16,
+    },
+    input: {
+      paddingTop: 16,
+      paddingBottom: 16,
+      outline: 'none',
+    },
+  },
+  suggestions: {
+    list: {
+      maxHeight: 200,
+      overflowY: 'auto',
+      backgroundColor: 'rgb(var(--chat-bg-shade))',
+      border: '1px solid rgb(var(--chat-bg-border))',
+      boxShadow: 'var(--shadow-high)',
+      padding: 4,
+      zIndex: 100,
+    },
+  },
+};
 
 const NLInput = ({
   id,
@@ -54,8 +96,10 @@ const NLInput = ({
 }: Props) => {
   const { t } = useTranslation();
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [isComposing, setComposition] = useState(false);
   const { setPromptGuideOpen } = useContext(UIContext.PromptGuide);
+  const { tab } = useContext(UIContext.Tab);
   const { envConfig } = useContext(DeviceContext);
 
   useEffect(() => {
@@ -95,13 +139,63 @@ const NLInput = ({
     }
   }, [envConfig?.bloop_user_profile?.prompt_guide]);
 
+  const getDataPath = useCallback(
+    async (
+      search: string,
+      callback: (a: { id: string; display: string }[]) => void,
+    ) => {
+      const respPath = await getAutocomplete(
+        `repo:${tab.repoName} path:${search}`,
+      );
+      const fileResults = respPath.data.filter(
+        (d): d is FileResItem => d.kind === 'file_result',
+      );
+      const dirResults = fileResults
+        .filter((d) => d.data.is_dir)
+        .map((d) => d.data.relative_path.text);
+      const filesResults = fileResults
+        .filter((d) => !d.data.is_dir)
+        .map((d) => d.data.relative_path.text);
+      const results: SuggestionType[] = [];
+      filesResults.forEach((fr, i) => {
+        results.push({ id: fr, display: fr, type: 'file', isFirst: i === 0 });
+      });
+      dirResults.forEach((fr, i) => {
+        results.push({ id: fr, display: fr, type: 'dir', isFirst: i === 0 });
+      });
+      callback(results);
+    },
+    [tab.repoName],
+  );
+
+  const getDataLang = useCallback(
+    async (
+      search: string,
+      callback: (a: { id: string; display: string }[]) => void,
+    ) => {
+      const respLang = await getAutocomplete(
+        `repo:${tab.repoName} lang:${search}`,
+      );
+      const langResults = respLang.data
+        .filter((d): d is LangItem => d.kind === 'lang')
+        .map((d) => d.data);
+      const results: SuggestionType[] = [];
+      langResults.forEach((fr, i) => {
+        results.push({ id: fr, display: fr, type: 'lang', isFirst: i === 0 });
+      });
+      callback(results);
+    },
+    [],
+  );
+
   return (
     <div
       className={`w-full rounded-lg border border-chat-bg-border focus-within:border-chat-bg-border-hover px-4 ${
         isStoppable && loadingSteps?.length
           ? 'bg-transparent'
           : 'bg-chat-bg-base hover:text-label-title hover:border-chat-bg-border-hover'
-      } transition-all ease-out duration-150 flex-grow-0 relative`}
+      } transition-all ease-out duration-150 flex-grow-0 relative z-100`}
+      ref={containerRef}
     >
       <div
         className={`w-full flex items-start gap-2 
@@ -121,26 +215,103 @@ const NLInput = ({
             <Sparkles />
           )}
         </div>
-        <textarea
-          className={`w-full py-4 bg-transparent rounded-lg outline-none focus:outline-0 resize-none
+        <MentionsInput
+          value={value}
+          id={id}
+          onChange={onChange}
+          className={`w-full bg-transparent rounded-lg outline-none focus:outline-0 resize-none
         placeholder:text-current placeholder:truncate placeholder:max-w-[19.5rem] flex-grow-0`}
           placeholder={shouldShowLoader ? '' : t(defaultPlaceholder)}
-          id={id}
-          value={value}
-          onChange={onChange}
-          rows={1}
-          autoComplete="off"
-          spellCheck="false"
-          ref={inputRef}
+          inputRef={inputRef}
           disabled={isStoppable && generationInProgress}
           onCompositionStart={() => setComposition(true)}
           onCompositionEnd={() => {
             // this event comes before keydown and sets state faster causing unintentional submit
             setTimeout(() => setComposition(false), 10);
           }}
+          // @ts-ignore
           onKeyDown={handleKeyDown}
           onFocus={handleInputFocus}
-        />
+          style={inputStyle}
+          // @ts-ignore
+          suggestionsPortalHost={containerRef.current}
+          forceSuggestionsAboveCursor
+        >
+          <Mention
+            trigger="@"
+            markup="(path:__id__)"
+            data={getDataPath}
+            renderSuggestion={(
+              entry,
+              search,
+              highlightedDisplay,
+              index,
+              focused,
+            ) => {
+              const d = entry as SuggestionType;
+              return (
+                <div>
+                  {d.isFirst ? (
+                    <div className="flex items-center rounded-6 gap-2 px-2 py-1 text-label-muted caption cursor-default">
+                      {d.type}
+                    </div>
+                  ) : null}
+                  <div
+                    className={`flex items-center justify-start rounded-6 gap-2 px-2 py-1 ${
+                      focused ? 'bg-chat-bg-base-hover' : ''
+                    } body-s text-label-title`}
+                  >
+                    {d.type === 'dir' ? (
+                      <FolderFilled />
+                    ) : (
+                      <FileIcon filename={d.display} />
+                    )}
+                    {d.display}
+                  </div>
+                </div>
+              );
+            }}
+            className="bg-chat-bg-shade border border-chat-bg-border py-0.5 rounded has-path"
+            appendSpaceOnAdd
+            displayTransform={(id, trans) => ` ${trans} `}
+          />
+          <Mention
+            trigger="@"
+            markup="(lang:__id__)"
+            data={getDataLang}
+            appendSpaceOnAdd
+            renderSuggestion={(
+              entry,
+              search,
+              highlightedDisplay,
+              index,
+              focused,
+            ) => {
+              const d = entry as SuggestionType;
+              return (
+                <div>
+                  {d.isFirst ? (
+                    <div className="flex items-center rounded-6 gap-2 px-2 py-1 text-label-muted caption cursor-default">
+                      {d.type}
+                    </div>
+                  ) : null}
+                  <div
+                    className={`flex items-center justify-start rounded-6 gap-2 px-2 py-1 ${
+                      focused ? 'bg-chat-bg-base-hover' : ''
+                    } body-s text-label-title`}
+                  >
+                    <FileIcon
+                      filename={getFileExtensionForLang(d.display, true)}
+                    />
+                    {d.display}
+                  </div>
+                </div>
+              );
+            }}
+            className="bg-chat-bg-shade border border-chat-bg-border py-0.5 rounded has-path"
+            displayTransform={(id, trans) => ` ${trans} `}
+          />
+        </MentionsInput>
         {isStoppable || selectedLines ? (
           <div className="relative top-[18px]">
             <Tooltip text={t('Stop generating')} placement={'top-end'}>
