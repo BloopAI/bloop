@@ -149,7 +149,9 @@ const NLInput = ({
       search: string,
       callback: (a: { id: string; display: string }[]) => void,
     ) => {
-      const respPath = await getAutocomplete(`path:${search} repo:${tab.name}`);
+      const respPath = await getAutocomplete(
+        `path:${search} repo:${tab.name}&content=false`,
+      );
       const fileResults = respPath.data.filter(
         (d): d is FileResItem => d.kind === 'file_result',
       );
@@ -176,7 +178,9 @@ const NLInput = ({
       search: string,
       callback: (a: { id: string; display: string }[]) => void,
     ) => {
-      const respLang = await getAutocomplete(`lang:${search} repo:${tab.name}`);
+      const respLang = await getAutocomplete(
+        `lang:${search} repo:${tab.name}&content=false`,
+      );
       const langResults = respLang.data
         .filter((d): d is LangItem => d.kind === 'lang')
         .map((d) => d.data);
