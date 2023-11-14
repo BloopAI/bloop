@@ -159,6 +159,14 @@ pub(super) async fn handle(
         }
     }
 
+    if autocomplete_results.is_empty() && ac_params.lang {
+        autocomplete_results.extend(
+            languages::list()
+                .take(5)
+                .map(|l| QueryResult::Lang(l.into())),
+        )
+    }
+
     Ok(json(AutocompleteResponse {
         count: autocomplete_results.len(),
         data: autocomplete_results,
