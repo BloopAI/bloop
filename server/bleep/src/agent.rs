@@ -465,12 +465,13 @@ impl Agent {
         query: &str,
     ) -> impl Iterator<Item = FileDocument> + 'a {
         let branch = self.last_exchange().query.first_branch();
+        let langs = &self.last_exchange().query.langs;
 
         debug!(%self.repo_ref, query, ?branch, %self.thread_id, "executing fuzzy search");
         self.app
             .indexes
             .file
-            .fuzzy_path_match(&self.repo_ref, query, branch.as_deref(), 50)
+            .fuzzy_path_match(&self.repo_ref, query, branch.as_deref(), &langs, 50)
             .await
     }
 
