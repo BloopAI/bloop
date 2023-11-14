@@ -42,7 +42,7 @@ pub(super) async fn handle(
     api_params.page = 0;
     api_params.page_size = 10;
 
-    let mut boost_langs = None;
+    let mut partial_lang = None;
 
     let queries = parser::parse(&api_params.q)
         .map_err(Error::user)?
@@ -74,10 +74,10 @@ pub(super) async fn handle(
                 if languages::list()
                     .filter(|l| l.to_lowercase() == lang.as_ref().to_lowercase())
                     .count()
-                    < 1
+                    == 0
                 {
+                    partial_lang = q.lang.as_ref().map(|l| l.to_lowercase());
                     q.lang = None;
-                    boost_langs = q.lang.as_ref().map(|l| l.to_string());
                 }
             }
 
@@ -145,19 +145,13 @@ pub(super) async fn handle(
 
         if ac_params.lang {
             let mut ranked_langs = langs.into_iter().collect::<Vec<_>>();
+            if let Some(partial) = partial_lang {
+                ranked_langs.retain(|(l, _)| l.to_lowercase().contains(&partial));
+            }
+
             ranked_langs.sort_by(|(_, a_count), (_, b_count)| a_count.cmp(b_count));
             ranked_langs.reverse();
             ranked_langs.truncate(5);
-
-            if let Some(partial) = boost_langs {
-                ranked_langs.extend(
-                    languages::list()
-                        .filter(|name| name.contains(&partial))
-                        .take(5 - ranked_langs.len())
-                        .map(|lang| (lang.to_lowercase(), 1)),
-                );
-            }
-
             autocomplete_results
                 .extend(ranked_langs.into_iter().map(|(l, _)| QueryResult::Lang(l)));
         }
