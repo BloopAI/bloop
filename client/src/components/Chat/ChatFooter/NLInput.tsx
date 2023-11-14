@@ -75,7 +75,7 @@ const inputStyle = {
   },
   suggestions: {
     list: {
-      maxHeight: 200,
+      maxHeight: 500,
       overflowY: 'auto',
       backgroundColor: 'rgb(var(--chat-bg-shade))',
       border: '1px solid rgb(var(--chat-bg-border))',
