@@ -174,9 +174,8 @@ impl Application {
         config.source.save_index_version()?;
         debug!("index version saved");
 
-        let indexes = Indexes::new(&config, sql.clone())
+        let indexes = Indexes::new(&config, sql.clone(), was_index_reset)
             .await?
-            .was_index_reset(dbg!(was_index_reset))
             .into();
         debug!("indexes initialized");
 

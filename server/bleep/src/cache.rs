@@ -429,16 +429,12 @@ impl<'a> FileCache {
             });
 
         match chunk_cache.commit().await {
-            Ok((new, updated, deleted)) => {
+            Ok(stats) => {
                 info!(
                     repo_name,
-                    relative_path, new, updated, deleted, "Successful commit"
+                    relative_path, stats.new, stats.updated, stats.deleted, "Successful commit"
                 );
-                InsertStats {
-                    new,
-                    updated,
-                    deleted,
-                }
+                stats
             }
             Err(err) => {
                 warn!(repo_name, relative_path, ?err, "Failed to upsert vectors");
@@ -597,16 +593,20 @@ impl<'a> ChunkCache<'a> {
     /// Since qdrant changes are pipelined on their end, data written
     /// here is not necessarily available for querying when the
     /// commit's completed.
-    pub async fn commit(self) -> anyhow::Result<(usize, usize, usize)> {
+    pub async fn commit(self) -> anyhow::Result<InsertStats> {
         let mut tx = self.sql.begin().await?;
 
-        let update_size = self.commit_branch_updates(&mut tx).await?;
-        let delete_size = self.commit_deletes(&mut tx).await?;
-        let new_size = self.commit_inserts(&mut tx).await?;
+        let updated = self.commit_branch_updates(&mut tx).await?;
+        let deleted = self.commit_deletes(&mut tx).await?;
+        let new = self.commit_inserts(&mut tx).await?;
 
         tx.commit().await?;
 
-        Ok((new_size, update_size, delete_size))
+        Ok(InsertStats {
+            new,
+            updated,
+            deleted,
+        })
     }
 
     /// Insert new additions to sqlite
