@@ -82,7 +82,7 @@ pub(super) async fn handle(
             }
 
             if q.path.is_none() && ac_params.file {
-                q.path = Some(Literal::Regex(".".into()));
+                q.path = Some(Literal::Regex(".*".into()));
             }
 
             q
