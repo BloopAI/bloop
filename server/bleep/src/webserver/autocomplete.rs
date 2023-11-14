@@ -8,7 +8,7 @@ use crate::{
     },
     query::{
         execute::{ApiQuery, ExecuteQuery, QueryResult},
-        parser,
+        languages, parser,
         parser::{Literal, Target},
     },
 };
@@ -42,29 +42,45 @@ pub(super) async fn handle(
     api_params.page = 0;
     api_params.page_size = 10;
 
+    let mut boost_langs = None;
+
     let queries = parser::parse(&api_params.q)
         .map_err(Error::user)?
         .into_iter()
         .map(|mut q| {
-            let target = q.target.get_or_insert_with(|| Target::Content(" ".into()));
+            if ac_params.content {
+                let target = q.target.get_or_insert_with(|| Target::Content(" ".into()));
 
-            for keyword in &["path:", "repo:"] {
-                if let Some(pos) = target.literal().find(keyword) {
-                    let new = format!(
-                        "{}{}",
-                        &target.literal()[..pos],
-                        &target.literal()[pos + keyword.len()..]
-                    );
+                for keyword in &["path:", "repo:"] {
+                    if let Some(pos) = target.literal().find(keyword) {
+                        let new = format!(
+                            "{}{}",
+                            &target.literal()[..pos],
+                            &target.literal()[pos + keyword.len()..]
+                        );
 
-                    *target = Target::Content(Literal::Plain(if new.is_empty() {
-                        " ".into()
-                    } else {
-                        new.into()
-                    }));
+                        *target = Target::Content(Literal::Plain(if new.is_empty() {
+                            " ".into()
+                        } else {
+                            new.into()
+                        }));
+                    }
+                }
+            } else {
+                q.target = None;
+            }
+
+            if let Some(lang) = q.lang.as_ref() {
+                if languages::list()
+                    .filter(|l| l.to_lowercase() == lang.as_ref().to_lowercase())
+                    .count()
+                    < 1
+                {
+                    q.lang = None;
+                    boost_langs = q.lang.as_ref().map(|l| l.to_string());
                 }
             }
 
-            q.lang = None;
             q
         })
         .collect::<Vec<_>>();
@@ -128,6 +144,16 @@ pub(super) async fn handle(
             ranked_langs.sort_by(|(_, a_count), (_, b_count)| a_count.cmp(b_count));
             ranked_langs.reverse();
             ranked_langs.truncate(5);
+
+            if let Some(partial) = boost_langs {
+                ranked_langs.extend(
+                    languages::list()
+                        .filter(|name| name.contains(&partial))
+                        .take(5 - ranked_langs.len())
+                        .map(|lang| (lang.to_lowercase(), 1)),
+                );
+            }
+
             autocomplete_results
                 .extend(ranked_langs.into_iter().map(|(l, _)| QueryResult::Lang(l)));
         }
