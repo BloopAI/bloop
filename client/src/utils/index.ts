@@ -400,6 +400,7 @@ export function splitUserInputAfterAutocomplete(
 ): ParsedQueryType[] {
   const pathRegex = /\|path:(.*?)\|/g;
   const langRegex = /\|lang:(.*?)\|/g;
+  const combinedRegex = /\|(path|lang):(.*?)\|/g;
   const result: ParsedQueryType[] = [];
 
   let lastIndex = 0;
@@ -410,23 +411,18 @@ export function splitUserInputAfterAutocomplete(
     }
   };
 
-  input.replace(pathRegex, (_, pathContent, index) => {
+  input.replace(combinedRegex, (_, type, text, index) => {
     addTextContent(input.substring(lastIndex, index));
-    result.push({ type: ParsedQueryTypeEnum.PATH, text: pathContent });
-    lastIndex = index + pathContent.length + 7;
+    result.push({
+      type:
+        type === 'lang' ? ParsedQueryTypeEnum.LANG : ParsedQueryTypeEnum.PATH,
+      text,
+    });
+    lastIndex = index + text.length + type.length + 3; // 3 is the length of "(type:"
     return '';
   });
 
   addTextContent(input.substring(lastIndex));
-
-  lastIndex = 0;
-
-  input.replace(langRegex, (_, langContent, index) => {
-    addTextContent(input.substring(lastIndex, index));
-    result.push({ type: ParsedQueryTypeEnum.LANG, text: langContent });
-    lastIndex = index + langContent.length + 7; // 7 is the length of "(lang:"
-    return '';
-  });
 
   return result;
 }

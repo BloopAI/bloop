@@ -229,7 +229,7 @@ const NLInput = ({
 
   const pathTransform = useCallback((id: string, trans: string) => {
     const split = splitPath(trans);
-    return ` ${split[split.length - 1] || split[split.length - 2]} `;
+    return `${split[split.length - 1] || split[split.length - 2]}`;
   }, []);
 
   const onCompositionStart = useCallback(() => {
@@ -271,10 +271,7 @@ const NLInput = ({
     [],
   );
 
-  const langTransform = useCallback(
-    (id: string, trans: string) => ` ${trans} `,
-    [],
-  );
+  const langTransform = useCallback((id: string, trans: string) => trans, []);
 
   return (
     <div
@@ -324,7 +321,7 @@ const NLInput = ({
             markup="|path:__id__|"
             data={getDataPath}
             renderSuggestion={renderPathSuggestion}
-            className="bg-chat-bg-shade border border-chat-bg-border py-0.5 rounded has-path"
+            className="bg-chat-bg-shade border border-chat-bg-border py-0.5 rounded has-path -ml-1.5 pr-1.5"
             appendSpaceOnAdd
             displayTransform={pathTransform}
           />
@@ -334,7 +331,7 @@ const NLInput = ({
             data={getDataLang}
             appendSpaceOnAdd
             renderSuggestion={renderLangSuggestion}
-            className="bg-chat-bg-shade border border-chat-bg-border py-0.5 rounded has-path"
+            className="bg-chat-bg-shade border border-chat-bg-border py-0.5 rounded has-path -ml-1.5 pr-1.5"
             displayTransform={langTransform}
           />
         </MentionsInput>

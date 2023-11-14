@@ -4,6 +4,7 @@ import {
   ParsedQueryTypeEnum,
 } from '../../../../../types/general';
 import PathChip from './PathChip';
+import LangChip from './LangChip';
 
 type Props = {
   textQuery: string;
@@ -19,6 +20,8 @@ const UserParsedQuery = ({ textQuery, parsedQuery }: Props) => {
               p.text
             ) : p.type === ParsedQueryTypeEnum.PATH ? (
               <PathChip path={p.text} key={i} />
+            ) : p.type === ParsedQueryTypeEnum.LANG ? (
+              <LangChip lang={p.text} key={i} />
             ) : null,
           )
         : textQuery}
