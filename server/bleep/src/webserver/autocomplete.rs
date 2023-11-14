@@ -51,7 +51,7 @@ pub(super) async fn handle(
             if ac_params.content {
                 let target = q.target.get_or_insert_with(|| Target::Content(" ".into()));
 
-                for keyword in &["path:", "repo:"] {
+                for keyword in &["lang:", "path:", "repo:"] {
                     if let Some(pos) = target.literal().find(keyword) {
                         let new = format!(
                             "{}{}",
@@ -81,6 +81,10 @@ pub(super) async fn handle(
                 }
             }
 
+            if q.path.is_none() && ac_params.file {
+                q.path = Some(Literal::Regex(".".into()));
+            }
+
             q
         })
         .collect::<Vec<_>>();
@@ -106,11 +110,11 @@ pub(super) async fn handle(
             engines.push(ContentReader.execute(&indexes.file, &queries, &api_params));
         }
 
-        if ac_params.file {
+        if ac_params.repo {
             engines.push(RepoReader.execute(&indexes.repo, &queries, &api_params));
         }
 
-        if ac_params.repo {
+        if ac_params.file {
             engines.push(FileReader.execute(&indexes.file, &queries, &api_params));
         }
 
@@ -157,14 +161,6 @@ pub(super) async fn handle(
             autocomplete_results
                 .extend(ranked_langs.into_iter().map(|(l, _)| QueryResult::Lang(l)));
         }
-    }
-
-    if autocomplete_results.is_empty() && ac_params.lang {
-        autocomplete_results.extend(
-            languages::list()
-                .take(5)
-                .map(|l| QueryResult::Lang(l.into())),
-        )
     }
 
     Ok(json(AutocompleteResponse {
