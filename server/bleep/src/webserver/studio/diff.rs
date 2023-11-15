@@ -20,6 +20,7 @@ fn extract_diff(chat_response: &str) -> Result<&str> {
 /// Parse a diff, allowing for some formatting errors.
 pub fn relaxed_parse(diff: &str) -> impl Iterator<Item = DiffChunk> + '_ {
     split_chunks(diff).map(|mut chunk| {
+        dbg!(&chunk);
         chunk.fixup_hunks();
         chunk
     })
@@ -31,8 +32,14 @@ fn split_chunks(diff: &str) -> impl Iterator<Item = DiffChunk> + '_ {
     regex!("^---"m).split(diff).filter_map(|chunk| {
         let caps = chunk_regex.captures(chunk)?;
         Some(DiffChunk {
-            src: caps.get(1).unwrap().as_str().to_owned(),
-            dst: caps.get(2).unwrap().as_str().to_owned(),
+            src: match caps.get(1).unwrap().as_str() {
+                "/dev/null" => None,
+                s => Some(s.to_owned()),
+            },
+            dst: match caps.get(2).unwrap().as_str() {
+                "/dev/null" => None,
+                s => Some(s.to_owned()),
+            },
             hunks: split_hunks(caps.get(3).unwrap().as_str()).collect(),
         })
     })
@@ -40,16 +47,19 @@ fn split_chunks(diff: &str) -> impl Iterator<Item = DiffChunk> + '_ {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DiffChunk {
-    pub src: String,
-    pub dst: String,
+    pub src: Option<String>,
+    pub dst: Option<String>,
     pub hunks: Vec<DiffHunk>,
 }
 
 impl DiffChunk {
     pub fn fixup_hunks(&mut self) {
         self.hunks.retain_mut(|h| {
-            h.fixup();
-            h.lines.iter().any(|l| !matches!(l, Line::Context(_)))
+            if !h.fixup() {
+                false
+            } else {
+                h.lines.iter().any(|l| !matches!(l, Line::Context(_)))
+            }
         });
     }
 }
@@ -58,7 +68,19 @@ impl fmt::Display for DiffChunk {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let hunks_str = self.hunks.iter().map(|h| h.to_string()).collect::<String>();
 
-        write!(f, "--- {}\n+++ {}\n{}", self.src, self.dst, hunks_str)
+        let src = if let Some(s) = self.src.as_deref() {
+            s
+        } else {
+            "/dev/null"
+        };
+
+        let dst = if let Some(s) = self.dst.as_deref() {
+            s
+        } else {
+            "/dev/null"
+        };
+
+        write!(f, "--- {src}\n+++ {dst}\n{hunks_str}")
     }
 }
 
@@ -111,7 +133,7 @@ pub struct DiffHunk {
 }
 
 impl DiffHunk {
-    fn fixup(&mut self) {
+    fn fixup(&mut self) -> bool {
         let src = self
             .lines
             .iter()
@@ -138,6 +160,11 @@ impl DiffHunk {
         let patch = patch.to_string();
 
         let mut new_hunks = split_hunks(&patch).collect::<Vec<_>>();
+
+        if new_hunks.is_empty() {
+            return false;
+        }
+
         assert_eq!(
             new_hunks.len(),
             1,
@@ -162,6 +189,8 @@ impl DiffHunk {
                 Line::DelLine(_) => 0,
             })
             .sum();
+
+        true
     }
 }
 
@@ -350,8 +379,8 @@ foo bar
 
         let expected = vec![
             DiffChunk {
-                src: "foo.rs".to_owned(),
-                dst: "foo.rs".to_owned(),
+                src: Some("foo.rs".to_owned()),
+                dst: Some("foo.rs".to_owned()),
                 hunks: vec![DiffHunk {
                     src_line: 1,
                     src_count: 1,
@@ -369,8 +398,8 @@ foo bar
                 }],
             },
             DiffChunk {
-                src: "bar.rs".to_owned(),
-                dst: "bar.rs".to_owned(),
+                src: Some("bar.rs".to_owned()),
+                dst: Some("bar.rs".to_owned()),
                 hunks: vec![DiffHunk {
                     src_line: 10,
                     src_count: 1,
@@ -444,8 +473,8 @@ foo bar
 ```"#;
         let expected = vec![
             DiffChunk {
-                src: "server/bleep/src/analytics.rs".to_owned(),
-                dst: "server/bleep/src/analytics.rs".to_owned(),
+                src: Some("server/bleep/src/analytics.rs".to_owned()),
+                dst: Some("server/bleep/src/analytics.rs".to_owned()),
                 hunks: vec![DiffHunk {
                     src_line: 215,
                     src_count: 7,
@@ -478,8 +507,8 @@ foo bar
                 }],
             },
             DiffChunk {
-                src: "server/bleep/src/indexes.rs".to_owned(),
-                dst: "server/bleep/src/indexes.rs".to_owned(),
+                src: Some("server/bleep/src/indexes.rs".to_owned()),
+                dst: Some("server/bleep/src/indexes.rs".to_owned()),
                 hunks: vec![
                     DiffHunk {
                         src_line: 61,
@@ -563,5 +592,24 @@ foo bar
         };
 
         assert_eq!(expected, hunk);
+    }
+
+    #[test]
+    fn test_extract_redundant() {
+        let chat_response = "```diff
+--- server/bleep/src/query/parser.rs
++++ server/bleep/src/query/parser.rs
+@@ -64,7 +64,7 @@
+     }
+ 
+     pub fn from_str(query: String, repo_ref: String) -> Self {
+-        Self {
++        Self {
+             target: Some(Literal::Plain(Cow::Owned(query))),
+             repos: [Literal::Plain(Cow::Owned(repo_ref))].into(),
+             ..Default::default()
+```";
+
+        for _ in extract(&chat_response).unwrap() {}
     }
 }

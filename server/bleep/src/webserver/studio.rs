@@ -19,7 +19,7 @@ use reqwest::StatusCode;
 use tracing::{debug, error, warn};
 use uuid::Uuid;
 
-use self::diff::DiffChunk;
+use self::diff::{DiffChunk, DiffHunk};
 
 use super::{middleware::User, Error};
 use crate::{
@@ -855,132 +855,460 @@ pub async fn diff(
     let response = llm_gateway.chat(&messages, None).await?;
     let diff_chunks = diff::extract(&response)?.collect::<Vec<_>>();
 
-    // A map of `(src_file, dst_file) -> chunk`, where each chunk can contain multiple hunks. We
-    // use this to reconstructed a "corrected" diff which can be cleanly applied.
-    let mut resolved_chunk_map = HashMap::new();
+    let (repo, branch) = context
+        .first()
+        .map(|cf| (cf.repo.clone(), cf.branch.clone()))
+        // We make a hard assumption in the design of diffs that a studio can only contain files
+        // from one repository. This allows us to determine which repository to create new files
+        // or delete files in, without having to prefix file paths with repository names.
+        //
+        // If we can't find *any* files in the context to detect the current repository,
+        // creating/deleting a file like `index.js` is ambiguous, so we just return an error.
+        .context("could not determine studio repository, studio didn't contain any files")?;
 
-    // Map of `src_file -> document`, so that we can pass document information to the front-end.
-    let mut doc_map = HashMap::new();
+    let valid_chunks = futures::stream::iter(diff_chunks)
+        .map(|mut chunk| {
+            let (repo, branch) = (repo.clone(), branch.clone());
+            let app = (*app).clone();
+            let llm_context = llm_context.clone();
+            let llm_gateway = llm_gateway.clone();
 
-    for (i, chunk) in diff_chunks.iter().enumerate() {
-        let context_file = match context.iter().find(|c| c.path == chunk.src) {
-            Some(cf) => cf,
-            None => {
-                warn!(?chunk.src, "chunk had unknown src file");
-                continue;
-            }
-        };
+            async move {
+                match (&chunk.src, &chunk.dst) {
+                    (Some(src), Some(dst)) => {
+                        if src != dst {
+                            error!(
+                                "patch source and destination file were different: \
+                                got `{src}` and `{dst}`"
+                            );
 
-        let file = app
-            .indexes
-            .file
-            .by_path(
-                &context_file.repo,
-                &context_file.path,
-                context_file.branch.as_deref(),
-            )
-            .await?
-            .context("path did not exist in the index")?;
+                            return Ok(None);
+                        }
 
-        doc_map.insert(chunk.src.to_owned(), file.clone());
+                        chunk.hunks = rectify_hunks(
+                            &app,
+                            &llm_context,
+                            &llm_gateway,
+                            chunk.hunks.iter(),
+                            &src,
+                            &repo,
+                            branch.as_deref(),
+                        )
+                        .await?;
 
-        let mut file_content = file.content;
+                        Ok(Some(chunk))
+                    }
 
-        for (j, hunk) in chunk.hunks.iter().enumerate() {
-            let mut singular_chunk = chunk.clone();
-            singular_chunk.hunks = vec![hunk.clone()];
+                    (Some(src), None) => {
+                        if validate_delete_file(&app, &chunk, &src, &repo, branch.as_deref())
+                            .await?
+                        {
+                            Ok(Some(chunk))
+                        } else {
+                            Ok(None)
+                        }
+                    }
 
-            let diff = singular_chunk.to_string();
-            let patch = diffy::Patch::from_str(&diff).context("invalid patch")?;
+                    (None, Some(dst)) => {
+                        if validate_add_file(&app, &chunk, &dst, &repo, branch.as_deref()).await? {
+                            Ok(Some(chunk))
+                        } else {
+                            Ok(None)
+                        }
+                    }
 
-            if let Ok(t) = diffy::apply(&file_content, &patch) {
-                file_content = t;
-            } else {
-                singular_chunk.hunks[0].lines.retain(|line| match line {
-                    diff::Line::AddLine(..) | diff::Line::DelLine(..) => true,
-                    diff::Line::Context(..) => false,
-                });
-                singular_chunk.fixup_hunks();
-
-                let diff = if singular_chunk.hunks[0]
-                    .lines
-                    .iter()
-                    .all(|l| matches!(l, diff::Line::AddLine(..)))
-                {
-                    let system_prompt = prompts::studio_diff_regen_hunk_prompt(&llm_context);
-                    let messages = vec![
-                        llm_gateway::api::Message::system(&system_prompt),
-                        llm_gateway::api::Message::user(&singular_chunk.to_string()),
-                    ];
-                    llm_gateway.chat(&messages, None).await?
-                } else {
-                    singular_chunk.to_string()
-                };
-
-                let patch = diffy::Patch::from_str(&diff).context("redacted patch was invalid")?;
-
-                match diffy::apply(&file_content, &patch) {
-                    Ok(t) => file_content = t,
-                    Err(_) => {
-                        error!("hunk ({i}, {j}) failed: {diff}");
+                    (None, None) => {
+                        error!("patch chunk had no file source or destination");
+                        Ok(None)
                     }
                 }
             }
+        })
+        .buffered(10)
+        .try_filter_map(|c: Option<_>| async move { Ok::<_, anyhow::Error>(c) })
+        .try_collect::<Vec<_>>()
+        .await
+        .context("failed to interpret diff chunks")?;
 
-            let chunk = resolved_chunk_map
-                .entry((singular_chunk.src.clone(), singular_chunk.dst.clone()))
-                .or_insert_with(|| DiffChunk {
-                    src: singular_chunk.src.clone(),
-                    dst: singular_chunk.dst.clone(),
-                    hunks: Vec::new(),
-                });
+    let mut file_langs = HashMap::<String, String>::new();
+    let mut out = structured_diff::Diff { chunks: vec![] };
 
-            chunk.hunks.extend(singular_chunk.hunks);
-        }
+    for chunk in valid_chunks {
+        let path = chunk.src.as_deref().or(chunk.dst.as_deref()).unwrap();
+        let lang = if let Some(l) = file_langs.get(path) {
+            Some(l.clone())
+        } else {
+            let detected_lang = if let Some(src) = &chunk.src {
+                let doc = app
+                    .indexes
+                    .file
+                    .by_path(&repo, &src, branch.as_deref())
+                    .await?
+                    .context("path did not exist in the index")?;
 
-        if params.apply {
-            let repo_ref = file.repo_ref.parse::<RepoRef>().unwrap();
-            let Some(repo_path) = repo_ref.local_path() else {
-                error!("cannot apply patch to remote repo");
-                continue;
+                doc.lang
+            } else {
+                hyperpolyglot::detect(std::path::Path::new(&chunk.dst.as_deref().unwrap()))
+                    .ok()
+                    .flatten()
+                    .map(|detection| detection.language().to_owned())
             };
 
-            let file_path = repo_path.join(file.relative_path);
+            if let Some(l) = detected_lang.clone() {
+                file_langs.insert(path.to_owned(), l);
+            }
 
-            std::fs::write(file_path, file_content).context("failed to patch file on disk")?;
+            detected_lang
+        };
+
+        out.chunks.push(structured_diff::Chunk {
+            raw_patch: chunk.to_string(),
+
+            lang: lang.clone(),
+            repo: repo.clone(),
+            branch: branch.clone(),
+            file: path.to_owned(),
+            hunks: chunk
+                .hunks
+                .into_iter()
+                .map(|hunk| structured_diff::Hunk {
+                    line_start: hunk.src_line,
+                    patch: hunk
+                        .lines
+                        .into_iter()
+                        .map(|line| line.to_string())
+                        .collect::<String>(),
+                })
+                .collect(),
+        });
+    }
+
+    Ok(Json(out))
+
+    // let structured_diff = diff_chunks.into_iter().filter_map(|chunk| {
+    //     structure_chunk();
+
+    //     match (&chunk.src, &chunk.dst) {
+    //         (Some(src), Some(dst)) => {
+    //         }
+
+    //         (Some(src), None) => {
+    //             if app.indexes.file.by_path(&repo, src, branch.as_deref()).await?.is_none() {
+    //                 Err(Error::internal("tried to delete a file that did not exist in the index"))?;
+    //             }
+    //         }
+
+    //         (None, Some(dst)) => {
+    //             if app.indexes.file.by_path(&repo, dst, branch.as_deref()).await?.is_some() {
+    //                 Err(Error::internal("tried to create a new file that already exists in the index"))?;
+    //             }
+    //         }
+
+    //         (None, None) => {
+    //             Err(Error::internal("tried to create a patch which had no file source or destination"))?;
+    //         }
+    //     }
+    // });
+
+    // // A map of `(Option<src_file>, Option<dst_file>) -> chunk`, where each chunk can contain
+    // // multiple hunks. We use this to reconstructed a "corrected" diff which can be cleanly applied.
+    // let mut resolved_chunk_map = HashMap::new();
+
+    // // Map of `src_file -> lang string`, so that we can pass document languages to the front-end.
+    // let mut file_langs = HashMap::new();
+
+    // for (i, chunk) in diff_chunks.iter().enumerate() {
+    //     let mut file_content = if let Some(src) = chunk.src {
+    //         let context_file = match context.iter().find(|c| c.path == src) {
+    //             Some(cf) => cf,
+    //             None => {
+    //                 warn!(?chunk.src, "chunk had unknown src file");
+    //                 continue;
+    //             }
+    //         };
+
+    //         let file = app
+    //             .indexes
+    //             .file
+    //             .by_path(
+    //                 &context_file.repo,
+    //                 &context_file.path,
+    //                 context_file.branch.as_deref(),
+    //             )
+    //             .await?
+    //             .context("path did not exist in the index")?;
+    //         file_langs.insert(src.to_owned(), file.lang);
+    //         Some(file.content)
+    //     } else {
+    //         None
+    //     };
+
+    //     for (j, hunk) in chunk.hunks.iter().enumerate() {
+    //         let mut singular_chunk = chunk.clone();
+    //         singular_chunk.hunks = vec![hunk.clone()];
+
+    //         let diff = singular_chunk.to_string();
+    //         let patch = diffy::Patch::from_str(&diff).context("invalid patch")?;
+
+    //         if let Ok(t) = diffy::apply(file_content.as_deref().unwrap_or(""), &patch) {
+    //             file_content = Some(t);
+    //         } else {
+    //             singular_chunk.hunks[0].lines.retain(|line| match line {
+    //                 diff::Line::AddLine(..) | diff::Line::DelLine(..) => true,
+    //                 diff::Line::Context(..) => false,
+    //             });
+    //             singular_chunk.fixup_hunks();
+
+    //             let diff = if singular_chunk.hunks[0]
+    //                 .lines
+    //                 .iter()
+    //                 .all(|l| matches!(l, diff::Line::AddLine(..)))
+    //             {
+    //                 let system_prompt = prompts::studio_diff_regen_hunk_prompt(&llm_context);
+    //                 let messages = vec![
+    //                     llm_gateway::api::Message::system(&system_prompt),
+    //                     llm_gateway::api::Message::user(&singular_chunk.to_string()),
+    //                 ];
+    //                 llm_gateway.chat(&messages, None).await?
+    //             } else {
+    //                 singular_chunk.to_string()
+    //             };
+
+    //             let patch = diffy::Patch::from_str(&diff).context("redacted patch was invalid")?;
+
+    //             match diffy::apply(file_content.as_deref().unwrap_or(""), &patch) {
+    //                 Ok(t) => file_content = Some(t),
+    //                 Err(_) => {
+    //                     error!("hunk ({i}, {j}) failed: {diff}");
+    //                 }
+    //             }
+    //         }
+
+    //         let chunk = resolved_chunk_map
+    //             .entry((singular_chunk.src.clone(), singular_chunk.dst.clone()))
+    //             .or_insert_with(|| DiffChunk {
+    //                 src: singular_chunk.src.clone(),
+    //                 dst: singular_chunk.dst.clone(),
+    //                 hunks: Vec::new(),
+    //             });
+
+    //         chunk.hunks.extend(singular_chunk.hunks);
+    //     }
+
+    //     // if params.apply {
+    //     //     let Some(repo_path) = repo.local_path() else {
+    //     //         error!("cannot apply patch to remote repo");
+    //     //         continue;
+    //     //     };
+
+    //     //     let file_path = repo_path.join(file.relative_path);
+
+    //     //     std::fs::write(file_path, file_content).context("failed to patch file on disk")?;
+    //     // }
+    // }
+
+    // let chunks = resolved_chunk_map
+    //     .into_values()
+    //     .map(|chunk| {
+    //         let lang = file_langs.get(&chunk.src).unwrap();
+
+    //         structured_diff::Chunk {
+    //             raw_patch: chunk.to_string(),
+
+    //             lang: lang.clone(),
+    //             repo: repo.clone(),
+    //             branch: branch.clone(),
+    //             file: chunk.src.to_owned(),
+    //             hunks: chunk
+    //                 .hunks
+    //                 .into_iter()
+    //                 .map(|hunk| structured_diff::Hunk {
+    //                     line_start: hunk.src_line,
+    //                     patch: hunk
+    //                         .lines
+    //                         .into_iter()
+    //                         .map(|line| line.to_string())
+    //                         .collect::<String>(),
+    //                 })
+    //                 .collect(),
+    //         }
+    //     })
+    //     .collect::<Vec<_>>();
+
+    // Ok(Json(structured_diff::Diff { chunks }))
+}
+
+fn context_repo_branch(context: &[ContextFile]) -> Result<(RepoRef, Option<String>)> {
+    let (repo, branch) = context
+        .first()
+        .map(|cf| (cf.repo.clone(), cf.branch.clone()))
+        // We make a hard assumption in the design of diffs that a studio can only contain files
+        // from one repository. This allows us to determine which repository to create new files
+        // or delete files in, without having to prefix file paths with repository names.
+        //
+        // If we can't find *any* files in the context to detect the current repository,
+        // creating/deleting a file like `index.js` is ambiguous, so we just return an error.
+        .context("could not determine studio repository, studio didn't contain any files")?;
+
+    Ok((repo, branch))
+}
+
+async fn rectify_hunks(
+    app: &Application,
+    llm_context: &str,
+    llm_gateway: &llm_gateway::Client,
+    hunks: impl Iterator<Item = &DiffHunk>,
+    path: &str,
+    repo: &RepoRef,
+    branch: Option<&str>,
+) -> Result<Vec<DiffHunk>> {
+    let file = app
+        .indexes
+        .file
+        .by_path(repo, path, branch)
+        .await?
+        .context("path did not exist in the index")?;
+
+    let mut file_content = file.content;
+
+    let mut out = Vec::new();
+
+    for (i, hunk) in hunks.enumerate() {
+        let mut singular_chunk = DiffChunk {
+            src: Some(path.to_owned()),
+            dst: Some(path.to_owned()),
+            hunks: vec![hunk.clone()],
+        };
+
+        let diff = singular_chunk.to_string();
+        let patch = diffy::Patch::from_str(&diff).context("invalid patch")?;
+
+        if let Ok(t) = diffy::apply(&file_content, &patch) {
+            file_content = t;
+            out.extend(singular_chunk.hunks);
+        } else {
+            debug!("fixing up patch:\n\n{hunk:?}\n\n{diff}");
+
+            singular_chunk.hunks[0].lines.retain(|line| match line {
+                diff::Line::AddLine(..) | diff::Line::DelLine(..) => true,
+                diff::Line::Context(..) => false,
+            });
+            singular_chunk.fixup_hunks();
+
+            let diff = if singular_chunk.hunks[0]
+                .lines
+                .iter()
+                .all(|l| matches!(l, diff::Line::AddLine(..)))
+            {
+                let system_prompt = prompts::studio_diff_regen_hunk_prompt(&llm_context);
+                let messages = vec![
+                    llm_gateway::api::Message::system(&system_prompt),
+                    llm_gateway::api::Message::user(&singular_chunk.to_string()),
+                ];
+                llm_gateway.chat(&messages, None).await?
+            } else {
+                singular_chunk.to_string()
+            };
+
+            let patch = diffy::Patch::from_str(&diff).context("redacted patch was invalid")?;
+
+            if let Ok(t) = diffy::apply(&file_content, &patch) {
+                file_content = t;
+                out.extend(singular_chunk.hunks);
+            } else {
+                warn!("hunk {path}#{i} failed: {diff}");
+            }
         }
     }
 
-    let chunks = resolved_chunk_map
-        .into_values()
-        .map(|chunk| {
-            let doc = doc_map.get(&chunk.src).unwrap();
-
-            structured_diff::Chunk {
-                raw_patch: chunk.to_string(),
-
-                lang: doc.lang.clone(),
-                repo: RepoRef::from(doc.repo_ref.as_str()),
-                branch: doc.branches.clone(),
-                file: chunk.src.to_owned(),
-                hunks: chunk
-                    .hunks
-                    .into_iter()
-                    .map(|hunk| structured_diff::Hunk {
-                        line_start: hunk.src_line,
-                        patch: hunk
-                            .lines
-                            .into_iter()
-                            .map(|line| line.to_string())
-                            .collect::<String>(),
-                    })
-                    .collect(),
-            }
-        })
-        .collect::<Vec<_>>();
-
-    Ok(Json(structured_diff::Diff { chunks }))
+    Ok(out)
 }
+
+async fn validate_delete_file(
+    app: &Application,
+    chunk: &DiffChunk,
+    path: &str,
+    repo: &RepoRef,
+    branch: Option<&str>,
+) -> Result<bool> {
+    let Some(file) = app.indexes.file.by_path(repo, path, branch).await? else {
+        error!("diff tried to delete a file that doesn't exist: {path}");
+        return Ok(false);
+    };
+
+    // We know our formatted diffs are valid syntax.
+    let diff = chunk.to_string();
+    let patch = diffy::Patch::from_str(&diff).unwrap();
+
+    let Ok(final_content) = diffy::apply(&file.content, &patch) else {
+        error!("deletion diff did not cleanly apply to file: {path}");
+        return Ok(false);
+    };
+
+    if !final_content.trim().is_empty() {
+        error!("deletion diff did not fully delete file contents");
+        return Ok(false);
+    }
+
+    Ok(true)
+}
+
+async fn validate_add_file(
+    app: &Application,
+    chunk: &DiffChunk,
+    path: &str,
+    repo: &RepoRef,
+    branch: Option<&str>,
+) -> Result<bool> {
+    if app
+        .indexes
+        .file
+        .by_path(repo, path, branch)
+        .await?
+        .is_some()
+    {
+        error!("diff tried to create a file that already exists: {path}");
+        return Ok(false);
+    };
+
+    if chunk.hunks.iter().any(|h| {
+        h.lines
+            .iter()
+            .any(|l| !matches!(l, diff::Line::AddLine(..)))
+    }) {
+        error!("diff to create a new file had non-addition lines");
+        Ok(false)
+    } else {
+        Ok(true)
+    }
+}
+
+// async fn prepare_chunk(chunk: DiffChunk) -> Result<Option<structured_diff::Chunk>> {
+//     let mut file_content = if let Some(src) = chunk.src {
+//         let context_file = match context.iter().find(|c| c.path == src) {
+//             Some(cf) => cf,
+//             None => {
+//                 warn!(?chunk.src, "chunk had unknown src file");
+//                 continue;
+//             }
+//         };
+//
+//         let file = app
+//             .indexes
+//             .file
+//             .by_path(
+//                 &context_file.repo,
+//                 &context_file.path,
+//                 context_file.branch.as_deref(),
+//             )
+//             .await?
+//             .context("path did not exist in the index")?;
+//         file_langs.insert(src.to_owned(), file.lang);
+//         Some(file.content)
+//     } else {
+//         None
+//     };
+// }
 
 pub async fn diff_apply(
     app: Extension<Application>,
@@ -1006,27 +1334,20 @@ pub async fn diff_apply(
 
     let diff_chunks = diff::relaxed_parse(&diff);
 
+    let (repo, branch) = context_repo_branch(&context)?;
+
     for (i, chunk) in diff_chunks.enumerate() {
-        let context_file = match context.iter().find(|c| c.path == chunk.src) {
-            Some(cf) => cf,
-            None => {
-                warn!(?chunk.src, "chunk had unknown src file");
-                continue;
-            }
+        let mut file_content = if let Some(src) = &chunk.src {
+            app
+                .indexes
+                .file
+                .by_path(&repo, &src, branch.as_deref())
+                .await?
+                .context("path did not exist in the index")?
+                .content
+        } else {
+            String::new()
         };
-
-        let file = app
-            .indexes
-            .file
-            .by_path(
-                &context_file.repo,
-                &context_file.path,
-                context_file.branch.as_deref(),
-            )
-            .await?
-            .context("path did not exist in the index")?;
-
-        let mut file_content = file.content;
 
         for (j, hunk) in chunk.hunks.iter().enumerate() {
             let mut singular_chunk = chunk.clone();
@@ -1046,15 +1367,22 @@ pub async fn diff_apply(
             }
         }
 
-        let repo_ref = file.repo_ref.parse::<RepoRef>().unwrap();
-        let Some(repo_path) = repo_ref.local_path() else {
+        let Some(repo_path) = repo.local_path() else {
             error!("cannot apply patch to remote repo");
             continue;
         };
 
-        let file_path = repo_path.join(file.relative_path);
+        if let Some(dst) = &chunk.dst {
+            let file_path = repo_path.join(dst);
+            std::fs::write(file_path, file_content).context("failed to patch file on disk")?;
+        } else { 
+            if !file_content.trim().is_empty() {
+                return Err(Error::user("diff deletes a file but not all contents were removed"));
+            }
 
-        std::fs::write(file_path, file_content).context("failed to patch file on disk")?;
+            let file_path = repo_path.join(chunk.src.clone().unwrap());
+            std::fs::remove_file(file_path).context("failed to delete file on disk")?;
+        }
     }
 
     Ok(())
