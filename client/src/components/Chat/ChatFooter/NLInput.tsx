@@ -319,7 +319,7 @@ const NLInput = ({
             markup="|path:__id__|"
             data={getDataPath}
             renderSuggestion={renderPathSuggestion}
-            className="relative before:bg-chat-bg-shade before:border before:border-chat-bg-border before:rounded before:absolute before:-top-0.5 before:-bottom-0.5 before:-left-1 before:-right-0.5"
+            className="relative before:bg-chat-bg-border-hover before:rounded before:absolute before:-top-0.5 before:-bottom-0.5 before:-left-1 before:-right-0.5"
             appendSpaceOnAdd
             displayTransform={pathTransform}
           />
@@ -329,7 +329,7 @@ const NLInput = ({
             data={getDataLang}
             appendSpaceOnAdd
             renderSuggestion={renderLangSuggestion}
-            className="relative before:bg-chat-bg-shade before:border before:border-chat-bg-border before:rounded before:absolute before:-top-0.5 before:-bottom-0.5 before:-left-1 before:-right-0.5"
+            className="relative before:bg-chat-bg-border-hover before:rounded before:absolute before:-top-0.5 before:-bottom-0.5 before:-left-1 before:-right-0.5"
           />
         </MentionsInput>
         {isStoppable || selectedLines ? (
