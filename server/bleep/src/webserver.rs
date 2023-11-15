@@ -86,6 +86,7 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         .route("/search/path", get(search::fuzzy_path))
         .route("/file", get(file::handle))
         .route("/answer", get(answer::answer))
+        .route("/answer/explain", get(answer::explain))
         .route(
             "/answer/conversations",
             get(answer::conversations::list).delete(answer::conversations::delete),

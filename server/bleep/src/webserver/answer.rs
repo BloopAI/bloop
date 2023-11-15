@@ -18,10 +18,14 @@ use self::conversations::ConversationId;
 
 use super::middleware::User;
 use crate::{
-    agent::{self, exchange::Exchange, Action, Agent, ExchangeState},
+    agent::{
+        self,
+        exchange::{CodeChunk, Exchange, FocusedChunk, RepoPath},
+        Action, Agent, ExchangeState,
+    },
     analytics::{EventData, QueryEvent},
     db::QueryLog,
-    query::parser::{self},
+    query::parser::{self, Literal},
     repo::RepoRef,
     Application,
 };
@@ -367,90 +371,96 @@ pub struct Explain {
     pub thread_id: uuid::Uuid,
 }
 
-// pub async fn explain(
-//     Query(params): Query<Explain>,
-//     Extension(app): Extension<Application>,
-//     Extension(user): Extension<User>,
-// ) -> super::Result<impl IntoResponse> {
-//     let query_id = uuid::Uuid::new_v4();
+pub async fn explain(
+    Query(params): Query<Explain>,
+    Extension(app): Extension<Application>,
+    Extension(user): Extension<User>,
+) -> super::Result<impl IntoResponse> {
+    let query_id = uuid::Uuid::new_v4();
+    let repo_path = RepoPath {
+        repo: params.repo_ref.to_string(),
+        path: params.relative_path.clone(),
+    };
 
-//     // We synthesize a virtual `/answer` request.
-//     let virtual_req = Answer {
-//         q: format!(
-//             "Explain lines {} - {} in {}",
-//             params.line_start + 1,
-//             params.line_end + 1,
-//             params.relative_path
-//         ),
-//         repo_ref: Some(params.repo_ref),
-//         thread_id: params.thread_id,
-//         parent_exchange_id: None,
-//         model: agent::model::GPT_4,
-//     };
+    // We synthesize a virtual `/answer` request.
+    let virtual_req = Answer {
+        q: format!(
+            "Explain lines {} - {} in {}",
+            params.line_start + 1,
+            params.line_end + 1,
+            params.relative_path
+        ),
+        repo_ref: Some(params.repo_ref),
+        thread_id: params.thread_id,
+        parent_exchange_id: None,
+        model: agent::model::GPT_4,
+    };
 
-//     let conversation_id = ConversationId {
-//         thread_id: params.thread_id,
-//         user_id: user
-//             .username()
-//             .ok_or_else(|| super::Error::user("didn't have user ID"))?
-//             .to_string(),
-//     };
+    let conversation_id = ConversationId {
+        thread_id: params.thread_id,
+        user_id: user
+            .username()
+            .ok_or_else(|| super::Error::user("didn't have user ID"))?
+            .to_string(),
+    };
 
-//     let mut query = parser::parse_nl(&virtual_req.q)
-//         .context("failed to parse virtual answer query")?
-//         .into_owned();
+    let mut query = parser::parse_nl(&virtual_req.q)
+        .context("failed to parse virtual answer query")?
+        .into_owned();
 
-//     if let Some(branch) = params.branch {
-//         query
-//             .branch
-//             .insert(Literal::Plain(std::borrow::Cow::Owned(branch)));
-//     }
+    if let Some(branch) = params.branch {
+        query
+            .branch
+            .insert(Literal::Plain(std::borrow::Cow::Owned(branch)));
+    }
 
-//     let file_content = app
-//         .indexes
-//         .file
-//         .by_path(&virtual_req.repo_ref, &params.relative_path, None)
-//         .await
-//         .context("file retrieval failed")?
-//         .context("did not find requested file")?
-//         .content;
+    let file_content = app
+        .indexes
+        .file
+        // this unwrap is ok, because we instantiate the `virtual_req` above
+        .by_path(
+            virtual_req.repo_ref.as_ref().unwrap(),
+            &params.relative_path,
+            None,
+        )
+        .await
+        .context("file retrieval failed")?
+        .context("did not find requested file")?
+        .content;
 
-//     let snippet = file_content
-//         .lines()
-//         .skip(params.line_start)
-//         .take(params.line_end - params.line_start)
-//         .collect::<Vec<_>>()
-//         .join("\n");
+    let snippet = file_content
+        .lines()
+        .skip(params.line_start)
+        .take(params.line_end - params.line_start)
+        .collect::<Vec<_>>()
+        .join("\n");
 
-//     let mut exchange = Exchange::new(query_id, query);
+    let mut exchange = Exchange::new(query_id, query);
+    exchange.focused_chunk = Some(FocusedChunk {
+        repo_path: repo_path.clone(),
+        start_line: params.line_start,
+        end_line: params.line_end,
+    });
 
-//     exchange.focused_chunk = Some(FocusedChunk {
-//         repo: params.repo_ref.clone(),
-//         path: params.relative_path.clone(),
-//         start_line: params.line_start,
-//         end_line: params.line_end,
-//     });
+    exchange.paths.push(repo_path.clone());
+    exchange.code_chunks.push(CodeChunk {
+        repo_path: repo_path.clone(),
+        alias: 0,
+        start_line: params.line_start,
+        end_line: params.line_end,
+        snippet,
+    });
 
-//     exchange.paths.push(params.relative_path.clone());
-//     exchange.code_chunks.push(CodeChunk {
-//         repo: params.repo.clone(),
-//         path: params.relative_path.clone(),
-//         alias: 0,
-//         start_line: params.line_start,
-//         end_line: params.line_end,
-//         snippet,
-//     });
+    let action = Action::Answer { paths: vec![0] };
 
-//     let action = Action::Answer { aliases: vec![0] };
-
-//     execute_agent(
-//         virtual_req,
-//         app,
-//         user,
-//         query_id,
-//         conversation_id,
-//         vec![exchange],
-//         action,
-//     )
-//     .await
-// }
+    execute_agent(
+        virtual_req,
+        app,
+        user,
+        query_id,
+        conversation_id,
+        vec![exchange],
+        action,
+    )
+    .await
+}
