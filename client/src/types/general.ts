@@ -377,6 +377,7 @@ export enum StudioLeftPanelType {
   TEMPLATES = 'templates',
   FILE = 'file',
   DIFF = 'diff',
+  DOCS = 'docs',
 }
 
 export enum StudioRightPanelType {
