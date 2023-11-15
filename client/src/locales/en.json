@@ -425,8 +425,10 @@
 	"The diff has been applied locally.": "The diff has been applied locally.",
 	"Generating diff...": "Generating diff...",
 	"Diff generation failed": "Diff generation failed",
-	"Failed to apply the diff": "Failed to apply the diff"
+	"Failed to apply the diff": "Failed to apply the diff",
+	"Cancel diff generation": "Cancel diff generation"
 }
+
 
 
 

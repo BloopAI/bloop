@@ -432,8 +432,10 @@
 	"The diff has been applied locally.": "差异已在本地应用。",
 	"Generating diff...": "生成差异...",
 	"Diff generation failed": "差异生成失败",
-	"Failed to apply the diff": "未能应用差异"
+	"Failed to apply the diff": "未能应用差异",
+	"Cancel diff generation": "取消差异生成"
 }
+
 
 
 

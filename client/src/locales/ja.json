@@ -423,8 +423,10 @@
 	"The diff has been applied locally.": "DIFFはローカルで適用されています。",
 	"Generating diff...": "diffを生成します...",
 	"Diff generation failed": "DIFF生成は失敗しました",
-	"Failed to apply the diff": "DIFFを適用できませんでした"
+	"Failed to apply the diff": "DIFFを適用できませんでした",
+	"Cancel diff generation": "DIFF生成をキャンセルします"
 }
+
 
 
 

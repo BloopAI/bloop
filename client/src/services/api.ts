@@ -1,4 +1,4 @@
-import axios, { AxiosInstance } from 'axios';
+import axios, { AxiosInstance, GenericAbortSignal } from 'axios';
 import {
   AllConversationsResponse,
   CodeStudioType,
@@ -324,8 +324,14 @@ export const importCodeStudio = (thread_id: string, studio_id?: string) =>
   http
     .post('/studio/import', {}, { params: { thread_id, studio_id } })
     .then((r) => r.data);
-export const generateStudioDiff = (id: string): Promise<GeneratedCodeDiff> =>
-  http(`/studio/${id}/diff`, { timeout: 10 * 60 * 1000 }).then((r) => r.data);
+export const generateStudioDiff = (
+  id: string,
+  abortSignal?: GenericAbortSignal,
+): Promise<GeneratedCodeDiff> =>
+  http(`/studio/${id}/diff`, {
+    timeout: 10 * 60 * 1000,
+    signal: abortSignal,
+  }).then((r) => r.data);
 export const confirmStudioDiff = (id: string, diff: string): Promise<void> =>
   http
     .post(`/studio/${id}/diff/apply`, diff, {

@@ -60,8 +60,6 @@ type Props = {
   handleRestore: () => void;
 };
 
-let eventSource: EventSource;
-
 const throttledPatch = throttle(
   (studioId, data) => {
     return patchCodeStudio(studioId, data);
@@ -110,6 +108,8 @@ const Conversation = ({
   const [isDiffGenFailed, setDiffGenFailed] = useState(false);
   const [diff, setDiff] = useState<GeneratedCodeDiff | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const abortController = useRef<AbortController | null>(null);
+  const eventSource = useRef<EventSource | null>(null);
 
   const setInput = useCallback((value: StudioConversationMessage) => {
     setInputValue(value.message);
@@ -188,7 +188,7 @@ const Conversation = ({
   );
 
   const handleCancel = useCallback(() => {
-    eventSource?.close();
+    eventSource.current?.close();
     setIsLoading(false);
     refetchQuota();
     if (
@@ -229,11 +229,11 @@ const Conversation = ({
     });
     setIsLoading(true);
 
-    eventSource?.close();
-    eventSource = new EventSource(
+    eventSource.current?.close();
+    eventSource.current = new EventSource(
       `${apiUrl.replace('https:', '')}/studio/${studioId}/generate`,
     );
-    eventSource.onerror = (err) => {
+    eventSource.current.onerror = (err) => {
       console.log('SSE error', err);
       refetchQuota();
       setConversation((prev) => {
@@ -251,12 +251,12 @@ const Conversation = ({
         return newConv;
       });
       setIsLoading(false);
-      eventSource.close();
+      eventSource.current?.close();
     };
     let i = 0;
-    eventSource.onmessage = (ev) => {
+    eventSource.current.onmessage = (ev) => {
       if (ev.data === '[DONE]') {
-        eventSource.close();
+        eventSource.current?.close();
         setIsLoading(false);
         refetchCodeStudio();
         return;
@@ -390,7 +390,11 @@ const Conversation = ({
     setWaitingForDiff(true);
     setDiffGenFailed(false);
     try {
-      const resp = await generateStudioDiff(studioId);
+      abortController.current = new AbortController();
+      const resp = await generateStudioDiff(
+        studioId,
+        abortController.current?.signal,
+      );
       setDiff(resp);
     } catch (err) {
       console.log(err);
@@ -399,6 +403,11 @@ const Conversation = ({
       setWaitingForDiff(false);
     }
   }, [studioId]);
+
+  const handleCancelDiff = useCallback(() => {
+    abortController.current?.abort();
+    setWaitingForDiff(false);
+  }, []);
 
   const handleConfirmDiff = useCallback(
     async (e: React.MouseEvent) => {
@@ -411,8 +420,12 @@ const Conversation = ({
         await confirmStudioDiff(studioId, result);
         setDiff(null);
         setDiffApplied(true);
-      } catch (err) {
-        setDiffApplyError(true);
+      } catch (err: unknown) {
+        console.log(err);
+        // @ts-ignore
+        if (err.code !== 'ERR_CANCELED') {
+          setDiffApplyError(true);
+        }
       }
     },
     [studioId, diff],
@@ -601,13 +614,14 @@ const Conversation = ({
                     (isDiffApplied ? null : !diff ? (
                       <Button
                         size="small"
-                        variant="secondary"
-                        onClick={handleApplyChanges}
-                        disabled={waitingForDiff}
+                        variant={waitingForDiff ? 'danger' : 'secondary'}
+                        onClick={
+                          waitingForDiff ? handleCancelDiff : handleApplyChanges
+                        }
                       >
                         <Trans>
                           {waitingForDiff
-                            ? 'Generating diff...'
+                            ? 'Cancel diff generation'
                             : 'Apply changes'}
                         </Trans>
                       </Button>

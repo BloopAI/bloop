@@ -426,8 +426,10 @@
 	"The diff has been applied locally.": "La diferencia se ha aplicado localmente.",
 	"Generating diff...": "Generando diff ...",
 	"Diff generation failed": "Falló la generación de diff",
-	"Failed to apply the diff": "No se pudo aplicar la diferencia"
+	"Failed to apply the diff": "No se pudo aplicar la diferencia",
+	"Cancel diff generation": "Cancelar la generación de diff"
 }
+
 
 
 
