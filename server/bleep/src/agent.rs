@@ -62,7 +62,7 @@ impl Project {
     }
 
     pub fn repos(&self) -> impl Iterator<Item = String> + '_ {
-        self.0.iter().map(|r| r.to_string())
+        self.0.iter().map(|r| r.display_name())
     }
 }
 
