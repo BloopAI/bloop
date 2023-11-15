@@ -1038,8 +1038,7 @@ pub async fn diff(
                     }
 
                     (Some(src), None) => {
-                        if validate_delete_file(&app, &chunk, src, &repo, branch.as_deref()).await?
-                        {
+                        if validate_delete_file(&app, src, &repo, branch.as_deref()).await? {
                             Ok(Some(chunk))
                         } else {
                             Ok(None)
@@ -1211,31 +1210,22 @@ async fn rectify_hunks(
 
 async fn validate_delete_file(
     app: &Application,
-    chunk: &DiffChunk,
     path: &str,
     repo: &RepoRef,
     branch: Option<&str>,
 ) -> Result<bool> {
-    let Some(file) = app.indexes.file.by_path(repo, path, branch).await? else {
+    if app
+        .indexes
+        .file
+        .by_path(repo, path, branch)
+        .await?
+        .is_none()
+    {
         error!("diff tried to delete a file that doesn't exist: {path}");
-        return Ok(false);
-    };
-
-    // We know our formatted diffs are valid syntax.
-    let diff = chunk.to_string();
-    let patch = diffy::Patch::from_str(&diff).unwrap();
-
-    let Ok(final_content) = diffy::apply(&file.content, &patch) else {
-        error!("deletion diff did not cleanly apply to file: {path}");
-        return Ok(false);
-    };
-
-    if !final_content.trim().is_empty() {
-        error!("deletion diff did not fully delete file contents");
-        return Ok(false);
+        Ok(false)
+    } else {
+        Ok(true)
     }
-
-    Ok(true)
 }
 
 async fn validate_add_file(
