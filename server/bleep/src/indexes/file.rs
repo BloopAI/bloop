@@ -19,7 +19,10 @@ use tokenizers as _;
 use tokio::runtime::Handle;
 use tracing::{error, info, trace, warn};
 
-pub use super::schema::File;
+pub use super::{
+    analytics::{StatsGatherer, WorkerStats},
+    schema::File,
+};
 
 #[cfg(feature = "debug")]
 use std::time::Instant;
@@ -46,6 +49,7 @@ struct Workload<'a> {
     repo_metadata: &'a RepoMetadata,
     relative_path: PathBuf,
     normalized_path: PathBuf,
+    stats_tx: tokio::sync::mpsc::UnboundedSender<WorkerStats>,
 }
 
 impl<'a> Workload<'a> {
@@ -75,6 +79,12 @@ impl<'a> Workload<'a> {
 
         CacheKeys::new(semantic_hash, tantivy_hash)
     }
+
+    fn transmit_stats(&self, stats: WorkerStats) {
+        if let Err(e) = self.stats_tx.send(stats) {
+            warn!("failed to transmit worker stats: {e}");
+        }
+    }
 }
 
 #[async_trait]
@@ -85,6 +95,7 @@ impl Indexable for File {
             ref reporef,
             ref file_cache,
             ref pipes,
+            ref app,
             ..
         }: &SyncHandle,
         repo: &Repository,
@@ -95,13 +106,18 @@ impl Indexable for File {
         let cache = file_cache.retrieve(reporef).await;
         let repo_name = reporef.indexed_name();
         let processed = &AtomicU64::new(0);
+        let mut stats_gatherer = StatsGatherer::for_repo(reporef.clone());
+        stats_gatherer.is_first_index = cache.is_empty();
+        stats_gatherer.was_index_reset = app.indexes.was_index_reset;
 
+        let worker_stats_tx = stats_gatherer.sender();
         let file_worker = |count: usize| {
             let cache = &cache;
             let callback = move |dir_entry: RepoDirEntry| {
                 let completed = processed.fetch_add(1, Ordering::Relaxed);
                 pipes.index_percent(((completed as f32 / count as f32) * 100f32) as u8);
 
+                let worker_stats_tx = worker_stats_tx.clone();
                 let entry_disk_path = dir_entry.path().to_owned();
                 let relative_path = {
                     let entry_srcpath = PathBuf::from(&entry_disk_path);
@@ -121,9 +137,11 @@ impl Indexable for File {
                     normalized_path,
                     repo_metadata,
                     cache,
+                    stats_tx: worker_stats_tx,
                 };
 
                 trace!(entry_disk_path, "queueing entry");
+
                 if let Err(err) = self.worker(dir_entry, workload, writer) {
                     warn!(%err, entry_disk_path, "indexing failed; skipping");
                 }
@@ -153,6 +171,7 @@ impl Indexable for File {
                 repo.branch_filter.as_ref().map(Into::into),
             )?;
             let count = walker.len();
+            stats_gatherer.event.add_payload("file_count", &count);
             walker.for_each(pipes, file_worker(count));
         } else {
             let branch = gix::open::Options::isolated()
@@ -173,6 +192,7 @@ impl Indexable for File {
 
             let walker = FileWalker::index_directory(&repo.disk_path, branch);
             let count = walker.len();
+            stats_gatherer.event.add_payload("file_count", &count);
             walker.for_each(pipes, file_worker(count));
         };
 
@@ -181,6 +201,12 @@ impl Indexable for File {
         }
 
         info!(?repo.disk_path, "repo file indexing finished, took {:?}", start.elapsed());
+
+        if stats_gatherer.repo_stats.reindex_count > 0 {
+            let user = app.user().await;
+            let event = stats_gatherer.finish().await;
+            app.with_analytics(|hub| hub.track_repo(event, &user));
+        }
 
         file_cache
             .synchronize(cache, |key| {
@@ -559,7 +585,6 @@ impl File {
         match dir_entry {
             _ if workload.cache.is_fresh(&cache_keys) => {
                 info!("fresh; skipping");
-                return Ok(());
             }
             RepoDirEntry::Dir(dir) => {
                 trace!("writing dir document");
@@ -579,7 +604,6 @@ impl File {
                     )
                     .ok_or(anyhow::anyhow!("failed to build document"))?;
                 writer.add_document(doc)?;
-
                 trace!("file document written");
             }
         }
@@ -633,6 +657,12 @@ impl RepoDir {
         let relative_path_str = relative_path_str.replace('\\', "/");
 
         let branches = self.branches.join("\n");
+        let stats = WorkerStats {
+            size: self.size(),
+            chunks: 0,
+            reindex_count: 1,
+        };
+        workload.transmit_stats(stats);
 
         doc!(
             schema.raw_repo_name => repo_name.as_bytes(),
@@ -689,6 +719,11 @@ impl RepoFile {
         let branches = self.branches.join("\n");
         let explicitly_allowed = file_filter.is_allowed(relative_path);
         let indexed = explicitly_allowed.unwrap_or_else(|| self.should_index());
+        let mut stats = WorkerStats {
+            size: self.size(),
+            reindex_count: 1,
+            ..Default::default()
+        };
 
         if !indexed {
             let lang_str = repo_metadata
@@ -779,7 +814,7 @@ impl RepoFile {
 
         let lines_avg = buffer.len() as f64 / buffer.lines().count() as f64;
 
-        tokio::task::block_in_place(|| {
+        let insert_stats = tokio::task::block_in_place(|| {
             Handle::current().block_on(async {
                 file_cache
                     .process_semantic(
@@ -791,9 +826,12 @@ impl RepoFile {
                         lang_str,
                         &self.branches,
                     )
-                    .await;
+                    .await
             })
         });
+
+        stats.chunks += insert_stats.new;
+        workload.transmit_stats(stats);
 
         Some(doc!(
             schema.raw_content => buffer.as_bytes(),
