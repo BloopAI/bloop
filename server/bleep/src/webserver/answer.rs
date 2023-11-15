@@ -21,7 +21,7 @@ use crate::{
     agent::{
         self,
         exchange::{CodeChunk, Exchange, FocusedChunk, RepoPath},
-        Action, Agent, ExchangeState,
+        Action, Agent, ExchangeState, Project,
     },
     analytics::{EventData, QueryEvent},
     db::QueryLog,
@@ -67,7 +67,7 @@ pub(super) async fn vote(
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct Answer {
     pub q: String,
-    pub repo_ref: Option<RepoRef>,
+    pub project: Project,
     #[serde(default = "default_model")]
     pub model: agent::model::AnswerModel,
     #[serde(default = "default_thread_id")]
@@ -243,7 +243,7 @@ async fn try_execute_agent(
 
     let Answer {
         thread_id,
-        repo_ref,
+        project,
         model,
         ..
     } = params.clone();
@@ -252,7 +252,7 @@ async fn try_execute_agent(
 
         let mut agent = Agent {
             app,
-            repo_ref,
+            project,
             exchanges,
             exchange_tx,
             llm_gateway,
@@ -390,7 +390,7 @@ pub async fn explain(
             params.line_end + 1,
             params.relative_path
         ),
-        repo_ref: Some(params.repo_ref),
+        project: Project(vec![params.repo_ref]),
         thread_id: params.thread_id,
         parent_exchange_id: None,
         model: agent::model::GPT_4,
@@ -418,11 +418,7 @@ pub async fn explain(
         .indexes
         .file
         // this unwrap is ok, because we instantiate the `virtual_req` above
-        .by_path(
-            virtual_req.repo_ref.as_ref().unwrap(),
-            &params.relative_path,
-            None,
-        )
+        .by_path(&virtual_req.project.0[0], &params.relative_path, None)
         .await
         .context("file retrieval failed")?
         .context("did not find requested file")?

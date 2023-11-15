@@ -9,14 +9,14 @@ use std::fmt;
 use tracing::info;
 
 use crate::{
-    agent::exchange::Exchange,
+    agent::{exchange::Exchange, Project},
     db::SqlDb,
     repo::RepoRef,
     webserver::{self, middleware::User, Error, ErrorKind},
     Application,
 };
 
-type Conversation = (Option<RepoRef>, Vec<Exchange>);
+pub type Conversation = (Project, Vec<Exchange>);
 
 #[derive(Hash, PartialEq, Eq, Clone)]
 pub struct ConversationId {
@@ -150,8 +150,8 @@ pub async fn store(db: &SqlDb, id: ConversationId, conversation: Conversation) -
     .execute(&mut transaction)
     .await?;
 
-    let (repo_ref, exchanges) = conversation;
-    let repo_ref = repo_ref.map(|r| r.to_string());
+    let (project, exchanges) = conversation;
+    let repo_ref = project.id();
     let title = exchanges
         .first()
         .and_then(|list| list.query())

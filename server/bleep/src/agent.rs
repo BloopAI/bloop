@@ -47,9 +47,24 @@ pub enum Error {
     Processing(anyhow::Error),
 }
 
+/// A unified way to track a collection of repositories
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
+pub struct Project(pub Vec<RepoRef>);
+
+impl Project {
+    /// This is a temporary thing to keep backwards compatibility.
+    /// We should have a UUID here to track this stuff consistently.
+    pub fn id(&self) -> String {
+        self.0
+            .get(0)
+            .map(ToString::to_string)
+            .expect("invalid project configuration")
+    }
+}
+
 pub struct Agent {
     pub app: Application,
-    pub repo_ref: Option<RepoRef>,
+    pub project: Project,
     pub exchanges: Vec<Exchange>,
     pub exchange_tx: Sender<Exchange>,
 
@@ -394,7 +409,7 @@ impl Agent {
     // NB: This isn't an `async fn` so as to not capture a lifetime.
     fn store(&mut self) -> impl Future<Output = ()> {
         let sql = Arc::clone(&self.app.sql);
-        let conversation = (self.repo_ref.clone(), self.exchanges.clone());
+        let conversation = (self.project.clone(), self.exchanges.clone());
         let conversation_id = self
             .user
             .username()
