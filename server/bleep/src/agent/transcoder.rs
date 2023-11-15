@@ -494,45 +494,11 @@ fn xml_for_each(article: &str, f: impl Fn(&str) -> Option<String>) -> String {
 }
 
 fn try_trim_code_xml(xml: &str) -> Result<String> {
+    // We just remove code chunks completely.
+
     let xml = fixup_xml_code(xml);
-
-    let code_chunk = quick_xml::de::from_str(&xml).context("couldn't parse as XML code block")?;
-
-    Ok(match code_chunk {
-        CodeChunk::QuotedCode {
-            code: _,
-            language,
-            path,
-            start_line,
-            end_line,
-        } => {
-            let start_line = start_line
-                .map(|n| format!("<StartLine>{n}</StartLine>\n"))
-                .unwrap_or_default();
-            let end_line = end_line
-                .map(|n| format!("<EndLine>{n}</EndLine>\n"))
-                .unwrap_or_default();
-
-            format!(
-                "<QuotedCode>\n\
-                <Code>[REDACTED]</Code>\n\
-                <Language>{language}</Language>\n\
-                <Path>{path}</Path>\n\
-                {start_line}\
-                {end_line}\
-                </QuotedCode>"
-            )
-        }
-
-        CodeChunk::GeneratedCode { code: _, language } => {
-            format!(
-                "<GeneratedCode>\n\
-                <Code>[REDACTED]</Code>\n\
-                <Language>{language}</Language>\n\
-                </GeneratedCode>"
-            )
-        }
-    })
+    let _code_chunk: CodeChunk = quick_xml::de::from_str(&xml).context("couldn't parse as XML code block")?;
+    Ok(String::new())
 }
 
 pub fn limit_tokens(text: &str, bpe: CoreBPE, max_tokens: usize) -> &str {
@@ -587,8 +553,31 @@ test";
 
         let expected = "Sample Markdown test.
 
+
+
+
+
+test
+test
+test";
+
+        let out = xml_for_each(input, |code| try_trim_code_xml(code).ok());
+
+        assert_eq!(expected, out);
+    }
+
+    #[test]
+    fn test_trim_code_with_regular_xml() {
+        let input = "Sample Markdown test.
+
+<p>hello</p>
+
 <QuotedCode>
-<Code>[REDACTED]</Code>
+<Code>
+fn foo() -> i32 {
+    42
+}
+</Code>
 <Language>Rust</Language>
 <Path>src/main.rs</Path>
 <StartLine>10</StartLine>
@@ -596,9 +585,25 @@ test";
 </QuotedCode>
 
 <GeneratedCode>
-<Code>[REDACTED]</Code>
+<Code>
+fn foo() -> i32 {
+    42
+}
+</Code>
 <Language>Rust</Language>
 </GeneratedCode>
+
+test
+test
+test";
+
+        let expected = "Sample Markdown test.
+
+<p>hello</p>
+
+
+
+
 
 test
 test
@@ -1072,20 +1077,11 @@ fn main() {
 
         let expected = "Foo
 
-<QuotedCode>
-<Code>[REDACTED]</Code>
-<Language>Rust</Language>
-<Path>src/main.rs</Path>
-<StartLine>1</StartLine>
-<EndLine>3</EndLine>
-</QuotedCode>
+
 
 Bar.
 
-<GeneratedCode>
-<Code>[REDACTED]</Code>
-<Language>Rust</Language>
-</GeneratedCode>
+
 
 [^summary]: Test **summary**.";
 
