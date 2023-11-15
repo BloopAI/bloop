@@ -1,5 +1,5 @@
 import React, { ReactElement } from 'react';
-import { SearchStepType } from './api';
+import { DocShortType, SearchStepType } from './api';
 import { RepoSource } from './index';
 
 export enum MenuItemType {
@@ -370,15 +370,16 @@ export type StudioConversationMessage = {
 export enum StudioLeftPanelType {
   CONTEXT = 'context',
   TEMPLATES = 'templates',
+  FILE = 'file',
+  DOCS = 'docs',
 }
 
 export enum StudioRightPanelType {
-  FILE = 'file',
   CONVERSATION = 'conversation',
 }
 
 export type FileStudioPanelType = {
-  type: StudioRightPanelType.FILE;
+  type: StudioLeftPanelType.FILE;
   data: {
     repo: RepoType;
     branch: string | null;
@@ -388,12 +389,26 @@ export type FileStudioPanelType = {
   };
 };
 
+export type DocsStudioPanelType = {
+  type: StudioLeftPanelType.DOCS;
+  data: {
+    docProvider: DocShortType;
+    url: string;
+    absoluteUrl: string;
+    title: string;
+    selectedSection?: string;
+    isDocInContext: boolean;
+    initialSections?: string[];
+  };
+};
+
 export type StudioLeftPanelDataType =
   | {
       type: StudioLeftPanelType.CONTEXT | StudioLeftPanelType.TEMPLATES;
       data?: null;
     }
-  | FileStudioPanelType;
+  | FileStudioPanelType
+  | DocsStudioPanelType;
 
 export type StudioRightPanelDataType = {
   type: StudioRightPanelType.CONVERSATION;
@@ -405,5 +420,16 @@ export type StudioContextFile = {
   ranges: { start: number; end: number }[];
   repo: string;
   branch: string | null;
+  hidden: boolean;
+};
+
+export type StudioContextDoc = {
+  doc_id: string;
+  doc_source: string;
+  doc_icon: string | null;
+  doc_title: string | null;
+  relative_url: string;
+  absolute_url: string;
+  ranges: string[];
   hidden: boolean;
 };

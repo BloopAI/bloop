@@ -4,7 +4,7 @@ use super::{filters::BranchFilter, *};
 
 use anyhow::Result;
 use gix::ThreadSafeRepository;
-use tracing::{error, trace};
+use tracing::trace;
 
 use std::{
     collections::{BTreeSet, HashMap},
@@ -163,7 +163,7 @@ impl FileSource for GitWalker {
                     trace!(?path, "walking over path");
                     let git = self.git.to_thread_local();
                     let Ok(Some(object)) = git.try_find_object(oid) else {
-                        error!(?path, ?branches, "can't find object for file");
+                        warn!(?path, ?branches, "can't find object for file");
                         return None;
                     };
 

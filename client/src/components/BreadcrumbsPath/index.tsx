@@ -32,7 +32,9 @@ const BreadcrumbsPath = ({
   const { navigateRepoPath, navigateFullResult } = useAppNavigation();
   const mapPath = useCallback(() => {
     return splitPathForBreadcrumbs(path, (e, item, index, pParts) => {
-      e.stopPropagation();
+      if (onClick) {
+        e.stopPropagation();
+      }
       const isLastPart = index === pParts.length - 1;
       const newPath = breadcrumbsItemPath(
         pParts,

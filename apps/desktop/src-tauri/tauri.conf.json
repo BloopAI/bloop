@@ -8,7 +8,7 @@
   },
   "package": {
     "productName": "bloop",
-    "version": "0.5.8"
+    "version": "0.5.9"
   },
   "tauri": {
     "allowlist": {
@@ -75,7 +75,11 @@
       "windows": {
         "certificateThumbprint": "b955de6f8483ad3b14497e798a6eef48a137931b",
         "digestAlgorithm": "sha256",
-        "timestampUrl": "http://timestamp.sectigo.com"
+        "timestampUrl": "http://timestamp.sectigo.com",
+        "nsis": {
+          "installMode": "currentUser",
+	  "template": "installer.nsi"
+        }
       }
     },
     "security": {

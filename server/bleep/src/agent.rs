@@ -2,8 +2,6 @@ use std::{collections::HashSet, sync::Arc, time::Duration};
 
 use anyhow::{anyhow, Context, Result};
 use futures::{Future, TryStreamExt};
-use once_cell::sync::OnceCell;
-use rake::*;
 use tokio::sync::mpsc::Sender;
 use tracing::{debug, error, info, instrument};
 
@@ -11,7 +9,7 @@ use crate::{
     analytics::{EventData, QueryEvent},
     indexes::reader::{ContentDocument, FileDocument},
     llm_gateway::{self, api::FunctionCall},
-    query::parser,
+    query::{parser, stopwords::remove_stopwords},
     repo::RepoRef,
     semantic,
     webserver::{
@@ -41,19 +39,6 @@ mod tools {
     pub mod code;
     pub mod path;
     pub mod proc;
-}
-
-static STOPWORDS: OnceCell<StopWords> = OnceCell::new();
-static STOP_WORDS_LIST: &str = include_str!("stopwords.txt");
-
-fn stop_words() -> &'static StopWords {
-    STOPWORDS.get_or_init(|| {
-        let mut sw = StopWords::new();
-        for w in STOP_WORDS_LIST.lines() {
-            sw.insert(w.to_string());
-        }
-        sw
-    })
 }
 
 pub enum Error {
@@ -196,23 +181,14 @@ impl Agent {
 
                 // Always make a code search for the user query on the first exchange
                 if self.exchanges.len() == 1 {
-                    // Extract keywords from the query
                     let keywords = {
-                        let sw = stop_words();
-                        let r = Rake::new(sw.clone());
-                        let keywords = r.run(s);
-
-                        if keywords.is_empty() {
+                        let keys = remove_stopwords(s);
+                        if keys.is_empty() {
                             s.clone()
                         } else {
-                            keywords
-                                .iter()
-                                .map(|k| k.keyword.clone())
-                                .collect::<Vec<_>>()
-                                .join(" ")
+                            keys
                         }
                     };
-
                     self.code_search(&keywords).await?;
                 }
                 s.clone()

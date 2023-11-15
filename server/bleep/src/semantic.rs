@@ -548,22 +548,21 @@ impl Semantic {
 /// files found in the `target/$profile` folder. The `ort` crate by default will also copy the
 /// built dynamic library over to the `target/$profile` folder, when using the download strategy.
 fn init_ort_dylib(dylib_dir: impl AsRef<Path>) {
-    #[cfg(not(windows))]
-    {
-        #[cfg(target_os = "linux")]
-        let lib_name = "libonnxruntime.so";
-        #[cfg(target_os = "macos")]
-        let lib_name = "libonnxruntime.dylib";
+    #[cfg(target_os = "linux")]
+    let lib_name = "libonnxruntime.so";
+    #[cfg(target_os = "macos")]
+    let lib_name = "libonnxruntime.dylib";
+    #[cfg(windows)]
+    let lib_name = "onnxruntime.dll";
 
-        let ort_dylib_path = dylib_dir.as_ref().join(lib_name);
+    let ort_dylib_path = dylib_dir.as_ref().join(lib_name);
 
-        if env::var("ORT_DYLIB_PATH").is_err() {
-            env::set_var("ORT_DYLIB_PATH", ort_dylib_path);
-        }
+    if env::var("ORT_DYLIB_PATH").is_err() {
+        env::set_var("ORT_DYLIB_PATH", ort_dylib_path);
     }
 }
 
-// Exact match filter
+/// Exact match filter
 pub(crate) fn make_kv_keyword_filter(key: &str, value: &str) -> FieldCondition {
     let key = key.to_owned();
     let value = value.to_owned();

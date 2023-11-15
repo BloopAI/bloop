@@ -1,6 +1,6 @@
 [package]
 name = "bleep"
-version = "0.5.8"
+version = "0.5.9"
 edition = "2021"
 default-run = "bleep"
 build = "build.rs"
@@ -111,7 +111,6 @@ git-version = "0.3.5"
 gix = { git = "https://github.com/BloopAI/gitoxide", version="0.55.2", features = ["blocking-http-transport-reqwest-rust-tls-no-trust-dns", "pack-cache-lru-static"] }
 
 # semantic
-rake = "0.1"
 qdrant-client = { version = "1.5.0", default-features = false }
 tiktoken-rs = "0.4.5"
 tokenizers = { version = "0.14.0", default-features = false, features = ["progressbar", "cli", "onig", "esaxx_fast"] }
@@ -136,6 +135,11 @@ jwt-authorizer = { version = "0.11.0", default-features = false, features = ["ru
 ring = "0.16.20"
 hex = "0.4.3"
 base64 = "0.21.4"
+
+# doc scraper
+select = "0.6"
+tree-sitter-md = "0.1.5"
+url = "2.4.1"
 
 # misc
 serde = "1.0.188"

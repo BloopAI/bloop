@@ -110,6 +110,7 @@ impl Agent {
             .llm_gateway
             .clone()
             .model("gpt-3.5-turbo-0613")
+            .temperature(0.0)
             .chat(&prompt, None)
             .await?;
 

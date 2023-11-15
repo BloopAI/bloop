@@ -406,7 +406,7 @@ pub const fn minimum_parallelism() -> usize {
     1
 }
 
-const fn default_buffer_size() -> usize {
+pub const fn default_buffer_size() -> usize {
     500_000_000
 }
 

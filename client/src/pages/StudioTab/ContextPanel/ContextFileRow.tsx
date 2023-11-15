@@ -12,19 +12,19 @@ import {
   RepoType,
   StudioContextFile,
   StudioLeftPanelDataType,
-  StudioRightPanelType,
+  StudioLeftPanelType,
 } from '../../../types/general';
 import FileIcon from '../../../components/FileIcon';
 import LinesBadge from '../LinesBadge';
 import TokensUsageBadge from '../TokensUsageBadge';
 import Button from '../../../components/Button';
 import {
-  EyeCut,
   Eye,
-  TrashCanFilled,
-  PlusSignInBubble,
-  WarningSign,
+  EyeCut,
   NewTab,
+  PlusSignInBubble,
+  TrashCanFilled,
+  WarningSign,
 } from '../../../icons';
 import Tooltip from '../../../components/Tooltip';
 import RelatedFilesDropdown from '../RelatedFilesDropdown';
@@ -83,7 +83,7 @@ const ContextFileRow = ({
   const handleClick = useCallback(() => {
     if (repoFull) {
       setLeftPanel({
-        type: StudioRightPanelType.FILE,
+        type: StudioLeftPanelType.FILE,
         data: {
           filePath: path,
           branch,

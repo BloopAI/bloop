@@ -1,5 +1,5 @@
 import { SymbolType, Range, TokenInfoType } from './results';
-import { StudioContextFile } from './general';
+import { StudioContextDoc, StudioContextFile } from './general';
 
 export interface RangeLine {
   byte: number;
@@ -292,9 +292,11 @@ export type CodeStudioType = {
   modified_at: string;
   messages: CodeStudioMessageType[];
   context: StudioContextFile[];
+  doc_context: StudioContextDoc[];
   token_counts: {
     total: number;
     per_file: (number | null)[];
+    per_doc_file: (number | null)[];
     messages: number;
   };
 };
@@ -343,4 +345,32 @@ export type HistoryConversationTurn = CodeStudioType & {
 export type TutorialQuestionType = {
   tag: string;
   question: string;
+};
+
+export type DocShortType = {
+  id: string;
+  name: string;
+  url: string;
+  favicon: string;
+};
+
+export type DocPageType = {
+  doc_id: number;
+  doc_source: string;
+  relative_url: string;
+  absolute_url: string;
+  doc_title: string;
+};
+
+export type DocSectionType = {
+  ancestry: string[];
+  doc_id: number;
+  doc_source: string;
+  doc_title: string;
+  header: string;
+  point_id: string;
+  relative_url: string;
+  absolute_url: string;
+  section_range: { start: number; end: number };
+  text: string;
 };

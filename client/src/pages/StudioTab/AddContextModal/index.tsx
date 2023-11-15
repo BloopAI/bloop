@@ -1,8 +1,13 @@
-import { ChangeEvent, memo, useCallback, useContext, useState } from 'react';
+import React, {
+  ChangeEvent,
+  memo,
+  useCallback,
+  useContext,
+  useState,
+} from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import SeparateOnboardingStep from '../../../components/SeparateOnboardingStep';
 import KeyboardChip from '../KeyboardChip';
-import { useArrowKeyNavigation } from '../../../hooks/useArrowNavigationHook';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
 import { Branch, Paper, RepositoryFilled } from '../../../icons';
 import { RepoType, StudioContextFile } from '../../../types/general';
@@ -16,7 +21,12 @@ import SelectFile from './SelectFile';
 type Props = {
   isVisible: boolean;
   onClose: () => void;
-  onSubmit: (repo: RepoType, branch: string, filePath: string) => void;
+  onSubmit: (
+    repo: RepoType,
+    branch: string,
+    filePath: string,
+    isMultiSelect?: boolean,
+  ) => void;
   contextFiles: StudioContextFile[];
 };
 
@@ -33,7 +43,6 @@ const AddContextModal = ({
   const [selectedBranch, setSelectedBranch] = useState('');
   const [search, setSearch] = useState('');
   const [canSkipRepo, setCanSkipRepo] = useState(true);
-  const containerRef = useArrowKeyNavigation();
   const { setCloudFeaturePopupOpen } = useContext(UIContext.CloudFeaturePopup);
 
   const handleKeyEvent = useCallback((e: KeyboardEvent) => {
@@ -61,19 +70,18 @@ const AddContextModal = ({
   }, []);
 
   const handleFileSubmit = useCallback(
-    (file: string) => {
-      onSubmit(selectedRepo!, selectedBranch, file);
-      onClose();
+    (file: string, isMultiSelect?: boolean) => {
+      onSubmit(selectedRepo!, selectedBranch, file, isMultiSelect);
+      if (!isMultiSelect) {
+        onClose();
+      }
     },
     [selectedRepo, selectedBranch, onSubmit],
   );
 
   return (
     <SeparateOnboardingStep isVisible={isVisible} onClose={onClose} noWrapper>
-      <div
-        ref={containerRef}
-        className="flex flex-col w-[38.75rem] relative flex-1 overflow-auto"
-      >
+      <div className="flex flex-col w-[38.75rem] relative flex-1 overflow-auto">
         <div className="flex flex-col gap-3 items-start w-full border-b border-bg-border-hover py-3 px-4">
           <div className="flex items-center gap-0.5">
             <StepItem text={t('Add context file')} />
@@ -169,11 +177,23 @@ const AddContextModal = ({
           )}
         </div>
         <div className="flex justify-between items-center gap-1 py-3 px-4 border-t border-bg-border bg-bg-base">
-          <div className="flex items-center gap-1.5">
-            <KeyboardChip type="Esc" />
-            <span className="caption text-label-base">
-              <Trans>Close</Trans>
-            </span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <KeyboardChip type="Esc" />
+              <span className="caption text-label-base">
+                <Trans>Close</Trans>
+              </span>
+            </div>
+            {step === 2 && (
+              <>
+                <div className="h-3.5 w-px bg-bg-border flex-shrink-0" />
+                <span className="caption text-label-base flex items-center gap-1">
+                  <Trans>
+                    Hold <KeyboardChip type="⇧" /> to add multiple files
+                  </Trans>
+                </span>
+              </>
+            )}
           </div>
           <div className="flex items-center gap-1.5">
             <KeyboardChip type="↑" />
