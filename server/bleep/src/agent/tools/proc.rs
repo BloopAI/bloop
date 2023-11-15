@@ -4,7 +4,7 @@ use tracing::instrument;
 use crate::{
     agent::{
         exchange::{CodeChunk, RepoPath, SearchStep, Update},
-        Agent,
+        Agent, SemanticSearchParams,
     },
     analytics::EventData,
     query::parser::Literal,
@@ -28,18 +28,19 @@ impl Agent {
         .await?;
 
         let relative_paths = paths.iter().map(|p| p.path.clone()).collect::<Vec<_>>();
-        let repos = paths.iter().map(|p| p.repo.clone()).collect::<Vec<_>>();
+        // not sure we need this?
+        // let repos = paths.iter().map(|p| p.repo.clone()).collect::<Vec<_>>();
 
         let results = self
-            .semantic_search(
-                Literal::from(&query.to_string()),
-                relative_paths,
-                repos,
-                20,
-                0,
-                0.0,
-                true,
-            )
+            .semantic_search(SemanticSearchParams {
+                query: Literal::from(&query.to_string()),
+                paths: relative_paths,
+                project: self.project.clone(),
+                limit: 20,
+                offset: 0,
+                threshold: 0.0,
+                retrieve_more: true,
+            })
             .await?;
 
         let mut chunks = results

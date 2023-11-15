@@ -6,7 +6,7 @@ use tracing::instrument;
 use crate::{
     agent::{
         exchange::{RepoPath, SearchStep, Update},
-        Agent,
+        Agent, SemanticSearchParams,
     },
     analytics::EventData,
 };
@@ -37,7 +37,15 @@ impl Agent {
         // If there are no lexical results, perform a semantic search.
         if paths.is_empty() {
             let semantic_paths = self
-                .semantic_search(query.into(), vec![], vec![], 30, 0, 0.0, true)
+                .semantic_search(SemanticSearchParams {
+                    query: query.into(),
+                    paths: vec![],
+                    project: self.project.clone(),
+                    limit: 30,
+                    offset: 0,
+                    threshold: 0.0,
+                    retrieve_more: true,
+                })
                 .await?
                 .into_iter()
                 .map(|chunk| RepoPath {

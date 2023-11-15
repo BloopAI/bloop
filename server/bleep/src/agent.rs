@@ -60,6 +60,10 @@ impl Project {
             .map(ToString::to_string)
             .expect("invalid project configuration")
     }
+
+    pub fn repos(&self) -> impl Iterator<Item = String> + '_ {
+        self.0.iter().map(|r| r.to_string())
+    }
 }
 
 pub struct Agent {
@@ -85,6 +89,16 @@ pub enum ExchangeState {
     Pending,
     Complete,
     Failed,
+}
+
+pub struct SemanticSearchParams<'a> {
+    pub query: parser::Literal<'a>,
+    pub paths: Vec<String>,
+    pub project: Project,
+    pub limit: u64,
+    pub offset: u64,
+    pub threshold: f32,
+    pub retrieve_more: bool,
 }
 
 /// We use a `Drop` implementation to track agent query cancellation.
@@ -353,18 +367,20 @@ impl Agent {
     #[allow(clippy::too_many_arguments)]
     async fn semantic_search(
         &self,
-        query: parser::Literal<'_>,
-        paths: Vec<String>,
-        repos: Vec<String>,
-        limit: u64,
-        offset: u64,
-        threshold: f32,
-        retrieve_more: bool,
+        SemanticSearchParams {
+            query,
+            paths,
+            project,
+            limit,
+            offset,
+            threshold,
+            retrieve_more,
+        }: SemanticSearchParams<'_>,
     ) -> Result<Vec<semantic::Payload>> {
         let query = parser::SemanticQuery {
             target: Some(query),
-            repos: repos
-                .iter()
+            repos: project
+                .repos()
                 .map(|r| parser::Literal::Plain(r.into()))
                 .collect(),
             paths: paths

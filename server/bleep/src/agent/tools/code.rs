@@ -4,7 +4,7 @@ use tracing::{debug, info, trace};
 use crate::{
     agent::{
         exchange::{CodeChunk, RepoPath, SearchStep, Update},
-        prompts, Agent,
+        prompts, Agent, SemanticSearchParams,
     },
     analytics::EventData,
     llm_gateway,
@@ -22,17 +22,21 @@ impl Agent {
         }))
         .await?;
 
-        let repos = self.paths().map(|r| r.repo.to_string()).collect::<Vec<_>>();
+        // not sure if this is what we want here, or use the project coupled with the agent.
+        //
+        // let repos = self.paths().map(|r| r.repo.to_string()).collect::<Vec<_>>();
+        let repos = self.project.clone();
+
         let mut results = self
-            .semantic_search(
-                Literal::from(&query.to_string()),
-                vec![],
-                repos.clone(),
-                CODE_SEARCH_LIMIT,
-                0,
-                0.3,
-                true,
-            )
+            .semantic_search(SemanticSearchParams {
+                query: Literal::from(&query.to_string()),
+                paths: vec![],
+                project: repos.clone(),
+                limit: CODE_SEARCH_LIMIT,
+                offset: 0,
+                threshold: 0.3,
+                retrieve_more: true,
+            })
             .await?;
 
         debug!("returned {} results", results.len());
@@ -44,7 +48,15 @@ impl Agent {
             if !hyde_docs.is_empty() {
                 let hyde_doc = hyde_docs.first().unwrap().into();
                 let hyde_results = self
-                    .semantic_search(hyde_doc, vec![], repos, CODE_SEARCH_LIMIT, 0, 0.3, true)
+                    .semantic_search(SemanticSearchParams {
+                        query: hyde_doc,
+                        paths: vec![],
+                        project: repos,
+                        limit: CODE_SEARCH_LIMIT,
+                        offset: 0,
+                        threshold: 0.3,
+                        retrieve_more: true,
+                    })
                     .await?;
 
                 debug!("returned {} HyDE results", results.len());
