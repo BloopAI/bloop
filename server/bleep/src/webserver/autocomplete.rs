@@ -155,7 +155,7 @@ pub(super) async fn handle(
             .filter(|q| has_target || !matches!(q, QueryResult::Snippets(_))),
     );
 
-    if ac_params.lang {
+    if ac_params.lang && api_params.q.contains("lang:") {
         let mut ranked_langs = langs.into_iter().collect::<Vec<_>>();
         if let Some(partial) = partial_lang {
             ranked_langs.retain(|(l, _)| l.to_lowercase().contains(&partial));
