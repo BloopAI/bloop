@@ -43,15 +43,26 @@ pub(super) async fn handle(
     api_params.page_size = 10;
 
     let mut partial_lang = None;
+    let mut has_target = false;
 
     let queries = parser::parse(&api_params.q)
         .map_err(Error::user)?
         .into_iter()
         .map(|mut q| {
-            if ac_params.content {
-                let target = q.target.get_or_insert_with(|| Target::Content(" ".into()));
+            let keywords = &["lang:", "path:", "repo:"];
 
-                for keyword in &["lang:", "path:", "repo:"] {
+            if ac_params.content {
+                if let Some(ref t) = q.target {
+                    if !keywords.iter().any(|k| k == t.literal().as_ref()) {
+                        has_target = true;
+                    }
+                }
+
+                let target = q
+                    .target
+                    .get_or_insert_with(|| Target::Content(Literal::Regex(".*".into())));
+
+                for keyword in keywords {
                     if let Some(pos) = target.literal().find(keyword) {
                         let new = format!(
                             "{}{}",
@@ -59,8 +70,8 @@ pub(super) async fn handle(
                             &target.literal()[pos + keyword.len()..]
                         );
 
-                        *target = Target::Content(Literal::Plain(if new.is_empty() {
-                            " ".into()
+                        *target = Target::Content(Literal::Regex(if new.is_empty() {
+                            ".*".into()
                         } else {
                             new.into()
                         }));
@@ -103,67 +114,68 @@ pub(super) async fn handle(
         );
     }
 
-    // If no flags completion, run a search with full query
-    if autocomplete_results.is_empty() {
-        let mut engines = vec![];
-        if ac_params.content {
-            engines.push(ContentReader.execute(&indexes.file, &queries, &api_params));
-        }
+    let mut engines = vec![];
+    if ac_params.content {
+        engines.push(ContentReader.execute(&indexes.file, &queries, &api_params));
+    }
 
-        if ac_params.repo {
-            engines.push(RepoReader.execute(&indexes.repo, &queries, &api_params));
-        }
+    if ac_params.repo {
+        engines.push(RepoReader.execute(&indexes.repo, &queries, &api_params));
+    }
 
-        if ac_params.file {
-            engines.push(FileReader.execute(&indexes.file, &queries, &api_params));
-        }
+    if ac_params.file {
+        engines.push(FileReader.execute(&indexes.file, &queries, &api_params));
+    }
 
-        let (langs, list) = stream::iter(engines)
-            // Buffer several readers at the same time. The exact number is not important; this is
-            // simply an upper bound.
-            .buffered(10)
-            .try_fold(
-                (HashMap::<String, usize>::new(), Vec::new()),
-                |(mut langs, mut list), e| async {
-                    for (lang, count) in e.stats.lang {
-                        // The exact number here isn't relevant, and
-                        // this may be off.
-                        //
-                        // We're trying to scale the results compared
-                        // to each other which means this will still
-                        // serve the purpose for ranking.
-                        *langs.entry(lang).or_default() += count;
-                    }
-                    list.extend(e.data.into_iter());
-                    Ok((langs, list))
-                },
-            )
-            .await
-            .map_err(Error::internal)?;
-
-        autocomplete_results.extend(list);
-
-        if ac_params.lang {
-            let mut ranked_langs = langs.into_iter().collect::<Vec<_>>();
-            if let Some(partial) = partial_lang {
-                ranked_langs.retain(|(l, _)| l.to_lowercase().contains(&partial));
-
-                if ranked_langs.is_empty() {
-                    ranked_langs.extend(
-                        languages::list()
-                            .filter(|l| l.to_lowercase().starts_with(&partial))
-                            .map(|l| (l.to_lowercase(), 0)),
-                    );
+    let (langs, list) = stream::iter(engines)
+        // Buffer several readers at the same time. The exact number is not important; this is
+        // simply an upper bound.
+        .buffered(10)
+        .try_fold(
+            (HashMap::<String, usize>::new(), Vec::new()),
+            |(mut langs, mut list), e| async {
+                for (lang, count) in e.stats.lang {
+                    // The exact number here isn't relevant, and
+                    // this may be off.
+                    //
+                    // We're trying to scale the results compared
+                    // to each other which means this will still
+                    // serve the purpose for ranking.
+                    *langs.entry(lang).or_default() += count;
                 }
+                list.extend(e.data.into_iter());
+                Ok((langs, list))
+            },
+        )
+        .await
+        .map_err(Error::internal)?;
+
+    autocomplete_results.extend(
+        list.into_iter()
+            .filter(|q| has_target || !matches!(q, QueryResult::Snippets(_))),
+    );
+
+    if ac_params.lang {
+        let mut ranked_langs = langs.into_iter().collect::<Vec<_>>();
+        if let Some(partial) = partial_lang {
+            ranked_langs.retain(|(l, _)| l.to_lowercase().contains(&partial));
+
+            if ranked_langs.is_empty() {
+                ranked_langs.extend(
+                    languages::list()
+                        .filter(|l| l.to_lowercase().starts_with(&partial))
+                        .map(|l| (l.to_lowercase(), 0)),
+                );
+
+                ranked_langs.sort_by(|(a, _), (b, _)| b.len().cmp(&a.len()));
+                ranked_langs.truncate(5);
             }
-
-            ranked_langs.sort_by(|(_, a_count), (_, b_count)| a_count.cmp(b_count));
-            ranked_langs.reverse();
-            ranked_langs.truncate(5);
-
-            autocomplete_results
-                .extend(ranked_langs.into_iter().map(|(l, _)| QueryResult::Lang(l)));
         }
+
+        ranked_langs.sort_by(|(_, a_count), (_, b_count)| b_count.cmp(a_count));
+        ranked_langs.truncate(5);
+
+        autocomplete_results.extend(ranked_langs.into_iter().map(|(l, _)| QueryResult::Lang(l)));
     }
 
     Ok(json(AutocompleteResponse {
