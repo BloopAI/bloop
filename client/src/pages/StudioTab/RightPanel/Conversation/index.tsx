@@ -406,7 +406,7 @@ const Conversation = ({
       if (!diff) {
         return;
       }
-      const result = diff.chunks.map((c) => c.raw_patch).join('\n');
+      const result = diff.chunks.map((c) => c.raw_patch).join('');
       try {
         await confirmStudioDiff(studioId, result);
         setDiff(null);
