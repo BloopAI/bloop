@@ -167,7 +167,7 @@ pub(super) async fn handle(
                         .map(|l| (l.to_lowercase(), 0)),
                 );
 
-                ranked_langs.sort_by(|(a, _), (b, _)| b.len().cmp(&a.len()));
+                ranked_langs.sort_by(|(a, _), (b, _)| a.len().cmp(&b.len()));
                 ranked_langs.truncate(5);
             }
         }
