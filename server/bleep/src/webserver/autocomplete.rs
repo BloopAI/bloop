@@ -71,12 +71,12 @@ pub(super) async fn handle(
             }
 
             if let Some(lang) = q.lang.as_ref() {
+                partial_lang = q.lang.as_ref().map(|l| l.to_lowercase());
                 if languages::list()
                     .filter(|l| l.to_lowercase() == lang.as_ref().to_lowercase())
                     .count()
                     == 0
                 {
-                    partial_lang = q.lang.as_ref().map(|l| l.to_lowercase());
                     q.lang = None;
                 }
             }
@@ -147,11 +147,20 @@ pub(super) async fn handle(
             let mut ranked_langs = langs.into_iter().collect::<Vec<_>>();
             if let Some(partial) = partial_lang {
                 ranked_langs.retain(|(l, _)| l.to_lowercase().contains(&partial));
+
+                if ranked_langs.is_empty() {
+                    ranked_langs.extend(
+                        languages::list()
+                            .filter(|l| l.to_lowercase().starts_with(&partial))
+                            .map(|l| (l.to_lowercase(), 0)),
+                    );
+                }
             }
 
             ranked_langs.sort_by(|(_, a_count), (_, b_count)| a_count.cmp(b_count));
             ranked_langs.reverse();
             ranked_langs.truncate(5);
+
             autocomplete_results
                 .extend(ranked_langs.into_iter().map(|(l, _)| QueryResult::Lang(l)));
         }
