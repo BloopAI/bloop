@@ -18,14 +18,10 @@ use self::conversations::ConversationId;
 
 use super::middleware::User;
 use crate::{
-    agent::{
-        self,
-        exchange::{CodeChunk, Exchange, FocusedChunk},
-        Action, Agent, ExchangeState,
-    },
+    agent::{self, exchange::Exchange, Action, Agent, ExchangeState},
     analytics::{EventData, QueryEvent},
     db::QueryLog,
-    query::parser::{self, Literal},
+    query::parser::{self},
     repo::RepoRef,
     Application,
 };

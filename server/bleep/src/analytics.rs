@@ -1,9 +1,6 @@
 use std::{fmt::Debug, sync::Arc};
 
-use crate::{
-    repo::RepoRef,
-    state::{PersistedState, StateSource},
-};
+use crate::state::{PersistedState, StateSource};
 
 use rudderanalytics::{
     client::RudderAnalytics,

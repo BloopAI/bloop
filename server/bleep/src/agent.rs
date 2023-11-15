@@ -252,7 +252,6 @@ impl Agent {
                 .with_payload("model", &self.llm_gateway.model),
         );
 
-        dbg!(&raw_response);
         let action =
             Action::deserialize_gpt(&raw_response).context("failed to deserialize LLM output")?;
 

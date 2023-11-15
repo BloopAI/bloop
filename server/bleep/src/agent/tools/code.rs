@@ -1,5 +1,5 @@
 use anyhow::Result;
-use tracing::{debug, info, instrument, trace};
+use tracing::{debug, info, trace};
 
 use crate::{
     agent::{
@@ -25,7 +25,7 @@ impl Agent {
         let repos = self.paths().map(|r| r.repo.to_string()).collect::<Vec<_>>();
         let mut results = self
             .semantic_search(
-                Literal::from_into_string(query),
+                Literal::from(&query.to_string()),
                 vec![],
                 repos.clone(),
                 CODE_SEARCH_LIMIT,
@@ -36,7 +36,6 @@ impl Agent {
             .await?;
 
         debug!("returned {} results", results.len());
-        dbg!(&results);
 
         let hyde_docs = if results.len() < MINIMUM_RESULTS {
             info!("too few results returned, running HyDE");

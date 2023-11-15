@@ -229,12 +229,6 @@ impl From<&String> for Literal<'static> {
     }
 }
 
-impl Literal<'static> {
-    pub fn from_into_string<T: Into<String>>(value: T) -> Self {
-        Literal::Plain(value.into().into())
-    }
-}
-
 impl<'a> Default for Literal<'a> {
     fn default() -> Self {
         Self::Plain(Cow::Borrowed(""))

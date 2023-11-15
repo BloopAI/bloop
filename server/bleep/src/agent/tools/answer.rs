@@ -7,7 +7,7 @@ use tracing::{debug, info, instrument, trace};
 
 use crate::{
     agent::{
-        exchange::{CodeChunk, FocusedChunk, RepoPath, Update},
+        exchange::{CodeChunk, FocusedChunk, Update},
         model, transcoder, Agent,
     },
     analytics::EventData,

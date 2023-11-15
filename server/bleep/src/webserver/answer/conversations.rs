@@ -5,7 +5,7 @@ use axum::{
     Extension, Json,
 };
 use reqwest::StatusCode;
-use std::{fmt, str::FromStr};
+use std::fmt;
 use tracing::info;
 
 use crate::{

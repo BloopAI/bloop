@@ -32,7 +32,7 @@ impl Agent {
 
         let results = self
             .semantic_search(
-                Literal::from_into_string(query),
+                Literal::from(&query.to_string()),
                 relative_paths,
                 repos,
                 20,
