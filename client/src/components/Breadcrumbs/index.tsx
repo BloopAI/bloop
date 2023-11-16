@@ -56,6 +56,7 @@ const Breadcrumbs = ({
 
   useEffect(() => {
     if (!containerRef.current || allowOverflow) {
+      setFormattedPathParts(pathParts);
       return;
     }
     const parentWidth = containerRef.current.parentElement!.clientWidth;

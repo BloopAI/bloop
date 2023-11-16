@@ -16,8 +16,10 @@ use chrono::NaiveDateTime;
 use futures::{pin_mut, stream, StreamExt, TryStreamExt};
 use rayon::prelude::*;
 use reqwest::StatusCode;
-use tracing::{debug, error};
+use tracing::{debug, error, warn};
 use uuid::Uuid;
+
+use self::diff::{DiffChunk, DiffHunk};
 
 use super::{middleware::User, Error};
 use crate::{
@@ -27,6 +29,8 @@ use crate::{
     repo::RepoRef,
     webserver, Application,
 };
+
+mod diff;
 
 const LLM_GATEWAY_MODEL: &str = "gpt-4-0613";
 
@@ -866,6 +870,477 @@ async fn generate_llm_context(
     Ok(s)
 }
 
+/// A set of structured diff definitions consumed by the front-end.
+mod structured_diff {
+    use std::fmt;
+
+    use crate::repo::RepoRef;
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct Diff {
+        pub chunks: Vec<Chunk>,
+    }
+
+    impl fmt::Display for Diff {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            use std::fmt::Write;
+
+            let mut s = String::new();
+
+            for c in &self.chunks {
+                writeln!(s, "--- {}\n+++ {}", c.file, c.file)?;
+
+                for h in &c.hunks {
+                    writeln!(s, "@@ -{},0 +{},0 @@", h.line_start, h.line_start)?;
+                    write!(s, "{}", h.patch)?;
+                }
+            }
+
+            for c in super::diff::relaxed_parse(&s) {
+                write!(f, "{}", c)?;
+            }
+
+            Ok(())
+        }
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct Chunk {
+        pub file: String,
+        pub repo: RepoRef,
+        pub branch: Option<String>,
+        pub lang: Option<String>,
+        pub hunks: Vec<Hunk>,
+
+        /// This field is additionally included for simplicity on the front-end.
+        pub raw_patch: String,
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct Hunk {
+        pub line_start: usize,
+        pub patch: String,
+    }
+}
+
+pub async fn diff(
+    app: Extension<Application>,
+    user: Extension<User>,
+    Path(studio_id): Path<i64>,
+) -> webserver::Result<Json<structured_diff::Diff>> {
+    let user_id = user.username().ok_or_else(no_user_id)?.to_string();
+
+    let snapshot_id = latest_snapshot_id(studio_id, &*app.sql, &user_id).await?;
+
+    let llm_gateway = user
+        .llm_gateway(&app)
+        .await
+        .map_err(|e| Error::user(e).with_status(StatusCode::UNAUTHORIZED))?
+        .quota_gated(!app.env.is_cloud_instance())
+        .model(LLM_GATEWAY_MODEL)
+        .temperature(0.0);
+
+    let (messages_json, context_json) = sqlx::query!(
+        "SELECT messages, context FROM studio_snapshots WHERE id = ?",
+        snapshot_id,
+    )
+    .fetch_optional(&*app.sql)
+    .await?
+    .map(|row| (row.messages, row.context))
+    .ok_or_else(studio_not_found)?;
+
+    let messages = serde_json::from_str::<Vec<Message>>(&messages_json).map_err(Error::internal)?;
+
+    let context =
+        serde_json::from_str::<Vec<ContextFile>>(&context_json).map_err(Error::internal)?;
+
+    let user_message = messages
+        .iter()
+        .rev()
+        .find_map(|msg| match msg {
+            Message::User(m) => Some(m),
+            Message::Assistant(..) => None,
+        })
+        .context("studio did not contain a user message")?;
+
+    let assistant_message = messages
+        .iter()
+        .rev()
+        .find_map(|msg| match msg {
+            Message::User(..) => None,
+            Message::Assistant(m) => Some(m),
+        })
+        .context("studio did not contain an assistant message")?;
+
+    app.track_studio(
+        &user,
+        StudioEvent::new(studio_id, "diff")
+            .with_payload("context", &context)
+            .with_payload("user_message", &user_message)
+            .with_payload("assistant_message", &assistant_message),
+    );
+
+    let llm_context = generate_llm_context((*app).clone(), &context, &[]).await?;
+
+    let system_prompt = prompts::studio_diff_prompt(&llm_context);
+    let user_message = format!("Create a patch for the task \"{user_message}\".\n\n\nHere is the solution:\n\n{assistant_message}");
+
+    let messages = vec![
+        llm_gateway::api::Message::system(&system_prompt),
+        llm_gateway::api::Message::user(&user_message),
+    ];
+
+    let response = llm_gateway.chat(&messages, None).await?;
+    let diff_chunks = diff::extract(&response)?.collect::<Vec<_>>();
+
+    let (repo, branch) = context
+        .first()
+        .map(|cf| (cf.repo.clone(), cf.branch.clone()))
+        // We make a hard assumption in the design of diffs that a studio can only contain files
+        // from one repository. This allows us to determine which repository to create new files
+        // or delete files in, without having to prefix file paths with repository names.
+        //
+        // If we can't find *any* files in the context to detect the current repository,
+        // creating/deleting a file like `index.js` is ambiguous, so we just return an error.
+        .context("could not determine studio repository, studio didn't contain any files")?;
+
+    let valid_chunks = futures::stream::iter(diff_chunks)
+        .map(|mut chunk| {
+            let (repo, branch) = (repo.clone(), branch.clone());
+            let app = (*app).clone();
+            let llm_context = llm_context.clone();
+            let llm_gateway = llm_gateway.clone();
+
+            async move {
+                match (&chunk.src, &chunk.dst) {
+                    (Some(src), Some(dst)) => {
+                        if src != dst {
+                            error!(
+                                "patch source and destination file were different: \
+                                got `{src}` and `{dst}`"
+                            );
+
+                            return Ok(None);
+                        }
+
+                        chunk.hunks = rectify_hunks(
+                            &app,
+                            &llm_context,
+                            &llm_gateway,
+                            chunk.hunks.iter(),
+                            src,
+                            &repo,
+                            branch.as_deref(),
+                        )
+                        .await?;
+
+                        Ok(Some(chunk))
+                    }
+
+                    (Some(src), None) => {
+                        if validate_delete_file(&app, src, &repo, branch.as_deref()).await? {
+                            Ok(Some(chunk))
+                        } else {
+                            Ok(None)
+                        }
+                    }
+
+                    (None, Some(dst)) => {
+                        if validate_add_file(&app, &chunk, dst, &repo, branch.as_deref()).await? {
+                            Ok(Some(chunk))
+                        } else {
+                            Ok(None)
+                        }
+                    }
+
+                    (None, None) => {
+                        error!("patch chunk had no file source or destination");
+                        Ok(None)
+                    }
+                }
+            }
+        })
+        .buffered(10)
+        .try_filter_map(|c: Option<_>| async move { Ok::<_, anyhow::Error>(c) })
+        .try_collect::<Vec<_>>()
+        .await
+        .context("failed to interpret diff chunks")?;
+
+    let mut file_langs = HashMap::<String, String>::new();
+    let mut out = structured_diff::Diff { chunks: vec![] };
+
+    for chunk in valid_chunks {
+        let path = chunk.src.as_deref().or(chunk.dst.as_deref()).unwrap();
+        let lang = if let Some(l) = file_langs.get(path) {
+            Some(l.clone())
+        } else {
+            let detected_lang = if let Some(src) = &chunk.src {
+                let doc = app
+                    .indexes
+                    .file
+                    .by_path(&repo, src, branch.as_deref())
+                    .await?
+                    .context("path did not exist in the index")?;
+
+                doc.lang
+            } else {
+                hyperpolyglot::detect(std::path::Path::new(&chunk.dst.as_deref().unwrap()))
+                    .ok()
+                    .flatten()
+                    .map(|detection| detection.language().to_owned())
+            };
+
+            if let Some(l) = detected_lang.clone() {
+                file_langs.insert(path.to_owned(), l);
+            }
+
+            detected_lang
+        };
+
+        out.chunks.push(structured_diff::Chunk {
+            raw_patch: chunk.to_string(),
+
+            lang: lang.clone(),
+            repo: repo.clone(),
+            branch: branch.clone(),
+            file: path.to_owned(),
+            hunks: chunk
+                .hunks
+                .into_iter()
+                .map(|hunk| structured_diff::Hunk {
+                    line_start: hunk.src_line,
+                    patch: hunk
+                        .lines
+                        .into_iter()
+                        .map(|line| line.to_string())
+                        .collect::<String>(),
+                })
+                .collect(),
+        });
+    }
+
+    Ok(Json(out))
+}
+
+fn context_repo_branch(context: &[ContextFile]) -> Result<(RepoRef, Option<String>)> {
+    let (repo, branch) = context
+        .first()
+        .map(|cf| (cf.repo.clone(), cf.branch.clone()))
+        // We make a hard assumption in the design of diffs that a studio can only contain files
+        // from one repository. This allows us to determine which repository to create new files
+        // or delete files in, without having to prefix file paths with repository names.
+        //
+        // If we can't find *any* files in the context to detect the current repository,
+        // creating/deleting a file like `index.js` is ambiguous, so we just return an error.
+        .context("could not determine studio repository, studio didn't contain any files")?;
+
+    Ok((repo, branch))
+}
+
+async fn rectify_hunks(
+    app: &Application,
+    llm_context: &str,
+    llm_gateway: &llm_gateway::Client,
+    hunks: impl Iterator<Item = &DiffHunk>,
+    path: &str,
+    repo: &RepoRef,
+    branch: Option<&str>,
+) -> Result<Vec<DiffHunk>> {
+    let file = app
+        .indexes
+        .file
+        .by_path(repo, path, branch)
+        .await?
+        .context("path did not exist in the index")?;
+
+    let mut file_content = file.content;
+
+    let mut out = Vec::new();
+
+    for (i, hunk) in hunks.enumerate() {
+        let mut singular_chunk = DiffChunk {
+            src: Some(path.to_owned()),
+            dst: Some(path.to_owned()),
+            hunks: vec![hunk.clone()],
+        };
+
+        let diff = singular_chunk.to_string();
+        let patch = diffy::Patch::from_str(&diff).context("invalid patch")?;
+
+        if let Ok(t) = diffy::apply(&file_content, &patch) {
+            file_content = t;
+            out.extend(singular_chunk.hunks);
+        } else {
+            debug!("fixing up patch:\n\n{hunk:?}\n\n{diff}");
+
+            singular_chunk.hunks[0].lines.retain(|line| match line {
+                diff::Line::AddLine(..) | diff::Line::DelLine(..) => true,
+                diff::Line::Context(..) => false,
+            });
+            singular_chunk.fixup_hunks();
+
+            let diff = if singular_chunk.hunks[0]
+                .lines
+                .iter()
+                .all(|l| matches!(l, diff::Line::AddLine(..)))
+            {
+                let system_prompt = prompts::studio_diff_regen_hunk_prompt(llm_context);
+                let messages = vec![
+                    llm_gateway::api::Message::system(&system_prompt),
+                    llm_gateway::api::Message::user(&singular_chunk.to_string()),
+                ];
+                llm_gateway.chat(&messages, None).await?
+            } else {
+                singular_chunk.to_string()
+            };
+
+            let patch = diffy::Patch::from_str(&diff).context("redacted patch was invalid")?;
+
+            if let Ok(t) = diffy::apply(&file_content, &patch) {
+                file_content = t;
+                out.extend(singular_chunk.hunks);
+            } else {
+                warn!("hunk {path}#{i} failed: {diff}");
+            }
+        }
+    }
+
+    Ok(out)
+}
+
+async fn validate_delete_file(
+    app: &Application,
+    path: &str,
+    repo: &RepoRef,
+    branch: Option<&str>,
+) -> Result<bool> {
+    if app
+        .indexes
+        .file
+        .by_path(repo, path, branch)
+        .await?
+        .is_none()
+    {
+        error!("diff tried to delete a file that doesn't exist: {path}");
+        Ok(false)
+    } else {
+        Ok(true)
+    }
+}
+
+async fn validate_add_file(
+    app: &Application,
+    chunk: &DiffChunk,
+    path: &str,
+    repo: &RepoRef,
+    branch: Option<&str>,
+) -> Result<bool> {
+    if app
+        .indexes
+        .file
+        .by_path(repo, path, branch)
+        .await?
+        .is_some()
+    {
+        error!("diff tried to create a file that already exists: {path}");
+        return Ok(false);
+    };
+
+    if chunk.hunks.iter().any(|h| {
+        h.lines
+            .iter()
+            .any(|l| !matches!(l, diff::Line::AddLine(..)))
+    }) {
+        error!("diff to create a new file had non-addition lines");
+        Ok(false)
+    } else {
+        Ok(true)
+    }
+}
+
+pub async fn diff_apply(
+    app: Extension<Application>,
+    user: Extension<User>,
+    Path(studio_id): Path<i64>,
+    diff: String,
+) -> webserver::Result<()> {
+    let user_id = user.username().ok_or_else(no_user_id)?.to_string();
+
+    let snapshot_id = latest_snapshot_id(studio_id, &*app.sql, &user_id).await?;
+
+    let context_json = sqlx::query!(
+        "SELECT context FROM studio_snapshots WHERE id = ?",
+        snapshot_id,
+    )
+    .fetch_optional(&*app.sql)
+    .await?
+    .map(|row| row.context)
+    .ok_or_else(studio_not_found)?;
+
+    let context =
+        serde_json::from_str::<Vec<ContextFile>>(&context_json).map_err(Error::internal)?;
+
+    let diff_chunks = diff::relaxed_parse(&diff);
+
+    let (repo, branch) = context_repo_branch(&context)?;
+
+    for (i, chunk) in diff_chunks.enumerate() {
+        let mut file_content = if let Some(src) = &chunk.src {
+            app.indexes
+                .file
+                .by_path(&repo, src, branch.as_deref())
+                .await?
+                .context("path did not exist in the index")?
+                .content
+        } else {
+            String::new()
+        };
+
+        for (j, hunk) in chunk.hunks.iter().enumerate() {
+            let mut singular_chunk = chunk.clone();
+            singular_chunk.hunks = vec![hunk.clone()];
+
+            let diff = singular_chunk.to_string();
+            let patch = diffy::Patch::from_str(&diff).context("invalid patch")?;
+
+            match diffy::apply(&file_content, &patch) {
+                Ok(t) => file_content = t,
+                Err(e) => {
+                    return Err(
+                        Error::user(format!("chunk {i}, hunk {j} failed to apply: {e}"))
+                            .with_status(StatusCode::BAD_REQUEST),
+                    )
+                }
+            }
+        }
+
+        let Some(repo_path) = repo.local_path() else {
+            error!("cannot apply patch to remote repo");
+            continue;
+        };
+
+        if let Some(dst) = &chunk.dst {
+            let file_path = repo_path.join(dst);
+            std::fs::write(file_path, file_content).context("failed to patch file on disk")?;
+        } else {
+            if !file_content.trim().is_empty() {
+                return Err(Error::user(
+                    "diff deletes a file but not all contents were removed",
+                ));
+            }
+
+            let file_path = repo_path.join(chunk.src.clone().unwrap());
+            std::fs::remove_file(file_path).context("failed to delete file on disk")?;
+        }
+    }
+
+    // Force a re-sync.
+    let _ = crate::webserver::repos::sync(Query(webserver::repos::RepoParams { repo }), app, user)
+        .await?;
+
+    Ok(())
+}
+
 /// If a given studio's name is `NULL`, try to auto-generate a name.
 ///
 /// If the requested studio already has a name, this is a no-op.
@@ -1107,9 +1582,9 @@ fn canonicalize_context(
     context: impl Iterator<Item = ContextFile>,
 ) -> impl Iterator<Item = ContextFile> {
     context
-        .fold(HashMap::new(), |mut map, file| {
+        .fold(HashMap::<_, Vec<_>>::new(), |mut map, file| {
             let key = (file.path.clone(), file.branch.clone());
-            map.entry(key).or_insert_with(Vec::new).push(file);
+            map.entry(key).or_default().push(file);
             map
         })
         .into_values()

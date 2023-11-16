@@ -416,5 +416,14 @@
 	"Hold <1></1> to add multiple files": "<1> </1>を保持して複数のファイルを追加する",
 	"Clear section": "クリアセクション",
 	"Let’s get you started with bloop!": "Bloopを始めましょう！",
-	"Indexing": "インデックス付け"
+	"Apply changes": "変更を適用します",
+	"Indexing": "インデックス付け",
+	"Generated diffs to be applied": "適用する生成されたdiff",
+	"The following changes can be applied to your repository. Make sure the generated diffs are valid before you apply the changes.": "次の変更をリポジトリに適用できます。 変更を適用する前に、生成されたdiffが有効であることを確認してください。",
+	"The diff has been applied locally.": "DIFFはローカルで適用されています。",
+	"Generating diff...": "diffを生成します...",
+	"Diff generation failed": "DIFF生成は失敗しました",
+	"Failed to apply the diff": "DIFFを適用できませんでした",
+	"Cancel diff generation": "DIFF生成をキャンセルします",
+	"The following changes represent the git diff for the remote repository. Please note that these changes cannot be applied directly to a remote repository. Use the \"Copy\" button to copy the changes and apply them locally.": "次の変更は、リモートリポジトリのGit Diffを表しています。 これらの変更は、リモートリポジトリに直接適用できないことに注意してください。 「コピー」ボタンを使用して、変更をコピーしてローカルに適用します。"
 }

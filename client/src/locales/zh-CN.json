@@ -425,5 +425,14 @@
 	"Hold <1></1> to add multiple files": "保持<1> </1>添加多个文件",
 	"Clear section": "清除部分",
 	"Let’s get you started with bloop!": "让我们开始开始Bloop！",
-	"Indexing": "索引"
+	"Apply changes": "应用更改",
+	"Indexing": "索引",
+	"Generated diffs to be applied": "生成的差异要应用",
+	"The following changes can be applied to your repository. Make sure the generated diffs are valid before you apply the changes.": "以下更改可以应用于您的存储库。 应用更改之前，请确保生成的差异有效。",
+	"The diff has been applied locally.": "差异已在本地应用。",
+	"Generating diff...": "生成差异...",
+	"Diff generation failed": "差异生成失败",
+	"Failed to apply the diff": "未能应用差异",
+	"Cancel diff generation": "取消差异生成",
+	"The following changes represent the git diff for the remote repository. Please note that these changes cannot be applied directly to a remote repository. Use the \"Copy\" button to copy the changes and apply them locally.": "以下更改代表远程存储库的git差异。 请注意，这些更改不能直接应用于远程存储库。 使用“复制”按钮复制更改并在本地应用它们。"
 }

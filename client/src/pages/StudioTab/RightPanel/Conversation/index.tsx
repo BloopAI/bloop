@@ -5,29 +5,46 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import throttle from 'lodash.throttle';
 import {
+  DiffHunkType,
   StudioConversationMessage,
   StudioConversationMessageAuthor,
   StudioLeftPanelDataType,
   StudioLeftPanelType,
 } from '../../../../types/general';
 import Button from '../../../../components/Button';
-import { ArrowRefresh, TrashCanFilled } from '../../../../icons';
+import {
+  ArrowRefresh,
+  BranchMerged,
+  TrashCanFilled,
+  WarningSign,
+} from '../../../../icons';
 import KeyboardChip from '../../KeyboardChip';
-import { CodeStudioMessageType, CodeStudioType } from '../../../../types/api';
-import { patchCodeStudio } from '../../../../services/api';
+import {
+  CodeStudioMessageType,
+  CodeStudioType,
+  GeneratedCodeDiff,
+} from '../../../../types/api';
+import {
+  confirmStudioDiff,
+  generateStudioDiff,
+  patchCodeStudio,
+} from '../../../../services/api';
 import useKeyboardNavigation from '../../../../hooks/useKeyboardNavigation';
 import { DeviceContext } from '../../../../context/deviceContext';
 import useScrollToBottom from '../../../../hooks/useScrollToBottom';
 import { StudioContext } from '../../../../context/studioContext';
 import { PersonalQuotaContext } from '../../../../context/personalQuotaContext';
 import { UIContext } from '../../../../context/uiContext';
+import LiteLoaderContainer from '../../../../components/Loaders/LiteLoader';
 import ConversationInput from './Input';
+import GeneratedDiff from './GeneratedDiff';
 
 type Props = {
   setLeftPanel: Dispatch<SetStateAction<StudioLeftPanelDataType>>;
@@ -42,8 +59,6 @@ type Props = {
   hasContextError: boolean;
   handleRestore: () => void;
 };
-
-let eventSource: EventSource;
 
 const throttledPatch = throttle(
   (studioId, data) => {
@@ -87,7 +102,14 @@ const Conversation = ({
   const [inputAuthor, setInputAuthor] = useState(
     StudioConversationMessageAuthor.USER,
   );
+  const [waitingForDiff, setWaitingForDiff] = useState(false);
+  const [isDiffApplied, setDiffApplied] = useState(false);
+  const [isDiffApplyError, setDiffApplyError] = useState(false);
+  const [isDiffGenFailed, setDiffGenFailed] = useState(false);
+  const [diff, setDiff] = useState<GeneratedCodeDiff | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const abortController = useRef<AbortController | null>(null);
+  const eventSource = useRef<EventSource | null>(null);
 
   const setInput = useCallback((value: StudioConversationMessage) => {
     setInputValue(value.message);
@@ -166,7 +188,7 @@ const Conversation = ({
   );
 
   const handleCancel = useCallback(() => {
-    eventSource?.close();
+    eventSource.current?.close();
     setIsLoading(false);
     refetchQuota();
     if (
@@ -193,6 +215,10 @@ const Conversation = ({
       setUpgradePopupOpen(true);
       return;
     }
+    setDiffApplied(false);
+    setDiffApplyError(false);
+    setDiff(null);
+    setDiffGenFailed(false);
     setConversation((prev) => [
       ...prev,
       { message: inputValue, author: inputAuthor },
@@ -203,11 +229,11 @@ const Conversation = ({
     });
     setIsLoading(true);
 
-    eventSource?.close();
-    eventSource = new EventSource(
+    eventSource.current?.close();
+    eventSource.current = new EventSource(
       `${apiUrl.replace('https:', '')}/studio/${studioId}/generate`,
     );
-    eventSource.onerror = (err) => {
+    eventSource.current.onerror = (err) => {
       console.log('SSE error', err);
       refetchQuota();
       setConversation((prev) => {
@@ -225,12 +251,12 @@ const Conversation = ({
         return newConv;
       });
       setIsLoading(false);
-      eventSource.close();
+      eventSource.current?.close();
     };
     let i = 0;
-    eventSource.onmessage = (ev) => {
+    eventSource.current.onmessage = (ev) => {
       if (ev.data === '[DONE]') {
-        eventSource.close();
+        eventSource.current?.close();
         setIsLoading(false);
         refetchCodeStudio();
         return;
@@ -300,6 +326,11 @@ const Conversation = ({
         // Set input to the message being removed
         setInput(conversation[i]);
       }
+      setWaitingForDiff(false);
+      setDiffGenFailed(false);
+      setDiff(null);
+      setDiffApplied(false);
+      setDiffApplyError(false);
       if (
         i === conversation.length - 1 &&
         conversation[i].author === StudioConversationMessageAuthor.ASSISTANT &&
@@ -335,12 +366,104 @@ const Conversation = ({
     await patchCodeStudio(studioId, {
       messages: [],
     });
+    setDiff(null);
+    setWaitingForDiff(false);
+    setDiffApplied(false);
+    setDiffApplyError(false);
+    setDiffGenFailed(false);
     setInput({
       author: StudioConversationMessageAuthor.USER,
       message: '',
     });
     setConversation([]);
   }, [studioId]);
+
+  const hasCodeBlock = useMemo(() => {
+    return conversation.some(
+      (m) =>
+        m.author === StudioConversationMessageAuthor.ASSISTANT &&
+        m.message.includes('```'),
+    );
+  }, [conversation]);
+
+  const handleApplyChanges = useCallback(async () => {
+    setWaitingForDiff(true);
+    setDiffGenFailed(false);
+    try {
+      abortController.current = new AbortController();
+      const resp = await generateStudioDiff(
+        studioId,
+        abortController.current?.signal,
+      );
+      setDiff(resp);
+    } catch (err) {
+      console.log(err);
+      setDiffGenFailed(true);
+    } finally {
+      setWaitingForDiff(false);
+    }
+  }, [studioId]);
+
+  const handleCancelDiff = useCallback(() => {
+    abortController.current?.abort();
+    setWaitingForDiff(false);
+  }, []);
+
+  const handleConfirmDiff = useCallback(
+    async (e: React.MouseEvent) => {
+      e.preventDefault();
+      if (!diff) {
+        return;
+      }
+      const result = diff.chunks.map((c) => c.raw_patch).join('');
+      try {
+        await confirmStudioDiff(studioId, result);
+        setDiff(null);
+        setDiffApplied(true);
+      } catch (err: unknown) {
+        console.log(err);
+        // @ts-ignore
+        if (err.code !== 'ERR_CANCELED') {
+          setDiffApplyError(true);
+        }
+      }
+    },
+    [studioId, diff],
+  );
+
+  const onDiffChanged = useCallback((i: number, v: string) => {
+    setDiff((prev) => {
+      const newValue: GeneratedCodeDiff = JSON.parse(JSON.stringify(prev));
+      newValue.chunks[i].raw_patch = v;
+      const newHunks: DiffHunkType[] = v
+        .split(/\n(?=@@ -)/)
+        .slice(1)
+        .map((h) => {
+          const startLine = h.match(/@@ -(\d+)/)?.[1];
+          return {
+            line_start: Number(startLine),
+            patch: h.split('\n').slice(1).join('\n'),
+          };
+        });
+      newValue.chunks[i].hunks = newHunks;
+      return newValue;
+    });
+  }, []);
+
+  const onDiffRemoved = useCallback((i: number) => {
+    setDiff((prev) => {
+      const newValue: GeneratedCodeDiff = JSON.parse(JSON.stringify(prev));
+      newValue.chunks.splice(i, 1);
+      if (!newValue.chunks.length) {
+        return null;
+      }
+      return newValue;
+    });
+  }, []);
+
+  const isDiffForLocalRepo = useMemo(() => {
+    return diff?.chunks.find((c) => c.repo.startsWith('local//'));
+  }, [diff]);
 
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
@@ -392,8 +515,43 @@ const Conversation = ({
               isLast={i === conversation.length - 1}
             />
           ))}
+          {!!diff && (
+            <GeneratedDiff
+              diff={diff}
+              setLeftPanel={setLeftPanel}
+              onDiffRemoved={onDiffRemoved}
+              onDiffChanged={onDiffChanged}
+              applyError={isDiffApplyError}
+            />
+          )}
+          {(isDiffApplied || waitingForDiff || isDiffGenFailed) && (
+            <div
+              className={`w-full flex items-center rounded-6 justify-center gap-1 py-2 ${
+                isDiffGenFailed
+                  ? 'bg-bg-danger/12 text-bg-danger'
+                  : 'bg-bg-main/12 text-label-link'
+              } caption`}
+            >
+              {isDiffGenFailed ? (
+                <WarningSign raw sizeClassName="w-3.5 h-3.5" />
+              ) : waitingForDiff ? (
+                <LiteLoaderContainer sizeClassName="w-3.5 h-3.5" />
+              ) : (
+                <BranchMerged raw sizeClassName="w-3.5 h-3.5" />
+              )}
+              <Trans>
+                {isDiffGenFailed
+                  ? 'Diff generation failed'
+                  : waitingForDiff
+                  ? 'Generating diff...'
+                  : 'The diff has been applied locally.'}
+              </Trans>
+            </div>
+          )}
           {!isLoading &&
             !isPreviewing &&
+            !waitingForDiff &&
+            !diff &&
             !(
               conversation[conversation.length - 1]?.author ===
               StudioConversationMessageAuthor.USER
@@ -412,7 +570,7 @@ const Conversation = ({
             )}
         </div>
       </div>
-      <div className="px-4 flex flex-col gap-8 pb-8 mt-auto">
+      <div className="px-1 flex flex-col gap-8 pb-8 mt-auto">
         <hr className="border-bg-border" />
         {isPreviewing ? (
           <div className="flex items-center justify-end">
@@ -451,51 +609,88 @@ const Conversation = ({
                   <KeyboardChip type="Esc" variant="danger" />
                 </Button>
               ) : (
-                <Button
-                  size="small"
-                  disabled={
-                    !inputValue ||
-                    isTokenLimitExceeded ||
-                    isChangeUnsaved ||
-                    hasContextError
-                  }
-                  title={
-                    isChangeUnsaved
-                      ? t('Save context changes before answer generation')
-                      : isTokenLimitExceeded
-                      ? t('Token limit exceeded')
-                      : hasContextError
-                      ? t('Check context files for any errors')
-                      : undefined
-                  }
-                  onClick={onSubmit}
-                >
-                  <Trans>Generate</Trans>
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <KeyboardChip
-                      type="cmd"
-                      variant={
+                <>
+                  {(hasCodeBlock || diff) &&
+                    (isDiffApplied ? null : !diff ? (
+                      <Button
+                        size="small"
+                        variant={waitingForDiff ? 'danger' : 'secondary'}
+                        onClick={
+                          waitingForDiff ? handleCancelDiff : handleApplyChanges
+                        }
+                      >
+                        <Trans>
+                          {waitingForDiff
+                            ? 'Cancel diff generation'
+                            : 'Apply changes'}
+                        </Trans>
+                      </Button>
+                    ) : (
+                      <>
+                        <Button
+                          variant="secondary"
+                          size="small"
+                          onClick={() => setDiff(null)}
+                        >
+                          <Trans>
+                            {isDiffForLocalRepo ? 'Cancel' : 'Close'}
+                          </Trans>
+                        </Button>
+                        {isDiffForLocalRepo && (
+                          <Button size="small" onClick={handleConfirmDiff}>
+                            <Trans>Confirm</Trans>
+                          </Button>
+                        )}
+                      </>
+                    ))}
+                  {!diff && (
+                    <Button
+                      size="small"
+                      disabled={
                         !inputValue ||
                         isTokenLimitExceeded ||
                         isChangeUnsaved ||
                         hasContextError
-                          ? 'secondary'
-                          : 'primary'
                       }
-                    />
-                    <KeyboardChip
-                      type="entr"
-                      variant={
-                        !inputValue ||
-                        isTokenLimitExceeded ||
-                        isChangeUnsaved ||
-                        hasContextError
-                          ? 'secondary'
-                          : 'primary'
+                      title={
+                        isChangeUnsaved
+                          ? t('Save context changes before answer generation')
+                          : isTokenLimitExceeded
+                          ? t('Token limit exceeded')
+                          : hasContextError
+                          ? t('Check context files for any errors')
+                          : undefined
                       }
-                    />
-                  </div>
-                </Button>
+                      onClick={onSubmit}
+                    >
+                      <Trans>Generate</Trans>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <KeyboardChip
+                          type="cmd"
+                          variant={
+                            !inputValue ||
+                            isTokenLimitExceeded ||
+                            isChangeUnsaved ||
+                            hasContextError
+                              ? 'secondary'
+                              : 'primary'
+                          }
+                        />
+                        <KeyboardChip
+                          type="entr"
+                          variant={
+                            !inputValue ||
+                            isTokenLimitExceeded ||
+                            isChangeUnsaved ||
+                            hasContextError
+                              ? 'secondary'
+                              : 'primary'
+                          }
+                        />
+                      </div>
+                    </Button>
+                  )}
+                </>
               )}
             </div>
           </div>
