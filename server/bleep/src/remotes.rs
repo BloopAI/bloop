@@ -1,5 +1,3 @@
-#[cfg(windows)]
-use std::os::windows::process::CommandExt;
 use std::{
     borrow::Borrow,
     collections::HashMap,
