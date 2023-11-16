@@ -50,7 +50,13 @@ async fn get_request<T: for<'a> Deserialize<'a>>(
         .map_err(Error::internal)?;
 
     if response.status().is_success() {
-        response.json().await.map_err(Error::internal).map(Json)
+        let body = response.text().await.map_err(Error::internal)?;
+        match serde_json::from_str::<T>(&body) {
+            Ok(t) => Ok(Json(t)),
+            Err(_) => Err(Error::internal(format!(
+                "quota call return invalid JSON: {body}"
+            ))),
+        }
     } else {
         let status = response.status();
         match response.text().await {
