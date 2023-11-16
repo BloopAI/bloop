@@ -1410,6 +1410,7 @@ mod tests {
         assert_eq!(
             parse_nl("what is background color? lang:tsx repo:bloop").unwrap(),
             SemanticQuery {
+                raw_query: "what is background color? lang:tsx repo:bloop".to_string(),
                 target: Some(Literal::Plain("what is background color?".into())),
                 langs: [Literal::Plain(LiteralInner {
                     start: 31,
@@ -1440,6 +1441,7 @@ mod tests {
         assert_eq!(
             parse_nl("what is background color? lang:tsx lang:ts repo:bloop repo:bar path:server/bleep repo:baz").unwrap(),
             SemanticQuery {
+                raw_query: "what is background color? lang:tsx lang:ts repo:bloop repo:bar path:server/bleep repo:baz".to_string(),
                 target: Some(Literal::Plain("what is background color?".into())),
                 langs: [
                     Literal::Plain(LiteralInner {
@@ -1491,6 +1493,9 @@ mod tests {
             )
             .unwrap(),
             SemanticQuery {
+                raw_query:
+                    "what is background color? lang:tsx repo:bloop org:bloop symbol:foo open:true"
+                        .to_string(),
                 target: Some(Literal::Plain("what is background color?".into())),
                 langs: [Literal::Plain(LiteralInner {
                     start: 31,
@@ -1512,6 +1517,8 @@ mod tests {
         assert_eq!(
             parse_nl("case:ignore why are languages excluded from ctags? branch:main").unwrap(),
             SemanticQuery {
+                raw_query: "case:ignore why are languages excluded from ctags? branch:main"
+                    .to_string(),
                 target: Some(Literal::Plain(
                     "why are languages excluded from ctags?".into()
                 )),
