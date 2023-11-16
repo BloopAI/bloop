@@ -93,7 +93,7 @@ pub enum ExchangeState {
 
 pub struct SemanticSearchParams<'a> {
     pub query: parser::Literal<'a>,
-    pub paths: Vec<String>,
+    pub paths: Vec<RepoPath>,
     pub project: Project,
     pub limit: u64,
     pub offset: u64,
@@ -385,7 +385,7 @@ impl Agent {
                 .collect(),
             paths: paths
                 .iter()
-                .map(|p| parser::Literal::Plain(p.into()))
+                .map(|p| parser::Literal::Plain(p.path.clone().into()))
                 .collect(),
             ..self.last_exchange().query.clone()
         };
