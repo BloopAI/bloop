@@ -75,8 +75,8 @@ mod cpu {
     pub use crate::ee::embedder::*;
     use ndarray::Axis;
     use ort::{
-        tensor::{FromArray, InputTensor, OrtOwnedTensor},
-        Environment, ExecutionProvider, GraphOptimizationLevel, LoggingLevel, SessionBuilder,
+        tensor::OrtOwnedTensor, value::Value, Environment, ExecutionProvider,
+        GraphOptimizationLevel, LoggingLevel, SessionBuilder,
     };
     use tracing::trace;
 
@@ -91,7 +91,7 @@ mod cpu {
                 Environment::builder()
                     .with_name("Encode")
                     .with_log_level(LoggingLevel::Warning)
-                    .with_execution_providers([ExecutionProvider::cpu()])
+                    .with_execution_providers([ExecutionProvider::CPU(Default::default())])
                     .with_telemetry(false)
                     .build()?,
             );
@@ -139,10 +139,22 @@ mod cpu {
                 token_type_ids.iter().map(|&x| x as i64).collect(),
             )?;
 
-            let outputs = self.session.run([
-                InputTensor::from_array(inputs_ids_array.into_dyn()),
-                InputTensor::from_array(attention_mask_array.into_dyn()),
-                InputTensor::from_array(token_type_ids_array.into_dyn()),
+            let outputs = self.session.run(vec![
+                Value::from_array(
+                    self.session.allocator(),
+                    &ndarray::CowArray::from(inputs_ids_array).into_dyn(),
+                )
+                .unwrap(),
+                Value::from_array(
+                    self.session.allocator(),
+                    &ndarray::CowArray::from(attention_mask_array).into_dyn(),
+                )
+                .unwrap(),
+                Value::from_array(
+                    self.session.allocator(),
+                    &ndarray::CowArray::from(token_type_ids_array).into_dyn(),
+                )
+                .unwrap(),
             ])?;
 
             let output_tensor: OrtOwnedTensor<f32, _> = outputs[0].try_extract().unwrap();
