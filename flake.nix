@@ -24,15 +24,17 @@
         llvm = pkgs.llvmPackages_14;
         clang = llvm.clang;
         libclang = llvm.libclang;
-        stdenv = if pkgs.stdenv.isLinux then
-          pkgs.stdenvAdapters.useMoldLinker llvm.stdenv
-        else
-          llvm.stdenv;
+        stdenv =
+          if pkgs.stdenv.isLinux then
+            pkgs.stdenvAdapters.useMoldLinker llvm.stdenv
+          else
+            llvm.stdenv;
 
-        mkShell = if stdenv.isLinux then
-          pkgs.mkShell.override { inherit stdenv; }
-        else
-          pkgs.mkShell;
+        mkShell =
+          if stdenv.isLinux then
+            pkgs.mkShell.override { inherit stdenv; }
+          else
+            pkgs.mkShell;
 
         rustPlatform = pkgs.makeRustPlatform {
           cargo = pkgs.cargo;
@@ -40,12 +42,12 @@
         };
 
         runtimeDeps = with pkgs;
-          ([ openssl.out rocksdb git zlib nsync onnxruntime14 ]
+          ([ openssl.out rocksdb git zlib nsync ]
             ++ lib.optionals stdenv.isDarwin [
-              darwin.apple_sdk.frameworks.Foundation
-              darwin.apple_sdk.frameworks.CoreFoundation
-              darwin.apple_sdk.frameworks.Security
-            ]);
+            darwin.apple_sdk.frameworks.Foundation
+            darwin.apple_sdk.frameworks.CoreFoundation
+            darwin.apple_sdk.frameworks.Security
+          ]);
 
         buildDeps = with pkgs;
           ([
@@ -84,11 +86,6 @@
             darwin.apple_sdk.frameworks.AppKit
           ]);
 
-        onnxruntime_lib = if stdenv.isDarwin then
-          "libonnxruntime.dylib"
-        else
-          "libonnxruntime.so";
-
         envVars = {
           LIBCLANG_PATH = "${libclang.lib}/lib";
           ROCKSDB_LIB_DIR = "${pkgs.rocksdb}/lib";
@@ -96,9 +93,6 @@
           OPENSSL_LIB_DIR = "${pkgs.openssl.out}/lib";
           OPENSSL_INCLUDE_DIR = "${pkgs.openssl.dev}/include";
           OPENSSL_NO_VENDOR = "1";
-          ORT_STRATEGY = "system";
-          ORT_LIB_LOCATION = "${onnxruntime14}/lib";
-          ORT_DYLIB_PATH = "${onnxruntime14}/lib/${onnxruntime_lib}";
         } // lib.optionalAttrs stdenv.isLinux {
           RUSTFLAGS = "-C link-arg=-fuse-ld=mold";
         };
@@ -149,11 +143,6 @@
             buildInputs = runtimeDeps;
           }).overrideAttrs (old: envVars);
 
-        onnxruntime14 = import ./nix/onnxruntime.nix {
-          inherit (llvm) stdenv;
-          pkgs = pkgsStable;
-        };
-
         frontend = (pkgs.buildNpmPackage rec {
           meta = with pkgs.lib; {
             description = "Search code. Fast.";
@@ -177,7 +166,8 @@
           '';
         });
 
-      in {
+      in
+      {
         packages = {
           default = bleep;
 
@@ -191,8 +181,6 @@
             '';
 
           };
-
-          onnxruntime14 = onnxruntime14;
         };
 
         devShells = {
