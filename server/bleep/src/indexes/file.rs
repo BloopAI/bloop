@@ -202,9 +202,10 @@ impl Indexable for File {
 
         info!(?repo.disk_path, "repo file indexing finished, took {:?}", start.elapsed());
 
+        stats_gatherer.finish().await;
         if stats_gatherer.repo_stats.reindex_count > 0 {
             let user = app.user().await;
-            let event = stats_gatherer.finish().await;
+            let event = stats_gatherer.event();
             app.with_analytics(|hub| hub.track_repo(event, &user));
         }
 

@@ -65,14 +65,17 @@ impl StatsGatherer {
         self.stats_tx.clone()
     }
 
-    #[rustfmt::skip]
-    pub async fn finish(mut self) -> RepoEvent {
+    pub async fn finish(&mut self) {
         // aggregate stats
         self.stats_rx.close();
         while let Some(stats) = self.stats_rx.recv().await {
             self.repo_stats += stats;
         }
+    }
 
+    // Consume self to produce analytics event
+    #[rustfmt::skip]
+    pub fn event(mut self) -> RepoEvent {
         // determine the type of index job run
         //
         let job_kind = if self.was_index_reset {
@@ -86,7 +89,6 @@ impl StatsGatherer {
                 reindex_file_count: self.repo_stats.reindex_count,
             }
         };
-
         self.event.add_payload("reporef", &self.reporef.name());
         self.event.add_payload("provider", &self.reporef.backend());
         self.event.add_payload("index_job_kind", &job_kind);
