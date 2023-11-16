@@ -91,7 +91,10 @@ mod cpu {
                 Environment::builder()
                     .with_name("Encode")
                     .with_log_level(LoggingLevel::Warning)
-                    .with_execution_providers([ExecutionProvider::CPU(Default::default())])
+                    .with_execution_providers([
+                        ExecutionProvider::DirectML(None),
+                        ExecutionProvider::CPU(None),
+                    ])
                     .with_telemetry(false)
                     .build()?,
             );
