@@ -32,10 +32,7 @@ use crate::{
     background::SyncHandle,
     cache::{CacheKeys, FileCache, FileCacheSnapshot},
     intelligence::TreeSitterFile,
-    query::{
-        compiler::{case_permutations, trigrams},
-        parser::Literal,
-    },
+    query::compiler::{case_permutations, trigrams},
     repo::{iterator::*, RepoMetadata, RepoRef, Repository},
     symbol::SymbolLocations,
 };
@@ -219,7 +216,7 @@ impl Indexer<File> {
         repo_ref: &RepoRef,
         query_str: &str,
         branch: Option<&str>,
-        langs: &HashSet<Literal<'_>>,
+        langs: impl Iterator<Item = &str>,
         limit: usize,
     ) -> impl Iterator<Item = FileDocument> + '_ {
         // lifted from query::compiler
@@ -242,7 +239,6 @@ impl Indexer<File> {
             .map(BooleanQuery::intersection);
         let langs_query = BooleanQuery::union(
             langs
-                .iter()
                 .map(|l| Term::from_field_bytes(self.source.lang, l.as_bytes()))
                 .map(|t| TermQuery::new(t, IndexRecordOption::Basic))
                 .map(Box::new)
@@ -259,13 +255,12 @@ impl Indexer<File> {
                         repo_ref_term.clone(),
                         IndexRecordOption::Basic,
                     )),
+                    Box::new(langs_query.clone()),
                 ];
 
                 if let Some(b) = branch_term.as_ref() {
                     query.push(Box::new(b.clone()));
                 };
-
-                query.push(Box::new(langs_query.clone()));
 
                 BooleanQuery::intersection(query)
             })

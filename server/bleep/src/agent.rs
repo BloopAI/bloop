@@ -1,4 +1,4 @@
-use std::{collections::HashSet, sync::Arc, time::Duration};
+use std::{collections::HashSet, ops::Deref, sync::Arc, time::Duration};
 
 use anyhow::{anyhow, Context, Result};
 use futures::{Future, TryStreamExt};
@@ -441,13 +441,13 @@ impl Agent {
         query: &str,
     ) -> impl Iterator<Item = FileDocument> + 'a {
         let branch = self.last_exchange().query.first_branch();
-        let langs = &self.last_exchange().query.langs;
+        let langs = self.last_exchange().query.langs.iter().map(Deref::deref);
 
         debug!(%self.repo_ref, query, ?branch, %self.thread_id, "executing fuzzy search");
         self.app
             .indexes
             .file
-            .fuzzy_path_match(&self.repo_ref, query, branch.as_deref(), &langs, 50)
+            .fuzzy_path_match(&self.repo_ref, query, branch.as_deref(), langs, 50)
             .await
     }
 
