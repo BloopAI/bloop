@@ -245,8 +245,8 @@ export type SearchStepType = ProcStep | CodeStep | PathStep;
 export type ConversationType = {
   id: string;
   search_steps: SearchStepType[];
-  raw_query: string;
   query: {
+    raw_query: string;
     repos: [];
     paths: {
       Plain: { start: number; end: number; content: string };

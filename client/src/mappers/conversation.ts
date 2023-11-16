@@ -57,7 +57,7 @@ export const mapUserQuery = (m: ConversationType): ParsedQueryType[] => {
   const parsedQuery = [];
   const parts = mapQueryParts(m.query).sort((a, b) => a.start - b.start);
   let currentIndex = 0;
-  const originalString = m.raw_query;
+  const originalString = m.query.raw_query;
 
   for (const item of parts) {
     if (currentIndex < item.start) {

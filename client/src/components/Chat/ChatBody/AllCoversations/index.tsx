@@ -69,7 +69,7 @@ const AllConversations = ({
         const parsedQuery = mapUserQuery(m);
         conv.push({
           author: ChatMessageAuthor.User,
-          text: m.raw_query || userQuery?.content?.query || '',
+          text: m.query.raw_query || userQuery?.content?.query || '',
           parsedQuery,
           isFromHistory: true,
         });
