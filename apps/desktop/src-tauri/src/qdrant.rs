@@ -55,16 +55,16 @@ where
         )
         .unwrap();
 
-        let command = relative_command_path("qdrant").expect("bad bundle");
+        // let command = relative_command_path("qdrant").expect("bad bundle");
 
-        self.stdout_file = Some(stdout_file.clone());
-        self.stderr_file = Some(stderr_file.clone());
-        self.child = Some(run_command(
-            &command,
-            &qdrant_dir,
-            &stdout_file,
-            &stderr_file,
-        ));
+        // self.stdout_file = Some(stdout_file.clone());
+        // self.stderr_file = Some(stderr_file.clone());
+        // self.child = Some(run_command(
+        //     &command,
+        //     &qdrant_dir,
+        //     &stdout_file,
+        //     &stderr_file,
+        // ));
 
         Ok(())
     }

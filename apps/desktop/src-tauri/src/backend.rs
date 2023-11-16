@@ -50,26 +50,36 @@ pub fn initialize<R: Runtime>(app: &mut tauri::App<R>) -> tauri::plugin::Result<
     Ok(())
 }
 
-async fn wait_for_qdrant() {
+async fn wait_for_qdrant() -> anyhow::Result<()> {
     use qdrant_client::prelude::*;
     let qdrant =
         QdrantClient::new(Some(QdrantClientConfig::from_url("http://127.0.0.1:6334"))).unwrap();
 
-    for _ in 0..60 {
+    for _ in 0..3 {
         if qdrant.health_check().await.is_ok() {
-            return;
+            return Ok(());
         }
 
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
     }
 
-    panic!("qdrant cannot be started");
+    anyhow::bail!("qdrant cannot be started");
 }
 
 async fn start_backend<R: Runtime>(configuration: Configuration, app: tauri::AppHandle<R>) {
     tracing::info!("booting bleep back-end");
 
-    wait_for_qdrant().await;
+    if let Err(err) = wait_for_qdrant().await {
+        error!(?err, "bad bad qdrant not running now");
+        sentry_anyhow::capture_anyhow(&err);
+        app.emit_all(
+            "server-crashed",
+            Payload {
+                message: "Something bad happened".into(),
+            },
+        )
+        .unwrap();
+    };
 
     let configuration = if let Ok(remote) = configuration.clone().with_remote_cognito_config().await
     {
