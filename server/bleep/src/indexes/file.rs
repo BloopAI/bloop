@@ -242,6 +242,7 @@ impl Indexer<File> {
     pub async fn fuzzy_path_match(
         &self,
         project: Project,
+        branch: Option<&str>,
         query_str: &str,
         limit: usize,
     ) -> impl Iterator<Item = FileDocument> + '_ {
@@ -250,7 +251,18 @@ impl Indexer<File> {
         let collector = TopDocs::with_limit(5 * limit); // TODO: tune this
         let file_source = &self.source;
 
-        let project_scope = BooleanQuery::intersection(
+        let branch_scope = branch
+            .map(|b| {
+                trigrams(b)
+                    .map(|token| Term::from_field_text(self.source.branches, token.as_str()))
+                    .map(|term| TermQuery::new(term, IndexRecordOption::Basic))
+                    .map(Box::new)
+                    .map(|q| q as Box<dyn Query>)
+                    .collect::<Vec<_>>()
+            })
+            .map(BooleanQuery::intersection);
+
+        let project_scope = BooleanQuery::union(
             project
                 .repos()
                 .map(|repo| {
@@ -274,13 +286,12 @@ impl Indexer<File> {
                 BooleanQuery::intersection(query)
             })
             .flat_map(|query| {
-                let q = BooleanQuery::intersection(vec![
-                    Box::new(project_scope.clone()),
-                    Box::new(query),
-                ]);
+                let mut q: Vec<Box<dyn Query>> =
+                    vec![Box::new(project_scope.clone()), Box::new(query)];
+                q.extend(branch_scope.clone().map(|q| Box::new(q) as Box<dyn Query>));
 
                 searcher
-                    .search(&q, &collector)
+                    .search(&BooleanQuery::intersection(q), &collector)
                     .expect("failed to search index")
                     .into_iter()
                     .map(move |(_, addr)| addr)

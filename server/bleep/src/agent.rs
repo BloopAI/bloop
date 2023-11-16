@@ -416,10 +416,11 @@ impl Agent {
         &'a self,
         query: &str,
     ) -> impl Iterator<Item = FileDocument> + 'a {
+        let branch = self.last_exchange().query.first_branch();
         self.app
             .indexes
             .file
-            .fuzzy_path_match(self.project.clone(), query, 50)
+            .fuzzy_path_match(self.project.clone(), branch.as_deref(), query, 50)
             .await
     }
 
