@@ -92,8 +92,8 @@ mod cpu {
                     .with_name("Encode")
                     .with_log_level(LoggingLevel::Warning)
                     .with_execution_providers([
-                        ExecutionProvider::DirectML(None),
-                        ExecutionProvider::CPU(None),
+                        ExecutionProvider::DirectML(Default::default()),
+                        ExecutionProvider::CPU(Default::default()),
                     ])
                     .with_telemetry(false)
                     .build()?,
