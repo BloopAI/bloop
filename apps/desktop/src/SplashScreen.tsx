@@ -12,7 +12,7 @@ const SplashScreen = ({}: Props) => {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       key="splash"
-      className="w-screen h-screen flex items-center justify-center bg-bg-sub fixed top-0 left-0 z-[1000]"
+      className="w-screen h-screen flex items-center justify-center bg-bg-sub fixed top-0 left-0 z-10"
     >
       <div className="w-99 rounded-xl border border-bg-border bg-bg-base px-12 py-20 relative animate-pulse-shadow-slow z-0">
         <div
