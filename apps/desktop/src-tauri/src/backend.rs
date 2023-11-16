@@ -2,6 +2,8 @@ use bleep::{analytics, Application, Configuration, Environment};
 use tracing::error;
 
 use super::{config::get_device_id, Manager, Payload, Runtime};
+use std::thread;
+use std::time::Duration;
 
 #[tauri::command]
 pub fn get_last_log_file(config: tauri::State<Configuration>) -> Option<String> {
@@ -72,6 +74,7 @@ async fn start_backend<R: Runtime>(configuration: Configuration, app: tauri::App
     if let Err(err) = wait_for_qdrant().await {
         error!(?err, "bad bad qdrant not running now");
         sentry_anyhow::capture_anyhow(&err);
+        thread::sleep(Duration::from_secs(4));
         app.emit_all(
             "server-crashed",
             Payload {
