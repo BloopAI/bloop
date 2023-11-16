@@ -405,17 +405,17 @@ impl Semantic {
         threshold: f32,
         retrieve_more: bool,
     ) -> anyhow::Result<Vec<Payload>> {
-        let Some(query) = query.target() else {
+        let Some(query_target) = query.target() else {
             anyhow::bail!("no search target for query");
         };
-        let vector = self.embedder.embed(&query).await?;
+        let vector = self.embedder.embed(&query_target).await?;
 
         // TODO: Remove the need for `retrieve_more`. It's here because:
         // In /q `limit` is the maximum number of results returned (the actual number will often be lower due to deduplication)
         // In /answer we want to retrieve `limit` results exactly
         let results = self
             .search_with(
-                &parse_nl(&query)?,
+                query,
                 vector.clone(),
                 if retrieve_more { limit * 4 } else { limit }, // Retrieve double `limit` and deduplicate
                 offset,
