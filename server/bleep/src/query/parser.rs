@@ -25,6 +25,7 @@ pub enum Target<'a> {
 
 #[derive(Default, Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct SemanticQuery<'a> {
+    pub raw_query: String,
     pub repos: HashSet<Literal<'a>>,
     pub paths: HashSet<Literal<'a>>,
     pub langs: HashSet<Literal<'a>>,
@@ -75,6 +76,7 @@ impl<'a> SemanticQuery<'a> {
 
     pub fn into_owned(self) -> SemanticQuery<'static> {
         SemanticQuery {
+            raw_query: self.raw_query.clone(),
             repos: self.repos.into_iter().map(Literal::into_owned).collect(),
             paths: self.paths.into_iter().map(Literal::into_owned).collect(),
             langs: self.langs.into_iter().map(Literal::into_owned).collect(),
@@ -578,6 +580,7 @@ pub fn parse(query: &str) -> Result<Vec<Query<'_>>, ParseError> {
 }
 
 pub fn parse_nl(query: &str) -> Result<SemanticQuery<'_>, ParseError> {
+    let raw_query = query.to_string();
     let pairs = PestParser::parse(Rule::nl_query, query).map_err(Box::new)?;
 
     let mut repos = HashSet::new();
@@ -621,6 +624,7 @@ pub fn parse_nl(query: &str) -> Result<SemanticQuery<'_>, ParseError> {
     }
 
     Ok(SemanticQuery {
+        raw_query,
         repos,
         paths,
         langs,
