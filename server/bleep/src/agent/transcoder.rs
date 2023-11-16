@@ -497,7 +497,8 @@ fn try_trim_code_xml(xml: &str) -> Result<String> {
     // We just remove code chunks completely.
 
     let xml = fixup_xml_code(xml);
-    let _code_chunk: CodeChunk = quick_xml::de::from_str(&xml).context("couldn't parse as XML code block")?;
+    let _code_chunk: CodeChunk =
+        quick_xml::de::from_str(&xml).context("couldn't parse as XML code block")?;
     Ok(String::new())
 }
 
