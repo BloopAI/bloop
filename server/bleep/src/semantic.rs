@@ -1,9 +1,6 @@
 use std::{borrow::Cow, collections::HashMap, env, path::Path, sync::Arc};
 
-use crate::{
-    query::parser::{parse_nl, SemanticQuery},
-    Configuration,
-};
+use crate::{query::parser::SemanticQuery, Configuration};
 
 use anyhow::bail;
 use qdrant_client::{

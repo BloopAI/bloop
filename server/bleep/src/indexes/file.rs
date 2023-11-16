@@ -32,6 +32,7 @@ use super::{
     DocumentRead, Indexable, Indexer,
 };
 use crate::{
+    agent::Project,
     background::SyncHandle,
     cache::{CacheKeys, FileCache, FileCacheSnapshot},
     intelligence::TreeSitterFile,
@@ -240,6 +241,7 @@ impl Indexer<File> {
     /// If the regex filter fails to build, an empty list is returned.
     pub async fn fuzzy_path_match(
         &self,
+        project: Project,
         query_str: &str,
         limit: usize,
     ) -> impl Iterator<Item = FileDocument> + '_ {
@@ -247,6 +249,18 @@ impl Indexer<File> {
         let searcher = self.reader.searcher();
         let collector = TopDocs::with_limit(5 * limit); // TODO: tune this
         let file_source = &self.source;
+
+        let project_scope = BooleanQuery::intersection(
+            project
+                .repos()
+                .map(|repo| {
+                    Box::new(TermQuery::new(
+                        Term::from_field_text(self.source.repo_name, &repo),
+                        IndexRecordOption::Basic,
+                    )) as Box<dyn Query>
+                })
+                .collect::<Vec<_>>(),
+        );
 
         // hits is a mapping between a document address and the number of trigrams in it that
         // matched the query
@@ -260,8 +274,13 @@ impl Indexer<File> {
                 BooleanQuery::intersection(query)
             })
             .flat_map(|query| {
+                let q = BooleanQuery::intersection(vec![
+                    Box::new(project_scope.clone()),
+                    Box::new(query),
+                ]);
+
                 searcher
-                    .search(&query, &collector)
+                    .search(&q, &collector)
                     .expect("failed to search index")
                     .into_iter()
                     .map(move |(_, addr)| addr)

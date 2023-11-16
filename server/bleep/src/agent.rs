@@ -416,7 +416,11 @@ impl Agent {
         &'a self,
         query: &str,
     ) -> impl Iterator<Item = FileDocument> + 'a {
-        self.app.indexes.file.fuzzy_path_match(query, 50).await
+        self.app
+            .indexes
+            .file
+            .fuzzy_path_match(self.project.clone(), query, 50)
+            .await
     }
 
     /// Store the conversation in the DB.
