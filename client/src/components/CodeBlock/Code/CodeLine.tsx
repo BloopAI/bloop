@@ -164,11 +164,13 @@ const CodeLine = ({
 
   return (
     <div
-      className={`flex transition-all duration-150 ease-in-bounce group ${
+      className={`flex w-full flex-1 transition-all duration-150 ease-in-bounce group ${
         lineHidden ? 'opacity-0' : ''
       } ${
         blameLine?.start && lineNumber !== 0 ? ' border-t border-bg-border' : ''
-      } ${hoveredBackground ? 'bg-bg-base' : ''}`}
+      } ${hoveredBackground ? 'bg-bg-base' : ''} ${
+        isNewLine ? 'bg-bg-success/30' : isRemovedLine ? 'bg-bg-danger/30' : ''
+      }`}
       data-line-number={lineNumber}
       style={style}
       onMouseDown={(e) => {
@@ -224,9 +226,9 @@ const CodeLine = ({
               } ${hoverEffect ? 'group-hover:text-label-base' : ''}
            ${lineHidden ? '' : 'before:content-[attr(data-line)]'} ${
              isRemovedLine
-               ? 'bg-bg-danger/30 text-label-base'
+               ? 'text-label-base'
                : isNewLine
-               ? 'bg-bg-success/30 text-label-base'
+               ? 'text-label-base'
                : 'text-label-muted'
            }`}
             />
@@ -243,9 +245,9 @@ const CodeLine = ({
                : 'before:content-[attr(data-line)]'
            } ${
              isRemovedLine
-               ? 'bg-bg-danger/30 text-label-base'
+               ? 'text-label-base'
                : isNewLine
-               ? 'bg-bg-success/30 text-label-base'
+               ? 'text-label-base'
                : 'text-label-muted'
            }`}
           />
@@ -266,15 +268,8 @@ const CodeLine = ({
       <div
         className={`${showLineNumbers ? 'pl-2' : ''} ${
           lineHidden ? 'p-0' : ''
-        }`}
+        } flex-1`}
         ref={codeRef}
-        style={
-          isNewLine
-            ? { backgroundColor: 'rgba(var(--bg-success), 0.3)' }
-            : isRemovedLine
-            ? { backgroundColor: 'rgba(var(--bg-danger), 0.3)' }
-            : {}
-        }
       >
         {children}
       </div>

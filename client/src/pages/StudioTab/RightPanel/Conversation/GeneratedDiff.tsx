@@ -70,10 +70,19 @@ const GeneratedDiff = ({
       </div>
       <div className=" p-4">
         <p className="body-s text-label-title">
-          <Trans>
-            The following changes can be applied to your repository. Make sure
-            the generated diffs are valid before you apply the changes.
-          </Trans>
+          {diff.chunks.find((c) => c.repo.startsWith('local//')) ? (
+            <Trans>
+              The following changes can be applied to your repository. Make sure
+              the generated diffs are valid before you apply the changes.
+            </Trans>
+          ) : (
+            <Trans>
+              The following changes represent the git diff for the remote
+              repository. Please note that these changes cannot be applied
+              directly to a remote repository. Use the &quot;Copy&quot; button
+              to copy the changes and apply them locally.
+            </Trans>
+          )}
         </p>
         {diff.chunks.map((d, i) => (
           <CodeDiff

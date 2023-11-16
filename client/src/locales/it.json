@@ -406,9 +406,6 @@
 	"Generating diff...": "Generare diff ...",
 	"Diff generation failed": "Diff generazione non riuscita",
 	"Failed to apply the diff": "Impossibile applicare il diff",
-	"Cancel diff generation": "Annulla la generazione diff"
+	"Cancel diff generation": "Annulla la generazione diff",
+	"The following changes represent the git diff for the remote repository. Please note that these changes cannot be applied directly to a remote repository. Use the \"Copy\" button to copy the changes and apply them locally.": "Le seguenti modifiche rappresentano il differenziale GIT per il repository remoto. Si prega di notare che queste modifiche non possono essere applicate direttamente a un repository remoto. Utilizzare il pulsante \"Copia\" per copiare le modifiche e applicarle localmente."
 }
-
-
-
-

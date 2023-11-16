@@ -424,9 +424,6 @@
 	"Generating diff...": "diffを生成します...",
 	"Diff generation failed": "DIFF生成は失敗しました",
 	"Failed to apply the diff": "DIFFを適用できませんでした",
-	"Cancel diff generation": "DIFF生成をキャンセルします"
+	"Cancel diff generation": "DIFF生成をキャンセルします",
+	"The following changes represent the git diff for the remote repository. Please note that these changes cannot be applied directly to a remote repository. Use the \"Copy\" button to copy the changes and apply them locally.": "次の変更は、リモートリポジトリのGit Diffを表しています。 これらの変更は、リモートリポジトリに直接適用できないことに注意してください。 「コピー」ボタンを使用して、変更をコピーしてローカルに適用します。"
 }
-
-
-
-

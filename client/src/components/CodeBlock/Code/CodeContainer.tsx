@@ -140,7 +140,7 @@ const CodeContainer = ({
           canWrap && codeLines.length < 2 ? '!whitespace-pre-wrap' : ''
         }`}
       >
-        <div>{codeLines}</div>
+        <div className="flex flex-col">{codeLines}</div>
       </pre>
     </div>
   );

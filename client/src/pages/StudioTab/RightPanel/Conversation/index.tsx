@@ -325,12 +325,12 @@ const Conversation = ({
       if (andSubsequent) {
         // Set input to the message being removed
         setInput(conversation[i]);
-        setWaitingForDiff(false);
-        setDiffGenFailed(false);
-        setDiff(null);
-        setDiffApplied(false);
-        setDiffApplyError(false);
       }
+      setWaitingForDiff(false);
+      setDiffGenFailed(false);
+      setDiff(null);
+      setDiffApplied(false);
+      setDiffApplyError(false);
       if (
         i === conversation.length - 1 &&
         conversation[i].author === StudioConversationMessageAuthor.ASSISTANT &&

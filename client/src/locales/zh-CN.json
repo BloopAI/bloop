@@ -433,9 +433,6 @@
 	"Generating diff...": "生成差异...",
 	"Diff generation failed": "差异生成失败",
 	"Failed to apply the diff": "未能应用差异",
-	"Cancel diff generation": "取消差异生成"
+	"Cancel diff generation": "取消差异生成",
+	"The following changes represent the git diff for the remote repository. Please note that these changes cannot be applied directly to a remote repository. Use the \"Copy\" button to copy the changes and apply them locally.": "以下更改代表远程存储库的git差异。 请注意，这些更改不能直接应用于远程存储库。 使用“复制”按钮复制更改并在本地应用它们。"
 }
-
-
-
-
