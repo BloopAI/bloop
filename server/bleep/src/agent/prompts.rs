@@ -89,10 +89,7 @@ pub fn system<'a>(paths: impl IntoIterator<Item = &'a RepoPath>) -> String {
     if paths.peek().is_some() {
         s.push_str("## PATHS ##\nindex, repo, path\n");
         for (i, path) in paths.enumerate() {
-            let repo = path
-                .repo
-                .strip_prefix("www.github.com/BloopAI")
-                .unwrap_or(&path.repo);
+            let repo = path.repo.display_name();
             let path = &path.path;
             s.push_str(&format!("{}, {}, {}\n", i, repo, path));
         }

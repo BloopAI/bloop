@@ -1,4 +1,4 @@
-use std::{str::FromStr, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 
 use anyhow::{anyhow, Context, Result};
 use futures::{Future, TryStreamExt};
@@ -407,7 +407,7 @@ impl Agent {
         self.app
             .indexes
             .file
-            .by_path(&RepoRef::from_str(repo).unwrap(), path, branch.as_deref())
+            .by_path(repo, path, branch.as_deref())
             .await
             .with_context(|| format!("failed to read path: {}", path))
     }

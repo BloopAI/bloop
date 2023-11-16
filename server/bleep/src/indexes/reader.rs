@@ -12,6 +12,7 @@ use crate::{
         compiler::Compiler,
         parser::{self, Query, Target},
     },
+    repo::RepoRef,
     symbol::SymbolLocations,
     text_range::TextRange,
 };
@@ -60,7 +61,7 @@ impl ContentDocument {
 pub struct FileDocument {
     pub relative_path: String,
     pub repo_name: String,
-    pub repo_ref: String,
+    pub repo_ref: RepoRef,
     pub lang: Option<String>,
     pub branches: String,
     pub indexed: bool,
@@ -201,7 +202,7 @@ impl DocumentRead for FileReader {
 
     fn read_document(&self, schema: &Self::Schema, doc: tantivy::Document) -> Self::Document {
         let relative_path = read_text_field(&doc, schema.relative_path);
-        let repo_ref = read_text_field(&doc, schema.repo_ref);
+        let repo_ref = read_text_field(&doc, schema.repo_ref).parse().unwrap();
         let repo_name = read_text_field(&doc, schema.repo_name);
         let lang = read_lang_field(&doc, schema.lang);
         let branches = read_text_field(&doc, schema.branches);

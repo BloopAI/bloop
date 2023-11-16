@@ -1,12 +1,12 @@
-use crate::query::parser::SemanticQuery;
+use crate::{query::parser::SemanticQuery, repo::RepoRef};
 use std::{fmt, mem};
 
 use chrono::prelude::{DateTime, Utc};
 use rand::seq::SliceRandom;
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default, Hash, PartialEq, Eq)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Hash, PartialEq, Eq)]
 pub struct RepoPath {
-    pub repo: String,
+    pub repo: RepoRef,
     pub path: String,
 }
 
@@ -206,7 +206,7 @@ impl fmt::Display for CodeChunk {
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct FocusedChunk {
     pub repo_path: RepoPath,
     pub start_line: usize,

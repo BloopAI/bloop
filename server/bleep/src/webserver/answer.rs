@@ -378,7 +378,7 @@ pub async fn explain(
 ) -> super::Result<impl IntoResponse> {
     let query_id = uuid::Uuid::new_v4();
     let repo_path = RepoPath {
-        repo: params.repo_ref.to_string(),
+        repo: params.repo_ref.clone(),
         path: params.relative_path.clone(),
     };
 

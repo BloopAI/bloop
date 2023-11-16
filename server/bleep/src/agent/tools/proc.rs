@@ -47,7 +47,7 @@ impl Agent {
             .into_iter()
             .map(|chunk| {
                 let repo_path = RepoPath {
-                    repo: chunk.repo_name,
+                    repo: chunk.repo_ref.clone(),
                     path: chunk.relative_path,
                 };
 

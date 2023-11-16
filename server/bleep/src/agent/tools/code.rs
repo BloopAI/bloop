@@ -74,7 +74,7 @@ impl Agent {
                 let path = chunk.relative_path;
 
                 let repo_path = RepoPath {
-                    repo: repo.clone(),
+                    repo,
                     path: path.clone(),
                 };
 

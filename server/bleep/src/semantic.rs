@@ -91,7 +91,7 @@ impl Payload {
         HashMap::from([
             ("lang".into(), self.lang.to_ascii_lowercase().into()),
             ("repo_name".into(), self.repo_name.into()),
-            ("repo_ref".into(), self.repo_ref.into()),
+            ("repo_ref".into(), self.repo_ref.to_string().into()),
             ("relative_path".into(), self.relative_path.into()),
             ("content_hash".into(), self.content_hash.into()),
             ("snippet".into(), self.text.into()),
@@ -501,7 +501,7 @@ impl Semantic {
             let data = format!("{repo_name}\t{relative_path}\n{}", chunk.data);
             let payload = Payload {
                 repo_name: repo_name.to_owned(),
-                repo_ref: repo_ref.to_owned(),
+                repo_ref: repo_ref.parse().unwrap(),
                 relative_path: relative_path.to_owned(),
                 content_hash: file_cache_key.to_string(),
                 text: chunk.data.to_owned(),
@@ -511,7 +511,9 @@ impl Semantic {
                 end_line: chunk.range.end.line as u64,
                 start_byte: chunk.range.start.byte as u64,
                 end_byte: chunk.range.end.byte as u64,
-                ..Default::default()
+                id: Default::default(),
+                embedding: Default::default(),
+                score: Default::default(),
             };
 
             (data, payload)

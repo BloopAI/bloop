@@ -49,7 +49,7 @@ impl Agent {
                 .await?
                 .into_iter()
                 .map(|chunk| RepoPath {
-                    repo: chunk.repo_name,
+                    repo: chunk.repo_ref,
                     path: chunk.relative_path,
                 })
                 .collect::<HashSet<_>>()
