@@ -56,7 +56,7 @@ tasks:
   - name: Frontend
     command: |
       nix develop -c npm i
-      nix develop -c npm run build-web -- -- --watch
+      nix develop -c npm run build-web & npm run start-web
     openMode: split-right
 
   - name: Qdrant
