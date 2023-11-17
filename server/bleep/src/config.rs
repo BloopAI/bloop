@@ -442,5 +442,6 @@ fn interactive_batch_size() -> NonZeroUsize {
     } else {
         1
     };
+    tracing::info!(%batch_size, "setting interactive batch_size");
     NonZeroUsize::new(batch_size).unwrap()
 }
