@@ -24,13 +24,7 @@ fn default_true() -> bool {
 #[derive(Deserialize)]
 pub struct AutocompleteParams {
     #[serde(default = "default_true")]
-    content: bool,
-    #[serde(default = "default_true")]
-    file: bool,
-    #[serde(default = "default_true")]
-    repo: bool,
-    #[serde(default = "default_true")]
-    lang: bool,
+    search_bar_complete: bool,
 }
 
 pub(super) async fn handle(
@@ -43,91 +37,55 @@ pub(super) async fn handle(
     api_params.page_size = 8;
 
     let mut partial_lang = None;
-    let mut has_target = false;
 
     let queries = parser::parse(&api_params.q)
         .map_err(Error::user)?
         .into_iter()
         .map(|mut q| {
-            let keywords = &["lang:", "path:", "repo:"];
-
-            if ac_params.content {
-                if let Some(ref t) = q.target {
-                    if !keywords.iter().any(|k| k == t.literal().as_ref()) {
-                        has_target = true;
-                    }
-                }
-
-                let target = q
-                    .target
-                    .get_or_insert_with(|| Target::Content(Literal::Regex(".*".into())));
-
-                for keyword in keywords {
-                    if let Some(pos) = target.literal().find(keyword) {
-                        let new = format!(
-                            "{}{}",
-                            &target.literal()[..pos],
-                            &target.literal()[pos + keyword.len()..]
-                        );
-
-                        *target = Target::Content(Literal::Regex(if new.is_empty() {
-                            ".*".into()
-                        } else {
-                            new.into()
-                        }));
-                    }
-                }
-            } else {
+            if !ac_params.search_bar_complete {
+                // Do not autocomplete on content for @ commands
                 q.target = None;
-            }
 
-            if let Some(lang) = q.lang.as_ref() {
-                partial_lang = q.lang.as_ref().map(|l| l.to_lowercase());
-                if languages::list()
-                    .filter(|l| l.to_lowercase() == lang.as_ref().to_lowercase())
-                    .count()
-                    == 0
-                {
-                    q.lang = None;
+                if q.path.is_none() {
+                    q.path = Some(Literal::Regex(".*".into()));
                 }
             }
 
-            if q.path.is_none() && ac_params.file {
-                q.path = Some(Literal::Regex(".*".into()));
+            if let Some(lang) = q.lang.as_ref().map(|l| l.to_lowercase()) {
+                partial_lang = Some(lang.clone());
             }
 
             q
         })
         .collect::<Vec<_>>();
-    let mut autocomplete_results = vec![];
+
+    let mut results = vec![];
 
     // Only execute prefix search on flag names if there is a non-regex content target.
     // Always matches against the last query.
     //
     //      `la repo:bloop or sy` -> search with prefix `sy`
     //      `repo:bloop re path:src` -> search with prefix `re`
+    dbg!(&queries);
+    dbg!(&queries.last());
     if let Some(Target::Content(Literal::Plain(q))) = queries.last().unwrap().target.clone() {
-        autocomplete_results.append(
+        dbg!(&q);
+        results.append(
             &mut complete_flag(&q)
                 .map(|f| QueryResult::Flag(f.to_string()))
                 .collect(),
         );
     }
 
-    let mut engines = vec![];
-    if ac_params.content {
-        engines.push(ContentReader.execute(&indexes.file, &queries, &api_params));
+    let mut executors = vec![];
+    // Only executed for literal autocomplete
+    if ac_params.search_bar_complete {
+        executors.push(ContentReader.execute(&indexes.file, &queries, &api_params));
     }
+    executors.push(RepoReader.execute(&indexes.repo, &queries, &api_params));
+    executors.push(FileReader.execute(&indexes.file, &queries, &api_params));
 
-    if ac_params.repo {
-        engines.push(RepoReader.execute(&indexes.repo, &queries, &api_params));
-    }
-
-    if ac_params.file {
-        engines.push(FileReader.execute(&indexes.file, &queries, &api_params));
-    }
-
-    let (langs, list) = stream::iter(engines)
+    let (langs, list) = stream::iter(executors)
         // Buffer several readers at the same time. The exact number is not important; this is
         // simply an upper bound.
         .buffered(10)
@@ -150,37 +108,39 @@ pub(super) async fn handle(
         .await
         .map_err(Error::internal)?;
 
-    autocomplete_results.extend(
+    results.extend(
         list.into_iter()
-            .filter(|q| has_target || !matches!(q, QueryResult::Snippets(_))),
+            .filter(|q| ac_params.search_bar_complete || !matches!(q, QueryResult::Snippets(_))),
     );
 
-    if ac_params.lang && api_params.q.contains("lang:") {
-        let mut ranked_langs = langs.into_iter().collect::<Vec<_>>();
+    if api_params.q.contains("lang:") {
+        // Contains lang at any position
+        let mut ranked_langs = langs.into_iter().collect::<Vec<_>>(); // Langs returned by the search query
+        dbg!(&ranked_langs);
         if let Some(partial) = partial_lang {
             ranked_langs.retain(|(l, _)| l.to_lowercase().contains(&partial));
 
-            if ranked_langs.is_empty() {
-                ranked_langs.extend(
-                    languages::list()
-                        .filter(|l| l.to_lowercase().starts_with(&partial))
-                        .map(|l| (l.to_lowercase(), 0)),
-                );
+            // if ranked_langs.is_empty() {
+            //     // ranked_langs.extend(
+            //     //     languages::list()
+            //     //         .filter(|l| l.to_lowercase().starts_with(&partial))
+            //     //         .map(|l| (l.to_string(), 0)),
+            //     // );
 
-                ranked_langs.sort_by(|(a, _), (b, _)| a.len().cmp(&b.len()));
-                ranked_langs.truncate(5);
-            }
+            //     // ranked_langs.sort_by(|(a, _), (b, _)| a.len().cmp(&b.len()));
+            //     // ranked_langs.truncate(5);
+            // }
         }
 
         ranked_langs.sort_by(|(_, a_count), (_, b_count)| b_count.cmp(a_count));
         ranked_langs.truncate(5);
 
-        autocomplete_results.extend(ranked_langs.into_iter().map(|(l, _)| QueryResult::Lang(l)));
+        results.extend(ranked_langs.into_iter().map(|(l, _)| QueryResult::Lang(l)));
     }
 
     Ok(json(AutocompleteResponse {
-        count: autocomplete_results.len(),
-        data: autocomplete_results,
+        count: results.len(),
+        data: results,
     }))
 }
 

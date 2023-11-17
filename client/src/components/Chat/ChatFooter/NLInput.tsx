@@ -150,7 +150,7 @@ const NLInput = ({
       callback: (a: { id: string; display: string }[]) => void,
     ) => {
       const respPath = await getAutocomplete(
-        `path:${search} repo:${tab.name}&content=false`,
+        `path:${search} repo:${tab.name}&search_bar_complete=false`,
       );
       const fileResults = respPath.data.filter(
         (d): d is FileResItem => d.kind === 'file_result',
@@ -179,7 +179,7 @@ const NLInput = ({
       callback: (a: { id: string; display: string }[]) => void,
     ) => {
       const respLang = await getAutocomplete(
-        `lang:${search} repo:${tab.name}&content=false`,
+        `lang:${search} repo:${tab.name}&search_bar_complete=false`,
       );
       const langResults = respLang.data
         .filter((d): d is LangItem => d.kind === 'lang')
@@ -210,9 +210,8 @@ const NLInput = ({
             </div>
           ) : null}
           <div
-            className={`flex items-center justify-start rounded-6 gap-2 px-2 py-1 ${
-              focused ? 'bg-chat-bg-base-hover' : ''
-            } body-s text-label-title`}
+            className={`flex items-center justify-start rounded-6 gap-2 px-2 py-1 ${focused ? 'bg-chat-bg-base-hover' : ''
+              } body-s text-label-title`}
           >
             {d.type === 'dir' ? (
               <FolderFilled />
@@ -258,9 +257,8 @@ const NLInput = ({
             </div>
           ) : null}
           <div
-            className={`flex items-center justify-start rounded-6 gap-2 px-2 py-1 ${
-              focused ? 'bg-chat-bg-base-hover' : ''
-            } body-s text-label-title`}
+            className={`flex items-center justify-start rounded-6 gap-2 px-2 py-1 ${focused ? 'bg-chat-bg-base-hover' : ''
+              } body-s text-label-title`}
           >
             <FileIcon filename={getFileExtensionForLang(d.display, true)} />
             {d.display}
@@ -273,11 +271,10 @@ const NLInput = ({
 
   return (
     <div
-      className={`w-full rounded-lg border border-chat-bg-border focus-within:border-chat-bg-border-hover px-4 ${
-        isStoppable && loadingSteps?.length
-          ? 'bg-transparent'
-          : 'bg-chat-bg-base hover:text-label-title hover:border-chat-bg-border-hover'
-      } transition-all ease-out duration-150 flex-grow-0 relative z-100`}
+      className={`w-full rounded-lg border border-chat-bg-border focus-within:border-chat-bg-border-hover px-4 ${isStoppable && loadingSteps?.length
+        ? 'bg-transparent'
+        : 'bg-chat-bg-base hover:text-label-title hover:border-chat-bg-border-hover'
+        } transition-all ease-out duration-150 flex-grow-0 relative z-100`}
     >
       <div
         className={`w-full flex items-start gap-2 

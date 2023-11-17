@@ -136,10 +136,10 @@ function SearchInput() {
           }
           let autocompleteQuery = state.inputValue;
           if (selectedBranch) {
-            autocompleteQuery += ` branch:${selectedBranch}`;
+            autocompleteQuery = `branch:${selectedBranch} ${autocompleteQuery}`;
           }
           if (!state.inputValue.includes(`repo:${tab.name}`)) {
-            autocompleteQuery += ` repo:${tab.name}`;
+            autocompleteQuery = `repo:${tab.name} ${autocompleteQuery}`;
           }
           getAutocompleteThrottled(autocompleteQuery, setOptions);
           const parsedFilters = parseFilters(state.inputValue);
@@ -168,7 +168,7 @@ function SearchInput() {
       itemToString(item) {
         return (
           (item?.type === ResultItemType.FLAG ||
-          item?.type === ResultItemType.LANG
+            item?.type === ResultItemType.LANG
             ? item?.data
             : '') || ''
         );
