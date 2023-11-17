@@ -407,7 +407,7 @@ pub async fn explain(
         .into_owned();
 
     if let Some(branch) = params.branch {
-        query.branch.insert(Literal::Plain(branch.into()));
+        query.branch.push(Literal::Plain(branch.into()));
     }
 
     let file_content = app

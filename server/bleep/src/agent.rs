@@ -1,4 +1,4 @@
-use std::{collections::HashSet, ops::Deref, sync::Arc, time::Duration};
+use std::{ops::Deref, sync::Arc, time::Duration};
 
 use anyhow::{anyhow, Context, Result};
 use futures::{Future, TryStreamExt};
@@ -351,7 +351,7 @@ impl Agent {
         let paths_set = paths
             .into_iter()
             .map(|p| parser::Literal::Plain(p.into()))
-            .collect::<HashSet<_>>();
+            .collect::<Vec<_>>();
 
         let paths = if paths_set.is_empty() {
             self.last_exchange().query.paths.clone()
