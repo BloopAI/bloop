@@ -437,6 +437,8 @@ fn default_max_chunk_tokens() -> usize {
 fn interactive_batch_size() -> NonZeroUsize {
     let batch_size = if cfg!(all(target_os = "macos", target_arch = "aarch64")) {
         5
+    } else if cfg!(target_os = "windows") {
+        10
     } else {
         1
     };
