@@ -42,10 +42,28 @@ fn main() {
         .setup(backend::initialize)
         .invoke_handler(tauri::generate_handler![
             show_folder_in_finder,
+            show_main_window,
             backend::get_last_log_file,
         ])
         .run(tauri::generate_context!())
         .expect("error running tauri application");
+}
+
+#[tauri::command]
+fn show_main_window(app_handle: tauri::AppHandle) {
+    match app_handle.get_window("main") {
+        Some(window) => {
+            if !cfg!(target_os = "macos") {
+                window.unminimize().unwrap();
+            }
+            window.unminimize().unwrap();
+            window.set_focus().unwrap();
+            window.show().unwrap();
+        }
+        None => {
+
+        }
+    }
 }
 
 #[tauri::command]
