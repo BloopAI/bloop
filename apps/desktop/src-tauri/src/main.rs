@@ -60,9 +60,7 @@ fn show_main_window(app_handle: tauri::AppHandle) {
             window.set_focus().unwrap();
             window.show().unwrap();
         }
-        None => {
-
-        }
+        None => {}
     }
 }
 
