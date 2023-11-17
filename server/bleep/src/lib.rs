@@ -10,9 +10,6 @@
 #![warn(unused_crate_dependencies)]
 #![allow(elided_lifetimes_in_paths)]
 
-#[cfg(all(feature = "onnx", feature = "metal"))]
-compile_error!("cannot enable `onnx` and `metal` at the same time");
-
 // only used in the binary
 #[cfg(feature = "color-eyre")]
 use color_eyre as _;

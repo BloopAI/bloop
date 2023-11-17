@@ -435,6 +435,10 @@ fn default_max_chunk_tokens() -> usize {
 }
 
 fn interactive_batch_size() -> NonZeroUsize {
-    let batch_size = if cfg!(feature = "metal") { 5 } else { 1 };
+    let batch_size = if cfg!(all(target_os = "macos", target_arch = "aarch64")) {
+        5
+    } else {
+        1
+    };
     NonZeroUsize::new(batch_size).unwrap()
 }
