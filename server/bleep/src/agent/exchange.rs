@@ -1,5 +1,5 @@
-use crate::query::parser::SemanticQuery;
-use std::{fmt, mem};
+use crate::query::parser::Query;
+use std::{fmt, mem, borrow::Cow};
 
 use chrono::prelude::{DateTime, Utc};
 use rand::seq::SliceRandom;
@@ -11,7 +11,7 @@ use rand::seq::SliceRandom;
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
 pub struct Exchange {
     pub id: uuid::Uuid,
-    pub query: SemanticQuery<'static>,
+    pub query: Query<'static>,
     pub answer: Option<String>,
     pub search_steps: Vec<SearchStep>,
     pub paths: Vec<String>,
@@ -35,7 +35,7 @@ pub struct Exchange {
 }
 
 impl Exchange {
-    pub fn new(id: uuid::Uuid, query: SemanticQuery<'static>) -> Self {
+    pub fn new(id: uuid::Uuid, query: Query<'static>) -> Self {
         Self {
             id,
             query,
@@ -85,7 +85,7 @@ impl Exchange {
 
     /// Get the query associated with this exchange, if it has been made.
     pub fn query(&self) -> Option<String> {
-        self.query.target().map(|q| q.to_string())
+        self.query.target.as_ref().and_then(|t| t.literal().as_plain()).map(Cow::into_owned)
     }
 
     /// Get the answer and conclusion associated with this exchange, if a conclusion has been made.

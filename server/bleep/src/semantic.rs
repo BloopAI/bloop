@@ -1,8 +1,8 @@
 use std::{borrow::Cow, collections::HashMap, env, path::Path, sync::Arc};
 
-use crate::{query::parser::SemanticQuery, Configuration};
+use crate::{query::parser::Query, Configuration};
 
-use anyhow::bail;
+use anyhow::{bail, Context};
 use qdrant_client::{
     prelude::{QdrantClient, QdrantClientConfig},
     qdrant::{
@@ -304,42 +304,9 @@ impl Semantic {
         Ok(())
     }
 
-    pub async fn search_with<'a>(
-        &self,
-        parsed_query: &SemanticQuery<'a>,
-        vector: Embedding,
-        limit: u64,
-        offset: u64,
-        threshold: f32,
-    ) -> anyhow::Result<Vec<ScoredPoint>> {
-        let response = self
-            .qdrant
-            .search_points(&SearchPoints {
-                limit,
-                vector,
-                collection_name: self.config.collection_name.to_string(),
-                offset: Some(offset),
-                score_threshold: Some(threshold),
-                with_payload: Some(WithPayloadSelector {
-                    selector_options: Some(with_payload_selector::SelectorOptions::Enable(true)),
-                }),
-                filter: Some(Filter {
-                    must: build_conditions(parsed_query),
-                    ..Default::default()
-                }),
-                with_vectors: Some(WithVectorsSelector {
-                    selector_options: Some(with_vectors_selector::SelectorOptions::Enable(true)),
-                }),
-                ..Default::default()
-            })
-            .await?;
-
-        Ok(response.result)
-    }
-
     pub async fn batch_search_with<'a>(
         &self,
-        parsed_queries: &[&SemanticQuery<'a>],
+        parsed_queries: &[Query<'a>],
         vectors: Vec<Embedding>,
         limit: u64,
         offset: u64,
@@ -394,55 +361,29 @@ impl Semantic {
         Ok(responses.into_iter().flat_map(|r| r.result).collect())
     }
 
-    pub async fn search<'a>(
-        &self,
-        parsed_query: &SemanticQuery<'a>,
-        limit: u64,
-        offset: u64,
-        threshold: f32,
-        retrieve_more: bool,
-    ) -> anyhow::Result<Vec<Payload>> {
-        let Some(query) = parsed_query.target() else {
-            anyhow::bail!("no search target for query");
-        };
-        let vector = self.embedder.embed(&query).await?;
-
-        // TODO: Remove the need for `retrieve_more`. It's here because:
-        // In /q `limit` is the maximum number of results returned (the actual number will often be lower due to deduplication)
-        // In /answer we want to retrieve `limit` results exactly
-        let results = self
-            .search_with(
-                parsed_query,
-                vector.clone(),
-                if retrieve_more { limit * 2 } else { limit }, // Retrieve double `limit` and deduplicate
-                offset,
-                threshold,
-            )
-            .await
-            .map(|raw| {
-                raw.into_iter()
-                    .map(Payload::from_qdrant)
-                    .collect::<Vec<_>>()
-            })?;
-        Ok(deduplicate_snippets(results, vector, limit))
-    }
-
     pub async fn batch_search<'a>(
         &self,
-        parsed_queries: &[&SemanticQuery<'a>],
+        parsed_queries: &[Query<'a>],
         limit: u64,
         offset: u64,
         threshold: f32,
         retrieve_more: bool,
     ) -> anyhow::Result<Vec<Payload>> {
-        if parsed_queries.iter().any(|q| q.target().is_none()) {
-            anyhow::bail!("no search target for query");
-        };
+        let contents = parsed_queries
+            .iter()
+            .map(|q| {
+                q.target
+                    .as_ref()
+                    .and_then(|t| t.content())
+                    .and_then(|lit| lit.as_plain())
+            })
+            .collect::<Option<Vec<_>>>()
+            .context("no search target for query")?;
 
         let vectors = futures::future::join_all(
-            parsed_queries
-                .iter()
-                .map(|q| async { self.embedder.embed(&q.target().unwrap()).await }),
+            contents
+                .into_iter()
+                .map(|content| async move { self.embedder.embed(&content).await }),
         )
         .await
         .into_iter()
@@ -588,76 +529,52 @@ fn make_kv_text_filter(key: &str, value: &str) -> FieldCondition {
     }
 }
 
-fn build_conditions(query: &SemanticQuery<'_>) -> Vec<qdrant_client::qdrant::Condition> {
-    let repo_filter = {
-        let conditions = query
-            .repos()
-            .map(|r| {
-                if r.contains('/') && !r.starts_with("github.com/") {
-                    format!("github.com/{r}")
-                } else {
-                    r.to_string()
-                }
-            })
-            .map(|r| make_kv_keyword_filter("repo_name", r.as_ref()).into())
-            .collect::<Vec<_>>();
-        // one of the above repos should match
-        if conditions.is_empty() {
-            None
-        } else {
-            Some(Filter {
-                should: conditions,
-                ..Default::default()
-            })
-        }
-    };
+fn build_conditions(query: &Query<'_>) -> Vec<qdrant_client::qdrant::Condition> {
+    let repo_filter = query
+        .repo
+        .as_ref()
+        .and_then(|lit| lit.as_plain())
+        .map(|r| {
+            if r.contains('/') && !r.starts_with("github.com/") {
+                format!("github.com/{r}")
+            } else {
+                r.to_string()
+            }
+        })
+        .map(|r| make_kv_keyword_filter("repo_name", r.as_ref()).into())
+        .map(|c| Filter {
+            should: vec![c],
+            ..Default::default()
+        });
 
-    let path_filter = {
-        let conditions = query
-            .paths()
-            .map(|r| make_kv_text_filter("relative_path", r.as_ref()).into())
-            .collect::<Vec<_>>();
-        if conditions.is_empty() {
-            None
-        } else {
-            Some(Filter {
-                should: conditions,
-                ..Default::default()
-            })
-        }
-    };
+    let path_filter = query
+        .path
+        .as_ref()
+        .and_then(|lit| lit.as_plain())
+        .map(|r| make_kv_text_filter("relative_path", r.as_ref()).into())
+        .map(|c| Filter {
+            should: vec![c],
+            ..Default::default()
+        });
 
-    let lang_filter = {
-        let conditions = query
-            .langs()
-            .map(|l| make_kv_keyword_filter("lang", l.as_ref()).into())
-            .collect::<Vec<_>>();
-        // one of the above langs should match
-        if conditions.is_empty() {
-            None
-        } else {
-            Some(Filter {
-                should: conditions,
-                ..Default::default()
-            })
-        }
-    };
+    let lang_filter = query
+        .lang
+        .as_ref()
+        .map(|l| make_kv_keyword_filter("lang", l.as_ref()).into())
+        .map(|c| Filter {
+            should: vec![c],
+            ..Default::default()
+        });
 
-    let branch_filter = {
-        let conditions = query
-            .branch()
-            .map(|l| make_kv_keyword_filter("branches", l.as_ref()).into())
-            .collect::<Vec<_>>();
-
-        if conditions.is_empty() {
-            None
-        } else {
-            Some(Filter {
-                should: conditions,
-                ..Default::default()
-            })
-        }
-    };
+    let branch_filter = query
+        .branch
+        .as_ref()
+        .and_then(|lit| lit.as_plain())
+        .map(|l| make_kv_keyword_filter("branches", l.as_ref()).into())
+        .map(|c| Filter {
+            should: vec![c],
+            ..Default::default()
+        });
 
     let filters: Vec<_> = [repo_filter, path_filter, lang_filter, branch_filter]
         .into_iter()

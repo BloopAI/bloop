@@ -9,7 +9,7 @@ use crate::{
     analytics::{EventData, QueryEvent},
     indexes::reader::{ContentDocument, FileDocument},
     llm_gateway::{self, api::FunctionCall},
-    query::{parser, stopwords::remove_stopwords},
+    query::{parser::{self, Query}, stopwords::remove_stopwords},
     repo::RepoRef,
     semantic,
     webserver::{
@@ -348,20 +348,20 @@ impl Agent {
         threshold: f32,
         retrieve_more: bool,
     ) -> Result<Vec<semantic::Payload>> {
-        let query = parser::SemanticQuery {
-            target: Some(query),
-            repos: [parser::Literal::Plain(self.repo_ref.display_name().into())].into(),
-            paths: paths
-                .iter()
-                .map(|p| parser::Literal::Plain(p.into()))
-                .collect(),
-            ..self.last_exchange().query.clone()
-        };
+        let queries = paths
+            .iter()
+            .map(|p| Query {
+                target: Some(parser::Target::Content(query.clone().into_owned())),
+                repo: Some(parser::Literal::Plain(self.repo_ref.display_name().into())),
+                path: Some(parser::Literal::Plain(p.into())),
+                ..self.last_exchange().query.clone()
+            })
+            .collect::<Vec<_>>();
 
         debug!(?query, %self.thread_id, "executing semantic query");
         self.app
             .semantic
-            .search(&query, limit, offset, threshold, retrieve_more)
+            .batch_search(&queries, limit, offset, threshold, retrieve_more)
             .await
     }
 
@@ -376,24 +376,22 @@ impl Agent {
     ) -> Result<Vec<semantic::Payload>> {
         let queries = queries
             .iter()
-            .map(|q| parser::SemanticQuery {
-                target: Some(q.clone()),
-                repos: [parser::Literal::Plain(self.repo_ref.display_name().into())].into(),
+            .map(|q| Query {
+                target: Some(parser::Target::Content(q.clone())),
+                repo: Some(parser::Literal::Plain(self.repo_ref.display_name().into())),
                 ..self.last_exchange().query.clone()
             })
             .collect::<Vec<_>>();
 
-        let queries = queries.iter().collect::<Vec<_>>();
-
         debug!(?queries, %self.thread_id, "executing semantic query");
         self.app
             .semantic
-            .batch_search(queries.as_slice(), limit, offset, threshold, retrieve_more)
+            .batch_search(&queries, limit, offset, threshold, retrieve_more)
             .await
     }
 
     async fn get_file_content(&self, path: &str) -> Result<Option<ContentDocument>> {
-        let branch = self.last_exchange().query.first_branch();
+        let branch = self.last_exchange().query.branch.as_ref().and_then(|lit| lit.as_plain());
 
         debug!(%self.repo_ref, path, ?branch, %self.thread_id, "executing file search");
         self.app
@@ -408,7 +406,7 @@ impl Agent {
         &'a self,
         query: &str,
     ) -> impl Iterator<Item = FileDocument> + 'a {
-        let branch = self.last_exchange().query.first_branch();
+        let branch = self.last_exchange().query.branch.as_ref().and_then(|lit| lit.as_plain());
 
         debug!(%self.repo_ref, query, ?branch, %self.thread_id, "executing fuzzy search");
         self.app

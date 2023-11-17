@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{
     query::{
         execute::{ApiQuery, PagingMetadata, QueryResponse, QueryResult, ResultStats},
-        parser::SemanticQuery,
+        parser::Query,
     },
     snippet::Snippet,
 };
@@ -14,12 +14,12 @@ use anyhow::Result;
 
 pub async fn execute(
     semantic: Semantic,
-    query: SemanticQuery<'_>,
+    queries: Vec<Query<'_>>,
     params: ApiQuery,
 ) -> Result<QueryResponse> {
     let results = semantic
-        .search(
-            &query,
+        .batch_search(
+            &queries,
             params.page_size as u64,
             ((params.page + 1) * params.page_size) as u64,
             0.0,

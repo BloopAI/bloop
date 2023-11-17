@@ -30,13 +30,19 @@ pub(super) async fn fuzzy_path(
     Query(args): Query<ApiQuery>,
     Extension(indexes): Extension<Arc<Indexes>>,
 ) -> Result<impl IntoResponse> {
-    let q = parser::parse_nl(&args.q).map_err(|err| {
+    let mut q = parser::parse_nl(&args.q).map_err(|err| {
         error!(?err, "Couldn't parse query");
         Error::new(ErrorKind::UpstreamService, "parse error")
     })?;
 
-    let target = q.target();
-    let target = target.as_deref().ok_or_else(|| {
+    let first_query = q.remove(0);
+
+    let target = first_query
+        .target
+        .as_ref()
+        .and_then(|t| t.content())
+        .and_then(|l| l.as_plain());
+    let target = target.ok_or_else(|| {
         error!(?q, "Query has no target");
         Error::new(ErrorKind::UpstreamService, "Query has no target")
     })?;
@@ -50,8 +56,12 @@ pub(super) async fn fuzzy_path(
         .file
         .skim_fuzzy_path_match(
             repo_ref,
-            target,
-            q.first_branch().as_deref(),
+            &target,
+            first_query
+                .branch
+                .as_ref()
+                .and_then(|l| l.as_plain())
+                .as_deref(),
             args.page_size,
         )
         .await

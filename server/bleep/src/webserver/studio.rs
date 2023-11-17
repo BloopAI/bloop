@@ -1460,7 +1460,7 @@ pub async fn import(
             path: c.path.clone(),
             hidden: false,
             repo: repo_ref.parse().unwrap(),
-            branch: e.query.branch().next().map(Cow::into_owned),
+            branch: e.query.branch.as_ref().and_then(|lit| lit.as_plain()).map(Cow::into_owned),
             ranges: vec![c.start_line..c.end_line + 1],
         })
     }))

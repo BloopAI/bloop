@@ -126,11 +126,13 @@ pub(super) async fn answer(
         exchanges.truncate(truncate_from_index);
     }
 
-    let query = parser::parse_nl(q).context("parse error")?.into_owned();
+    let query = parser::parse_nl(q).context("parse error")?.first().unwrap().to_owned();
     let query_target = query
         .target
         .as_ref()
         .context("query was empty")?
+        .content()
+        .context("user query was not a content query")?
         .as_plain()
         .context("user query was not plain text")?
         .clone()
@@ -139,7 +141,7 @@ pub(super) async fn answer(
     debug!(?query_target, "parsed query target");
 
     let action = Action::Query(query_target);
-    exchanges.push(Exchange::new(query_id, query));
+    exchanges.push(Exchange::new(query_id, query.into_owned()));
 
     execute_agent(
         params.clone(),
@@ -404,6 +406,7 @@ pub async fn explain(
 
     let mut query = parser::parse_nl(&virtual_req.q)
         .context("failed to parse virtual answer query")?
+        .remove(0)
         .into_owned();
 
     if let Some(branch) = params.branch {

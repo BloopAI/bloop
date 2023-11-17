@@ -5,7 +5,7 @@ use rand::{distributions, thread_rng, Rng};
 use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
 use tracing::{error, info};
 
-use crate::{query::parser, repo::BranchFilterConfig, state::RepositoryPool};
+use crate::{query::parser::{self, Literal}, repo::BranchFilterConfig, state::RepositoryPool};
 
 pub(crate) async fn log_and_branch_rotate(app: crate::Application) {
     let log = crate::db::QueryLog::new(&app.sql);
@@ -92,17 +92,19 @@ fn update_branch_filters(
 
 fn collect_branches_for_repos(queries: Vec<String>) -> scc::HashMap<String, HashSet<String>> {
     let map = scc::HashMap::default();
-    queries.par_iter().for_each(|q| {
-        if let Ok(parsed) = parser::parse_nl(q) {
-            for r in parsed.repos() {
-                for b in parsed.branch() {
+    queries
+        .par_iter()
+        .filter_map(|q| parser::parse_nl(q).ok())
+        .flatten()
+        .for_each(|q| {
+            if let Some(r) = q.repo.as_ref().and_then(Literal::as_plain) {
+                if let Some(b) = q.branch.as_ref().and_then(Literal::as_plain) {
                     map.entry(r.to_string())
                         .or_insert_with(HashSet::default)
                         .get_mut()
                         .insert(b.to_string());
                 }
             }
-        }
-    });
+        });
     map
 }

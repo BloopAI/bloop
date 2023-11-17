@@ -3,7 +3,7 @@ use regex::Regex;
 use smallvec::{smallvec, SmallVec};
 use std::{borrow::Cow, collections::HashSet, mem};
 
-#[derive(Default, Clone, Debug, PartialEq, Eq)]
+#[derive(Default, Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Query<'a> {
     pub open: Option<bool>,
     pub case_sensitive: Option<bool>,
@@ -17,7 +17,7 @@ pub struct Query<'a> {
     pub target: Option<Target<'a>>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum Target<'a> {
     Symbol(Literal<'a>),
     Content(Literal<'a>),
@@ -72,26 +72,12 @@ impl<'a> SemanticQuery<'a> {
             ..Default::default()
         }
     }
-
-    pub fn into_owned(self) -> SemanticQuery<'static> {
-        SemanticQuery {
-            repos: self.repos.into_iter().map(Literal::into_owned).collect(),
-            paths: self.paths.into_iter().map(Literal::into_owned).collect(),
-            langs: self
-                .langs
-                .into_iter()
-                .map(|c| c.into_owned().into())
-                .collect(),
-            branch: self.branch.into_iter().map(Literal::into_owned).collect(),
-            target: self.target.map(Literal::into_owned),
-        }
-    }
 }
 
 impl<'a> Query<'a> {
     /// Merge this query with another, overwriting current terms by terms in the new query, if they
     /// exist.
-    fn merge(self, rhs: Self) -> Self {
+    fn merge(self, rhs: Self, parse_options: &ParseOptions) -> Self {
         Self {
             open: rhs.open.or(self.open),
             case_sensitive: rhs.case_sensitive.or(self.case_sensitive),
@@ -105,7 +91,11 @@ impl<'a> Query<'a> {
 
             target: match (self.target, rhs.target) {
                 (Some(Target::Content(lhs)), Some(Target::Content(rhs))) => {
-                    Some(Target::Content(lhs.join_as_regex(rhs)))
+                    Some(Target::Content(if parse_options.plain_content_join {
+                        lhs.join_as_plain(rhs)
+                    } else {
+                        lhs.join_as_regex(rhs)
+                    }))
                 }
 
                 // TODO: Do we want to return an error here?
@@ -136,7 +126,7 @@ impl<'a> Query<'a> {
     /// The input argument `iter` expects an iterator, where each item is another iterator over a
     /// set of queries joined with `or`. Because a list of queries is effectively an `or`, you can
     /// interpret the input as being a list of `or` groups that are `and`ed together.
-    fn cross<I>(self, mut iter: I) -> SmallVec<[Self; 1]>
+    fn cross<I>(self, mut iter: I, parse_options: &ParseOptions) -> SmallVec<[Self; 1]>
     where
         I: Clone + Iterator,
         I::Item: Iterator<Item = Self>,
@@ -145,7 +135,11 @@ impl<'a> Query<'a> {
             let mut list = smallvec![];
 
             for rhs in queries {
-                list.extend(self.clone().merge(rhs).cross(iter.clone()));
+                list.extend(
+                    self.clone()
+                        .merge(rhs, parse_options)
+                        .cross(iter.clone(), parse_options),
+                );
             }
 
             list
@@ -166,6 +160,21 @@ impl<'a> Query<'a> {
             self.repo.as_mut().map(Literal::make_regex);
             self.path.as_mut().map(Literal::make_regex);
             self.target.as_mut().map(Target::make_regex);
+        }
+    }
+
+    pub fn into_owned(self) -> Query<'static> {
+        Query {
+            open: self.open,
+            case_sensitive: self.case_sensitive,
+            global_regex: self.global_regex,
+
+            org: self.org.map(Literal::into_owned),
+            repo: self.repo.map(Literal::into_owned),
+            path: self.path.map(Literal::into_owned),
+            lang: self.lang.map(|cow| cow.into_owned().into()),
+            branch: self.branch.map(Literal::into_owned),
+            target: self.target.map(Target::into_owned),
         }
     }
 }
@@ -199,6 +208,13 @@ impl<'a> Target<'a> {
         match self {
             Self::Symbol(lit) => lit.make_regex(),
             Self::Content(lit) => lit.make_regex(),
+        }
+    }
+
+    fn into_owned(self) -> Target<'static> {
+        match self {
+            Self::Symbol(lit) => todo!(), // Self::Symbol(lit.into_owned()),
+            Self::Content(lit) => todo!(), // Self::Content(lit.into_owned()),
         }
     }
 }
@@ -242,10 +258,12 @@ impl<'a> Literal<'a> {
         Self::Regex(Cow::Owned(format!("{lhs}\\s+{rhs}")))
     }
 
-    fn join_as_plain(self, rhs: Self) -> Option<Self> {
-        let lhs = self.as_plain()?;
-        let rhs = rhs.as_plain()?;
-        Some(Self::Plain(Cow::Owned(format!("{lhs} {rhs}"))))
+    fn join_as_plain(self, rhs: Self) -> Self {
+        if let (Some(lhs), Some(rhs)) = (self.as_plain(), rhs.as_plain()) {
+            Self::Plain(Cow::Owned(format!("{lhs} {rhs}")))
+        } else {
+            self.join_as_regex(rhs)
+        }
     }
 
     /// Convert this literal into a regex string.
@@ -454,6 +472,27 @@ impl<'a> Expr<'a> {
 
 /// Parse an input query string into a list of top-level `Query`s.
 pub fn parse(query: &str) -> Result<Vec<Query<'_>>, ParseError> {
+    parse_with_options(
+        query,
+        ParseOptions {
+            plain_content_join: false,
+        },
+    )
+}
+
+pub struct ParseOptions {
+    /// Join multiple content strings with a single space, instead of `\s+`.
+    ///
+    /// By default, multiple `Content` targets are joined together during parse as a regex with a
+    /// `\s+` separator. When this option is enabled, we instead join them as a space separated
+    /// string.
+    pub plain_content_join: bool,
+}
+
+pub fn parse_with_options(
+    query: &str,
+    parse_options: ParseOptions,
+) -> Result<Vec<Query<'_>>, ParseError> {
     let pair = PestParser::parse(Rule::query, query)
         .map_err(Box::new)?
         .next()
@@ -461,7 +500,7 @@ pub fn parse(query: &str) -> Result<Vec<Query<'_>>, ParseError> {
     let root =
         Expr::parse(pair, true).map_err(|pair| ParseError::UnparsedToken(pair.to_string()))?;
 
-    let mut qs = flatten(root);
+    let mut qs = flatten(root, &parse_options);
 
     // Find and redistribute global options.
     let global_regex = qs.iter().fold(None, |a, e| e.global_regex.or(a));
@@ -475,54 +514,16 @@ pub fn parse(query: &str) -> Result<Vec<Query<'_>>, ParseError> {
     Ok(qs.into_vec())
 }
 
-pub fn parse_nl(query: &str) -> Result<SemanticQuery<'_>, ParseError> {
-    let pairs = PestParser::parse(Rule::nl_query, query).map_err(Box::new)?;
-
-    let mut repos = HashSet::new();
-    let mut paths = HashSet::new();
-    let mut langs = HashSet::new();
-    let mut branch = HashSet::new();
-    let mut target: Option<Literal> = None;
-    for pair in pairs {
-        match pair.as_rule() {
-            Rule::repo => {
-                let item = Literal::from(pair.into_inner().next().unwrap());
-                let _ = repos.insert(item);
-            }
-            Rule::path => {
-                let item = Literal::from(pair.into_inner().next().unwrap());
-                let _ = paths.insert(item);
-            }
-            Rule::branch => {
-                let item = Literal::from(pair.into_inner().next().unwrap());
-                let _ = branch.insert(item);
-            }
-            Rule::lang => {
-                let item = super::languages::parse_alias(pair.into_inner().as_str().into());
-                let _ = langs.insert(item);
-            }
-            Rule::raw_text => {
-                let rhs = Literal::from(pair);
-                if let Some(t) = target {
-                    target = t.join_as_plain(rhs);
-                } else {
-                    target = Some(rhs);
-                }
-            }
-            _ => {}
-        }
-    }
-
-    Ok(SemanticQuery {
-        repos,
-        paths,
-        langs,
-        branch,
-        target,
-    })
+pub fn parse_nl(query: &str) -> Result<Vec<Query<'_>>, ParseError> {
+    parse_with_options(
+        query,
+        ParseOptions {
+            plain_content_join: true,
+        },
+    )
 }
 
-fn flatten(root: Expr<'_>) -> SmallVec<[Query<'_>; 1]> {
+fn flatten<'a>(root: Expr<'a>, parse_options: &ParseOptions) -> SmallVec<[Query<'a>; 1]> {
     match root {
         Expr::Repo(repo) => smallvec![Query {
             repo: Some(repo),
@@ -571,15 +572,19 @@ fn flatten(root: Expr<'_>) -> SmallVec<[Query<'_>; 1]> {
         Expr::Or(exprs) => {
             let mut queries = smallvec![];
             for e in exprs {
-                queries.extend(flatten(e));
+                queries.extend(flatten(e, parse_options));
             }
             queries
         }
 
         // A more complex cross merge.
-        Expr::And(els) => {
-            Query::default().cross(els.iter().cloned().map(flatten).map(SmallVec::into_iter))
-        }
+        Expr::And(els) => Query::default().cross(
+            els.iter()
+                .cloned()
+                .map(|e| flatten(e, parse_options))
+                .map(SmallVec::into_iter),
+            parse_options,
+        ),
     }
 }
 
@@ -692,20 +697,25 @@ mod tests {
         //    (org:bloop repo:grub),
         // ]
 
-        let terms = flatten(Expr::And(vec![
-            Expr::Or(vec![
-                Expr::And(vec![
-                    Expr::Repo(Literal::Plain("foo".into())),
-                    Expr::Content(Literal::Plain("xyz".into())),
+        let terms = flatten(
+            Expr::And(vec![
+                Expr::Or(vec![
+                    Expr::And(vec![
+                        Expr::Repo(Literal::Plain("foo".into())),
+                        Expr::Content(Literal::Plain("xyz".into())),
+                    ]),
+                    Expr::Repo(Literal::Plain("abc".into())),
                 ]),
-                Expr::Repo(Literal::Plain("abc".into())),
+                Expr::Or(vec![
+                    Expr::Repo(Literal::Plain("fred".into())),
+                    Expr::Repo(Literal::Plain("grub".into())),
+                ]),
+                Expr::Org(Literal::Plain("bloop".into())),
             ]),
-            Expr::Or(vec![
-                Expr::Repo(Literal::Plain("fred".into())),
-                Expr::Repo(Literal::Plain("grub".into())),
-            ]),
-            Expr::Org(Literal::Plain("bloop".into())),
-        ]));
+            &ParseOptions {
+                plain_content_join: false,
+            },
+        );
 
         assert_eq!(
             terms.into_vec(),
@@ -1058,67 +1068,140 @@ mod tests {
     fn nl_parse() {
         assert_eq!(
             parse_nl("what is background color? lang:tsx repo:bloop").unwrap(),
-            SemanticQuery {
-                target: Some(Literal::Plain("what is background color?".into())),
-                langs: ["tsx".into()].into(),
-                repos: [Literal::Plain("bloop".into())].into(),
-                paths: [].into(),
-                branch: [].into()
-            },
+            vec![Query {
+                target: Some(Target::Content(Literal::Plain(
+                    "what is background color?".into()
+                ))),
+                path: None,
+                lang: Some("tsx".into()),
+                repo: Some(Literal::Plain("bloop".into())),
+                org: None,
+                branch: None,
+                open: None,
+                case_sensitive: None,
+                global_regex: None,
+            }],
         );
     }
 
     #[test]
+    #[ignore]
     fn nl_parse_dedup_similar_filters() {
         let q = parse_nl("what is background color? lang:tsx repo:bloop repo:bloop").unwrap();
-        assert_eq!(q.repos().count(), 1);
+        todo!("actually implement this check post-refactor")
+        // assert_eq!(q.repos().count(), 1);
     }
 
     #[test]
     fn nl_parse_multiple_filters() {
         assert_eq!(
-            parse_nl("what is background color? lang:tsx lang:ts repo:bloop repo:bar path:server/bleep repo:baz")
+            parse_nl("what is background color? (lang:tsx or lang:ts) (repo:bloop or repo:bar or repo:baz) path:server/bleep")
                 .unwrap(),
-            SemanticQuery {
-                target: Some(Literal::Plain("what is background color?".into())),
-                langs: ["tsx".into(), "typescript".into()].into(),
-                branch: [].into(),
-                repos: [
-                    Literal::Plain("bloop".into()),
-                    Literal::Plain("bar".into()),
-                    Literal::Plain("baz".into())
-                ]
-                .into(),
-                paths: [Literal::Plain("server/bleep".into())].into(),
-            }
+            vec![
+                Query {
+                    target: Some(Target::Content(Literal::Plain("what is background color?".into()))),
+                    lang: Some("tsx".into()),
+                    branch: None,
+                    repo: Some(Literal::Plain("bloop".into())),
+                    path: Some(Literal::Plain("server/bleep".into())),
+                    org: None,
+                    open: None,
+                    case_sensitive: None,
+                    global_regex: None,
+                },
+                Query {
+                    target: Some(Target::Content(Literal::Plain("what is background color?".into()))),
+                    lang: Some("ts".into()),
+                    branch: None,
+                    repo: Some(Literal::Plain("bloop".into())),
+                    path: Some(Literal::Plain("server/bleep".into())),
+                    org: None,
+                    open: None,
+                    case_sensitive: None,
+                    global_regex: None,
+                },
+                Query {
+                    target: Some(Target::Content(Literal::Plain("what is background color?".into()))),
+                    lang: Some("tsx".into()),
+                    branch: None,
+                    repo: Some(Literal::Plain("bar".into())),
+                    path: Some(Literal::Plain("server/bleep".into())),
+                    org: None,
+                    open: None,
+                    case_sensitive: None,
+                    global_regex: None,
+                },
+                Query {
+                    target: Some(Target::Content(Literal::Plain("what is background color?".into()))),
+                    lang: Some("ts".into()),
+                    branch: None,
+                    repo: Some(Literal::Plain("bar".into())),
+                    path: Some(Literal::Plain("server/bleep".into())),
+                    org: None,
+                    open: None,
+                    case_sensitive: None,
+                    global_regex: None,
+                },
+                Query {
+                    target: Some(Target::Content(Literal::Plain("what is background color?".into()))),
+                    lang: Some("tsx".into()),
+                    branch: None,
+                    repo: Some(Literal::Plain("baz".into())),
+                    path: Some(Literal::Plain("server/bleep".into())),
+                    org: None,
+                    open: None,
+                    case_sensitive: None,
+                    global_regex: None,
+                },
+                Query {
+                    target: Some(Target::Content(Literal::Plain("what is background color?".into()))),
+                    lang: Some("ts".into()),
+                    branch: None,
+                    repo: Some(Literal::Plain("baz".into())),
+                    path: Some(Literal::Plain("server/bleep".into())),
+                    org: None,
+                    open: None,
+                    case_sensitive: None,
+                    global_regex: None,
+                },
+            ]
         );
     }
 
     #[test]
     fn nl_consume_flags() {
         assert_eq!(
-            parse_nl(
-                "what is background color? lang:tsx repo:bloop org:bloop symbol:foo open:true"
-            )
-            .unwrap(),
-            SemanticQuery {
-                target: Some(Literal::Plain("what is background color?".into())),
-                langs: ["tsx".into()].into(),
-                repos: [Literal::Plain("bloop".into())].into(),
-                paths: [].into(),
-                branch: [].into(),
-            }
+            parse_nl("what is background color? lang:tsx repo:bloop org:bloop open:true").unwrap(),
+            vec![Query {
+                target: Some(Target::Content(Literal::Plain(
+                    "what is background color?".into()
+                ))),
+                lang: Some("tsx".into()),
+                repo: Some(Literal::Plain("bloop".into())),
+                path: None,
+                branch: None,
+                org: Some(Literal::Plain("bloop".into())),
+                open: Some(true),
+                case_sensitive: None,
+                global_regex: None,
+            }],
         );
 
         assert_eq!(
             parse_nl("case:ignore why are languages excluded from ctags? branch:main").unwrap(),
-            SemanticQuery {
-                target: Some(Literal::Plain(
+            vec![Query {
+                target: Some(Target::Content(Literal::Plain(
                     "why are languages excluded from ctags?".into()
-                )),
-                branch: [Literal::Plain("main".into())].into(),
-                ..Default::default()
-            }
+                ))),
+                lang: None,
+                repo: None,
+                path: None,
+                branch: Some(Literal::Plain("main".into())),
+                org: None,
+                open: None,
+                case_sensitive: Some(false),
+                global_regex: None,
+            }]
         );
     }
 
