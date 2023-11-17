@@ -34,6 +34,34 @@ const CodeContainer = ({
   highlightLines,
   canWrap,
 }: Props) => {
+  const lineNumbersAdd = useMemo(() => {
+    let curr = lineStart;
+    return tokensMap.map((line, i) => {
+      if (
+        line.tokens[0]?.token?.content === '-' ||
+        line.tokens[1]?.token?.content === '-'
+      ) {
+        return null;
+      } else {
+        curr++;
+        return curr;
+      }
+    });
+  }, [tokensMap, lineStart]);
+  const lineNumbersRemove = useMemo(() => {
+    let curr = lineStart;
+    return tokensMap.map((line, i) => {
+      if (
+        line.tokens[0]?.token?.content === '+' ||
+        line.tokens[1]?.token?.content === '+'
+      ) {
+        return null;
+      } else {
+        curr++;
+        return curr;
+      }
+    });
+  }, [tokensMap, lineStart]);
   const getSymbols = (lineNumber: number) => {
     if (symbols?.length) {
       return symbols
@@ -50,6 +78,11 @@ const CodeContainer = ({
           key={lineNumber}
           lineNumber={lineStart + lineNumber}
           lineNumberToShow={line.lineNumber}
+          lineNumbersDiff={
+            isDiff
+              ? [lineNumbersRemove[lineNumber], lineNumbersAdd[lineNumber]]
+              : null
+          }
           showLineNumbers={showLines}
           symbols={getSymbols(lineStart + lineNumber)}
           lineHidden={
@@ -107,7 +140,7 @@ const CodeContainer = ({
           canWrap && codeLines.length < 2 ? '!whitespace-pre-wrap' : ''
         }`}
       >
-        <div>{codeLines}</div>
+        <div className="flex flex-col">{codeLines}</div>
       </pre>
     </div>
   );

@@ -1,5 +1,10 @@
 import { SymbolType, Range, TokenInfoType } from './results';
-import { StudioContextDoc, StudioContextFile } from './general';
+import {
+  DiffChunkType,
+  DiffHunkType,
+  StudioContextDoc,
+  StudioContextFile,
+} from './general';
 
 export interface RangeLine {
   byte: number;
@@ -373,4 +378,8 @@ export type DocSectionType = {
   absolute_url: string;
   section_range: { start: number; end: number };
   text: string;
+};
+
+export type GeneratedCodeDiff = {
+  chunks: DiffChunkType[];
 };

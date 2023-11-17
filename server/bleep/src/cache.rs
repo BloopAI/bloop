@@ -150,6 +150,19 @@ pub struct FileCache {
     embed_queue: EmbedQueue,
 }
 
+#[derive(Default)]
+pub struct InsertStats {
+    pub new: usize,
+    pub updated: usize,
+    pub deleted: usize,
+}
+
+impl InsertStats {
+    fn empty() -> Self {
+        Self::default()
+    }
+}
+
 impl<'a> FileCache {
     pub(crate) fn new(db: SqlDb, semantic: Semantic) -> Self {
         Self {
@@ -396,7 +409,7 @@ impl<'a> FileCache {
         buffer: &str,
         lang_str: &str,
         branches: &[String],
-    ) {
+    ) -> InsertStats {
         let chunk_cache = self.chunks_for_file(repo_ref, cache_keys).await;
         self.semantic
             .chunks_for_buffer(
@@ -416,14 +429,16 @@ impl<'a> FileCache {
             });
 
         match chunk_cache.commit().await {
-            Ok((new, updated, deleted)) => {
+            Ok(stats) => {
                 info!(
                     repo_name,
-                    relative_path, new, updated, deleted, "Successful commit"
-                )
+                    relative_path, stats.new, stats.updated, stats.deleted, "Successful commit"
+                );
+                stats
             }
             Err(err) => {
-                warn!(repo_name, relative_path, ?err, "Failed to upsert vectors")
+                warn!(repo_name, relative_path, ?err, "Failed to upsert vectors");
+                InsertStats::empty()
             }
         }
     }
@@ -578,16 +593,20 @@ impl<'a> ChunkCache<'a> {
     /// Since qdrant changes are pipelined on their end, data written
     /// here is not necessarily available for querying when the
     /// commit's completed.
-    pub async fn commit(self) -> anyhow::Result<(usize, usize, usize)> {
+    pub async fn commit(self) -> anyhow::Result<InsertStats> {
         let mut tx = self.sql.begin().await?;
 
-        let update_size = self.commit_branch_updates(&mut tx).await?;
-        let delete_size = self.commit_deletes(&mut tx).await?;
-        let new_size = self.commit_inserts(&mut tx).await?;
+        let updated = self.commit_branch_updates(&mut tx).await?;
+        let deleted = self.commit_deletes(&mut tx).await?;
+        let new = self.commit_inserts(&mut tx).await?;
 
         tx.commit().await?;
 
-        Ok((new_size, update_size, delete_size))
+        Ok(InsertStats {
+            new,
+            updated,
+            deleted,
+        })
     }
 
     /// Insert new additions to sqlite

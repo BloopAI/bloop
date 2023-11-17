@@ -12,7 +12,7 @@ import { Metadata, BlameLine } from './index';
 
 type Props = {
   language: string;
-  metadata: Metadata;
+  metadata?: Metadata;
   repoName: string;
   tokens: TokenType[][];
   foldableRanges: Record<number, number>;
@@ -159,7 +159,7 @@ const CodeContainerVirtualized = ({
             showLineNumbers={true}
             lineHidden={!!foldedLines[index]}
             blameLine={blameLines[index]}
-            blame={!!metadata.blame?.length}
+            blame={!!metadata?.blame?.length}
             hoverEffect
             onMouseSelectStart={onMouseSelectStart}
             onMouseSelectEnd={onMouseSelectEnd}
@@ -185,7 +185,7 @@ const CodeContainerVirtualized = ({
             {tokens[index].map((token, i) => (
               <Token
                 key={`cell-${index}-${i}`}
-                lineHoverRanges={metadata.hoverableRanges[index]}
+                lineHoverRanges={metadata?.hoverableRanges[index] || []}
                 token={token}
                 getHoverableContent={(hr, tr) =>
                   getHoverableContent(hr, tr, index)

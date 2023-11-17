@@ -97,7 +97,7 @@ tower-http = { version = "0.4.4", features = ["auth", "cors", "catch-panic", "fs
 # api integrations
 octocrab = { version = "0.25.1", features = ["rustls", "rustls-webpki-tokio"] }
 reqwest = { version = "0.11.20", features = ["rustls-tls-webpki-roots", "cookies", "gzip"], default-features = false }
-reqwest-eventsource = "0.4.0"
+reqwest-eventsource = "0.5.0"
 secrecy = { version = "0.8.0", features = ["serde"] }
 
 # file processing
@@ -157,6 +157,7 @@ relative-path = "1.9.0"
 semver = { version = "1", features = ["serde"] }
 scc = { version= "1.9.1", features = ["serde"] }
 thread-priority = "0.13.1"
+diffy = "0.3.0"
 
 [dev-dependencies]
 criterion = { version = "0.5.1", features = ["async_tokio"] }

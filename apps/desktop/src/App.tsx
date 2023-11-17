@@ -28,6 +28,9 @@ import {
 } from '../../../client/src/services/storage';
 import { LocaleType } from '../../../client/src/types/general';
 import { polling } from '../../../client/src/utils/requestUtils';
+import ReportBugModal from '../../../client/src/components/ReportBugModal';
+import { UIContext } from '../../../client/src/context/uiContext';
+import { DeviceContextProvider } from '../../../client/src/context/providers/DeviceContextProvider';
 import TextSearch from './TextSearch';
 import SplashScreen from './SplashScreen';
 
@@ -106,6 +109,8 @@ function App() {
     (getPlainFromStorage(LANGUAGE_KEY) as LocaleType | null) || 'en',
   );
   const [shouldShowSplashScreen, setShouldShowSplashScreen] = useState(true);
+  const [isBugReportModalOpen, setBugReportModalOpen] = useState(false);
+  const [serverCrashedMessage, setServerCrashedMessage] = useState('');
 
   useEffect(() => {
     i18n.changeLanguage(locale);
@@ -121,6 +126,13 @@ function App() {
   );
 
   useEffect(() => {
+    listen('server-crashed', (event) => {
+      console.log(event);
+      setBugReportModalOpen(true);
+      // @ts-ignore
+      setServerCrashedMessage(event.payload.message);
+    });
+
     homeDir().then(setHomeDir);
     Promise.all([
       tauriOs.arch(),
@@ -208,11 +220,27 @@ function App() {
     [homeDirectory, indexFolder, os, release, envConfig],
   );
 
+  const bugReportContextValue = useMemo(
+    () => ({
+      isBugReportModalOpen,
+      setBugReportModalOpen,
+      activeTab: '',
+    }),
+    [isBugReportModalOpen],
+  );
+
   return (
     <LocaleContext.Provider value={localeContextValue}>
       <AnimatePresence initial={false}>
         {shouldShowSplashScreen && <SplashScreen />}
       </AnimatePresence>
+      {shouldShowSplashScreen && (
+        <DeviceContextProvider deviceContextValue={deviceContextValue}>
+          <UIContext.BugReport.Provider value={bugReportContextValue}>
+            <ReportBugModal errorBoundaryMessage={serverCrashedMessage} />
+          </UIContext.BugReport.Provider>
+        </DeviceContextProvider>
+      )}
       <TextSearch contentRoot={contentContainer.current} />
       <div ref={contentContainer}>
         <BrowserRouter>

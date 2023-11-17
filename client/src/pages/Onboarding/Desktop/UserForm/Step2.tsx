@@ -6,7 +6,7 @@ import React, {
   useState,
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { ChevronRight, GitHubLogo } from '../../../../icons';
+import { CheckIcon, Clipboard, GitHubLogo } from '../../../../icons';
 import Tooltip from '../../../../components/Tooltip';
 import { UIContext } from '../../../../context/uiContext';
 import { DeviceContext } from '../../../../context/deviceContext';
@@ -145,10 +145,23 @@ const UserFormStep2 = ({ onContinue }: Props) => {
               placement={'top'}
             >
               <p
-                className="text-label-link select-auto text-center break-words"
+                className="text-label-link select-auto text-center break-words leading-5"
                 onClick={handleCopy}
               >
                 {loginUrl}
+                {isLinkCopied ? (
+                  <CheckIcon
+                    raw
+                    sizeClassName="w-4 h-4"
+                    className="ml-2 relative top-2"
+                  />
+                ) : (
+                  <Clipboard
+                    raw
+                    sizeClassName="w-4 h-4"
+                    className="ml-2 cursor-pointer"
+                  />
+                )}
               </p>
             </Tooltip>
           ) : (

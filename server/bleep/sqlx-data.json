@@ -572,6 +572,30 @@
     },
     "query": "DELETE FROM studio_snapshots\n        WHERE id IN (\n            SELECT ss.id\n            FROM studio_snapshots ss\n            JOIN studios s ON s.id = ss.studio_id AND s.user_id = ?\n            WHERE ss.id = ? AND ss.studio_id = ?\n        )\n        RETURNING id"
   },
+  "671df14b7c9077b95e586690f8c6d3f2eeb0a3942d0b800f272b010fcd2ca97b": {
+    "describe": {
+      "columns": [
+        {
+          "name": "messages",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "context",
+          "ordinal": 1,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT messages, context FROM studio_snapshots WHERE id = ?"
+  },
   "69c8b59ce4be3fc6edb58563bf69f55ea5dca4646b0ba05820e5d1b2b07c3c82": {
     "describe": {
       "columns": [

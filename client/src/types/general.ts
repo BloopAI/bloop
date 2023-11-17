@@ -367,10 +367,25 @@ export type StudioConversationMessage = {
   error?: string;
 };
 
+export type DiffChunkType = {
+  file: string;
+  lang: string;
+  repo: string;
+  branch: string | null;
+  hunks: DiffHunkType[];
+  raw_patch: string;
+};
+
+export type DiffHunkType = {
+  line_start: number;
+  patch: string;
+};
+
 export enum StudioLeftPanelType {
   CONTEXT = 'context',
   TEMPLATES = 'templates',
   FILE = 'file',
+  DIFF = 'diff',
   DOCS = 'docs',
 }
 
@@ -402,13 +417,24 @@ export type DocsStudioPanelType = {
   };
 };
 
+export type DiffPanelType = {
+  type: StudioLeftPanelType.DIFF;
+  data: {
+    repo: RepoType;
+    branch: string | null;
+    filePath: string;
+    hunks: DiffHunkType[];
+  };
+};
+
 export type StudioLeftPanelDataType =
   | {
       type: StudioLeftPanelType.CONTEXT | StudioLeftPanelType.TEMPLATES;
       data?: null;
     }
   | FileStudioPanelType
-  | DocsStudioPanelType;
+  | DocsStudioPanelType
+  | DiffPanelType;
 
 export type StudioRightPanelDataType = {
   type: StudioRightPanelType.CONVERSATION;

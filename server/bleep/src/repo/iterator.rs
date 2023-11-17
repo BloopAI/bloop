@@ -83,6 +83,13 @@ pub struct RepoDir {
     pub branches: Vec<String>,
 }
 
+impl RepoDir {
+    pub fn size(&self) -> usize {
+        use std::io::{Cursor, Seek, SeekFrom};
+        Cursor::new(&self.path).seek(SeekFrom::End(0)).unwrap_or(0) as usize
+    }
+}
+
 pub struct RepoFile {
     /// Path to file
     pub path: String,
@@ -101,6 +108,10 @@ impl RepoFile {
 
     pub fn buffer(&self) -> std::io::Result<String> {
         (self.buffer)()
+    }
+
+    pub fn size(&self) -> usize {
+        self.len as usize
     }
 }
 

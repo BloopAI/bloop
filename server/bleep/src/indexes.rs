@@ -10,6 +10,7 @@ use tantivy::{
     DocAddress, Document, IndexReader, IndexWriter, Score,
 };
 
+mod analytics;
 pub mod doc;
 pub mod file;
 pub mod reader;
@@ -79,11 +80,16 @@ pub struct Indexes {
     pub repo: Indexer<Repo>,
     pub file: Indexer<File>,
     pub doc: Doc,
+    was_index_reset: bool,
     write_mutex: tokio::sync::Mutex<()>,
 }
 
 impl Indexes {
-    pub async fn new(config: &Configuration, sql: crate::SqlDb) -> Result<Self> {
+    pub async fn new(
+        config: &Configuration,
+        sql: crate::SqlDb,
+        was_index_reset: bool,
+    ) -> Result<Self> {
         Ok(Self {
             repo: Indexer::create(
                 Repo::new(),
@@ -104,6 +110,7 @@ impl Indexes {
                 config.max_threads,
             )?,
             write_mutex: Default::default(),
+            was_index_reset,
         })
     }
 

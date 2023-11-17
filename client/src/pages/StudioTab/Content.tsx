@@ -37,6 +37,7 @@ import RightPanel from './RightPanel';
 import FilePanel from './FilePanel';
 import AddDocsModal from './AddDocsModal';
 import DocPanel from './DocPanel';
+import DiffPanel from './DiffPanel';
 
 type Props = {
   tab: StudioTabType;
@@ -488,6 +489,8 @@ const ContentContainer = ({
                   onSectionsChanged={onDocSectionsChanged}
                   setIsChangeUnsaved={setIsChangeUnsaved}
                 />
+              ) : leftPanel.type === StudioLeftPanelType.DIFF ? (
+                <DiffPanel {...leftPanel.data} setLeftPanel={setLeftPanel} />
               ) : null}
               <AddContextModal
                 isVisible={isAddContextOpen}
