@@ -416,7 +416,10 @@ mod gpu {
                 )?;
 
                 let outputs = {
+                    let l_start = tokio::time::Instant::now();
+                    tracing::info!("acquiring lock");
                     let lock = self.session.lock().await;
+                    tracing::info!("lock acquired {:?}", l_start.elapsed().as_millis());
                     let allocator = lock.allocator();
                     lock.run(vec![
                         Value::from_array(
