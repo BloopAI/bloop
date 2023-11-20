@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use super::prelude::*;
 use crate::{
@@ -8,7 +8,7 @@ use crate::{
     },
     query::{
         execute::{ApiQuery, ExecuteQuery, QueryResult},
-        parser,
+        languages, parser,
         parser::{Literal, Target},
     },
 };
@@ -17,15 +17,88 @@ use axum::{extract::Query, response::IntoResponse as IntoAxumResponse, Extension
 use futures::{stream, StreamExt, TryStreamExt};
 use serde::Serialize;
 
+fn default_true() -> bool {
+    true
+}
+
+#[derive(Deserialize)]
+pub struct AutocompleteParams {
+    #[serde(default = "default_true")]
+    content: bool,
+    #[serde(default = "default_true")]
+    file: bool,
+    #[serde(default = "default_true")]
+    repo: bool,
+    #[serde(default = "default_true")]
+    lang: bool,
+}
+
 pub(super) async fn handle(
     Query(mut api_params): Query<ApiQuery>,
+    Query(ac_params): Query<AutocompleteParams>,
     Extension(indexes): Extension<Arc<Indexes>>,
 ) -> Result<impl IntoAxumResponse> {
     // Override page_size and set to low value
     api_params.page = 0;
-    api_params.page_size = 3;
+    api_params.page_size = 8;
 
-    let queries = parser::parse(&api_params.q).map_err(Error::user)?;
+    let mut partial_lang = None;
+    let mut has_target = false;
+
+    let queries = parser::parse(&api_params.q)
+        .map_err(Error::user)?
+        .into_iter()
+        .map(|mut q| {
+            let keywords = &["lang:", "path:", "repo:"];
+
+            if ac_params.content {
+                if let Some(ref t) = q.target {
+                    if !keywords.iter().any(|k| k == t.literal().as_ref()) {
+                        has_target = true;
+                    }
+                }
+
+                let target = q
+                    .target
+                    .get_or_insert_with(|| Target::Content(Literal::Regex(".*".into())));
+
+                for keyword in keywords {
+                    if let Some(pos) = target.literal().find(keyword) {
+                        let new = format!(
+                            "{}{}",
+                            &target.literal()[..pos],
+                            &target.literal()[pos + keyword.len()..]
+                        );
+
+                        *target = Target::Content(Literal::Regex(if new.is_empty() {
+                            ".*".into()
+                        } else {
+                            new.into()
+                        }));
+                    }
+                }
+            } else {
+                q.target = None;
+            }
+
+            if let Some(lang) = q.lang.as_ref() {
+                partial_lang = q.lang.as_ref().map(|l| l.to_lowercase());
+                if languages::list()
+                    .filter(|l| l.to_lowercase() == lang.as_ref().to_lowercase())
+                    .count()
+                    == 0
+                {
+                    q.lang = None;
+                }
+            }
+
+            if q.path.is_none() && ac_params.file {
+                q.path = Some(Literal::Regex(".*".into()));
+            }
+
+            q
+        })
+        .collect::<Vec<_>>();
     let mut autocomplete_results = vec![];
 
     // Only execute prefix search on flag names if there is a non-regex content target.
@@ -41,44 +114,74 @@ pub(super) async fn handle(
         );
     }
 
-    // Bypass the parser and execute a prefix search using the last whitespace-split token
-    // in the query string.
-    //
-    // This should be revisited when we implement cursor-aware autocomplete.
-    //
-    //      `api lang:p` -> search lang list with prefix `p`
-    //      `lang:p api` -> lang prefix search not triggered
-    if let Some(matched_langs) = complete_lang(&api_params.q) {
-        autocomplete_results.append(
-            &mut matched_langs
-                .map(|l| QueryResult::Lang(l.to_string()))
-                .collect(),
-        );
+    let mut engines = vec![];
+    if ac_params.content {
+        engines.push(ContentReader.execute(&indexes.file, &queries, &api_params));
     }
 
-    // If no flags completion, run a search with full query
-    if autocomplete_results.is_empty() {
-        let contents = ContentReader.execute(&indexes.file, &queries, &api_params);
-        let repos = RepoReader.execute(&indexes.repo, &queries, &api_params);
-        let files = FileReader.execute(&indexes.file, &queries, &api_params);
-
-        autocomplete_results = stream::iter([contents, repos, files])
-            // Buffer several readers at the same time. The exact number is not important; this is
-            // simply an upper bound.
-            .buffered(10)
-            .try_fold(Vec::new(), |mut a, e| async {
-                a.extend(e.data.into_iter());
-                Ok(a)
-            })
-            .await
-            .map_err(Error::internal)?;
+    if ac_params.repo {
+        engines.push(RepoReader.execute(&indexes.repo, &queries, &api_params));
     }
 
-    let count = autocomplete_results.len();
-    let data = autocomplete_results;
-    let response = AutocompleteResponse { count, data };
+    if ac_params.file {
+        engines.push(FileReader.execute(&indexes.file, &queries, &api_params));
+    }
 
-    Ok(json(response))
+    let (langs, list) = stream::iter(engines)
+        // Buffer several readers at the same time. The exact number is not important; this is
+        // simply an upper bound.
+        .buffered(10)
+        .try_fold(
+            (HashMap::<String, usize>::new(), Vec::new()),
+            |(mut langs, mut list), e| async {
+                for (lang, count) in e.stats.lang {
+                    // The exact number here isn't relevant, and
+                    // this may be off.
+                    //
+                    // We're trying to scale the results compared
+                    // to each other which means this will still
+                    // serve the purpose for ranking.
+                    *langs.entry(lang).or_default() += count;
+                }
+                list.extend(e.data.into_iter());
+                Ok((langs, list))
+            },
+        )
+        .await
+        .map_err(Error::internal)?;
+
+    autocomplete_results.extend(
+        list.into_iter()
+            .filter(|q| has_target || !matches!(q, QueryResult::Snippets(_))),
+    );
+
+    if ac_params.lang && api_params.q.contains("lang:") {
+        let mut ranked_langs = langs.into_iter().collect::<Vec<_>>();
+        if let Some(partial) = partial_lang {
+            ranked_langs.retain(|(l, _)| l.to_lowercase().contains(&partial));
+
+            if ranked_langs.is_empty() {
+                ranked_langs.extend(
+                    languages::list()
+                        .filter(|l| l.to_lowercase().starts_with(&partial))
+                        .map(|l| (l.to_lowercase(), 0)),
+                );
+
+                ranked_langs.sort_by(|(a, _), (b, _)| a.len().cmp(&b.len()));
+                ranked_langs.truncate(5);
+            }
+        }
+
+        ranked_langs.sort_by(|(_, a_count), (_, b_count)| b_count.cmp(a_count));
+        ranked_langs.truncate(5);
+
+        autocomplete_results.extend(ranked_langs.into_iter().map(|(l, _)| QueryResult::Lang(l)));
+    }
+
+    Ok(json(AutocompleteResponse {
+        count: autocomplete_results.len(),
+        data: autocomplete_results,
+    }))
 }
 
 fn complete_flag(q: &str) -> impl Iterator<Item = &str> + '_ {
@@ -86,18 +189,6 @@ fn complete_flag(q: &str) -> impl Iterator<Item = &str> + '_ {
         .iter()
         .filter(move |f| f.starts_with(q))
         .copied()
-}
-
-fn complete_lang(q: &str) -> Option<impl Iterator<Item = &str> + '_> {
-    match q.split_whitespace().last() {
-        Some(last) => last.strip_prefix("lang:").map(|prefix| {
-            COMMON_LANGUAGES
-                .iter()
-                .filter(move |l| l.starts_with(prefix))
-                .copied()
-        }),
-        _ => None,
-    }
 }
 
 #[derive(Serialize)]
@@ -110,74 +201,4 @@ impl super::ApiResponse for AutocompleteResponse {}
 
 const QUERY_FLAGS: &[&str; 8] = &[
     "repo", "path", "content", "symbol", "lang", "case", "or", "open",
-];
-
-// List of common languages
-const COMMON_LANGUAGES: &[&str] = &[
-    "webassembly",
-    "basic",
-    "makefile",
-    "groovy",
-    "haskell",
-    "idris",
-    "typescript",
-    "r",
-    "javascript",
-    "llvm",
-    "jsonnet",
-    "lua",
-    "awk",
-    "solidity",
-    "nim",
-    "hcl",
-    "julia",
-    "ada",
-    "verilog",
-    "python",
-    "go",
-    "sql",
-    "plsql",
-    "fortran",
-    "erlang",
-    "mathematica",
-    "rust",
-    "coffeescript",
-    "zig",
-    "scala",
-    "tsx",
-    "ruby",
-    "apl",
-    "c",
-    "tcl",
-    "kotlin",
-    "vba",
-    "matlab",
-    "hack",
-    "ocaml",
-    "prolog",
-    "scheme",
-    "dockerfile",
-    "assembly",
-    "clojure",
-    "shell",
-    "java",
-    "c++",
-    "php",
-    "perl",
-    "vbscript",
-    "d",
-    "pascal",
-    "elm",
-    "swift",
-    "cuda",
-    "dart",
-    "elixir",
-    "c#",
-    "objective-c",
-    "coq",
-    "forth",
-    "cmake",
-    "nix",
-    "objective-c++",
-    "actionscript",
 ];

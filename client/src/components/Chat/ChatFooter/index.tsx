@@ -1,5 +1,4 @@
 import React, {
-  ChangeEvent,
   Dispatch,
   FormEvent,
   memo,
@@ -9,6 +8,7 @@ import React, {
   useMemo,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { OnChangeHandlerFunc } from 'react-mentions';
 import {
   ChatMessageAuthor,
   ChatMessageServer,
@@ -98,10 +98,9 @@ const ChatFooter = ({
       : undefined;
   }, [JSON.stringify(conversation[conversation.length - 1])]);
 
-  const handleInputChange = useCallback(
-    (e: ChangeEvent<HTMLTextAreaElement>) => setInputValue(e.target.value),
-    [],
-  );
+  const handleInputChange = useCallback<OnChangeHandlerFunc>((e) => {
+    setInputValue(e.target.value);
+  }, []);
 
   const onFormClick = useCallback(() => {
     if (isHistoryOpen) {
@@ -114,7 +113,7 @@ const ChatFooter = ({
   }, [isHistoryOpen, openHistoryItem, setHistoryOpen]);
 
   return (
-    <div className="flex flex-col gap-3 w-full absolute bottom-0 left-0 p-4 bg-chat-bg-base/25 backdrop-blur-6 border-t border-chat-bg-border">
+    <div className="flex flex-col gap-3 w-full absolute bottom-0 left-0 p-4 bg-chat-bg-base/25 backdrop-blur-6 border-t border-chat-bg-border z-20">
       <form onSubmit={onSubmit} className="w-full" onClick={onFormClick}>
         <NLInput
           id="question-input"
@@ -134,6 +133,14 @@ const ChatFooter = ({
           onMessageEditCancel={onMessageEditCancel}
         />
       </form>
+      {/*{isAutocompleteActive && (*/}
+      {/*  <Suggestions*/}
+      {/*    pathOptions={pathOptions}*/}
+      {/*    langOptions={langOptions}*/}
+      {/*    dirOptions={dirOptions}*/}
+      {/*    onSubmit={onSuggestionSelected}*/}
+      {/*  />*/}
+      {/*)}*/}
     </div>
   );
 };

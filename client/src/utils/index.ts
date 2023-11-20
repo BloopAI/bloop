@@ -1,7 +1,13 @@
 import { MouseEvent } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { ja, zhCN, es } from 'date-fns/locale';
-import { LocaleType, RepoType, RepoUi } from '../types/general';
+import { es, ja, zhCN } from 'date-fns/locale';
+import {
+  LocaleType,
+  ParsedQueryType,
+  ParsedQueryTypeEnum,
+  RepoType,
+  RepoUi,
+} from '../types/general';
 import langs from './langs.json';
 
 export const copyToClipboard = (value: string) => {
@@ -78,7 +84,7 @@ export const getFileExtensionForLang = (lang: string, lowercased?: boolean) => {
       ext = langs[key]?.[0];
     }
   }
-  return 'index' + ext;
+  return 'index' + (ext || `.${lang}`);
 };
 
 export const getPrettyLangName = (lang: string) => {
@@ -387,4 +393,50 @@ export function mergeRanges(ranges: [number, number][]): [number, number][] {
   mergedRanges.push(currentRange);
 
   return mergedRanges;
+}
+
+export function splitUserInputAfterAutocomplete(
+  input: string,
+): ParsedQueryType[] {
+  const pathRegex = /\|path:(.*?)\|/g;
+  const langRegex = /\|lang:(.*?)\|/g;
+  const combinedRegex = /\|(path|lang):(.*?)\|/g;
+  const result: ParsedQueryType[] = [];
+
+  let lastIndex = 0;
+
+  const addTextContent = (text: string) => {
+    if (text.length > 0) {
+      result.push({ type: ParsedQueryTypeEnum.TEXT, text });
+    }
+  };
+
+  input.replace(combinedRegex, (_, type, text, index) => {
+    addTextContent(input.substring(lastIndex, index));
+    result.push({
+      type:
+        type === 'lang' ? ParsedQueryTypeEnum.LANG : ParsedQueryTypeEnum.PATH,
+      text,
+    });
+    lastIndex = index + text.length + type.length + 3; // 3 is the length of "(type:"
+    return '';
+  });
+
+  addTextContent(input.substring(lastIndex));
+
+  return result;
+}
+
+export function concatenateParsedQuery(query: ParsedQueryType[]) {
+  let result = '';
+  query.forEach((q) => {
+    if (q.type === ParsedQueryTypeEnum.TEXT) {
+      result += q.text;
+    } else if (q.type === ParsedQueryTypeEnum.PATH) {
+      result += `|path:${q.text}|`;
+    } else if (q.type === ParsedQueryTypeEnum.LANG) {
+      result += `|lang:${q.text}|`;
+    }
+  });
+  return result;
 }

@@ -79,6 +79,7 @@ export interface SearchResponseFile {
   repo_name: string;
   repo_ref: string;
   lang: string;
+  is_dir: boolean;
 }
 
 export interface FlagItem {
@@ -249,7 +250,34 @@ export type SearchStepType = ProcStep | CodeStep | PathStep;
 export type ConversationType = {
   id: string;
   search_steps: SearchStepType[];
-  query: { target: { Plain: string } };
+  query: {
+    raw_query: string;
+    repos: [];
+    paths: {
+      Plain: { start: number; end: number; content: string };
+    }[];
+    langs: {
+      Plain: {
+        start: number;
+        end: number;
+        content: string;
+      };
+    }[];
+    branch: {
+      Plain: {
+        start: number;
+        end: number;
+        content: string;
+      };
+    }[];
+    target: {
+      Plain: {
+        start: number;
+        end: number;
+        content: string;
+      };
+    };
+  };
   conclusion: string;
   answer: string;
   paths: string[];

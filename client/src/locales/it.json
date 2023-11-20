@@ -411,5 +411,8 @@
 	"Select library": "Seleziona libreria",
 	"Resync": "Risincronizzazione",
 	"Search docs or paste a URL to index": "Cerca documenti o incolla un URL per indicizzare",
-	"Add docs": "Aggiungi documenti"
+	"Add docs": "Aggiungi documenti",
+	"Cloning": "Clonazione",
+	"Directories": "Directory",
+	"Languages": "Le lingue"
 }

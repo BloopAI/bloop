@@ -154,6 +154,7 @@ pub struct FileResultData {
     lang: Option<String>,
     branches: String,
     indexed: bool,
+    is_dir: bool,
 }
 
 impl FileResultData {
@@ -164,6 +165,7 @@ impl FileResultData {
         lang: Option<String>,
         branches: String,
         indexed: bool,
+        is_dir: bool,
     ) -> Self {
         Self {
             repo_name,
@@ -172,6 +174,7 @@ impl FileResultData {
             lang,
             branches,
             indexed,
+            is_dir,
         }
     }
 }
@@ -502,6 +505,7 @@ impl ExecuteQuery for FileReader {
                     lang: f.lang,
                     branches: f.branches,
                     indexed: f.indexed,
+                    is_dir: f.is_dir,
                 })
             })
             .collect::<Vec<QueryResult>>();
