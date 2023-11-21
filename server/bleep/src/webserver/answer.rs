@@ -83,7 +83,7 @@ fn default_thread_id() -> uuid::Uuid {
 }
 
 fn default_model() -> agent::model::AnswerModel {
-    agent::model::GPT_3_5_TURBO_FINETUNED
+    agent::model::GPT_4
 }
 
 pub(super) async fn answer(

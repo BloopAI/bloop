@@ -220,7 +220,8 @@ impl Agent {
         ))];
         history.extend(self.history()?);
 
-        let trimmed_history = trim_history(history.clone(), self.model)?;
+        let trimmed_history: Vec<llm_gateway::api::Message> =
+            trim_history(history.clone(), self.model)?;
 
         let raw_response = self
             .llm_gateway

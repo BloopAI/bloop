@@ -43,6 +43,7 @@ impl Agent {
         let context = self.answer_context(aliases).await?;
         let system_prompt = (self.model.system_prompt)(&context);
         let system_message = llm_gateway::api::Message::system(&system_prompt);
+
         let history = {
             let h = self.utter_history().collect::<Vec<_>>();
             let system_headroom = tiktoken_rs::num_tokens_from_messages(
@@ -50,12 +51,18 @@ impl Agent {
                 &[(&system_message).into()],
             )?;
             let headroom = self.model.answer_headroom + system_headroom;
-            trim_utter_history(h, headroom, self.model)?
+            trim_utter_history(h, self.model.max_tokens, headroom, self.model)?
         };
+
         let messages = Some(system_message)
             .into_iter()
             .chain(history.iter().cloned())
             .collect::<Vec<_>>();
+
+        let token_count = &tiktoken_rs::num_tokens_from_messages(
+            self.model.tokenizer,
+            &messages.iter().map(|m| m.into()).collect::<Vec<_>>(),
+        );
 
         let mut stream = pin!(
             self.llm_gateway
@@ -146,8 +153,7 @@ impl Agent {
         // doesn't trim enough chunks. So, we enforce a hard limit here that stops adding tokens
         // early if we reach a heuristic limit.
         let bpe = tiktoken_rs::get_bpe_from_model(self.model.tokenizer)?;
-        let mut remaining_prompt_tokens =
-            tiktoken_rs::get_completion_max_tokens(self.model.tokenizer, &s)?;
+        let mut context_tokens = bpe.encode_ordinary(&s).len();
 
         // Select as many recent chunks as possible
         let mut recent_chunks = Vec::new();
@@ -158,20 +164,19 @@ impl Agent {
                 .enumerate()
                 .map(|(i, line)| format!("{} {line}\n", i + chunk.start_line + 1))
                 .collect::<String>();
-
             let formatted_snippet = format!("### {} ###\n{snippet}\n\n", chunk.path);
 
             let snippet_tokens = bpe.encode_ordinary(&formatted_snippet).len();
 
-            if snippet_tokens >= remaining_prompt_tokens - self.model.prompt_headroom {
-                info!("breaking at {} tokens", remaining_prompt_tokens);
+            if snippet_tokens + context_tokens > self.model.get_max_context_tokens() {
+                info!("breaking at {} tokens", snippet_tokens);
                 break;
             }
 
             recent_chunks.push((chunk.clone(), formatted_snippet));
 
-            remaining_prompt_tokens -= snippet_tokens;
-            debug!("{}", remaining_prompt_tokens);
+            context_tokens += snippet_tokens;
+            debug!("{}", context_tokens);
         }
 
         // group recent chunks by path alias
@@ -249,8 +254,7 @@ impl Agent {
         const CONTEXT_CODE_RATIO: f32 = 0.5;
 
         let bpe = tiktoken_rs::get_bpe_from_model(self.model.tokenizer).unwrap();
-        let context_size = tiktoken_rs::model::get_context_size(self.model.tokenizer);
-        let max_tokens = (context_size as f32 * CONTEXT_CODE_RATIO) as usize;
+        let max_tokens = (self.model.max_tokens as f32 * CONTEXT_CODE_RATIO) as usize;
 
         // Note: The end line number here is *not* inclusive.
         let mut spans_by_path = HashMap::<_, Vec<_>>::new();
@@ -408,6 +412,7 @@ impl Agent {
 // headroom refers to the amount of space reserved for the rest of the prompt
 fn trim_utter_history(
     mut history: Vec<llm_gateway::api::Message>,
+    max_tokens: usize,
     headroom: usize,
     model: model::AnswerModel,
 ) -> Result<Vec<llm_gateway::api::Message>> {
@@ -415,7 +420,9 @@ fn trim_utter_history(
         history.iter().map(|m| m.into()).collect::<Vec<_>>();
 
     // remove the earliest messages, one by one, until we can accommodate into prompt
-    while tiktoken_rs::get_chat_completion_max_tokens(model.tokenizer, &tiktoken_msgs)? < headroom {
+    while tiktoken_rs::num_tokens_from_messages(model.tokenizer, &tiktoken_msgs)? + headroom
+        > max_tokens
+    {
         if !tiktoken_msgs.is_empty() {
             tiktoken_msgs.remove(0);
             history.remove(0);

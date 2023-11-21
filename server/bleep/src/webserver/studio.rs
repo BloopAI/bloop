@@ -32,7 +32,7 @@ use crate::{
 
 mod diff;
 
-const LLM_GATEWAY_MODEL: &str = "gpt-4-0613";
+const LLM_GATEWAY_MODEL: &str = "gpt-4-1106-preview";
 
 fn no_user_id() -> Error {
     Error::user("didn't have user ID")
@@ -472,7 +472,7 @@ async fn token_counts(
         })
         .collect::<Vec<_>>();
 
-    let core_bpe = tiktoken_rs::get_bpe_from_model("gpt-4-0613").unwrap();
+    let core_bpe = tiktoken_rs::get_bpe_from_model("gpt-4-1106-preview").unwrap();
     let per_doc_file = stream::iter(doc_context)
         .map(|file| async {
             if file.hidden {
@@ -630,14 +630,14 @@ pub async fn get_doc_file_token_count(
         .map(|sr| sr.text)
         .collect::<String>();
 
-    let core_bpe = tiktoken_rs::get_bpe_from_model("gpt-4-0613").unwrap();
+    let core_bpe = tiktoken_rs::get_bpe_from_model("gpt-4-1106-preview").unwrap();
     let token_count = core_bpe.encode_ordinary(&content).len();
 
     Ok(Json(token_count))
 }
 
 fn count_tokens_for_file(path: &str, body: &str, ranges: &[Range<usize>]) -> usize {
-    let core_bpe = tiktoken_rs::get_bpe_from_model("gpt-4-0613").unwrap();
+    let core_bpe = tiktoken_rs::get_bpe_from_model("gpt-4-1106-preview").unwrap();
 
     let mut chunks = Vec::new();
 
