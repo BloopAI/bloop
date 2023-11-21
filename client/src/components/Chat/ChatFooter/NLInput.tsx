@@ -34,6 +34,7 @@ import { FileResItem, LangItem } from '../../../types/api';
 import FileIcon from '../../FileIcon';
 import { getFileExtensionForLang, splitPath } from '../../../utils';
 import InputLoader from './InputLoader';
+import InputCore from './Input/InputCore';
 
 type Props = {
   id?: string;
@@ -280,8 +281,7 @@ const NLInput = ({
       } transition-all ease-out duration-150 flex-grow-0 relative z-100`}
     >
       <div
-        className={`w-full flex items-start gap-2 
-    text-label-base focus-within:text-label-title`}
+        className={`w-full flex items-start gap-2 text-label-base focus-within:text-label-title`}
       >
         {shouldShowLoader && <InputLoader loadingSteps={loadingSteps!} />}
         <div className="pt-4.5">
@@ -297,41 +297,42 @@ const NLInput = ({
             <Sparkles />
           )}
         </div>
-        <MentionsInput
-          value={value}
-          id={id}
-          onChange={onChange}
-          className={`w-full bg-transparent rounded-lg outline-none focus:outline-0 resize-none
-        placeholder:text-current placeholder:truncate placeholder:max-w-[19.5rem] flex-grow-0`}
-          placeholder={shouldShowLoader ? '' : t(defaultPlaceholder)}
-          inputRef={inputRef}
-          disabled={isStoppable && generationInProgress}
-          onCompositionStart={onCompositionStart}
-          onCompositionEnd={onCompositionEnd}
-          // @ts-ignore
-          onKeyDown={handleKeyDown}
-          onFocus={handleInputFocus}
-          style={inputStyle}
-          forceSuggestionsAboveCursor
-        >
-          <Mention
-            trigger="@"
-            markup="|path:__id__|"
-            data={getDataPath}
-            renderSuggestion={renderPathSuggestion}
-            className="relative before:bg-chat-bg-border-hover before:rounded before:absolute before:-top-0.5 before:-bottom-0.5 before:-left-1 before:-right-0.5"
-            appendSpaceOnAdd
-            displayTransform={pathTransform}
-          />
-          <Mention
-            trigger="@"
-            markup="|lang:__id__|"
-            data={getDataLang}
-            appendSpaceOnAdd
-            renderSuggestion={renderLangSuggestion}
-            className="relative before:bg-chat-bg-border-hover before:rounded before:absolute before:-top-0.5 before:-bottom-0.5 before:-left-1 before:-right-0.5"
-          />
-        </MentionsInput>
+        <InputCore />
+        {/*<MentionsInput*/}
+        {/*  value={value}*/}
+        {/*  id={id}*/}
+        {/*  onChange={onChange}*/}
+        {/*  className={`w-full bg-transparent rounded-lg outline-none focus:outline-0 resize-none*/}
+        {/*placeholder:text-current placeholder:truncate placeholder:max-w-[19.5rem] flex-grow-0`}*/}
+        {/*  placeholder={shouldShowLoader ? '' : t(defaultPlaceholder)}*/}
+        {/*  inputRef={inputRef}*/}
+        {/*  disabled={isStoppable && generationInProgress}*/}
+        {/*  onCompositionStart={onCompositionStart}*/}
+        {/*  onCompositionEnd={onCompositionEnd}*/}
+        {/*  // @ts-ignore*/}
+        {/*  onKeyDown={handleKeyDown}*/}
+        {/*  onFocus={handleInputFocus}*/}
+        {/*  style={inputStyle}*/}
+        {/*  forceSuggestionsAboveCursor*/}
+        {/*>*/}
+        {/*  <Mention*/}
+        {/*    trigger="@"*/}
+        {/*    markup="|path:__id__|"*/}
+        {/*    data={getDataPath}*/}
+        {/*    renderSuggestion={renderPathSuggestion}*/}
+        {/*    className="relative before:bg-chat-bg-border-hover before:rounded before:absolute before:-top-0.5 before:-bottom-0.5 before:-left-1 before:-right-0.5"*/}
+        {/*    appendSpaceOnAdd*/}
+        {/*    displayTransform={pathTransform}*/}
+        {/*  />*/}
+        {/*  <Mention*/}
+        {/*    trigger="@"*/}
+        {/*    markup="|lang:__id__|"*/}
+        {/*    data={getDataLang}*/}
+        {/*    appendSpaceOnAdd*/}
+        {/*    renderSuggestion={renderLangSuggestion}*/}
+        {/*    className="relative before:bg-chat-bg-border-hover before:rounded before:absolute before:-top-0.5 before:-bottom-0.5 before:-left-1 before:-right-0.5"*/}
+        {/*  />*/}
+        {/*</MentionsInput>*/}
         {isStoppable || selectedLines ? (
           <div className="relative top-[18px]">
             <Tooltip text={t('Stop generating')} placement={'top-end'}>
