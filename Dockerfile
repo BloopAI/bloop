@@ -11,7 +11,7 @@ COPY client/ client
 COPY playwright.config.js .
 RUN npm run build-web
 
-FROM rust:slim-bookworm as builder
+FROM rust:1.73-slim-bookworm as builder
 WORKDIR /build
 RUN apt-get update && \
     apt-get -y install make clang libc-dev curl cmake python3 protobuf-compiler pkg-config libssl3 libssl-dev git && \
