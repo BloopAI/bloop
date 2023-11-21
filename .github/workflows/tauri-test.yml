@@ -44,8 +44,6 @@ jobs:
       - name: Load other environment changes
         run: direnv export gha >> "$GITHUB_ENV"        
 
-      - uses: Swatinem/rust-cache@v2
-
       - name: Rustfmt
         run: cargo --locked fmt -p bloop -- --check
 
