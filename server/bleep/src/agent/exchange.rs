@@ -1,5 +1,5 @@
 use crate::{query::parser::SemanticQuery, repo::RepoRef};
-use std::{fmt, mem};
+use std::fmt;
 
 use chrono::prelude::{DateTime, Utc};
 use rand::seq::SliceRandom;
@@ -114,17 +114,16 @@ impl Exchange {
     ///
     /// This is used to reduce the size of an exchange when we send it over the wire, by removing
     /// data that the front-end does not use.
-    pub fn compressed(&self) -> Self {
-        let mut ex = self.clone();
-
-        ex.code_chunks.clear();
-        ex.paths.clear();
-        ex.search_steps = mem::take(&mut ex.search_steps)
+    pub fn compressed(mut self) -> Self {
+        self.code_chunks.clear();
+        self.paths.clear();
+        self.search_steps = self
+            .search_steps
             .into_iter()
             .map(|step| step.compressed())
             .collect();
 
-        ex
+        self
     }
 }
 

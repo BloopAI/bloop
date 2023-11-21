@@ -427,5 +427,8 @@
 	"Diff generation failed": "Diff generation failed",
 	"Failed to apply the diff": "Failed to apply the diff",
 	"Cancel diff generation": "Cancel diff generation",
-	"The following changes represent the git diff for the remote repository. Please note that these changes cannot be applied directly to a remote repository. Use the \"Copy\" button to copy the changes and apply them locally.": "The following changes represent the git diff for the remote repository. Please note that these changes cannot be applied directly to a remote repository. Use the \"Copy\" button to copy the changes and apply them locally."
+	"The following changes represent the git diff for the remote repository. Please note that these changes cannot be applied directly to a remote repository. Use the \"Copy\" button to copy the changes and apply them locally.": "The following changes represent the git diff for the remote repository. Please note that these changes cannot be applied directly to a remote repository. Use the \"Copy\" button to copy the changes and apply them locally.",
+	"Cloning": "Cloning",
+	"Directories": "Directories",
+	"Languages": "Languages"
 }

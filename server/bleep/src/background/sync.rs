@@ -6,11 +6,14 @@ use crate::{
     cache::FileCache,
     indexes,
     remotes::RemoteError,
-    repo::{Backend, FilterUpdate, RepoError, RepoMetadata, RepoRef, Repository, SyncStatus},
+    repo::{
+        iterator::FileFilterRule, Backend, FileFilterConfig, FilterUpdate, RepoError, RepoMetadata,
+        RepoRef, Repository, SyncStatus,
+    },
     Application,
 };
 
-use std::{path::PathBuf, sync::Arc};
+use std::{borrow::Borrow, num::NonZeroU32, path::PathBuf, sync::Arc};
 
 use super::control::SyncPipes;
 
@@ -20,6 +23,8 @@ pub struct SyncHandle {
     pub(crate) pipes: SyncPipes,
     pub(crate) file_cache: FileCache,
     pub(crate) app: Application,
+    pub(crate) shallow_config: gix::remote::fetch::Shallow,
+    shallow: bool,
     exited: flume::Sender<SyncStatus>,
     exit_signal: flume::Receiver<SyncStatus>,
 }
@@ -93,19 +98,71 @@ impl Drop for SyncHandle {
     }
 }
 
+pub struct SyncConfig {
+    app: Application,
+    reporef: RepoRef,
+    filter_updates: Option<FilterUpdate>,
+    shallow: bool,
+}
+
+impl SyncConfig {
+    pub fn new(app: impl Borrow<Application>, reporef: RepoRef) -> SyncConfig {
+        SyncConfig {
+            app: app.borrow().clone(),
+            reporef,
+            filter_updates: None,
+            shallow: false,
+        }
+    }
+
+    pub fn filter_updates(mut self, update: Option<FilterUpdate>) -> Self {
+        self.filter_updates = update;
+        self
+    }
+
+    pub fn shallow(mut self, shallow: bool) -> Self {
+        self.shallow = shallow;
+        self
+    }
+
+    pub async fn into_handle(self) -> Arc<SyncHandle> {
+        SyncHandle::new(self).await
+    }
+}
+
 impl SyncHandle {
-    pub(crate) async fn new(
-        app: Application,
-        reporef: RepoRef,
-        status: super::ProgressStream,
-        filter_updates: Option<FilterUpdate>,
-    ) -> Arc<Self> {
+    async fn new(config: SyncConfig) -> Arc<Self> {
+        let SyncConfig {
+            app,
+            reporef,
+            filter_updates,
+            shallow,
+            ..
+        } = config;
+        let status = app.sync_queue.broadcast();
+
+        let mut shallow_config = if shallow {
+            gix::remote::fetch::Shallow::DepthAtRemote(NonZeroU32::new(1).unwrap())
+        } else {
+            gix::remote::fetch::Shallow::DepthAtRemote(NonZeroU32::new(1000).unwrap())
+        };
+
         // Going through an extra hoop here to ensure the outward
         // facing interface communicates intent.
         //
         // How filter updates work specifically should not have to
         // trickle down to all callers.
-        let filter_updates = filter_updates.unwrap_or_default();
+        let filter_updates = if shallow {
+            FilterUpdate {
+                file_filter: Some(FileFilterConfig {
+                    rules: vec![FileFilterRule::ExcludeRegex(".*".into())],
+                }),
+                ..Default::default()
+            }
+        } else {
+            filter_updates.unwrap_or_default()
+        };
+
         let (exited, exit_signal) = flume::bounded(1);
         let pipes = SyncPipes::new(reporef.clone(), filter_updates.clone(), status);
         let current = app
@@ -126,6 +183,7 @@ impl SyncHandle {
                     Repository {
                         disk_path,
                         remote,
+                        shallow,
                         sync_status: SyncStatus::Queued,
                         pub_sync_status: SyncStatus::Queued,
                         last_index_unix_secs: 0,
@@ -138,10 +196,18 @@ impl SyncHandle {
                 }
             });
 
+        // if we're not upgrading from shallow to full checkout
+        // this seems to be a speed optimization for git operations
+        if !shallow && !current.get().shallow {
+            shallow_config = gix::remote::fetch::Shallow::NoChange;
+        }
+
         let sh = Self {
             app: app.clone(),
             reporef: reporef.clone(),
             file_cache: FileCache::new(app.sql.clone(), app.semantic.clone()),
+            shallow_config,
+            shallow,
             pipes,
             filter_updates,
             exited,
@@ -196,7 +262,7 @@ impl SyncHandle {
             .await
             .unwrap();
 
-        let tutorial_questions = if repository.last_index_unix_secs == 0 {
+        let tutorial_questions = if !repository.shallow {
             let db = self.app.sql.clone();
             let llm_gateway = self.app.user().await.llm_gateway(&self.app).await;
             let repo_pool = self.app.repo_pool.clone();
@@ -215,7 +281,7 @@ impl SyncHandle {
             Ok(Either::Right(state)) => {
                 info!("commit complete; indexing done");
                 self.app.repo_pool.update(&self.reporef, |_k, repo| {
-                    repo.sync_done_with(&self.filter_updates, state)
+                    repo.sync_done_with(self.shallow, &self.filter_updates, state)
                 });
 
                 if let Some(tutorial_questions) = tutorial_questions {
@@ -225,7 +291,7 @@ impl SyncHandle {
                 }
 
                 // technically `sync_done_with` does this, but we want to send notifications
-                self.set_status(|_| SyncStatus::Done)
+                self.set_status(|repo| repo.sync_status.clone())
             }
             Err(SyncError::Cancelled) => self.set_status(|_| SyncStatus::Cancelled),
             Err(err) => self.set_status(|_| SyncStatus::Error {

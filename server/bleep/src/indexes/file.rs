@@ -64,7 +64,13 @@ impl<'a> Workload<'a> {
             hash.update(
                 self.file_filter
                     .is_allowed(&self.relative_path)
-                    .map(|_| &b"__filter_override"[..])
+                    .map(|include| {
+                        if include {
+                            &b"__filter_override_include"[..]
+                        } else {
+                            &b"__filter_override_exclude"[..]
+                        }
+                    })
                     .unwrap_or(&b"__no_filter_override"[..]),
             );
             hash.finalize().to_hex().to_string()
@@ -244,6 +250,7 @@ impl Indexer<File> {
         project: Project,
         branch: Option<&str>,
         query_str: &str,
+        langs: impl Iterator<Item = &str>,
         limit: usize,
     ) -> impl Iterator<Item = FileDocument> + '_ {
         // lifted from query::compiler
@@ -276,19 +283,24 @@ impl Indexer<File> {
 
         // hits is a mapping between a document address and the number of trigrams in it that
         // matched the query
+        let langs_query = BooleanQuery::union(
+            langs
+                .map(|l| Term::from_field_bytes(self.source.lang, l.as_bytes()))
+                .map(|t| TermQuery::new(t, IndexRecordOption::Basic))
+                .map(Box::new)
+                .map(|q| q as Box<dyn Query>)
+                .collect::<Vec<_>>(),
+        );
+
         let mut hits = trigrams(query_str)
             .flat_map(|s| case_permutations(s.as_str()))
             .map(|token| Term::from_field_text(self.source.relative_path, token.as_str()))
-            .map(|term| {
-                let query: Vec<Box<dyn Query>> =
-                    vec![Box::new(TermQuery::new(term, IndexRecordOption::Basic))];
-
-                BooleanQuery::intersection(query)
-            })
+            .map(|term| TermQuery::new(term, IndexRecordOption::Basic))
             .flat_map(|query| {
                 let mut q: Vec<Box<dyn Query>> =
                     vec![Box::new(project_scope.clone()), Box::new(query)];
                 q.extend(branch_scope.clone().map(|q| Box::new(q) as Box<dyn Query>));
+                q.push(Box::new(langs_query.clone()));
 
                 searcher
                     .search(&BooleanQuery::intersection(q), &collector)

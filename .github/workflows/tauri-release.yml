@@ -80,7 +80,7 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
+          toolchain: 1.73.0
           target: ${{ matrix.target }}
 
       - name: Check if keys exist

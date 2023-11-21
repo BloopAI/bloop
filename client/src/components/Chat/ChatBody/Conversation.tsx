@@ -59,6 +59,9 @@ const Conversation = ({
           isHistory={isHistory}
           author={m.author}
           message={m.text}
+          parsedQuery={
+            m.author === ChatMessageAuthor.Server ? undefined : m.parsedQuery
+          }
           error={m.author === ChatMessageAuthor.Server ? m.error : ''}
           showInlineFeedback={
             m.author === ChatMessageAuthor.Server &&

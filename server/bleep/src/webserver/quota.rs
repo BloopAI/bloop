@@ -1,6 +1,7 @@
 use axum::{Extension, Json};
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
+use tracing::error;
 
 use crate::Application;
 
@@ -23,14 +24,26 @@ pub async fn get(
     app: Extension<Application>,
     user: Extension<User>,
 ) -> super::Result<Json<QuotaResponse>> {
-    get_request(app, user, "/v2/get-usage-quota").await
+    match get_request(app, user, "/v2/get-usage-quota").await {
+        Ok(result) => Ok(result),
+        Err(e) => {
+            error!("failed to get usage quota: {}", e);
+            Err(e)
+        }
+    }
 }
 
 pub async fn create_checkout_session(
     app: Extension<Application>,
     user: Extension<User>,
 ) -> super::Result<Json<SubscriptionResponse>> {
-    get_request(app, user, "/v2/create-checkout-session").await
+    match get_request(app, user, "/v2/create-checkout-session").await {
+        Ok(result) => Ok(result),
+        Err(e) => {
+            error!("failed to create checkout session: {}", e);
+            Err(e)
+        }
+    }
 }
 
 async fn get_request<T: for<'a> Deserialize<'a>>(
