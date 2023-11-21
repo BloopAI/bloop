@@ -262,7 +262,7 @@ impl SyncHandle {
             .await
             .unwrap();
 
-        let tutorial_questions = if repository.last_index_unix_secs == 0 {
+        let tutorial_questions = if !repository.shallow {
             let db = self.app.sql.clone();
             let llm_gateway = self.app.user().await.llm_gateway(&self.app).await;
             let repo_pool = self.app.repo_pool.clone();
