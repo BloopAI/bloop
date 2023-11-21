@@ -14,11 +14,11 @@ export const mapLoadingSteps = (
     if (s.type === 'proc') {
       return s.content.paths.map((pa) => ({
         ...s,
-        path: pa || '',
+        path: pa.path || '',
         displayText:
           t(`Reading`) +
           ' ' +
-          `${pa?.length > 20 ? '...' : ''}${pa?.slice(-20)}`,
+          `${pa?.path?.length > 20 ? '...' : ''}${pa?.path?.slice(-20)}`,
       }));
     }
     return {
