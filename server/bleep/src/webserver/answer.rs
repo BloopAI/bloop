@@ -67,7 +67,7 @@ pub(super) async fn vote(
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct Answer {
     pub q: String,
-    pub project: Project,
+    pub project: String,
     #[serde(default = "default_model")]
     pub model: agent::model::AnswerModel,
     #[serde(default = "default_thread_id")]
@@ -241,12 +241,11 @@ async fn try_execute_agent(
         }
     };
 
+    let project: Project = serde_json::from_str(&params.project).unwrap();
     let Answer {
-        thread_id,
-        project,
-        model,
-        ..
+        thread_id, model, ..
     } = params.clone();
+
     let stream = async_stream::try_stream! {
         let (exchange_tx, exchange_rx) = tokio::sync::mpsc::channel(10);
 
@@ -390,7 +389,7 @@ pub async fn explain(
             params.line_end + 1,
             params.relative_path
         ),
-        project: Project(vec![params.repo_ref]),
+        project: format!("[{}]", params.repo_ref),
         thread_id: params.thread_id,
         parent_exchange_id: None,
         model: agent::model::GPT_4,
@@ -418,7 +417,7 @@ pub async fn explain(
         .indexes
         .file
         // this unwrap is ok, because we instantiate the `virtual_req` above
-        .by_path(&virtual_req.project.0[0], &params.relative_path, None)
+        .by_path(&params.repo_ref, &params.relative_path, None)
         .await
         .context("file retrieval failed")?
         .context("did not find requested file")?
