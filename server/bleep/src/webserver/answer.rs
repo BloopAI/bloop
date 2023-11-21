@@ -389,7 +389,7 @@ pub async fn explain(
             params.line_end + 1,
             params.relative_path
         ),
-        project: format!("[{}]", params.repo_ref),
+        project: format!("[\"{}\"]", params.repo_ref),
         thread_id: params.thread_id,
         parent_exchange_id: None,
         model: agent::model::GPT_4,
