@@ -1,7 +1,7 @@
 use std::{collections::HashSet, hash::Hash, time::Duration};
 
 use crate::{
-    background::QueuedRepoStatus,
+    background::{QueuedRepoStatus, SyncConfig},
     repo::{Backend, BranchFilterConfig, FileFilterConfig, RepoRef, Repository, SyncStatus},
     state::RepositoryPool,
     Application,
@@ -251,6 +251,8 @@ pub(super) struct IndexedParams {
 #[derive(Deserialize)]
 pub(crate) struct RepoParams {
     pub(crate) repo: RepoRef,
+    #[serde(default)]
+    pub(crate) shallow: bool,
 }
 
 /// Live report of the state of the sync queue
@@ -266,7 +268,14 @@ pub(super) async fn indexed(
     app: State<Application>,
 ) -> Result<impl IntoResponse> {
     if let Some(repo) = repo {
-        return get_by_id(Query(RepoParams { repo }), app).await;
+        return get_by_id(
+            Query(RepoParams {
+                repo,
+                shallow: false,
+            }),
+            app,
+        )
+        .await;
     }
 
     let mut repos = vec![];
@@ -280,7 +289,7 @@ pub(super) async fn indexed(
 
 /// Get details of an indexed repository based on their id
 pub(super) async fn get_by_id(
-    Query(RepoParams { repo }): Query<RepoParams>,
+    Query(RepoParams { repo, .. }): Query<RepoParams>,
     State(app): State<Application>,
 ) -> Result<Json<super::Response<'static>>> {
     match app
@@ -296,7 +305,7 @@ pub(super) async fn get_by_id(
 /// Delete a repository from the disk and any indexes
 //
 pub(super) async fn delete_by_id(
-    Query(RepoParams { repo }): Query<RepoParams>,
+    Query(RepoParams { repo, .. }): Query<RepoParams>,
     State(app): State<Application>,
     Extension(user): Extension<User>,
 ) -> Result<impl IntoResponse> {
@@ -319,17 +328,19 @@ pub(super) async fn delete_by_id(
 
 /// Synchronize a repo by its id
 pub(super) async fn sync(
-    Query(RepoParams { repo }): Query<RepoParams>,
-    Extension(app): Extension<Application>,
+    Query(RepoParams { repo, shallow }): Query<RepoParams>,
+    State(app): State<Application>,
     Extension(user): Extension<User>,
 ) -> Result<impl IntoResponse> {
     // TODO: We can refactor `repo_pool` to also hold queued repos, instead of doing a calculation
     // like this which is prone to timing issues.
     let num_repos = app.repo_pool.len();
-    let num_queued = app.write_index().enqueue_sync(vec![repo]).await;
+    app.write_index()
+        .enqueue(SyncConfig::new(app.clone(), repo).shallow(shallow))
+        .await;
 
     app.with_analytics(|analytics| {
-        analytics.track_synced_repos(num_repos + num_queued, user.username(), user.org_name());
+        analytics.track_synced_repos(num_repos + 1, user.username(), user.org_name());
     });
 
     Ok(json(ReposResponse::SyncQueued))
@@ -337,7 +348,7 @@ pub(super) async fn sync(
 
 /// Synchronize a repo by its id
 pub(super) async fn delete_sync(
-    Query(RepoParams { repo }): Query<RepoParams>,
+    Query(RepoParams { repo, .. }): Query<RepoParams>,
     State(app): State<Application>,
 ) -> Result<impl IntoResponse> {
     app.write_index().cancel(repo).await;
@@ -415,7 +426,7 @@ pub(super) async fn set_indexed(
         .await;
 
     app.write_index()
-        .enqueue_sync(repo_list.into_iter().collect())
+        .enqueue_all(repo_list.into_iter().collect())
         .await;
 
     json(ReposResponse::SyncQueued)
@@ -497,6 +508,7 @@ mod test {
                     file_filter: Default::default(),
                     pub_sync_status: Default::default(),
                     locked: Default::default(),
+                    shallow: Default::default(),
                 },
             )
             .unwrap();
@@ -518,6 +530,7 @@ mod test {
                     file_filter: Default::default(),
                     pub_sync_status: Default::default(),
                     locked: Default::default(),
+                    shallow: Default::default(),
                 },
             )
             .unwrap();
@@ -541,6 +554,7 @@ mod test {
                     file_filter: Default::default(),
                     pub_sync_status: Default::default(),
                     locked: Default::default(),
+                    shallow: Default::default(),
                 },
             )
                 .into(),
@@ -563,6 +577,7 @@ mod test {
                 file_filter: Default::default(),
                 pub_sync_status: Default::default(),
                 locked: Default::default(),
+                shallow: Default::default(),
             },
         )
             .into();

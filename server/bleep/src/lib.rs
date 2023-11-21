@@ -352,7 +352,7 @@ impl Application {
     }
 
     fn write_index(&self) -> background::BoundSyncQueue {
-        self.sync_queue.bind(self.clone())
+        background::BoundSyncQueue(self.clone())
     }
 
     fn seal_auth_state(&self, payload: serde_json::Value) -> String {

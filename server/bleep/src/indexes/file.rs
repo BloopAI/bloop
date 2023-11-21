@@ -63,7 +63,13 @@ impl<'a> Workload<'a> {
             hash.update(
                 self.file_filter
                     .is_allowed(&self.relative_path)
-                    .map(|_| &b"__filter_override"[..])
+                    .map(|include| {
+                        if include {
+                            &b"__filter_override_include"[..]
+                        } else {
+                            &b"__filter_override_exclude"[..]
+                        }
+                    })
                     .unwrap_or(&b"__no_filter_override"[..]),
             );
             hash.finalize().to_hex().to_string()

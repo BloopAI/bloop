@@ -28,7 +28,7 @@ jobs:
         run: git lfs ls-files --long | cut -d ' ' -f1 | sort > .lfs-assets-id
 
       - name: LFS Cache
-        uses: actions/cache@v3
+        uses: takost/cache@2001ca4114dbc44888c30c0ec3550fecf724b8d9
         with:
           path: .git/lfs/objects
           key: ${{ runner.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}
@@ -43,8 +43,6 @@ jobs:
 
       - name: Load other environment changes
         run: direnv export gha >> "$GITHUB_ENV"        
-
-      - uses: Swatinem/rust-cache@v2
 
       - name: Rustfmt
         run: cargo --locked fmt -p bloop -- --check
