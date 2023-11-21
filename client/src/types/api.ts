@@ -232,7 +232,7 @@ export type AllConversationsResponse = {
 
 type ProcStep = {
   type: 'proc';
-  content: { query: string; paths: string[] };
+  content: { query: string; paths: { repo: string; path: string }[] };
 };
 
 type CodeStep = {

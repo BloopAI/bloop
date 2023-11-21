@@ -80,23 +80,34 @@ const Chat = () => {
       setLoading(true);
       setQueryIdToEdit('');
       setHideMessagesFrom(null);
+      const queryParams = new URLSearchParams({
+        project: JSON.stringify([tab.repoRef]),
+        model:
+          preferredAnswerSpeed === 'normal'
+            ? 'gpt-4'
+            : 'gpt-3.5-turbo-finetuned',
+        ...(threadId
+          ? {
+              thread_id: threadId,
+              parent_query_id: queryIdToEdit,
+            }
+          : {}),
+        ...(options
+          ? {
+              relative_path: options.filePath,
+              line_start: options.lineStart,
+              line_end: options.lineEnd,
+              repo_ref: tab.repoRef,
+            }
+          : {
+              q: `${cleanQuery}${
+                selectedBranch ? ` branch:${selectedBranch}` : ''
+              }`,
+            }),
+      });
       const url = `${apiUrl}/answer${
-        options
-          ? `/explain?relative_path=${encodeURIComponent(
-              options.filePath,
-            )}&line_start=${options.lineStart}&line_end=${options.lineEnd}`
-          : `?q=${encodeURIComponent(cleanQuery)}${
-              selectedBranch ? ` branch:${selectedBranch}` : ''
-            }`
-      }&repo_ref=${tab.repoRef}${
-        threadId
-          ? `&thread_id=${threadId}${
-              queryIdToEdit ? `&parent_query_id=${queryIdToEdit}` : ''
-            }`
-          : ''
-      }&model=${
-        preferredAnswerSpeed === 'normal' ? 'gpt-4' : 'gpt-3.5-turbo-finetuned'
-      }`;
+        options ? `/explain` : ''
+      }?${queryParams.toString()}`;
       console.log(url);
       const eventSource = new EventSource(url);
       prevEventSource = eventSource;
