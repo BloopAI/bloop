@@ -75,7 +75,7 @@ pub(super) async fn create_collection(
 }
 
 
-pub(super) async fn create_lexixal_index(
+pub(super) async fn create_lexical_index(
     name: &str,
     qdrant: &QdrantClient,
 ) -> anyhow::Result<PointsOperationResponse> {

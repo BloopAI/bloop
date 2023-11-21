@@ -304,6 +304,40 @@ impl Semantic {
         Ok(())
     }
 
+    pub async fn search_lexical<'a>(
+        &self,
+        parsed_query: &SemanticQuery<'a>,
+        vector: Embedding,
+        limit: u64,
+        offset: u64,
+        threshold: f32,
+    ) -> anyhow::Result<Vec<ScoredPoint>> {
+        let response = self
+        .qdrant
+        .search_points(&SearchPoints {
+            limit,
+            vector,
+            collection_name: self.config.collection_name.to_string(),
+            offset: Some(offset),
+            score_threshold: Some(threshold),
+            with_payload: Some(WithPayloadSelector {
+                selector_options: Some(with_payload_selector::SelectorOptions::Enable(true)),
+            }),
+            filter: Some(Filter {
+                should: build_conditions_lexical(parsed_query),
+                must: build_conditions(parsed_query),
+                ..Default::default()
+            }),
+            with_vectors: Some(WithVectorsSelector {
+                selector_options: Some(with_vectors_selector::SelectorOptions::Enable(true)),
+            }),
+            ..Default::default()
+        })
+        .await?;
+
+    Ok(response.result)
+    }
+
     pub async fn search_with<'a>(
         &self,
         parsed_query: &SemanticQuery<'a>,
@@ -586,6 +620,16 @@ fn make_kv_text_filter(key: &str, value: &str) -> FieldCondition {
         }),
         ..Default::default()
     }
+}
+
+fn build_conditions_lexical(parsed_query: &SemanticQuery<'_>) -> Vec<qdrant_client::qdrant::Condition> {
+    let Some(query) = parsed_query.target() else {
+        panic!();
+    };
+    let conditions = query.split(" ").map(|s| 
+        make_kv_text_filter("text", s.as_ref()))
+        .map(Into::into).collect::<Vec<FieldCondition>>();
+    conditions.iter().map(|c| qdrant_client::qdrant::Condition{condition_one_of: Some(qdrant_client::qdrant::condition::ConditionOneOf::Field(c.clone()))}).collect()
 }
 
 fn build_conditions(query: &SemanticQuery<'_>) -> Vec<qdrant_client::qdrant::Condition> {
