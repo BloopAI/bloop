@@ -11,8 +11,8 @@ use qdrant_client::{
     qdrant::{
         point_id::PointIdOptions, r#match::MatchValue, vectors::VectorsOptions,
         with_payload_selector, with_vectors_selector, CollectionOperationResponse, FieldCondition,
-        FieldType, Filter, Match, PointId, RetrievedPoint, ScoredPoint, SearchPoints, Value,
-        Vectors, WithPayloadSelector, WithVectorsSelector,
+        FieldType, Filter, Match, PointId, PointsOperationResponse, RetrievedPoint, ScoredPoint,
+        SearchPoints, Value, Vectors, WithPayloadSelector, WithVectorsSelector,
     },
 };
 
@@ -28,7 +28,7 @@ mod schema;
 
 pub use embedder::Embedder;
 use embedder::LocalEmbedder;
-use schema::{create_collection, EMBEDDING_DIM};
+use schema::{create_collection, create_lexical_index, EMBEDDING_DIM};
 pub use schema::{Embedding, Payload};
 
 use itertools::Itertools;
@@ -210,6 +210,13 @@ impl Semantic {
 
                 debug!(time, created = result, "collection created");
                 assert!(result);
+                let PointsOperationResponse { result, time } =
+                    create_lexical_index(&config.collection_name, &qdrant)
+                        .await
+                        .unwrap();
+
+                debug!("lexical index created");
+                debug!("{}", result.unwrap().status);
             }
             Ok(true) => {
                 debug!("collection already exists");
@@ -300,6 +307,14 @@ impl Semantic {
                 .unwrap();
 
         assert!(result);
+
+        let PointsOperationResponse { result, time } =
+            create_lexical_index(&self.config.collection_name, &self.qdrant)
+                .await
+                .unwrap();
+
+        debug!("lexical index created");
+        debug!("{}", result.unwrap().status);
 
         Ok(())
     }
@@ -534,7 +549,11 @@ impl Semantic {
             })?;
         let results_lexical = Self::rank_lexical(results_lexical, &query);
         let merged_results = Self::merge_rrf(results_lexical, dedup_results);
-        Ok(merged_results)
+        Ok(merged_results
+            .iter()
+            .take(limit.try_into().unwrap())
+            .cloned()
+            .collect())
     }
 
     pub async fn batch_search<'a>(
