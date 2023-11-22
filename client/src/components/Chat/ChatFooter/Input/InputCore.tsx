@@ -18,9 +18,9 @@ const schema = new Schema({
 });
 
 const mentionsData = [
-  { name: 'Anna Brown', id: '103', email: 'anna@gmail.com' },
-  { name: 'John Doe', id: '101', email: 'joe@gmail.com' },
-  { name: 'Joe Lewis', id: '102', email: 'lewis@gmail.com' },
+  { tag: 'index.ts' },
+  { tag: 'server.rs' },
+  { tag: 'component.jsx' },
 ];
 
 const tagsData = [
@@ -37,7 +37,7 @@ const getMentionSuggestionsHTML = (items: Record<string, any>[]) => {
   return (
     '<div class="suggestion-item-list">' +
     items
-      .map((i) => '<div class="suggestion-item">' + i.name + '</div>')
+      .map((i) => '<div class="suggestion-item">' + i.tag + '</div>')
       .join('') +
     '</div>'
   );

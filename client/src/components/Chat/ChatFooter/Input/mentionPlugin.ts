@@ -270,9 +270,7 @@ export function getMentionsPlugin(opts: Partial<Options>) {
     let attrs;
     if (state.type === 'mention') {
       attrs = {
-        name: item.name,
-        id: item.id,
-        email: item.email,
+        tag: item.tag,
       };
     } else {
       attrs = {

@@ -7,9 +7,7 @@ export const mentionNode: NodeSpec = {
   atom: true,
 
   attrs: {
-    id: '' as AttributeSpec,
-    name: '' as AttributeSpec,
-    email: '' as AttributeSpec,
+    tag: '' as AttributeSpec,
   },
 
   selectable: false,
@@ -19,28 +17,24 @@ export const mentionNode: NodeSpec = {
     return [
       'span',
       {
-        'data-mention-id': node.attrs.id,
-        'data-mention-name': node.attrs.name,
-        'data-mention-email': node.attrs.email,
-        class: 'prosemirror-mention-node',
+        'data-mention': node.attrs.tag,
+        class:
+          'prosemirror-tag-node file-icon inline-flex items-center flex-shrink-0 align-middle ' +
+          icons.getClassWithColor(node.attrs.tag),
       },
-      '@' + node.attrs.name || node.attrs.email,
+      node.attrs.tag,
     ];
   },
 
   parseDOM: [
     {
       // match tag with following CSS Selector
-      tag: 'span[data-mention-id][data-mention-name][data-mention-email]',
+      tag: 'span[data-mention]',
 
       getAttrs: (dom) => {
-        const id = (dom as HTMLElement).getAttribute('data-mention-id');
-        const name = (dom as HTMLElement).getAttribute('data-mention-name');
-        const email = (dom as HTMLElement).getAttribute('data-mention-email');
+        const tag = (dom as HTMLElement).getAttribute('data-mention');
         return {
-          id: id,
-          name: name,
-          email: email,
+          tag: tag,
         };
       },
     },
