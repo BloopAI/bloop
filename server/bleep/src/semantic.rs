@@ -1,6 +1,6 @@
 use std::{borrow::Cow, collections::HashMap, env, path::Path, sync::Arc};
 
-use crate::{query::parser::SemanticQuery, Configuration};
+use crate::{query::{parser::SemanticQuery, ranking}, Configuration};
 
 use anyhow::bail;
 use qdrant_client::{
@@ -428,6 +428,20 @@ impl Semantic {
         Ok(responses.into_iter().flat_map(|r| r.result).collect())
     }
 
+    fn rank_lexical(payloads: Vec<Payload>, query: &str) -> Vec<Payload>{
+        let keywords: Vec<&str> = query.split_whitespace().collect();
+        let counts: Vec<(Vec<usize>, Payload)> =  payloads.iter().map(|&p| {
+            (keywords.iter().map(|&k| p.text.matches(k).count()).collect::<Vec<usize>>(), p)
+        }).collect();
+        let mut scores: Vec<(f32, Payload)> = counts.iter().map(
+            |(count, payload)| {
+                let score: f32 = (count.iter().sum::<usize>() + 10* count.iter().filter(|&&c| c != 0).count()) as f32;
+                (score, payload.clone())
+            }).collect();
+        scores.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
+        scores.into_iter().map(|(_, payload)| payload).collect()
+    }
+
     pub async fn search<'a>(
         &self,
         parsed_query: &SemanticQuery<'a>,
@@ -458,6 +472,22 @@ impl Semantic {
                     .map(Payload::from_qdrant)
                     .collect::<Vec<_>>()
             })?;
+        let dedup_results = deduplicate_snippets(results, vector.clone(), limit);
+        let results_lexical = self
+        .search_lexical(
+            parsed_query,
+            vector.clone(),
+            if retrieve_more { limit * 2 } else { limit }, // Retrieve double `limit` and deduplicate
+            offset,
+            threshold,
+        )
+        .await
+        .map(|raw| {
+            raw.into_iter()
+                .map(Payload::from_qdrant)
+                .collect::<Vec<_>>()
+        })?;
+        let results_lexical = Self::rank_lexical(results_lexical, &query);
         Ok(deduplicate_snippets(results, vector, limit))
     }
 
