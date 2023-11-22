@@ -1,6 +1,8 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { EditorState, Transaction } from 'prosemirror-state';
 import { Schema } from 'prosemirror-model';
+import { keymap } from 'prosemirror-keymap';
+import { baseKeymap } from 'prosemirror-commands';
 import {
   NodeViewComponentProps,
   ProseMirror,
@@ -35,9 +37,15 @@ type Props = {
   getDataLang: (search: string) => Promise<{ id: string; display: string }[]>;
   initialValue?: Record<string, any> | null;
   onChange: (contents: InputEditorContent[]) => void;
+  onSubmit?: (s: string) => void;
 };
 
-const InputCore = ({ getDataLang, initialValue, onChange }: Props) => {
+const InputCore = ({
+  getDataLang,
+  initialValue,
+  onChange,
+  onSubmit,
+}: Props) => {
   const mentionPlugin = useMemo(
     () =>
       getMentionsPlugin({
@@ -71,13 +79,44 @@ const InputCore = ({ getDataLang, initialValue, onChange }: Props) => {
     [],
   );
 
+  const plugins = useMemo(() => {
+    return [
+      keymap({
+        ...baseKeymap,
+        Enter: (state) => {
+          const key = Object.keys(state).find((k) =>
+            k.startsWith('autosuggestions'),
+          );
+          // @ts-ignore
+          if (key && state[key]?.active) {
+            return false;
+          }
+          console.log('submit', state);
+          onSubmit?.(
+            state
+              .toJSON()
+              .doc.content[0]?.content.map((s: InputEditorContent) =>
+                s.type === 'mention' ? `${s.attrs.type}:${s.attrs.id}` : s.text,
+              )
+              .join(''),
+          );
+          return true;
+        },
+        'Ctrl-Enter': baseKeymap.Enter,
+        'Cmd-Enter': baseKeymap.Enter,
+      }),
+      react(),
+      mentionPlugin,
+    ];
+  }, [onSubmit]);
+
   const { nodeViews, renderNodeViews } = useNodeViews(reactNodeViews);
   const [mount, setMount] = useState<HTMLDivElement | null>(null);
   const [state, setState] = useState(
     EditorState.create({
       doc: initialValue ? schema.nodeFromJSON(initialValue) : undefined,
       schema,
-      plugins: [react(), mentionPlugin],
+      plugins,
     }),
   );
 
@@ -86,7 +125,7 @@ const InputCore = ({ getDataLang, initialValue, onChange }: Props) => {
       setState(
         EditorState.create({
           schema,
-          plugins: [react(), mentionPlugin],
+          plugins,
           doc: initialValue
             ? schema.topNodeType.create(null, [
                 schema.nodeFromJSON(initialValue),
@@ -95,7 +134,7 @@ const InputCore = ({ getDataLang, initialValue, onChange }: Props) => {
         }),
       );
     }
-  }, [mount, initialValue]);
+  }, [mount, initialValue, plugins]);
 
   const dispatchTransaction = useCallback(
     (tr: Transaction) => setState((oldState) => oldState.apply(tr)),
@@ -108,7 +147,7 @@ const InputCore = ({ getDataLang, initialValue, onChange }: Props) => {
   }, [state]);
 
   return (
-    <div className="w-full py-4.5 leading-[24px] bg-transparent rounded-lg outline-none focus:outline-0 resize-none flex-grow-0 flex flex-col justify-center">
+    <div className="w-full py-4 leading-[24px] bg-transparent rounded-lg outline-none focus:outline-0 resize-none flex-grow-0 flex flex-col justify-center">
       <ProseMirror
         mount={mount}
         state={state}

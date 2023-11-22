@@ -25,7 +25,7 @@ import ChatFooter from './ChatFooter';
 let prevEventSource: EventSource | undefined;
 
 const focusInput = () => {
-  findElementInCurrentTab('#question-input')?.focus();
+  findElementInCurrentTab('.ProseMirror')?.focus();
 };
 
 const Chat = () => {
@@ -71,10 +71,6 @@ const Chat = () => {
       if (!query) {
         return;
       }
-      const cleanQuery = query
-        .replace(/\|(path:.*?)\|/, '$1')
-        .replace(/\|(lang:.*?)\|/, '$1'); // clean up after autocomplete
-      console.log('query', query, 'cleanQuery', cleanQuery);
       prevEventSource?.close();
       setInputValue('');
       setLoading(true);
@@ -85,7 +81,7 @@ const Chat = () => {
           ? `/explain?relative_path=${encodeURIComponent(
               options.filePath,
             )}&line_start=${options.lineStart}&line_end=${options.lineEnd}`
-          : `?q=${encodeURIComponent(cleanQuery)}${
+          : `?q=${encodeURIComponent(query)}${
               selectedBranch ? ` branch:${selectedBranch}` : ''
             }`
       }&repo_ref=${tab.repoRef}${
@@ -326,7 +322,7 @@ const Chat = () => {
       };
       return [...newConversation, lastMessage];
     });
-    focusInput();
+    setTimeout(focusInput, 100);
   }, []);
 
   useEffect(() => {

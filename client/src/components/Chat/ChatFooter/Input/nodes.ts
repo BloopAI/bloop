@@ -26,14 +26,16 @@ export const mentionNode: NodeSpec = {
         'data-first': node.attrs.isFirst,
         'data-display': node.attrs.display,
         class:
-          'prosemirror-tag-node inline-flex gap-1.5 items-center align-middle',
+          'prosemirror-tag-node inline-flex gap-1.5 items-center align-bottom',
       },
       [
         'span',
         {
           class: `text-left w-4 h-4 file-icon flex-shrink-0 inline-flex items-center ${icons.getClassWithColor(
             (node.attrs.type === 'lang'
-              ? getFileExtensionForLang(node.attrs.display, true)
+              ? node.attrs.display.includes(' ')
+                ? '.txt'
+                : getFileExtensionForLang(node.attrs.display, true)
               : node.attrs.display) || '.txt',
           )}`,
         },

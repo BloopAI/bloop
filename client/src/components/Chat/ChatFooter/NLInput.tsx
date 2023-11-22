@@ -53,7 +53,7 @@ type Props = {
   onStop?: () => void;
   onChange?: OnChangeHandlerFunc;
   setInputValue: Dispatch<SetStateAction<string>>;
-  onSubmit?: () => void;
+  onSubmit?: (s: string) => void;
   loadingSteps?: ChatLoadingStep[];
   selectedLines?: [number, number] | null;
   setSelectedLines?: (l: [number, number] | null) => void;
@@ -119,31 +119,31 @@ const NLInput = ({
   const { tab } = useContext(UIContext.Tab);
   const { envConfig } = useContext(DeviceContext);
 
-  useEffect(() => {
-    if (inputRef.current) {
-      // We need to reset the height momentarily to get the correct scrollHeight for the textarea
-      inputRef.current.style.height = '56px';
-      const scrollHeight = inputRef.current.scrollHeight;
+  // useEffect(() => {
+  //   if (inputRef.current) {
+  //     // We need to reset the height momentarily to get the correct scrollHeight for the textarea
+  //     inputRef.current.style.height = '56px';
+  //     const scrollHeight = inputRef.current.scrollHeight;
+  //
+  //     // We then set the height directly, outside of the render loop
+  //     // Trying to set this with state or a ref will product an incorrect value.
+  //     inputRef.current.style.height =
+  //       Math.max(Math.min(scrollHeight, 300), 56) + 'px';
+  //   }
+  // }, [inputRef.current, value]);
 
-      // We then set the height directly, outside of the render loop
-      // Trying to set this with state or a ref will product an incorrect value.
-      inputRef.current.style.height =
-        Math.max(Math.min(scrollHeight, 300), 56) + 'px';
-    }
-  }, [inputRef.current, value]);
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (isComposing) {
-        return true;
-      }
-      if (e.key === 'Enter' && !e.shiftKey && onSubmit) {
-        e.preventDefault();
-        onSubmit();
-      }
-    },
-    [isComposing, onSubmit],
-  );
+  // const handleKeyDown = useCallback(
+  //   (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  //     if (isComposing) {
+  //       return true;
+  //     }
+  //     if (e.key === 'Enter' && !e.shiftKey && onSubmit) {
+  //       e.preventDefault();
+  //       onSubmit();
+  //     }
+  //   },
+  //   [isComposing, onSubmit],
+  // );
 
   const shouldShowLoader = useMemo(
     () => isStoppable && !!loadingSteps?.length && generationInProgress,
@@ -284,13 +284,11 @@ const NLInput = ({
   );
 
   const onChangeInput = useCallback((inputState: InputEditorContent[]) => {
-    console.log('inputState', inputState);
     const newValue = inputState
       .map((s) =>
         s.type === 'mention' ? `${s.attrs.type}:${s.attrs.id}` : s.text,
       )
       .join('');
-    console.log('newValue', newValue);
     setInputValue(newValue);
   }, []);
 
@@ -319,12 +317,15 @@ const NLInput = ({
             <Sparkles />
           )}
         </div>
-        {!(isStoppable && generationInProgress) && (
+        {!isStoppable && !generationInProgress ? (
           <InputCore
             getDataLang={getDataLang}
             initialValue={valueToEdit}
             onChange={onChangeInput}
+            onSubmit={onSubmit}
           />
+        ) : (
+          <div className="w-full h-14 flex-1"></div>
         )}
         {/*<MentionsInput*/}
         {/*  value={value}*/}

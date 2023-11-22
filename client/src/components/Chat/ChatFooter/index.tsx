@@ -1,6 +1,5 @@
 import React, {
   Dispatch,
-  FormEvent,
   memo,
   SetStateAction,
   useCallback,
@@ -57,14 +56,11 @@ const ChatFooter = ({
     useContext(ChatContext.Setters);
 
   const onSubmit = useCallback(
-    (e?: FormEvent) => {
-      if (e?.preventDefault) {
-        e.preventDefault();
-      }
+    (value: string) => {
       if (
         (conversation[conversation.length - 1] as ChatMessageServer)
           ?.isLoading ||
-        !inputValue.trim()
+        !value.trim()
       ) {
         return;
       }
@@ -73,10 +69,10 @@ const ChatFooter = ({
       }
       blurInput();
       setSubmittedQuery(
-        submittedQuery === inputValue ? `${inputValue} ` : inputValue, // to trigger new search if query hasn't changed
+        submittedQuery === value ? `${value} ` : value, // to trigger new search if query hasn't changed
       );
     },
-    [inputValue, conversation, submittedQuery, hideMessagesFrom],
+    [conversation, submittedQuery, hideMessagesFrom],
   );
 
   const loadingSteps = useMemo(() => {
@@ -116,7 +112,7 @@ const ChatFooter = ({
 
   return (
     <div className="flex flex-col gap-3 w-full absolute bottom-0 left-0 p-4 bg-chat-bg-base/25 backdrop-blur-6 border-t border-chat-bg-border z-20">
-      <form onSubmit={onSubmit} className="w-full" onClick={onFormClick}>
+      <form className="w-full" onClick={onFormClick}>
         <NLInput
           id="question-input"
           value={inputValue}
@@ -138,14 +134,6 @@ const ChatFooter = ({
           submittedQuery={submittedQuery}
         />
       </form>
-      {/*{isAutocompleteActive && (*/}
-      {/*  <Suggestions*/}
-      {/*    pathOptions={pathOptions}*/}
-      {/*    langOptions={langOptions}*/}
-      {/*    dirOptions={dirOptions}*/}
-      {/*    onSubmit={onSuggestionSelected}*/}
-      {/*  />*/}
-      {/*)}*/}
     </div>
   );
 };
