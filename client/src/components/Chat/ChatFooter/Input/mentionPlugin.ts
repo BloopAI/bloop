@@ -371,7 +371,7 @@ export function getMentionsPlugin(opts: Partial<Options>) {
         return DecorationSet.create(editorState.doc, [
           Decoration.inline(range.from, range.to, {
             nodeName: 'span',
-            class: opts.suggestionTextClass,
+            class: options.suggestionTextClass,
           }),
         ]);
       },

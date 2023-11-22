@@ -1506,3 +1506,7 @@ h5, .h5 {
 .padding-start > *:first-child {
   padding-left: 32px;
 }
+
+.ProseMirror:focus {
+  outline: none;
+}
