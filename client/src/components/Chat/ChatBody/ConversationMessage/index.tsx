@@ -42,7 +42,6 @@ type Props = {
   responseTimestamp: string | null;
   isHistory?: boolean;
   showInlineFeedback: boolean;
-  scrollToBottom?: () => void;
   isLoading?: boolean;
   loadingSteps?: ChatLoadingStep[];
   i: number;
@@ -59,7 +58,6 @@ const ConversationMessage = ({
   threadId,
   queryId,
   repoRef,
-  scrollToBottom,
   isLoading,
   loadingSteps,
   i,
@@ -220,7 +218,6 @@ const ConversationMessage = ({
             queryId={queryId}
             repoRef={repoRef}
             error={!!error}
-            scrollToBottom={scrollToBottom}
           />
         </>
       ) : error ? (

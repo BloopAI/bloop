@@ -38,7 +38,6 @@ type Props = {
   onMessageChange: (m: string, i?: number) => void;
   onMessageRemoved?: (i: number, andSubsequent?: boolean) => void;
   i?: number;
-  scrollToBottom?: () => void;
   inputRef?: React.MutableRefObject<HTMLTextAreaElement | null>;
   setLeftPanel: Dispatch<SetStateAction<StudioLeftPanelDataType>>;
   isTokenLimitExceeded: boolean;
@@ -51,7 +50,6 @@ const ConversationInput = ({
   onMessageChange,
   i,
   onMessageRemoved,
-  scrollToBottom,
   inputRef,
   setLeftPanel,
   isLast,
@@ -83,7 +81,6 @@ const ConversationInput = ({
       // Trying to set this with state or a ref will product an incorrect value.
       ref.current.style.height =
         Math.min(Math.max(scrollHeight, 22), 300) + 'px';
-      setTimeout(() => scrollToBottom?.(), 10);
     }
   }, [message, isFocused]);
 

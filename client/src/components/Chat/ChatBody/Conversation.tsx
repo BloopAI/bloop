@@ -1,10 +1,10 @@
 import React, { Dispatch, SetStateAction, useContext } from 'react';
+import ScrollToBottom from 'react-scroll-to-bottom';
 import {
   ChatMessage,
   ChatMessageAuthor,
   ChatMessageServer,
 } from '../../../types/general';
-import useScrollToBottom from '../../../hooks/useScrollToBottom';
 import { AppNavigationContext } from '../../../context/appNavigationContext';
 import Message from './ConversationMessage';
 import FirstMessage from './FirstMessage';
@@ -30,16 +30,10 @@ const Conversation = ({
   onMessageEdit,
   setInputValue,
 }: Props) => {
-  const { messagesRef, handleScroll, scrollToBottom } =
-    useScrollToBottom(conversation);
   const { navigatedItem } = useContext(AppNavigationContext);
 
   return (
-    <div
-      className={`w-full flex flex-col gap-3 overflow-auto pb-28`}
-      ref={messagesRef}
-      onScroll={handleScroll}
-    >
+    <ScrollToBottom className="w-full flex flex-col gap-3 overflow-auto pb-28">
       {!isHistory && (
         <FirstMessage
           repoName={repoName}
@@ -78,7 +72,6 @@ const Conversation = ({
                 '00000000-0000-0000-0000-000000000000'
           }
           repoRef={repoRef}
-          scrollToBottom={scrollToBottom}
           repoName={repoName}
           onMessageEdit={onMessageEdit}
           responseTimestamp={
@@ -91,7 +84,7 @@ const Conversation = ({
           }
         />
       ))}
-    </div>
+    </ScrollToBottom>
   );
 };
 
