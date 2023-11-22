@@ -20,6 +20,7 @@ import NLInput from './NLInput';
 
 type Props = {
   inputValue: string;
+  valueToEdit: Record<string, any> | null;
   setInputValue: Dispatch<SetStateAction<string>>;
   onMessageEditCancel: () => void;
   setHistoryOpen: (b: boolean) => void;
@@ -46,6 +47,7 @@ const ChatFooter = ({
   openHistoryItem,
   isHistoryOpen,
   setHistoryOpen,
+  valueToEdit,
 }: Props) => {
   const { t } = useTranslation();
   const { conversation, selectedLines, submittedQuery } = useContext(
@@ -121,6 +123,8 @@ const ChatFooter = ({
           onSubmit={onSubmit}
           onChange={handleInputChange}
           isStoppable={isLoading}
+          setInputValue={setInputValue}
+          valueToEdit={valueToEdit}
           loadingSteps={loadingSteps}
           generationInProgress={
             (conversation[conversation.length - 1] as ChatMessageServer)
@@ -131,6 +135,7 @@ const ChatFooter = ({
           setSelectedLines={setSelectedLines}
           queryIdToEdit={queryIdToEdit}
           onMessageEditCancel={onMessageEditCancel}
+          submittedQuery={submittedQuery}
         />
       </form>
       {/*{isAutocompleteActive && (*/}

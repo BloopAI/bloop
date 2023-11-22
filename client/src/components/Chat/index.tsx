@@ -16,10 +16,7 @@ import { mapLoadingSteps } from '../../mappers/conversation';
 import { findElementInCurrentTab } from '../../utils/domUtils';
 import { conversationsCache } from '../../services/cache';
 import useResizeableWidth from '../../hooks/useResizeableWidth';
-import {
-  concatenateParsedQuery,
-  splitUserInputAfterAutocomplete,
-} from '../../utils';
+import { splitUserInputAfterAutocomplete } from '../../utils';
 import DeprecatedClientModal from './ChatFooter/DeprecatedClientModal';
 import ChatHeader from './ChatHeader';
 import ChatBody from './ChatBody';
@@ -53,6 +50,9 @@ const Chat = () => {
   const [showPopup, setShowPopup] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [queryIdToEdit, setQueryIdToEdit] = useState('');
+  const [valueToEdit, setValueToEdit] = useState<Record<string, any> | null>(
+    null,
+  );
   const [hideMessagesFrom, setHideMessagesFrom] = useState<null | number>(null);
   const [openHistoryItem, setOpenHistoryItem] =
     useState<OpenChatHistoryItem | null>(null);
@@ -360,9 +360,24 @@ const Chat = () => {
       }
       setHideMessagesFrom(i);
       const mes = conversation[i] as ChatMessageUser;
-      setInputValue(
-        mes.parsedQuery ? concatenateParsedQuery(mes.parsedQuery) : mes.text!,
-      );
+      setValueToEdit({
+        type: 'paragraph',
+        content: mes.parsedQuery
+          ? mes.parsedQuery.map((pq) =>
+              pq.type === 'text'
+                ? { type: 'text', text: pq.text }
+                : {
+                    type: 'mention',
+                    attrs: {
+                      id: pq.text,
+                      display: pq.text,
+                      type: pq.type,
+                      isFirst: false,
+                    },
+                  },
+            )
+          : { type: 'text', text: mes.text! },
+      });
     },
     [isLoading, conversation],
   );
@@ -370,6 +385,7 @@ const Chat = () => {
   const onMessageEditCancel = useCallback(() => {
     setQueryIdToEdit('');
     setInputValue('');
+    setValueToEdit(null);
     setHideMessagesFrom(null);
   }, []);
 
@@ -411,6 +427,7 @@ const Chat = () => {
         onMessageEditCancel={onMessageEditCancel}
         hideMessagesFrom={hideMessagesFrom}
         setInputValue={setInputValue}
+        valueToEdit={valueToEdit}
         inputValue={inputValue}
         stopGenerating={stopGenerating}
         openHistoryItem={openHistoryItem}

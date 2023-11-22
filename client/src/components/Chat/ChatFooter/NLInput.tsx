@@ -1,6 +1,8 @@
 import React, {
+  Dispatch,
   memo,
   ReactNode,
+  SetStateAction,
   useCallback,
   useContext,
   useEffect,
@@ -32,25 +34,32 @@ import Button from '../../Button';
 import { getAutocomplete } from '../../../services/api';
 import { FileResItem, LangItem } from '../../../types/api';
 import FileIcon from '../../FileIcon';
-import { getFileExtensionForLang, splitPath } from '../../../utils';
+import {
+  getFileExtensionForLang,
+  InputEditorContent,
+  splitPath,
+} from '../../../utils';
 import InputLoader from './InputLoader';
 import InputCore from './Input/InputCore';
 
 type Props = {
   id?: string;
   value?: string;
+  valueToEdit?: Record<string, any> | null;
   generationInProgress?: boolean;
   isStoppable?: boolean;
   showTooltip?: boolean;
   tooltipText?: string;
   onStop?: () => void;
   onChange?: OnChangeHandlerFunc;
+  setInputValue: Dispatch<SetStateAction<string>>;
   onSubmit?: () => void;
   loadingSteps?: ChatLoadingStep[];
   selectedLines?: [number, number] | null;
   setSelectedLines?: (l: [number, number] | null) => void;
   queryIdToEdit?: string;
   onMessageEditCancel?: () => void;
+  submittedQuery: string;
 };
 
 type SuggestionType = {
@@ -90,7 +99,8 @@ const inputStyle = {
 const NLInput = ({
   id,
   value,
-  onChange,
+  valueToEdit,
+  setInputValue,
   generationInProgress,
   isStoppable,
   onStop,
@@ -100,6 +110,7 @@ const NLInput = ({
   setSelectedLines,
   queryIdToEdit,
   onMessageEditCancel,
+  submittedQuery,
 }: Props) => {
   const { t } = useTranslation();
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -272,6 +283,17 @@ const NLInput = ({
     [],
   );
 
+  const onChangeInput = useCallback((inputState: InputEditorContent[]) => {
+    console.log('inputState', inputState);
+    const newValue = inputState
+      .map((s) =>
+        s.type === 'mention' ? `${s.attrs.type}:${s.attrs.id}` : s.text,
+      )
+      .join('');
+    console.log('newValue', newValue);
+    setInputValue(newValue);
+  }, []);
+
   return (
     <div
       className={`w-full rounded-lg border border-chat-bg-border focus-within:border-chat-bg-border-hover px-4 ${
@@ -297,7 +319,13 @@ const NLInput = ({
             <Sparkles />
           )}
         </div>
-        <InputCore getDataLang={getDataLang} />
+        {!(isStoppable && generationInProgress) && (
+          <InputCore
+            getDataLang={getDataLang}
+            initialValue={valueToEdit}
+            onChange={onChangeInput}
+          />
+        )}
         {/*<MentionsInput*/}
         {/*  value={value}*/}
         {/*  id={id}*/}
