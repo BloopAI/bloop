@@ -204,7 +204,6 @@ export function getMentionsPlugin(opts: Partial<Options>) {
     // highlight first element by default - like Facebook.
     addClassAtIndex(state.index, opts.activeClass);
 
-    // get current @mention span left and top.
     // TODO: knock off domAtPos usage. It's not documented and is not officially a public API.
     // It's used currently, only to optimize the the query for textDOM
     const node = view.domAtPos(view.state.selection.$from.pos);
@@ -213,17 +212,15 @@ export function getMentionsPlugin(opts: Partial<Options>) {
       '.' + opts.suggestionTextClass,
     );
 
-    // TODO: should add null check case for textDOM
     const offset = textDOM?.getBoundingClientRect();
 
-    // TODO: think about outsourcing this positioning logic as options
     document.body.appendChild(el);
     el.classList.add('suggestion-item-container');
     el.style.position = 'fixed';
     el.style.left = offset?.left + 'px';
 
-    const top = (textDOM as HTMLElement)?.offsetHeight + (offset?.top || 0);
-    el.style.top = top + 'px';
+    const bottom = window.innerHeight - (offset?.top || 0);
+    el.style.bottom = bottom + 'px';
     el.style.display = 'block';
     el.style.zIndex = '999999';
   };
@@ -270,7 +267,7 @@ export function getMentionsPlugin(opts: Partial<Options>) {
     let attrs;
     if (state.type === 'mention') {
       attrs = {
-        tag: item.tag,
+        ...item,
       };
     } else {
       attrs = {

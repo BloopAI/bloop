@@ -177,7 +177,7 @@ const NLInput = ({
   const getDataLang = useCallback(
     async (
       search: string,
-      callback: (a: { id: string; display: string }[]) => void,
+      // callback: (a: { id: string; display: string }[]) => void,
     ) => {
       const respLang = await getAutocomplete(
         `lang:${search} repo:${tab.name}&content=false`,
@@ -189,7 +189,7 @@ const NLInput = ({
       langResults.forEach((fr, i) => {
         results.push({ id: fr, display: fr, type: 'lang', isFirst: i === 0 });
       });
-      callback(results);
+      return results;
     },
     [tab.name],
   );
@@ -297,7 +297,7 @@ const NLInput = ({
             <Sparkles />
           )}
         </div>
-        <InputCore />
+        <InputCore getDataLang={getDataLang} />
         {/*<MentionsInput*/}
         {/*  value={value}*/}
         {/*  id={id}*/}

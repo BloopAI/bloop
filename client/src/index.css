@@ -1507,6 +1507,18 @@ h5, .h5 {
   padding-left: 32px;
 }
 
+/* prose mirror editor start */
 .ProseMirror:focus {
   outline: none;
 }
+
+img.ProseMirror-separator {
+  display: inline !important;
+  border: none !important;
+  margin: 0 !important;
+}
+
+.suggestion-item.suggestion-item-active {
+  @apply bg-bg-base-hover
+}
+/* prose mirror editor end */

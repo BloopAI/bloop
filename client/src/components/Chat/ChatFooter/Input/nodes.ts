@@ -1,5 +1,6 @@
 import * as icons from 'file-icons-js';
 import { type AttributeSpec, type NodeSpec } from 'prosemirror-model';
+import { getFileExtensionForLang } from '../../../../utils';
 
 export const mentionNode: NodeSpec = {
   group: 'inline',
@@ -7,7 +8,10 @@ export const mentionNode: NodeSpec = {
   atom: true,
 
   attrs: {
-    tag: '' as AttributeSpec,
+    id: '' as AttributeSpec,
+    display: '' as AttributeSpec,
+    type: 'lang' as AttributeSpec,
+    isFirst: '' as AttributeSpec,
   },
 
   selectable: false,
@@ -17,24 +21,43 @@ export const mentionNode: NodeSpec = {
     return [
       'span',
       {
-        'data-mention': node.attrs.tag,
+        'data-type': node.attrs.type,
+        'data-id': node.attrs.id,
+        'data-first': node.attrs.isFirst,
+        'data-display': node.attrs.display,
         class:
-          'prosemirror-tag-node file-icon inline-flex items-center flex-shrink-0 align-middle ' +
-          icons.getClassWithColor(node.attrs.tag),
+          'prosemirror-tag-node inline-flex gap-1.5 items-center align-middle',
       },
-      node.attrs.tag,
+      [
+        'span',
+        {
+          class: `text-left w-4 h-4 file-icon flex-shrink-0 inline-flex items-center ${icons.getClassWithColor(
+            (node.attrs.type === 'lang'
+              ? getFileExtensionForLang(node.attrs.display, true)
+              : node.attrs.display) || '.txt',
+          )}`,
+        },
+        '',
+      ],
+      node.attrs.display,
     ];
   },
 
   parseDOM: [
     {
       // match tag with following CSS Selector
-      tag: 'span[data-mention]',
+      tag: 'span[data-type][data-id][data-first][data-display]',
 
       getAttrs: (dom) => {
-        const tag = (dom as HTMLElement).getAttribute('data-mention');
+        const id = (dom as HTMLElement).getAttribute('data-id');
+        const type = (dom as HTMLElement).getAttribute('data-type');
+        const isFirst = (dom as HTMLElement).getAttribute('data-first');
+        const display = (dom as HTMLElement).getAttribute('data-display');
         return {
-          tag: tag,
+          id,
+          type,
+          isFirst,
+          display,
         };
       },
     },
