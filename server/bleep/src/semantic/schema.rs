@@ -3,11 +3,11 @@
 //!
 use qdrant_client::{
     prelude::QdrantClient,
+    qdrant::payload_index_params::IndexParams,
     qdrant::{
-        vectors_config, CollectionOperationResponse, CreateCollection, Distance, VectorParams,
-        VectorsConfig, FieldType, TextIndexParams, PointsOperationResponse, PayloadIndexParams, 
+        vectors_config, CollectionOperationResponse, CreateCollection, Distance, FieldType,
+        PayloadIndexParams, PointsOperationResponse, TextIndexParams, VectorParams, VectorsConfig,
     },
-    qdrant::payload_index_params::IndexParams
 };
 
 pub(super) const EMBEDDING_DIM: usize = 384;
@@ -74,20 +74,24 @@ pub(super) async fn create_collection(
         .await
 }
 
-
 pub(super) async fn create_lexical_index(
     name: &str,
     qdrant: &QdrantClient,
 ) -> anyhow::Result<PointsOperationResponse> {
-    qdrant.create_field_index(name.to_string(),
-     "text", 
-     FieldType::Text,
-     Some(&PayloadIndexParams{index_params: 
-        Some(IndexParams::TextIndexParams(TextIndexParams{
-            tokenizer: 0,
-            lowercase: Some(true),
-            min_token_len: Some(2),
-            max_token_len: Some(20)}))}),
-    None).await
-        
+    qdrant
+        .create_field_index(
+            name.to_string(),
+            "text",
+            FieldType::Text,
+            Some(&PayloadIndexParams {
+                index_params: Some(IndexParams::TextIndexParams(TextIndexParams {
+                    tokenizer: 0,
+                    lowercase: Some(true),
+                    min_token_len: Some(2),
+                    max_token_len: Some(20),
+                })),
+            }),
+            None,
+        )
+        .await
 }

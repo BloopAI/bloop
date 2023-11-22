@@ -1,6 +1,9 @@
 use std::{borrow::Cow, collections::HashMap, env, path::Path, sync::Arc};
 
-use crate::{query::{parser::SemanticQuery, ranking}, Configuration};
+use crate::{
+    query::{parser::SemanticQuery, ranking},
+    Configuration,
+};
 
 use anyhow::bail;
 use qdrant_client::{
@@ -29,7 +32,6 @@ use schema::{create_collection, EMBEDDING_DIM};
 pub use schema::{Embedding, Payload};
 
 use itertools::Itertools;
-
 
 #[derive(Error, Debug)]
 pub enum SemanticError {
@@ -316,29 +318,29 @@ impl Semantic {
         threshold: f32,
     ) -> anyhow::Result<Vec<ScoredPoint>> {
         let response = self
-        .qdrant
-        .search_points(&SearchPoints {
-            limit,
-            vector,
-            collection_name: self.config.collection_name.to_string(),
-            offset: Some(offset),
-            score_threshold: Some(threshold),
-            with_payload: Some(WithPayloadSelector {
-                selector_options: Some(with_payload_selector::SelectorOptions::Enable(true)),
-            }),
-            filter: Some(Filter {
-                should: build_conditions_lexical(parsed_query),
-                must: build_conditions(parsed_query),
+            .qdrant
+            .search_points(&SearchPoints {
+                limit,
+                vector,
+                collection_name: self.config.collection_name.to_string(),
+                offset: Some(offset),
+                score_threshold: Some(threshold),
+                with_payload: Some(WithPayloadSelector {
+                    selector_options: Some(with_payload_selector::SelectorOptions::Enable(true)),
+                }),
+                filter: Some(Filter {
+                    should: build_conditions_lexical(parsed_query),
+                    must: build_conditions(parsed_query),
+                    ..Default::default()
+                }),
+                with_vectors: Some(WithVectorsSelector {
+                    selector_options: Some(with_vectors_selector::SelectorOptions::Enable(true)),
+                }),
                 ..Default::default()
-            }),
-            with_vectors: Some(WithVectorsSelector {
-                selector_options: Some(with_vectors_selector::SelectorOptions::Enable(true)),
-            }),
-            ..Default::default()
-        })
-        .await?;
+            })
+            .await?;
 
-    Ok(response.result)
+        Ok(response.result)
     }
 
     pub async fn search_with<'a>(
@@ -431,41 +433,62 @@ impl Semantic {
         Ok(responses.into_iter().flat_map(|r| r.result).collect())
     }
 
-    fn rank_lexical(payloads: Vec<Payload>, query: &str) -> Vec<Payload>{
+    fn rank_lexical(payloads: Vec<Payload>, query: &str) -> Vec<Payload> {
         let keywords: Vec<&str> = query.split_whitespace().collect();
-        let counts: Vec<(Vec<usize>, Payload)> =  payloads.iter().map(|p| {
-            (keywords.iter().map(|&k| p.text.matches(k).count()).collect::<Vec<usize>>(), p.clone())
-        }).collect();
-        let mut scores: Vec<(f32, Payload)> = counts.iter().map(
-            |(count, payload)| {
-                let score: f32 = (count.iter().sum::<usize>() + 10* count.iter().filter(|&&c| c != 0).count()) as f32;
+        let counts: Vec<(Vec<usize>, Payload)> = payloads
+            .iter()
+            .map(|p| {
+                (
+                    keywords
+                        .iter()
+                        .map(|&k| p.text.matches(k).count())
+                        .collect::<Vec<usize>>(),
+                    p.clone(),
+                )
+            })
+            .collect();
+        let mut scores: Vec<(f32, Payload)> = counts
+            .iter()
+            .map(|(count, payload)| {
+                let score: f32 = (count.iter().sum::<usize>()
+                    + 10 * count.iter().filter(|&&c| c != 0).count())
+                    as f32;
                 (score, payload.clone())
-            }).collect();
+            })
+            .collect();
         scores.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
         scores.into_iter().map(|(_, payload)| payload).collect()
     }
 
     fn merge_rrf(payloads_lexical: Vec<Payload>, payloads_semantic: Vec<Payload>) -> Vec<Payload> {
         let k = 60;
-        let lexical_scores: Vec<(f32, Payload)> = payloads_lexical.iter().enumerate().map(
-            |(rank, payload)|{
-                (1.0/((rank+1 + k) as f32) ,payload.clone())
-            }).collect();
-        let payload_scores: Vec<(f32, Payload)> = payloads_semantic.iter().enumerate().map(
-            |(rank, payload)|{
-                (1.0/((rank+1 + k) as f32) ,payload.clone())
-            }).collect();
+        let lexical_scores: Vec<(f32, Payload)> = payloads_lexical
+            .iter()
+            .enumerate()
+            .map(|(rank, payload)| (1.0 / ((rank + 1 + k) as f32), payload.clone()))
+            .collect();
+        let payload_scores: Vec<(f32, Payload)> = payloads_semantic
+            .iter()
+            .enumerate()
+            .map(|(rank, payload)| (1.0 / ((rank + 1 + k) as f32), payload.clone()))
+            .collect();
         let mut concatenated: Vec<(f32, Payload)> = Vec::new();
         concatenated.extend(lexical_scores);
         concatenated.extend(payload_scores);
-        let mut merged: Vec<(f32, Payload)> = concatenated.iter().group_by(|(_, payload)| payload.id.clone())
-        .into_iter().map((|(id, group)|{
-            let group_vec: Vec<_> = group.collect();
+        let mut merged: Vec<(f32, Payload)> = concatenated
+            .iter()
+            .group_by(|(_, payload)| payload.id.clone())
+            .into_iter()
+            .map(
+                (|(id, group)| {
+                    let group_vec: Vec<_> = group.collect();
 
-            let sum: f32 = group_vec.iter().map(|(score, _payload)| score).sum();
-            let payload = group_vec.into_iter().map(|(score, payload)| payload).next();
-            (sum, payload.cloned().unwrap())
-        })).collect();
+                    let sum: f32 = group_vec.iter().map(|(score, _payload)| score).sum();
+                    let payload = group_vec.into_iter().map(|(score, payload)| payload).next();
+                    (sum, payload.cloned().unwrap())
+                }),
+            )
+            .collect();
         merged.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
         merged.into_iter().map(|(_, payload)| payload).collect()
     }
@@ -502,19 +525,13 @@ impl Semantic {
             })?;
         let dedup_results = deduplicate_snippets(results, vector.clone(), limit);
         let results_lexical = self
-        .search_lexical(
-            parsed_query,
-            vector.clone(),
-            limit , 
-            offset,
-            threshold,
-        )
-        .await
-        .map(|raw| {
-            raw.into_iter()
-                .map(Payload::from_qdrant)
-                .collect::<Vec<_>>()
-        })?;
+            .search_lexical(parsed_query, vector.clone(), limit, offset, threshold)
+            .await
+            .map(|raw| {
+                raw.into_iter()
+                    .map(Payload::from_qdrant)
+                    .collect::<Vec<_>>()
+            })?;
         let results_lexical = Self::rank_lexical(results_lexical, &query);
         let merged_results = Self::merge_rrf(results_lexical, dedup_results);
         Ok(merged_results)
@@ -681,14 +698,25 @@ fn make_kv_text_filter(key: &str, value: &str) -> FieldCondition {
     }
 }
 
-fn build_conditions_lexical(parsed_query: &SemanticQuery<'_>) -> Vec<qdrant_client::qdrant::Condition> {
+fn build_conditions_lexical(
+    parsed_query: &SemanticQuery<'_>,
+) -> Vec<qdrant_client::qdrant::Condition> {
     let Some(query) = parsed_query.target() else {
         panic!();
     };
-    let conditions = query.split(" ").map(|s| 
-        make_kv_text_filter("text", s.as_ref()))
-        .map(Into::into).collect::<Vec<FieldCondition>>();
-    conditions.iter().map(|c| qdrant_client::qdrant::Condition{condition_one_of: Some(qdrant_client::qdrant::condition::ConditionOneOf::Field(c.clone()))}).collect()
+    let conditions = query
+        .split(" ")
+        .map(|s| make_kv_text_filter("text", s.as_ref()))
+        .map(Into::into)
+        .collect::<Vec<FieldCondition>>();
+    conditions
+        .iter()
+        .map(|c| qdrant_client::qdrant::Condition {
+            condition_one_of: Some(qdrant_client::qdrant::condition::ConditionOneOf::Field(
+                c.clone(),
+            )),
+        })
+        .collect()
 }
 
 fn build_conditions(query: &SemanticQuery<'_>) -> Vec<qdrant_client::qdrant::Condition> {
