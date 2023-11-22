@@ -332,6 +332,12 @@ impl Semantic {
         offset: u64,
         threshold: f32,
     ) -> anyhow::Result<Vec<ScoredPoint>> {
+        let filter = Some(Filter {
+            should: build_conditions_lexical(parsed_query),
+            must: build_conditions(parsed_query),
+            ..Default::default()
+        });
+        //dbg!{"{}", filter.clone()};
         let response = self
             .qdrant
             .search_points(&SearchPoints {
@@ -343,11 +349,7 @@ impl Semantic {
                 with_payload: Some(WithPayloadSelector {
                     selector_options: Some(with_payload_selector::SelectorOptions::Enable(true)),
                 }),
-                filter: Some(Filter {
-                    should: build_conditions_lexical(parsed_query),
-                    must: build_conditions(parsed_query),
-                    ..Default::default()
-                }),
+                filter: filter,
                 with_vectors: Some(WithVectorsSelector {
                     selector_options: Some(with_vectors_selector::SelectorOptions::Enable(true)),
                 }),
@@ -490,18 +492,23 @@ impl Semantic {
         let mut concatenated: Vec<(f32, Payload)> = Vec::new();
         concatenated.extend(lexical_scores);
         concatenated.extend(payload_scores);
+        // group by requires pre-sorting
+        concatenated.sort_by(|a, b| b.1.id.partial_cmp(&a.1.id).unwrap_or(std::cmp::Ordering::Equal));
         let mut merged: Vec<(f32, Payload)> = concatenated
             .iter()
-            .group_by(|(_, payload)| payload.id.clone())
+            .group_by(|(_, payload)| {
+                let id = payload.id.clone();
+                id
+            })
             .into_iter()
             .map(
-                (|(id, group)| {
+                |(id, group)| {
                     let group_vec: Vec<_> = group.collect();
 
                     let sum: f32 = group_vec.iter().map(|(score, _payload)| score).sum();
                     let payload = group_vec.into_iter().map(|(score, payload)| payload).next();
                     (sum, payload.cloned().unwrap())
-                }),
+                },
             )
             .collect();
         merged.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
@@ -540,7 +547,7 @@ impl Semantic {
             })?;
         let dedup_results = deduplicate_snippets(results, vector.clone(), limit);
         let results_lexical = self
-            .search_lexical(parsed_query, vector.clone(), limit, offset, threshold)
+            .search_lexical(parsed_query, vector.clone(), limit, offset, 0.0)
             .await
             .map(|raw| {
                 raw.into_iter()
@@ -548,7 +555,12 @@ impl Semantic {
                     .collect::<Vec<_>>()
             })?;
         let results_lexical = Self::rank_lexical(results_lexical, &query);
+        //dbg!("Lexical {}", results_lexical.clone().iter().map(|p| p.clone().id.unwrap()).collect::<Vec<String>>());
+        //dbg!("Semantic {}", dedup_results.clone().iter().map(|p| p.clone().id.unwrap()).collect::<Vec<String>>());
+
         let merged_results = Self::merge_rrf(results_lexical, dedup_results);
+        //dbg!("Merged {}", merged_results.clone().iter().map(|p| p.clone().id.unwrap()).collect::<Vec<String>>());
+
         Ok(merged_results
             .iter()
             .take(limit.try_into().unwrap())
@@ -725,7 +737,7 @@ fn build_conditions_lexical(
     };
     let conditions = query
         .split(" ")
-        .map(|s| make_kv_text_filter("text", s.as_ref()))
+        .map(|s| make_kv_text_filter("snippet", s.as_ref()))
         .map(Into::into)
         .collect::<Vec<FieldCondition>>();
     conditions

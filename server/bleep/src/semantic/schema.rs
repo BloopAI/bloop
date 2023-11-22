@@ -81,11 +81,11 @@ pub(super) async fn create_lexical_index(
     qdrant
         .create_field_index(
             name.to_string(),
-            "text",
+            "snippet",
             FieldType::Text,
             Some(&PayloadIndexParams {
                 index_params: Some(IndexParams::TextIndexParams(TextIndexParams {
-                    tokenizer: 0,
+                    tokenizer: 3,
                     lowercase: Some(true),
                     min_token_len: Some(2),
                     max_token_len: Some(20),
