@@ -28,6 +28,9 @@ use embedder::LocalEmbedder;
 use schema::{create_collection, EMBEDDING_DIM};
 pub use schema::{Embedding, Payload};
 
+use itertools::Itertools;
+
+
 #[derive(Error, Debug)]
 pub enum SemanticError {
     /// Represents failure to initialize Qdrant client
@@ -430,8 +433,8 @@ impl Semantic {
 
     fn rank_lexical(payloads: Vec<Payload>, query: &str) -> Vec<Payload>{
         let keywords: Vec<&str> = query.split_whitespace().collect();
-        let counts: Vec<(Vec<usize>, Payload)> =  payloads.iter().map(|&p| {
-            (keywords.iter().map(|&k| p.text.matches(k).count()).collect::<Vec<usize>>(), p)
+        let counts: Vec<(Vec<usize>, Payload)> =  payloads.iter().map(|p| {
+            (keywords.iter().map(|&k| p.text.matches(k).count()).collect::<Vec<usize>>(), p.clone())
         }).collect();
         let mut scores: Vec<(f32, Payload)> = counts.iter().map(
             |(count, payload)| {
@@ -440,6 +443,31 @@ impl Semantic {
             }).collect();
         scores.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
         scores.into_iter().map(|(_, payload)| payload).collect()
+    }
+
+    fn merge_rrf(payloads_lexical: Vec<Payload>, payloads_semantic: Vec<Payload>) -> Vec<Payload> {
+        let k = 60;
+        let lexical_scores: Vec<(f32, Payload)> = payloads_lexical.iter().enumerate().map(
+            |(rank, payload)|{
+                (1.0/((rank+1 + k) as f32) ,payload.clone())
+            }).collect();
+        let payload_scores: Vec<(f32, Payload)> = payloads_semantic.iter().enumerate().map(
+            |(rank, payload)|{
+                (1.0/((rank+1 + k) as f32) ,payload.clone())
+            }).collect();
+        let mut concatenated: Vec<(f32, Payload)> = Vec::new();
+        concatenated.extend(lexical_scores);
+        concatenated.extend(payload_scores);
+        let mut merged: Vec<(f32, Payload)> = concatenated.iter().group_by(|(_, payload)| payload.id.clone())
+        .into_iter().map((|(id, group)|{
+            let group_vec: Vec<_> = group.collect();
+
+            let sum: f32 = group_vec.iter().map(|(score, _payload)| score).sum();
+            let payload = group_vec.into_iter().map(|(score, payload)| payload).next();
+            (sum, payload.cloned().unwrap())
+        })).collect();
+        merged.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
+        merged.into_iter().map(|(_, payload)| payload).collect()
     }
 
     pub async fn search<'a>(
@@ -477,7 +505,7 @@ impl Semantic {
         .search_lexical(
             parsed_query,
             vector.clone(),
-            if retrieve_more { limit * 2 } else { limit }, // Retrieve double `limit` and deduplicate
+            limit , 
             offset,
             threshold,
         )
@@ -488,7 +516,8 @@ impl Semantic {
                 .collect::<Vec<_>>()
         })?;
         let results_lexical = Self::rank_lexical(results_lexical, &query);
-        Ok(deduplicate_snippets(results, vector, limit))
+        let merged_results = Self::merge_rrf(results_lexical, dedup_results);
+        Ok(merged_results)
     }
 
     pub async fn batch_search<'a>(

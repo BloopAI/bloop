@@ -114,6 +114,8 @@ gix = { git = "https://github.com/BloopAI/gitoxide", version="0.55.2", features 
 qdrant-client = { version = "1.5.0", default-features = false }
 tiktoken-rs = "0.4.5"
 tokenizers = { version = "0.14.0", default-features = false, features = ["progressbar", "cli", "onig", "esaxx_fast"] }
+itertools = "0.10.0"
+
 
 # answer parsing
 # We use the git version here, so that we can pull in recent changes that make footnotes work. The

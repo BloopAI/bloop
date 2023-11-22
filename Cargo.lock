@@ -510,6 +510,7 @@ dependencies = [
  "histogram",
  "hyperpolyglot",
  "ignore",
+ "itertools 0.10.5",
  "jsonwebtoken",
  "jwt-authorizer",
  "lazy-regex",
