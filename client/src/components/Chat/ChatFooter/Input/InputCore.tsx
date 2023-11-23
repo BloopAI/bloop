@@ -60,6 +60,7 @@ const InputCore = ({
   const mentionPlugin = useMemo(
     () =>
       getMentionsPlugin({
+        delay: 10,
         getSuggestions: async (
           type: string,
           text: string,

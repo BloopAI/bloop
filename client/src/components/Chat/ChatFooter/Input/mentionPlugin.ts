@@ -138,11 +138,6 @@ export function getMentionsPlugin(opts: Partial<Options>) {
   // dropdown element
   const el = document.createElement('div');
 
-  // current Idx
-  let index = 0;
-
-  // ----- methods operating on above properties -----
-
   const showList = function (
     view: EditorView,
     state: State,
@@ -296,28 +291,20 @@ export function getMentionsPlugin(opts: Partial<Options>) {
       handleKeyDown(view, e) {
         const state = this.getState(view.state);
 
-        // don't handle if no suggestions or not in active mode
         if (!state?.active && !state?.suggestions.length) {
           return false;
         }
 
-        // if any of the below keys, override with custom handlers.
-        let down, up, enter, esc;
-        enter = e.keyCode === 13;
-        down = e.keyCode === 40;
-        up = e.keyCode === 38;
-        esc = e.keyCode === 27;
-
-        if (down) {
+        if (e.key === 'ArrowDown') {
           goNext(view, state, options);
           return true;
-        } else if (up) {
+        } else if (e.key === 'ArrowUp') {
           goPrev(view, state, options);
           return true;
-        } else if (enter) {
+        } else if (e.key === 'Enter') {
           select(view, state, options);
           return true;
-        } else if (esc) {
+        } else if (e.key === 'Escape') {
           clearTimeout(showListTimeoutId);
           hideList();
           // @ts-ignore
