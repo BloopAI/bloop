@@ -157,10 +157,7 @@ const NLInput = ({
   }, [envConfig?.bloop_user_profile?.prompt_guide]);
 
   const getDataPath = useCallback(
-    async (
-      search: string,
-      callback: (a: { id: string; display: string }[]) => void,
-    ) => {
+    async (search: string) => {
       const respPath = await getAutocomplete(
         `path:${search} repo:${tab.name}&content=false`,
       );
@@ -180,7 +177,7 @@ const NLInput = ({
       dirResults.forEach((fr, i) => {
         results.push({ id: fr, display: fr, type: 'dir', isFirst: i === 0 });
       });
-      callback(results);
+      return results;
     },
     [tab.repoName],
   );
@@ -320,6 +317,7 @@ const NLInput = ({
         {!isStoppable && !generationInProgress ? (
           <InputCore
             getDataLang={getDataLang}
+            getDataPath={getDataPath}
             initialValue={valueToEdit}
             onChange={onChangeInput}
             onSubmit={onSubmit}

@@ -183,7 +183,16 @@ export function getMentionsPlugin(opts: Partial<Options>) {
     document.body.appendChild(el);
     el.classList.add('suggestion-item-container');
     el.style.position = 'fixed';
-    el.style.left = offset?.left + 'px';
+    el.style.left = -9999 + 'px';
+    const offsetLeft = offset?.left || 0;
+    setTimeout(() => {
+      el.style.left =
+        offsetLeft + el.clientWidth < window.innerWidth
+          ? offsetLeft + 'px'
+          : offsetLeft +
+            (window.innerWidth - (offsetLeft + el.clientWidth) - 10) +
+            'px';
+    }, 10);
 
     const bottom = window.innerHeight - (offset?.top || 0);
     el.style.bottom = bottom + 'px';
@@ -205,6 +214,7 @@ export function getMentionsPlugin(opts: Partial<Options>) {
     const itemList = el.querySelector('.suggestion-item-list')?.childNodes;
     const prevItem = itemList?.[index];
     (prevItem as HTMLElement)?.classList.add(className);
+    return prevItem as HTMLElement | undefined;
   };
 
   const setIndex = function (index: number, state: State, opts: Options) {
@@ -217,7 +227,8 @@ export function getMentionsPlugin(opts: Partial<Options>) {
     removeClassAtIndex(state.index, opts.activeClass);
     state.index++;
     state.index = state.index === state.suggestions.length ? 0 : state.index;
-    addClassAtIndex(state.index, opts.activeClass);
+    const el = addClassAtIndex(state.index, opts.activeClass);
+    el?.scrollIntoView({ block: 'nearest' });
   };
 
   const goPrev = function (view: EditorView, state: State, opts: Options) {
@@ -225,7 +236,8 @@ export function getMentionsPlugin(opts: Partial<Options>) {
     state.index--;
     state.index =
       state.index === -1 ? state.suggestions.length - 1 : state.index;
-    addClassAtIndex(state.index, opts.activeClass);
+    const el = addClassAtIndex(state.index, opts.activeClass);
+    el?.scrollIntoView({ block: 'nearest' });
   };
 
   const select = function (view: EditorView, state: State, opts: Options) {

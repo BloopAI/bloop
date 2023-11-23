@@ -1525,7 +1525,7 @@ img.ProseMirror-separator {
   margin: 0 !important;
 }
 
-.suggestion-item.suggestion-item-active {
-  @apply bg-bg-base-hover
+.suggestion-item-active .suggestion-item {
+  @apply bg-chat-bg-base-hover
 }
 /* prose mirror editor end */
