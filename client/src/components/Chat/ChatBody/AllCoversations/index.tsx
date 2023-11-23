@@ -93,7 +93,7 @@ const AllConversations = ({
   return (
     <div className={`flex-1 flex flex-col overflow-auto`}>
       {!openItem && (
-        <div className="flex flex-col gap-1 overflow-auto flex-1 pb-12">
+        <div className="flex flex-col gap-1 overflow-auto flex-1 pb-28">
           {conversations.map((c) => (
             <ConversationListItem
               key={c.thread_id}
@@ -119,7 +119,7 @@ const AllConversations = ({
             isHistory
             repoName={repoName}
             onMessageEdit={() => {}}
-            setInputValue={() => {}}
+            setInputValueImperatively={() => {}}
           />
         </div>
       )}

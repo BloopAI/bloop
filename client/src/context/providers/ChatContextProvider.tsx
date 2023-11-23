@@ -1,6 +1,6 @@
 import React, { memo, PropsWithChildren, useMemo, useState } from 'react';
 import { ChatContext } from '../chatContext';
-import { ChatMessage } from '../../types/general';
+import { ChatMessage, ParsedQueryType } from '../../types/general';
 
 type Props = {
   initialSearchHistory?: string[];
@@ -11,7 +11,13 @@ export const ChatContextProvider = memo(
     const [conversation, setConversation] = useState<ChatMessage[]>([]);
     const [isChatOpen, setChatOpen] = useState(false);
     const [tooltipText, setTooltipText] = useState('');
-    const [submittedQuery, setSubmittedQuery] = useState('');
+    const [submittedQuery, setSubmittedQuery] = useState<{
+      parsed: ParsedQueryType[];
+      plain: string;
+    }>({
+      parsed: [],
+      plain: '',
+    });
     const [selectedLines, setSelectedLines] = useState<[number, number] | null>(
       null,
     );

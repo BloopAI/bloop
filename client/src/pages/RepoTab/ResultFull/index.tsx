@@ -29,7 +29,11 @@ import { Sparkles } from '../../../icons';
 import { ChatContext } from '../../../context/chatContext';
 import { UIContext } from '../../../context/uiContext';
 import AddStudioContext from '../../../components/AddStudioContext';
-import { RepoType, SyncStatus } from '../../../types/general';
+import {
+  ParsedQueryTypeEnum,
+  RepoType,
+  SyncStatus,
+} from '../../../types/general';
 import { RepositoriesContext } from '../../../context/repositoriesContext';
 import LiteLoaderContainer from '../../../components/Loaders/LiteLoader';
 
@@ -194,9 +198,11 @@ const ResultFull = ({
       setThreadId('');
       const endLine = result.code.split(/\n(?!$)/g).length - 1;
       setIsHistoryTab(false);
-      setSubmittedQuery(
-        `#explain_${result.relativePath}:0-${endLine}-${Date.now()}`,
-      );
+      const v = `#explain_${result.relativePath}:0-${endLine}-${Date.now()}`;
+      setSubmittedQuery({
+        plain: v,
+        parsed: [{ type: ParsedQueryTypeEnum.TEXT, text: v }],
+      });
       setChatOpen(true);
     },
     [result?.code, result?.relativePath],

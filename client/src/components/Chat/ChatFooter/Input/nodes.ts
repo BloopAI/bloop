@@ -34,7 +34,7 @@ export const mentionNode: NodeSpec = {
         'data-first': node.attrs.isFirst,
         'data-display': node.attrs.display,
         class:
-          'prosemirror-tag-node inline-flex gap-1.5 items-center align-bottom',
+          'prosemirror-tag-node inline-flex gap-1.5 items-center align-bottom bg-chat-bg-border-hover rounded px-1',
       },
       node.attrs.type === 'dir'
         ? folderIcon

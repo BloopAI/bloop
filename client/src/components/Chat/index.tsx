@@ -8,6 +8,8 @@ import {
   ChatMessageServer,
   ChatMessageUser,
   OpenChatHistoryItem,
+  ParsedQueryType,
+  ParsedQueryTypeEnum,
 } from '../../types/general';
 import { AppNavigationContext } from '../../context/appNavigationContext';
 import { ChatContext } from '../../context/chatContext';
@@ -16,7 +18,6 @@ import { mapLoadingSteps } from '../../mappers/conversation';
 import { findElementInCurrentTab } from '../../utils/domUtils';
 import { conversationsCache } from '../../services/cache';
 import useResizeableWidth from '../../hooks/useResizeableWidth';
-import { splitUserInputAfterAutocomplete } from '../../utils';
 import DeprecatedClientModal from './ChatFooter/DeprecatedClientModal';
 import ChatHeader from './ChatHeader';
 import ChatBody from './ChatBody';
@@ -48,11 +49,15 @@ const Chat = () => {
     useContext(AppNavigationContext);
   const [isLoading, setLoading] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
-  const [inputValue, setInputValue] = useState('');
+  const [inputValue, setInputValue] = useState<{
+    parsed: ParsedQueryType[];
+    plain: string;
+  }>({ plain: '', parsed: [] });
   const [queryIdToEdit, setQueryIdToEdit] = useState('');
-  const [valueToEdit, setValueToEdit] = useState<Record<string, any> | null>(
-    null,
-  );
+  const [inputImperativeValue, setInputImperativeValue] = useState<Record<
+    string,
+    any
+  > | null>(null);
   const [hideMessagesFrom, setHideMessagesFrom] = useState<null | number>(null);
   const [openHistoryItem, setOpenHistoryItem] =
     useState<OpenChatHistoryItem | null>(null);
@@ -61,6 +66,38 @@ const Chat = () => {
     'chat_width',
     30,
     55,
+  );
+
+  const setInputValueImperatively = useCallback(
+    (value: ParsedQueryType[] | string) => {
+      setInputImperativeValue({
+        type: 'paragraph',
+        content:
+          typeof value === 'string'
+            ? [
+                {
+                  type: 'text',
+                  text: value,
+                },
+              ]
+            : value
+                .filter((pq) => ['path', 'lang', 'text'].includes(pq.type))
+                .map((pq) =>
+                  pq.type === 'text'
+                    ? { type: 'text', text: pq.text }
+                    : {
+                        type: 'mention',
+                        attrs: {
+                          id: pq.text,
+                          display: pq.text,
+                          type: pq.type,
+                          isFirst: false,
+                        },
+                      },
+                ),
+      });
+    },
+    [],
   );
 
   const makeSearch = useCallback(
@@ -72,7 +109,8 @@ const Chat = () => {
         return;
       }
       prevEventSource?.close();
-      setInputValue('');
+      setInputValue({ plain: '', parsed: [] });
+      setInputImperativeValue(null);
       setLoading(true);
       setQueryIdToEdit('');
       setHideMessagesFrom(null);
@@ -117,9 +155,14 @@ const Chat = () => {
             responseTimestamp: new Date().toISOString(),
           };
           if (!options) {
-            setInputValue(prev[prev.length - 2]?.text || submittedQuery);
+            // setInputValue(prev[prev.length - 2]?.text || submittedQuery);
+            setInputValueImperatively(
+              (prev[prev.length - 2] as ChatMessageUser)?.parsedQuery ||
+                prev[prev.length - 2]?.text ||
+                submittedQuery.parsed,
+            );
           }
-          setSubmittedQuery('');
+          setSubmittedQuery({ plain: '', parsed: [] });
           return [...newConversation, lastMessage];
         });
       };
@@ -148,9 +191,14 @@ const Chat = () => {
                 responseTimestamp: new Date().toISOString(),
               };
               if (!options) {
-                setInputValue(prev[prev.length - 1]?.text || submittedQuery);
+                // setInputValue(prev[prev.length - 1]?.text || submittedQuery);
+                setInputValueImperatively(
+                  (prev[prev.length - 1] as ChatMessageUser)?.parsedQuery ||
+                    prev[prev.length - 2]?.text ||
+                    submittedQuery.parsed,
+                );
               }
-              setSubmittedQuery('');
+              setSubmittedQuery({ plain: '', parsed: [] });
               return [...newConversation, lastMessage];
             });
           }
@@ -246,12 +294,21 @@ const Chat = () => {
                       ),
               };
               if (!options) {
-                setInputValue(
-                  prev[prev.length - (lastMessageIsServer ? 2 : 1)]?.text ||
-                    submittedQuery,
+                // setInputValue(
+                //   prev[prev.length - (lastMessageIsServer ? 2 : 1)]?.text ||
+                //     submittedQuery,
+                // );
+                setInputValueImperatively(
+                  (
+                    prev[
+                      prev.length - (lastMessageIsServer ? 2 : 1)
+                    ] as ChatMessageUser
+                  )?.parsedQuery ||
+                    prev[prev.length - 2]?.text ||
+                    submittedQuery.parsed,
                 );
               }
-              setSubmittedQuery('');
+              setSubmittedQuery({ plain: '', parsed: [] });
               return [...newConversation, lastMessage];
             });
           }
@@ -276,13 +333,14 @@ const Chat = () => {
   );
 
   useEffect(() => {
-    if (!submittedQuery) {
+    if (!submittedQuery.plain) {
       return;
     }
-    let userQuery = submittedQuery;
+    let userQuery = submittedQuery.plain;
+    let userQueryParsed = submittedQuery.parsed;
     let options = undefined;
-    if (submittedQuery.startsWith('#explain_')) {
-      const [prefix, ending] = submittedQuery.split(':');
+    if (submittedQuery.plain.startsWith('#explain_')) {
+      const [prefix, ending] = submittedQuery.plain.split(':');
       const [lineStart, lineEnd] = ending.split('-');
       const filePath = prefix.slice(9);
       options = {
@@ -298,13 +356,14 @@ const Chat = () => {
           filePath,
         },
       );
+      userQueryParsed = [{ type: ParsedQueryTypeEnum.TEXT, text: userQuery }];
     }
     setConversation((prev) => [
       ...prev,
       {
         author: ChatMessageAuthor.User,
         text: userQuery,
-        parsedQuery: splitUserInputAfterAutocomplete(userQuery),
+        parsedQuery: userQueryParsed,
         isLoading: false,
       },
     ]);
@@ -336,7 +395,7 @@ const Chat = () => {
     setConversation([]);
     setLoading(false);
     setThreadId('');
-    setSubmittedQuery('');
+    setSubmittedQuery({ plain: '', parsed: [] });
     setSelectedLines(null);
     setIsHistoryTab(false);
     if (
@@ -356,32 +415,16 @@ const Chat = () => {
       }
       setHideMessagesFrom(i);
       const mes = conversation[i] as ChatMessageUser;
-      setValueToEdit({
-        type: 'paragraph',
-        content: mes.parsedQuery
-          ? mes.parsedQuery.map((pq) =>
-              pq.type === 'text'
-                ? { type: 'text', text: pq.text }
-                : {
-                    type: 'mention',
-                    attrs: {
-                      id: pq.text,
-                      display: pq.text,
-                      type: pq.type,
-                      isFirst: false,
-                    },
-                  },
-            )
-          : { type: 'text', text: mes.text! },
-      });
+      console.log(mes);
+      setInputValueImperatively(mes.parsedQuery || mes.text!);
     },
     [isLoading, conversation],
   );
 
   const onMessageEditCancel = useCallback(() => {
     setQueryIdToEdit('');
-    setInputValue('');
-    setValueToEdit(null);
+    setInputValue({ plain: '', parsed: [] });
+    setInputImperativeValue(null);
     setHideMessagesFrom(null);
   }, []);
 
@@ -415,7 +458,7 @@ const Chat = () => {
         queryIdToEdit={queryIdToEdit}
         openHistoryItem={openHistoryItem}
         setOpenHistoryItem={setOpenHistoryItem}
-        setInputValue={setInputValue}
+        setInputValueImperatively={setInputValueImperatively}
       />
       <ChatFooter
         isLoading={isLoading}
@@ -423,7 +466,7 @@ const Chat = () => {
         onMessageEditCancel={onMessageEditCancel}
         hideMessagesFrom={hideMessagesFrom}
         setInputValue={setInputValue}
-        valueToEdit={valueToEdit}
+        valueToEdit={inputImperativeValue}
         inputValue={inputValue}
         stopGenerating={stopGenerating}
         openHistoryItem={openHistoryItem}

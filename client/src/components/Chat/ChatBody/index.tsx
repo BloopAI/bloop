@@ -16,7 +16,7 @@ type Props = {
   hideMessagesFrom: null | number;
   openHistoryItem: OpenChatHistoryItem | null;
   setOpenHistoryItem: Dispatch<SetStateAction<OpenChatHistoryItem | null>>;
-  setInputValue: Dispatch<SetStateAction<string>>;
+  setInputValueImperatively: (s: string) => void;
 };
 
 const ChatBody = ({
@@ -29,7 +29,7 @@ const ChatBody = ({
   hideMessagesFrom,
   openHistoryItem,
   setOpenHistoryItem,
-  setInputValue,
+  setInputValueImperatively,
 }: Props) => {
   useTranslation();
   const { conversation, threadId } = useContext(ChatContext.Values);
@@ -54,7 +54,7 @@ const ChatBody = ({
           isLoading={isLoading}
           repoName={repoName}
           onMessageEdit={onMessageEdit}
-          setInputValue={setInputValue}
+          setInputValueImperatively={setInputValueImperatively}
         />
       )}
       {!!queryIdToEdit && (

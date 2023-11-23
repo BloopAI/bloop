@@ -14,6 +14,10 @@ import { schema as basicSchema } from 'prosemirror-schema-basic';
 import * as icons from 'file-icons-js';
 import { useTranslation } from 'react-i18next';
 import { getFileExtensionForLang, InputEditorContent } from '../../../../utils';
+import {
+  ParsedQueryType,
+  ParsedQueryTypeEnum,
+} from '../../../../types/general';
 import { getMentionsPlugin } from './mentionPlugin';
 import { addMentionNodes } from './utils';
 import { placeholderPlugin } from './placeholderPlugin';
@@ -40,7 +44,7 @@ type Props = {
   getDataPath: (search: string) => Promise<{ id: string; display: string }[]>;
   initialValue?: Record<string, any> | null;
   onChange: (contents: InputEditorContent[]) => void;
-  onSubmit?: (s: string) => void;
+  onSubmit?: (s: { parsed: ParsedQueryType[]; plain: string }) => void;
   placeholder: string;
 };
 
@@ -115,15 +119,25 @@ const InputCore = ({
           if (key && state[key]?.active) {
             return false;
           }
-          console.log('submit', state);
-          onSubmit?.(
-            state
-              .toJSON()
-              .doc.content[0]?.content.map((s: InputEditorContent) =>
+          const parts = state.toJSON().doc.content[0]?.content;
+          onSubmit?.({
+            parsed: parts.map((s: InputEditorContent) =>
+              s.type === 'mention'
+                ? {
+                    type:
+                      s.attrs.type === 'lang'
+                        ? ParsedQueryTypeEnum.LANG
+                        : ParsedQueryTypeEnum.PATH,
+                    text: s.attrs.id,
+                  }
+                : { type: ParsedQueryTypeEnum.TEXT, text: s.text },
+            ),
+            plain: parts
+              ?.map((s: InputEditorContent) =>
                 s.type === 'mention' ? `${s.attrs.type}:${s.attrs.id}` : s.text,
               )
               .join(''),
-          );
+          });
           return true;
         },
         'Ctrl-Enter': baseKeymap.Enter,
@@ -139,7 +153,9 @@ const InputCore = ({
   const [mount, setMount] = useState<HTMLDivElement | null>(null);
   const [state, setState] = useState(
     EditorState.create({
-      doc: initialValue ? schema.nodeFromJSON(initialValue) : undefined,
+      doc: initialValue
+        ? schema.topNodeType.create(null, [schema.nodeFromJSON(initialValue)])
+        : undefined,
       schema,
       plugins,
     }),
