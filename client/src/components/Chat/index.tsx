@@ -415,7 +415,6 @@ const Chat = () => {
       }
       setHideMessagesFrom(i);
       const mes = conversation[i] as ChatMessageUser;
-      console.log(mes);
       setInputValueImperatively(mes.parsedQuery || mes.text!);
     },
     [isLoading, conversation],
