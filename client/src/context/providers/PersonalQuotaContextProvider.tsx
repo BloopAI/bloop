@@ -21,10 +21,10 @@ export const PersonalQuotaContextProvider = memo(
     const [isSubscribed, setIsSubscribed] = useState(false);
     const [hasCheckedQuota, setHasCheckedQuota] = useState(false);
     const [resetAt, setResetAt] = useState(new Date().toISOString());
-    const { isSelfServe } = useContext(DeviceContext);
+    const { isSelfServe, envConfig } = useContext(DeviceContext);
 
     const refetchQuota = useCallback(async () => {
-      if (!isSelfServe) {
+      if (!isSelfServe && envConfig.user_login) {
         const resp = await getQuota();
         setIsSubscribed(resp.upgraded);
         setQuota((prev) => {
@@ -42,7 +42,7 @@ export const PersonalQuotaContextProvider = memo(
       } else {
         return Promise.resolve();
       }
-    }, [isSelfServe]);
+    }, [isSelfServe, envConfig.user_login]);
 
     useEffect(() => {
       const intervalId = polling(() => refetchQuota(), 10 * 60 * 1000);
