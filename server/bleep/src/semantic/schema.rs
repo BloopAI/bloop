@@ -85,7 +85,7 @@ pub(super) async fn create_lexical_index(
             FieldType::Text,
             Some(&PayloadIndexParams {
                 index_params: Some(IndexParams::TextIndexParams(TextIndexParams {
-                    tokenizer: 3,
+                    tokenizer: 5,
                     lowercase: Some(true),
                     min_token_len: Some(2),
                     max_token_len: Some(20),
