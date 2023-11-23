@@ -11,7 +11,7 @@ pub struct RepoPath {
 
 impl fmt::Display for RepoPath {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} {}", self.repo, self.path)
+        write!(f, "{}:{}", self.repo, self.path)
     }
 }
 
