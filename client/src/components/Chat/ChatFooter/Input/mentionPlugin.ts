@@ -2,29 +2,16 @@ import { Plugin, PluginKey } from 'prosemirror-state';
 import { Decoration, DecorationSet, EditorView } from 'prosemirror-view';
 import { ResolvedPos } from 'prosemirror-model';
 
-export function getRegexp(
-  mentionTrigger: string,
-  hashtagTrigger: string,
-  allowSpace?: boolean,
-) {
-  const mention = allowSpace
-    ? new RegExp('(^|\\s)' + mentionTrigger + '([\\w-\\+]+\\s?[\\w-\\+]*)$')
-    : new RegExp('(^|\\s)' + mentionTrigger + '([\\w-\\+]+)$');
-
-  // hashtags should never allow spaces. I mean, what's the point of allowing spaces in hashtags?
-  const tag = new RegExp('(^|\\s)' + hashtagTrigger + '([\\w-]+)$');
-
-  return {
-    mention: mention,
-    tag: tag,
-  };
+export function getRegexp(mentionTrigger: string, allowSpace?: boolean) {
+  return allowSpace
+    ? new RegExp('(^|\\s)' + mentionTrigger + '([\\w-\\+]*\\s?[\\w-\\+]*)$')
+    : new RegExp('(^|\\s)' + mentionTrigger + '([\\w-\\+]*)$');
 }
 
 export function getMatch(
   $position: ResolvedPos,
   opts: {
     mentionTrigger: string;
-    hashtagTrigger: string;
     allowSpace?: boolean;
   },
 ) {
@@ -33,25 +20,9 @@ export function getMatch(
   const parastart = $position.before();
   const text = $position.doc.textBetween(parastart, $position.pos, '\n', '\0');
 
-  const regex = getRegexp(
-    opts.mentionTrigger,
-    opts.hashtagTrigger,
-    opts.allowSpace,
-  );
+  const regex = getRegexp(opts.mentionTrigger, opts.allowSpace);
 
-  // only one of the below matches will be true.
-  const mentionMatch = text.match(regex.mention);
-  const tagMatch = text.match(regex.tag);
-
-  const match = mentionMatch || tagMatch;
-
-  // set type of match
-  let type;
-  if (mentionMatch) {
-    type = 'mention';
-  } else if (tagMatch) {
-    type = 'tag';
-  }
+  const match = text.match(regex);
 
   // if match found, return match with useful information.
   if (match) {
@@ -70,7 +41,7 @@ export function getMatch(
     return {
       range: { from: from, to: to },
       queryText: queryText,
-      type: type,
+      type: 'mention',
     };
   }
   // else if no match don't return anything.
@@ -114,7 +85,7 @@ const getNewState = function () {
       from: 0,
       to: 0,
     },
-    type: '', //mention or tag
+    type: '',
     text: '',
     suggestions: [],
     index: 0, // current active suggestion index
@@ -123,7 +94,6 @@ const getNewState = function () {
 
 type Options = {
   mentionTrigger: string;
-  hashtagTrigger: string;
   allowSpace?: boolean;
   activeClass: string;
   suggestionTextClass?: string;
@@ -135,15 +105,11 @@ type Options = {
   delay: number;
   getSuggestionsHTML: (items: Record<string, string>[], type: string) => string;
 };
-/**
- * @param {JSONObject} opts
- * @returns {Plugin}
- */
+
 export function getMentionsPlugin(opts: Partial<Options>) {
   // default options
   const defaultOpts = {
     mentionTrigger: '@',
-    hashtagTrigger: '#',
     allowSpace: true,
     getSuggestions: (
       type: string,
@@ -264,16 +230,9 @@ export function getMentionsPlugin(opts: Partial<Options>) {
 
   const select = function (view: EditorView, state: State, opts: Options) {
     const item = state.suggestions[state.index];
-    let attrs;
-    if (state.type === 'mention') {
-      attrs = {
-        ...item,
-      };
-    } else {
-      attrs = {
-        tag: item.tag,
-      };
-    }
+    const attrs = {
+      ...item,
+    };
     const node = view.state.schema.nodes[state.type].create(attrs);
     const tr = view.state.tr.replaceWith(
       state.range.from,
@@ -377,7 +336,7 @@ export function getMentionsPlugin(opts: Partial<Options>) {
       return {
         update: (view) => {
           const state = this.key?.getState(view.state);
-          if (!state.text) {
+          if (!state.active) {
             hideList();
             clearTimeout(showListTimeoutId);
             return;

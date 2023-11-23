@@ -14,11 +14,11 @@ import { schema as basicSchema } from 'prosemirror-schema-basic';
 import * as icons from 'file-icons-js';
 import { getFileExtensionForLang, InputEditorContent } from '../../../../utils';
 import { getMentionsPlugin } from './mentionPlugin';
-import { addMentionNodes, addTagNodes } from './utils';
+import { addMentionNodes } from './utils';
 import { placeholderPlugin } from './placeholderPlugin';
 
 const schema = new Schema({
-  nodes: addTagNodes(addMentionNodes(basicSchema.spec.nodes)),
+  nodes: addMentionNodes(basicSchema.spec.nodes),
   marks: basicSchema.spec.marks,
 });
 

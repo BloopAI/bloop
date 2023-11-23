@@ -20,6 +20,7 @@ import useKeyboardNavigation from '../../hooks/useKeyboardNavigation';
 import { RepoTabType } from '../../types/general';
 import { AppNavigationContext } from '../../context/appNavigationContext';
 import HomePage from '../HomeTab/Content';
+import { isFocusInInput } from '../../utils/domUtils';
 import RepositoryPage from './Repository';
 import ResultsPage from './Results';
 import ViewResult from './ResultFull';
@@ -54,7 +55,7 @@ const ContentContainer = ({ tab }: { tab: RepoTabType }) => {
   const handleKeyEvent = useCallback((e: KeyboardEvent) => {
     if (
       e.key === 'Escape' &&
-      document.activeElement?.tagName !== 'INPUT' &&
+      !isFocusInInput() &&
       !document.getElementsByClassName('modal-or-sidebar').length
     ) {
       e.stopPropagation();
