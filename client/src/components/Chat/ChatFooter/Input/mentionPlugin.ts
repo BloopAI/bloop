@@ -246,11 +246,12 @@ export function getMentionsPlugin(opts: Partial<Options>) {
       ...item,
     };
     const node = view.state.schema.nodes[state.type].create(attrs);
-    const tr = view.state.tr.replaceWith(
-      state.range.from,
-      state.range.to,
+    const spaceNode = view.state.schema.text(String.fromCharCode(160));
+
+    const tr = view.state.tr.replaceWith(state.range.from, state.range.to, [
       node,
-    );
+      spaceNode,
+    ]);
 
     //var newState = view.state.apply(tr);
     //view.updateState(newState);
