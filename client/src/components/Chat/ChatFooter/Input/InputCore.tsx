@@ -143,6 +143,7 @@ const InputCore = ({
         },
         'Ctrl-Enter': baseKeymap.Enter,
         'Cmd-Enter': baseKeymap.Enter,
+        'Shift-Enter': baseKeymap.Enter,
       }),
       placeholderPlugin(placeholder),
       react(),
