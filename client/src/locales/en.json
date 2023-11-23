@@ -430,5 +430,6 @@
 	"The following changes represent the git diff for the remote repository. Please note that these changes cannot be applied directly to a remote repository. Use the \"Copy\" button to copy the changes and apply them locally.": "The following changes represent the git diff for the remote repository. Please note that these changes cannot be applied directly to a remote repository. Use the \"Copy\" button to copy the changes and apply them locally.",
 	"Cloning": "Cloning",
 	"Directories": "Directories",
-	"Languages": "Languages"
+	"Languages": "Languages",
+	"Generating answer...": "Generating answer..."
 }

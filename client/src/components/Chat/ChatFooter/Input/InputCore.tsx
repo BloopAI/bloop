@@ -15,6 +15,7 @@ import * as icons from 'file-icons-js';
 import { getFileExtensionForLang, InputEditorContent } from '../../../../utils';
 import { getMentionsPlugin } from './mentionPlugin';
 import { addMentionNodes, addTagNodes } from './utils';
+import { placeholderPlugin } from './placeholderPlugin';
 
 const schema = new Schema({
   nodes: addTagNodes(addMentionNodes(basicSchema.spec.nodes)),
@@ -38,6 +39,7 @@ type Props = {
   initialValue?: Record<string, any> | null;
   onChange: (contents: InputEditorContent[]) => void;
   onSubmit?: (s: string) => void;
+  placeholder: string;
 };
 
 const InputCore = ({
@@ -45,6 +47,7 @@ const InputCore = ({
   initialValue,
   onChange,
   onSubmit,
+  placeholder,
 }: Props) => {
   const mentionPlugin = useMemo(
     () =>
@@ -105,6 +108,7 @@ const InputCore = ({
         'Ctrl-Enter': baseKeymap.Enter,
         'Cmd-Enter': baseKeymap.Enter,
       }),
+      placeholderPlugin(placeholder),
       react(),
       mentionPlugin,
     ];

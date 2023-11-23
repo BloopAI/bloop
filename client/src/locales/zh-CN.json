@@ -437,5 +437,6 @@
 	"The following changes represent the git diff for the remote repository. Please note that these changes cannot be applied directly to a remote repository. Use the \"Copy\" button to copy the changes and apply them locally.": "以下的更改代表远程仓库的git差异。请注意，这些更改不能直接应用到远程仓库。使用“复制”按钮复制更改并在本地应用。",
 	"Cloning": "克隆",
 	"Directories": "目录",
-	"Languages": "语言"
+	"Languages": "语言",
+	"Generating answer...": "生成答案..."
 }

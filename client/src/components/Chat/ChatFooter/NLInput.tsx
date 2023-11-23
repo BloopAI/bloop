@@ -323,9 +323,12 @@ const NLInput = ({
             initialValue={valueToEdit}
             onChange={onChangeInput}
             onSubmit={onSubmit}
+            placeholder={t(defaultPlaceholder)}
           />
         ) : (
-          <div className="w-full h-14 flex-1"></div>
+          <div className="w-full h-14 flex-1 flex items-center">
+            {!shouldShowLoader && <Trans>Generating answer...</Trans>}
+          </div>
         )}
         {/*<MentionsInput*/}
         {/*  value={value}*/}
