@@ -1,18 +1,23 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import packageJson from '../package.json';
-import { getConfig } from './services/api';
 import App from './App';
 import { LocaleContext } from './context/localeContext';
 import i18n from './i18n';
+import './index.css';
 import {
   getPlainFromStorage,
   LANGUAGE_KEY,
   savePlainToStorage,
 } from './services/storage';
 import { LocaleType } from './types/general';
+import { DeviceContextProvider } from './context/providers/DeviceContextProvider';
+import { EnvContext } from './context/envContext';
+import { getConfig, initApi } from './services/api';
+import { useComponentWillMount } from './hooks/useComponentWillMount';
 
 const CloudApp = () => {
+  useComponentWillMount(() => initApi('/api', true));
   const [envConfig, setEnvConfig] = useState({});
   const [locale, setLocale] = useState<LocaleType>(
     (getPlainFromStorage(LANGUAGE_KEY) as LocaleType | null) || 'en',
@@ -43,9 +48,14 @@ const CloudApp = () => {
       isSelfServe: true,
       forceAnalytics: true,
       showNativeMessage: alert,
+      relaunch: () => {},
+    }),
+    [],
+  );
+  const envContextValue = useMemo(
+    () => ({
       envConfig,
       setEnvConfig,
-      relaunch: () => {},
     }),
     [envConfig],
   );
@@ -64,11 +74,18 @@ const CloudApp = () => {
   );
 
   return (
-    <LocaleContext.Provider value={localeContextValue}>
-      <BrowserRouter>
-        <App deviceContextValue={deviceContextValue} />
-      </BrowserRouter>
-    </LocaleContext.Provider>
+    <DeviceContextProvider
+      deviceContextValue={deviceContextValue}
+      envConfig={envConfig}
+    >
+      <EnvContext.Provider value={envContextValue}>
+        <LocaleContext.Provider value={localeContextValue}>
+          <BrowserRouter>
+            <App />
+          </BrowserRouter>
+        </LocaleContext.Provider>
+      </EnvContext.Provider>
+    </DeviceContextProvider>
   );
 };
 

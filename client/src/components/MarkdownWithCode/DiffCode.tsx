@@ -1,22 +1,20 @@
-import React, { useCallback, useContext, useMemo, useState } from 'react';
-import Code from '../CodeBlock/Code';
+import React, { useCallback, useMemo, useState } from 'react';
 import Button from '../Button';
 import { Clipboard } from '../../icons';
 import { copyToClipboard } from '../../utils';
 import FileIcon from '../FileIcon';
-import { MessageResultModify } from '../../types/general';
 import { FileTreeFileType } from '../../types';
-import BreadcrumbsPath from '../BreadcrumbsPath';
-import { FileModalContext } from '../../context/fileModalContext';
+import CodeFragment from '../Code/CodeFragment';
+import BreadcrumbsPathContainer from '../Breadcrumbs/PathContainer';
+import { MessageResultModify } from '../../types/general';
 
 type Props = {
   data: MessageResultModify['Modify'];
-  repoName: string;
 };
 
-const DiffCode = ({ data, repoName }: Props) => {
+const DiffCode = ({ data }: Props) => {
   const [showRaw, setShowRaw] = useState(false);
-  const { openFileModal } = useContext(FileModalContext);
+  // const { openFileModal } = useContext(FileModalContext);
 
   const rawCode = useMemo(
     () =>
@@ -27,24 +25,27 @@ const DiffCode = ({ data, repoName }: Props) => {
     [data.diff.lines],
   );
 
-  const onResultClick = useCallback((path: string, lineNumber?: number[]) => {
-    openFileModal(data.path, lineNumber?.join('_'));
-  }, []);
+  const onResultClick = useCallback(() => {
+    // openFileModal(data.path);
+  }, [data.path]);
+  const onBreadcrumbClick = useCallback(
+    (path: string, type?: FileTreeFileType) => {
+      type === FileTreeFileType.FILE ? onResultClick() : {};
+    },
+    [onResultClick],
+  );
 
   return (
     <div className="text-sm border border-bg-border rounded-md">
       <div className="w-full bg-bg-base px-3 h-13 border-b border-bg-border flex items-center justify-between">
         <div
           className="flex items-center gap-2 max-w-[calc(100%-120px)] w-full cursor-pointer"
-          onClick={() => onResultClick(data.path)}
+          onClick={onResultClick}
         >
           <FileIcon filename={data.path} />
-          <BreadcrumbsPath
+          <BreadcrumbsPathContainer
             path={data.path}
-            repo={repoName}
-            onClick={(path, type) =>
-              type === FileTreeFileType.FILE ? onResultClick(path) : {}
-            }
+            onClick={onBreadcrumbClick}
           />
         </div>
         <div className="flex items-center justify-center p-0.5 gap-0.5 bg-bg-sub rounded-4">
@@ -73,7 +74,7 @@ const DiffCode = ({ data, repoName }: Props) => {
       {data.diff?.lines ? (
         <div className="relative py-4">
           <div className="overflow-auto">
-            <Code
+            <CodeFragment
               lineStart={data.diff.header?.old_start}
               code={showRaw ? rawCode : data.diff.lines?.join('\n')}
               language={data.language}

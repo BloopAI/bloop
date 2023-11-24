@@ -7,6 +7,7 @@ import React, {
   useRef,
   useState,
   ClipboardEvent,
+  memo,
 } from 'react';
 import { Range } from '../../types/results';
 import { copyToClipboard, isWindowsPath } from '../../utils';
@@ -26,7 +27,7 @@ type ItemElement = {
 export type PathParts = {
   icon?: ReactElement<any, any>;
   link?: string;
-  onClick?: (e: MouseEvent<HTMLButtonElement>) => void;
+  onClick?: (e?: MouseEvent) => void;
   underline?: boolean;
 } & (HighlightedString | ItemElement);
 
@@ -170,4 +171,4 @@ const Breadcrumbs = ({
   );
 };
 
-export default Breadcrumbs;
+export default memo(Breadcrumbs);

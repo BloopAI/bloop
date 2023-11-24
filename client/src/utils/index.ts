@@ -8,6 +8,7 @@ import {
   RepoType,
   RepoUi,
 } from '../types/general';
+import { PathParts } from '../components/Breadcrumbs';
 import langs from './langs.json';
 
 export const copyToClipboard = (value: string) => {
@@ -121,21 +122,23 @@ export const splitPath = (path: string) =>
 export const splitPathForBreadcrumbs = (
   path: string,
   onClick?: (
-    e: MouseEvent<HTMLButtonElement>,
+    e: MouseEvent | null,
     item: string,
     index: number,
     arr: string[],
   ) => void,
-) => {
+): PathParts[] => {
   return splitPath(path)
     .filter((p) => p !== '/')
-    .map((item, index, arr) => ({
-      label: item,
-      onClick: (e: MouseEvent<HTMLButtonElement>) => {
-        e.preventDefault();
-        onClick?.(e, item, index, arr);
-      },
-    }));
+    .map(
+      (item, index, arr): PathParts => ({
+        label: item,
+        onClick: (e?: MouseEvent) => {
+          e?.preventDefault();
+          onClick?.(e || null, item, index, arr);
+        },
+      }),
+    );
 };
 
 export const buildRepoQuery = (
@@ -307,6 +310,26 @@ export const calculatePopupPositionInsideContainer = (
 
   return { top, left };
 };
+
+function getLineNumber(element: HTMLElement | null) {
+  while (element) {
+    if (element?.dataset?.['line-number'] || element?.dataset?.lineNumber) {
+      return element.dataset['line-number'] || element.dataset.lineNumber;
+    }
+    element = element.parentElement;
+  }
+  return null;
+}
+
+export function getSelectionLines(element: HTMLElement): null | number {
+  if (!element) {
+    return null;
+  }
+
+  const lineNumber = getLineNumber(element);
+
+  return lineNumber ? Number(lineNumber) : null;
+}
 
 export const escapeHtml = (unsafe: string) => {
   return unsafe
