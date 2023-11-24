@@ -103,7 +103,8 @@
         "hiddenTitle": true,
         "titleBarStyle": "Overlay",
         "minHeight": 700,
-        "minWidth": 1000
+        "minWidth": 1000,
+        "fileDropEnabled": false
       }
     ]
   }

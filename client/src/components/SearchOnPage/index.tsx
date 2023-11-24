@@ -6,7 +6,7 @@ import React, {
   useCallback,
 } from 'react';
 import TextInput from '../TextInput';
-import { ChevronDown, ChevronUp } from '../../icons';
+import { ChevronDownIcon, ChevronUpIcon } from '../../icons';
 
 type Props = {
   handleSearch: (v: string) => void;
@@ -68,7 +68,7 @@ const SearchOnPage = ({
           }
           disabled={!searchValue}
         >
-          <ChevronUp />
+          <ChevronUpIcon sizeClassName="w-3.5 h-3.5" />
         </button>
         <button
           className="p-2 hover:text-label-title disabled:hover:text-label-base"
@@ -77,7 +77,7 @@ const SearchOnPage = ({
           }
           disabled={!searchValue}
         >
-          <ChevronDown />
+          <ChevronDownIcon sizeClassName="w-3.5 h-3.5" />
         </button>
       </div>
     </div>

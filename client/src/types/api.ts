@@ -2,6 +2,7 @@ import { SymbolType, Range, TokenInfoType } from './results';
 import {
   DiffChunkType,
   DiffHunkType,
+  RepoType,
   StudioContextDoc,
   StudioContextFile,
 } from './general';
@@ -224,15 +225,18 @@ export interface TokenInfoResponse {
   }[];
 }
 
-export type AllConversationsResponse = {
+export type ConversationShortType = {
   created_at: number;
-  thread_id: string;
+  id: string;
   title: string;
-}[];
+  thread_id: string;
+};
+
+export type AllConversationsResponse = ConversationShortType[];
 
 type ProcStep = {
   type: 'proc';
-  content: { query: string; paths: string[] };
+  content: { query: string; paths: { repo: string; path: string }[] };
 };
 
 type CodeStep = {
@@ -248,11 +252,18 @@ type PathStep = {
 export type SearchStepType = ProcStep | CodeStep | PathStep;
 
 export type ConversationType = {
+  thread_id: string;
+  exchanges: ConversationExchangeType[];
+};
+
+export type ConversationExchangeType = {
   id: string;
   search_steps: SearchStepType[];
   query: {
     raw_query: string;
-    repos: [];
+    repos: {
+      Plain: { start: number; end: number; content: string };
+    }[];
     paths: {
       Plain: { start: number; end: number; content: string };
     }[];
@@ -282,7 +293,11 @@ export type ConversationType = {
   answer: string;
   paths: string[];
   response_timestamp: string;
-  focused_chunk: { file_path: string } | null;
+  focused_chunk: {
+    repo_path: { repo: string; path: string };
+    start_line: number;
+    end_line: number;
+  } | null;
 };
 
 export type CodeStudioMessageType =
@@ -357,6 +372,7 @@ export type DocShortType = {
   name: string;
   url: string;
   favicon: string;
+  index_status: string;
 };
 
 export type DocPageType = {
@@ -382,4 +398,16 @@ export type DocSectionType = {
 
 export type GeneratedCodeDiff = {
   chunks: DiffChunkType[];
+};
+
+export type ProjectShortType = {
+  id: string;
+  name: string;
+  modified_at: null | string;
+  most_common_langs: string[];
+};
+
+export type ProjectFullType = ProjectShortType & {
+  repos: { repo: RepoType; branch: string }[];
+  conversations: ConversationShortType[];
 };

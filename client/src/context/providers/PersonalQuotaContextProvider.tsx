@@ -11,6 +11,7 @@ import { getQuota } from '../../services/api';
 import { PersonalQuotaContext } from '../personalQuotaContext';
 import { DeviceContext } from '../deviceContext';
 import { polling } from '../../utils/requestUtils';
+import { EnvContext } from '../envContext';
 
 type Props = {};
 
@@ -22,7 +23,8 @@ export const PersonalQuotaContextProvider = memo(
     const [isPastDue, setIsPastDue] = useState(false);
     const [hasCheckedQuota, setHasCheckedQuota] = useState(false);
     const [resetAt, setResetAt] = useState(new Date().toISOString());
-    const { isSelfServe, envConfig } = useContext(DeviceContext);
+    const { isSelfServe } = useContext(DeviceContext);
+    const { envConfig } = useContext(EnvContext);
 
     const refetchQuota = useCallback(async () => {
       if (!isSelfServe && envConfig.user_login) {

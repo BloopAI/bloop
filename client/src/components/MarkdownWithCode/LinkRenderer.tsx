@@ -6,49 +6,37 @@ import {
   ReactNode,
   SetStateAction,
   useCallback,
+  useContext,
   useMemo,
 } from 'react';
-import FileChip from '../Chat/ChatBody/ConversationMessage/FileChip';
-import { FileHighlightsType } from '../../types/general';
+import { FileHighlightsType, TabTypesEnum } from '../../types/general';
+import { TabsContext } from '../../context/tabsContext';
+import FileChip from '../Chips/FileChip';
+import { splitPath } from '../../utils';
 import FolderChip from './FolderChip';
 
 type Props = {
   href?: string;
   children: ReactNode[];
-  navigateRepoPath: (repo: string, path?: string | undefined) => void;
-  repoName?: string;
-  selectedBranch: string | null;
   fileChips: MutableRefObject<never[]>;
-  hideCode?: boolean;
-  updateScrollToIndex: (lines: string) => void;
+  singleFileExplanation?: boolean;
   setFileHighlights: Dispatch<SetStateAction<FileHighlightsType>>;
   setHoveredLines: Dispatch<SetStateAction<[number, number] | null>>;
-  navigateFullResult: (
-    path: string,
-    pathParams?: Record<string, string>,
-    recordId?: number,
-    threadId?: string,
-  ) => void;
-  recordId?: number;
-  threadId?: string;
+  side: 'left' | 'right';
 };
 
 const LinkRenderer = ({
   href,
   children,
-  navigateRepoPath,
-  repoName,
-  selectedBranch,
   fileChips,
-  hideCode,
-  updateScrollToIndex,
+  singleFileExplanation,
   setFileHighlights,
   setHoveredLines,
-  navigateFullResult,
-  recordId,
-  threadId,
+  side,
 }: Props) => {
+  const { openNewTab } = useContext(TabsContext.Handlers);
   const [filePath, lines] = useMemo(() => href?.split('#') || [], [href]);
+  const [repo, path] = useMemo(() => filePath?.split(':') || [], [filePath]);
   const [start, end] = useMemo(
     () => lines?.split('-').map((l) => Number(l.slice(1))) || [],
     [lines],
@@ -64,44 +52,48 @@ const LinkRenderer = ({
         f = child.props.children?.[0];
       }
     }
+    // if the link is of type repo_ref:file_path.ext
+    if (new RegExp('.*/.*:.*').test(f)) {
+      f = splitPath(f).pop() || f;
+    }
     return f;
   }, [children]);
 
   const linesToUse: [number, number] | undefined = useMemo(() => {
-    return hideCode && start > -1 ? [start, end ?? start] : undefined;
-  }, [hideCode, start, end]);
+    return singleFileExplanation && start > -1
+      ? [start, end ?? start]
+      : undefined;
+  }, [singleFileExplanation, start, end]);
 
   const handleClickFile = useCallback(() => {
-    hideCode
-      ? updateScrollToIndex(`${start}_${end ?? start}`)
-      : navigateFullResult(
-          filePath,
-          start > -1 ? { scrollToLine: `${start}_${end ?? start}` } : undefined,
-          recordId,
-          threadId,
-        );
-  }, [hideCode, updateScrollToIndex, start, end, filePath, recordId, threadId]);
+    if (repo && path) {
+      openNewTab(
+        {
+          type: TabTypesEnum.FILE,
+          repoRef: repo,
+          path,
+          scrollToLine: `${start}_${end ?? start}`,
+        },
+        side === 'left' ? 'right' : 'left',
+      );
+    }
+  }, [start, end, path, repo, side]);
 
   const handleClickFolder = useCallback(() => {
-    if (repoName) {
-      navigateRepoPath(repoName, filePath);
-    }
-  }, [navigateRepoPath, repoName, filePath]);
+    // if (repoName) {
+    //   navigateRepoPath(repoName, filePath);
+    // }
+  }, [path]);
 
   return (
     <>
       {filePath.endsWith('/') ? (
-        <FolderChip
-          onClick={handleClickFolder}
-          path={filePath}
-          repoName={repoName}
-          selectedBranch={selectedBranch}
-        />
+        <FolderChip onClick={handleClickFolder} path={path} repoRef={repo} />
       ) : (
         <FileChip
-          fileName={fileName || filePath || ''}
-          filePath={filePath}
-          skipIcon={!!fileName && fileName !== filePath}
+          fileName={fileName || path || ''}
+          filePath={path}
+          skipIcon={!!fileName && fileName !== path}
           fileChips={fileChips}
           onClick={handleClickFile}
           lines={linesToUse}

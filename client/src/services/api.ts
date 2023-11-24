@@ -2,7 +2,9 @@ import axios, { AxiosInstance, GenericAbortSignal } from 'axios';
 import {
   AllConversationsResponse,
   CodeStudioType,
+  ConversationExchangeType,
   ConversationType,
+  Directory,
   DocPageType,
   DocSectionType,
   DocShortType,
@@ -11,18 +13,14 @@ import {
   HistoryConversationTurn,
   HoverablesResponse,
   NLSearchResponse,
+  ProjectShortType,
   SearchResponse,
   StudioTemplateType,
   SuggestionsResponse,
   TokenInfoResponse,
   TutorialQuestionType,
 } from '../types/api';
-import {
-  CodeStudioShortType,
-  EnvConfig,
-  RepoType,
-  StudioContextFile,
-} from '../types/general';
+import { CodeStudioShortType, EnvConfig, RepoType } from '../types/general';
 import { getPlainFromStorage, REFRESH_TOKEN_KEY } from './storage';
 
 const DB_API = 'https://api.bloop.ai';
@@ -72,13 +70,14 @@ export const initApi = (serverUrl = '', isSelfServe?: boolean) => {
 };
 
 export const search = (
+  projectId: string,
   q: string,
   page: number = 0,
   page_size: number = 5,
   global_regex: boolean = false,
 ): Promise<SearchResponse> => {
   return http
-    .get('/q', {
+    .get(`/projects/${projectId}/q`, {
       params: {
         q: `${q} global_regex:${global_regex}`,
         page_size,
@@ -105,19 +104,33 @@ export const searchFiles = (
     .then((r) => r.data);
 };
 
-export const getFileLines = (
+export const getFileContent = (
   repo_ref: string,
   path: string,
-  line_start: number,
-  line_end: number,
+  branch?: string | null,
 ): Promise<FileResponse> => {
   return http
     .get(`/file`, {
       params: {
         repo_ref,
         path,
-        line_start,
-        line_end,
+        ...(branch ? { branch } : {}),
+      },
+    })
+    .then((r) => r.data);
+};
+
+export const getFolderContent = (
+  repo_ref: string,
+  path?: string,
+  branch?: string | null,
+): Promise<Directory> => {
+  return http
+    .get(`/folder`, {
+      params: {
+        repo_ref,
+        path: path || '',
+        ...(branch ? { branch } : {}),
       },
     })
     .then((r) => r.data);
@@ -138,13 +151,17 @@ export const nlSearch = (
 };
 
 export const getHoverables = async (
-  path: string,
-  repoId: string,
-  branch?: string,
+  relative_path: string,
+  repo_ref: string,
+  branch?: string | null,
 ): Promise<HoverablesResponse> => {
   try {
     const { data } = await http.get('/hoverable', {
-      params: { relative_path: path, repo_ref: repoId, branch },
+      params: {
+        relative_path,
+        repo_ref,
+        ...(branch ? { branch } : {}),
+      },
     });
     return data;
   } catch (e) {
@@ -270,36 +287,37 @@ export const getConfig = () => http.get('/config').then((r) => r.data);
 export const putConfig = (data: Partial<EnvConfig>) =>
   http.put('/config', data).then((r) => r.data);
 
-export const getAllConversations = (
-  repo_ref: string,
+export const getProjectConversations = (
+  projectId: string,
 ): Promise<AllConversationsResponse> =>
-  http
-    .get('/answer/conversations', { params: { repo_ref } })
-    .then((r) => r.data);
+  http.get(`/projects/${projectId}/conversations`).then((r) => r.data);
 
 export const getConversation = (
-  thread_id: string,
-): Promise<ConversationType[]> =>
-  http.get(`/answer/conversations/${thread_id}`).then((r) => r.data);
-
-export const deleteConversation = (
-  thread_id: string,
+  projectId: string,
+  conversationId: string,
 ): Promise<ConversationType> =>
   http
-    .delete(`/answer/conversations`, { params: { thread_id } })
+    .get(`/projects/${projectId}/conversations/${conversationId}`)
+    .then((r) => r.data);
+
+export const deleteConversation = (
+  projectId: string,
+  conversationId: string,
+): Promise<void> =>
+  http
+    .delete(`/projects/${projectId}/conversations/${conversationId}`)
     .then((r) => r.data);
 
 export const upvoteAnswer = (
+  projectId: string,
   thread_id: string,
   query_id: string,
-  repo_ref: string,
   feedback: { type: 'positive' } | { type: 'negative'; feedback: string },
-): Promise<ConversationType> =>
+): Promise<ConversationExchangeType> =>
   http
-    .post(`/answer/vote`, {
+    .post(`/projects/${projectId}/answer/vote`, {
       thread_id,
       query_id,
-      repo_ref,
       feedback,
     })
     .then((r) => r.data);
@@ -403,13 +421,12 @@ export const getQuota = () => http('/quota').then((r) => r.data);
 export const getSubscriptionLink = () =>
   http('/quota/create-checkout-session').then((r) => r.data);
 
-export const forceFileToBeIndexed = (repoRef: string, filePath: string) => {
+export const forceFileToBeIndexed = (repoRef: string, filePath: string) =>
   http.patch(
     '/repos/indexed',
     { file_filter: { rules: [{ include_file: filePath }] } },
     { params: { repo: repoRef } },
   );
-};
 
 export const getTutorialQuestions = (
   repo_ref: string,
@@ -444,3 +461,38 @@ export const getDocSections = (
   http(`/docs/${id}/fetch`, {
     params: { relative_url: url },
   }).then((r) => r.data);
+
+export const getAllProjects = (): Promise<ProjectShortType[]> =>
+  http('/projects').then((r) => r.data);
+export const getProject = (id: string): Promise<ProjectShortType> =>
+  http(`/projects/${id}`).then((r) => r.data);
+export const createProject = (name: string): Promise<string> =>
+  http.post(`/projects`, { name }).then((r) => r.data);
+export const updateProject = (id: string, data: Partial<ProjectShortType>) =>
+  http.put(`/projects/${id}`, data).then((r) => r.data);
+export const deleteProject = (id: string) =>
+  http.delete(`/projects/${id}`).then((r) => r.data);
+export const getProjectRepos = (
+  id: string,
+): Promise<{ repo: RepoType; branch: string }[]> =>
+  http(`/projects/${id}/repos`).then((r) => r.data);
+export const addRepoToProject = (
+  id: string,
+  repoRef: string,
+  branch?: string,
+) =>
+  http
+    .post(`/projects/${id}/repos`, { ref: repoRef, branch })
+    .then((r) => r.data);
+export const removeRepoFromProject = (id: string, repoRef: string) =>
+  http
+    .delete(`/projects/${id}/repos/`, { params: { ref: repoRef } })
+    .then((r) => r.data);
+export const changeRepoBranch = (
+  id: string,
+  repoRef: string,
+  branch?: string | null,
+) =>
+  http
+    .put(`/projects/${id}/repos/`, { ref: repoRef, branch: branch || '' })
+    .then((r) => r.data);

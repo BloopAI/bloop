@@ -1,13 +1,13 @@
 /** * VS theme by Andrew Lock (https://andrewlock.net) * Inspired by Visual Studio syntax coloring */
-[data-theme="default-light"] {
+[data-theme="light"] {
     /* Code blocks */
     /* Inline code */
     /* overrides color-values for the Line Numbers plugin * http://prismjs.com/plugins/line-numbers/ */
     /* overrides color-values for the Line Highlight plugin * http://prismjs.com/plugins/line-highlight/ */
 }
-[data-theme="default-light"] code[class*="language-"], [data-theme="default-light"] pre[class*="language-"] {
+[data-theme="light"] code[class*="language-"], [data-theme="light"] pre[class*="language-"] {
     color: #393a34;
-    font-family: Menlo, Monaco, Consolas, "Andale Mono", "Ubuntu Mono", "Courier New", monospace;
+    font-family: "Fira Code", Menlo, Monaco, Consolas, "Andale Mono", "Ubuntu Mono", "Courier New", monospace;
     direction: ltr;
     text-align: left;
     white-space: pre;
@@ -21,85 +21,85 @@
     -ms-hyphens: none;
     hyphens: none;
 }
-[data-theme="default-light"] pre > code[class*="language-"] {
+[data-theme="light"] pre > code[class*="language-"] {
     font-size: 1em;
 }
-[data-theme="default-light"] pre[class*="language-"]::-moz-selection, [data-theme="default-light"] pre[class*="language-"] ::-moz-selection, [data-theme="default-light"] code[class*="language-"]::-moz-selection, [data-theme="default-light"] code[class*="language-"] ::-moz-selection {
+[data-theme="light"] pre[class*="language-"]::-moz-selection, [data-theme="light"] pre[class*="language-"] ::-moz-selection, [data-theme="light"] code[class*="language-"]::-moz-selection, [data-theme="light"] code[class*="language-"] ::-moz-selection {
     background: #c1def1;
 }
-[data-theme="default-light"] pre[class*="language-"]::selection, [data-theme="default-light"] pre[class*="language-"] ::selection, [data-theme="default-light"] code[class*="language-"]::selection, [data-theme="default-light"] code[class*="language-"] ::selection {
+[data-theme="light"] pre[class*="language-"]::selection, [data-theme="light"] pre[class*="language-"] ::selection, [data-theme="light"] code[class*="language-"]::selection, [data-theme="light"] code[class*="language-"] ::selection {
     background: #c1def1;
 }
-[data-theme="default-light"] pre[class*="language-"] {
+[data-theme="light"] pre[class*="language-"] {
     /*padding: 1em;*/
     /*margin: 0.5em 0;*/
-    overflow: auto;
+    background: transparent;
 }
-[data-theme="default-light"] :not(pre) > code[class*="language-"] {
+[data-theme="light"] :not(pre) > code[class*="language-"] {
     padding: 0.2em;
     padding-top: 1px;
     padding-bottom: 1px;
     background: #f8f8f8;
     border: 1px solid #ddd;
 }
-[data-theme="default-light"] .token.comment, [data-theme="default-light"] .token.prolog, [data-theme="default-light"] .token.doctype, [data-theme="default-light"] .token.cdata {
+[data-theme="light"] .token.comment, [data-theme="light"] .token.prolog, [data-theme="light"] .token.doctype, [data-theme="light"] .token.cdata {
     color: #008000;
     font-style: italic;
 }
-[data-theme="default-light"] .token.namespace {
+[data-theme="light"] .token.namespace {
     opacity: 0.7;
 }
-[data-theme="default-light"] .token.string {
+[data-theme="light"] .token.string {
     color: #a31515;
 }
-[data-theme="default-light"] .token.punctuation, [data-theme="default-light"] .token.operator {
+[data-theme="light"] .token.punctuation, [data-theme="light"] .token.operator {
     color: #393a34;
     /* no highlight */
 }
-[data-theme="default-light"] .token.url, [data-theme="default-light"] .token.symbol, [data-theme="default-light"] .token.number, [data-theme="default-light"] .token.boolean, [data-theme="default-light"] .token.variable, [data-theme="default-light"] .token.constant, [data-theme="default-light"] .token.inserted {
+[data-theme="light"] .token.url, [data-theme="light"] .token.symbol, [data-theme="light"] .token.number, [data-theme="light"] .token.boolean, [data-theme="light"] .token.variable, [data-theme="light"] .token.constant, [data-theme="light"] .token.inserted {
     color: #36acaa;
 }
-[data-theme="default-light"] .token.atrule, [data-theme="default-light"] .token.keyword, [data-theme="default-light"] .token.attr-value, [data-theme="default-light"] .language-autohotkey .token.selector, [data-theme="default-light"] .language-json .token.boolean, [data-theme="default-light"] .language-json .token.number, [data-theme="default-light"] code[class*="language-css"] {
+[data-theme="light"] .token.atrule, [data-theme="light"] .token.keyword, [data-theme="light"] .token.attr-value, [data-theme="light"] .language-autohotkey .token.selector, [data-theme="light"] .language-json .token.boolean, [data-theme="light"] .language-json .token.number, [data-theme="light"] code[class*="language-css"] {
     color: #00f;
 }
-[data-theme="default-light"] .token.function {
+[data-theme="light"] .token.function {
     color: #393a34;
 }
-[data-theme="default-light"] .token.deleted, [data-theme="default-light"] .language-autohotkey .token.tag {
+[data-theme="light"] .token.deleted, [data-theme="light"] .language-autohotkey .token.tag {
     color: #9a050f;
 }
-[data-theme="default-light"] .token.selector, [data-theme="default-light"] .language-autohotkey .token.keyword {
+[data-theme="light"] .token.selector, [data-theme="light"] .language-autohotkey .token.keyword {
     color: #00009f;
 }
-[data-theme="default-light"] .token.important {
+[data-theme="light"] .token.important {
     color: #e90;
 }
-[data-theme="default-light"] .token.important, [data-theme="default-light"] .token.bold {
+[data-theme="light"] .token.important, [data-theme="light"] .token.bold {
     font-weight: bold;
 }
-[data-theme="default-light"] .token.italic {
+[data-theme="light"] .token.italic {
     font-style: italic;
 }
-[data-theme="default-light"] .token.class-name, [data-theme="default-light"] .language-json .token.property {
+[data-theme="light"] .token.class-name, [data-theme="light"] .language-json .token.property {
     color: #2b91af;
 }
-[data-theme="default-light"] .token.tag, [data-theme="default-light"] .token.selector {
+[data-theme="light"] .token.tag, [data-theme="light"] .token.selector {
     color: #800000;
 }
-[data-theme="default-light"] .token.attr-name, [data-theme="default-light"] .token.property, [data-theme="default-light"] .token.regex, [data-theme="default-light"] .token.entity {
+[data-theme="light"] .token.attr-name, [data-theme="light"] .token.property, [data-theme="light"] .token.regex, [data-theme="light"] .token.entity {
     color: #f00;
 }
-[data-theme="default-light"] .token.directive.tag .tag {
+[data-theme="light"] .token.directive.tag .tag {
     background: #ff0;
     color: #393a34;
 }
-[data-theme="default-light"] .line-numbers.line-numbers .line-numbers-rows {
+[data-theme="light"] .line-numbers.line-numbers .line-numbers-rows {
     border-right-color: #a5a5a5;
 }
-[data-theme="default-light"] .line-numbers .line-numbers-rows > span:before {
+[data-theme="light"] .line-numbers .line-numbers-rows > span:before {
     color: #2b91af;
 }
-[data-theme="default-light"] .line-highlight.line-highlight {
+[data-theme="light"] .line-highlight.line-highlight {
     background: rgba(193, 222, 241, 0.2);
     background: -webkit-linear-gradient(left, rgba(193, 222, 241, 0.2) 70%, rgba(221, 222, 241, 0));
     background: linear-gradient(to right, rgba(193, 222, 241, 0.2) 70%, rgba(221, 222, 241, 0));
@@ -108,7 +108,7 @@
 @media (prefers-color-scheme: light) {
     [data-theme="system"] code[class*="language-"], [data-theme="system"] pre[class*="language-"] {
         color: #393a34;
-        font-family: Menlo, Monaco, Consolas, "Andale Mono", "Ubuntu Mono", "Courier New", monospace;
+        font-family: "Fira Code", Menlo, Monaco, Consolas, "Andale Mono", "Ubuntu Mono", "Courier New", monospace;
         direction: ltr;
         text-align: left;
         white-space: pre;
@@ -134,7 +134,7 @@
     [data-theme="system"] pre[class*="language-"] {
         /*padding: 1em;*/
         /*margin: 0.5em 0;*/
-        overflow: auto;
+        background: transparent;
     }
     [data-theme="system"] :not(pre) > code[class*="language-"] {
         padding: 0.2em;
