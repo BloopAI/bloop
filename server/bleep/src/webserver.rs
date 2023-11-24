@@ -96,28 +96,32 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
             get(answer::conversations::thread),
         )
         .route("/answer/vote", post(answer::vote))
-        .route("/studio", post(studio::create))
-        .route("/studio", get(studio::list))
-        .route(
-            "/studio/:studio_id",
-            get(studio::get).patch(studio::patch).delete(studio::delete),
-        )
-        .route("/studio/import", post(studio::import))
-        .route("/studio/:studio_id/generate", get(studio::generate))
-        .route("/studio/:studio_id/diff", get(studio::diff))
-        .route("/studio/:studio_id/diff/apply", post(studio::diff_apply))
-        .route("/studio/:studio_id/snapshots", get(studio::list_snapshots))
-        .route(
-            "/studio/:studio_id/snapshots/:snapshot_id",
-            delete(studio::delete_snapshot),
-        )
-        .route(
-            "/studio/file-token-count",
-            post(studio::get_file_token_count),
-        )
-        .route(
-            "/studio/doc-file-token-count",
-            post(studio::get_doc_file_token_count),
+        .nest(
+            "/projects/:project_id",
+            Router::new()
+                .route("/studio", post(studio::create))
+                .route("/studio", get(studio::list))
+                .route(
+                    "/studio/:studio_id",
+                    get(studio::get).patch(studio::patch).delete(studio::delete),
+                )
+                .route("/studio/import", post(studio::import))
+                .route("/studio/:studio_id/generate", get(studio::generate))
+                .route("/studio/:studio_id/diff", get(studio::diff))
+                .route("/studio/:studio_id/diff/apply", post(studio::diff_apply))
+                .route("/studio/:studio_id/snapshots", get(studio::list_snapshots))
+                .route(
+                    "/studio/:studio_id/snapshots/:snapshot_id",
+                    delete(studio::delete_snapshot),
+                )
+                .route(
+                    "/studio/file-token-count",
+                    post(studio::get_file_token_count),
+                )
+                .route(
+                    "/studio/doc-file-token-count",
+                    post(studio::get_doc_file_token_count),
+                ),
         )
         .route("/template", post(template::create))
         .route("/template", get(template::list))
