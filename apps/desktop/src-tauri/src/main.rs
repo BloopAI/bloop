@@ -51,16 +51,13 @@ fn main() {
 
 #[tauri::command]
 fn show_main_window(app_handle: tauri::AppHandle) {
-    match app_handle.get_window("main") {
-        Some(window) => {
-            if !cfg!(target_os = "macos") {
-                window.unminimize().unwrap();
-            }
+    if let Some(window) = app_handle.get_window("main") {
+        if !cfg!(target_os = "macos") {
             window.unminimize().unwrap();
-            window.set_focus().unwrap();
-            window.show().unwrap();
         }
-        None => {}
+        window.unminimize().unwrap();
+        window.set_focus().unwrap();
+        window.show().unwrap();
     }
 }
 

@@ -315,6 +315,7 @@ impl<'a> Literal<'a> {
     }
 
     /// This drops position information, as it's not intelligible after the merge
+    #[allow(dead_code)]
     fn join_as_plain(self, rhs: Self) -> Option<Literal<'static>> {
         let lhs = self.as_plain()?;
         let rhs = rhs.as_plain()?;
