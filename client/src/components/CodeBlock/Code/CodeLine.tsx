@@ -9,7 +9,7 @@ import React, {
 } from 'react';
 import FoldButton from '../CodeFull/FoldButton';
 import Tooltip from '../../Tooltip';
-import SymbolIcon from '../../CodeSymbolIcon';
+import SymbolIcon from '../CodeSymbolIcon';
 import { SymbolType } from '../../../types/results';
 import { Commit } from '../../../types';
 import { markNode, unmark } from '../../../utils/textSearch';

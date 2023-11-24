@@ -1,7 +1,5 @@
 import {
   CodeItem,
-  DirectoryEntry,
-  DirectoryItem,
   FileItem,
   FileResItem,
   RangeLine,
@@ -18,8 +16,6 @@ import {
   ResultItemType,
   ResultType,
 } from '../types/results';
-import { FileTreeFileType } from '../types';
-import { sortFiles } from '../utils/file';
 
 const mapRepoResults = (item: RepoItem, id: number): RepoResult => {
   return {
@@ -108,39 +104,6 @@ export const mapRanges = (
     res[item.start.line].push({ start: item.start.byte, end: item.end.byte });
   });
   return res;
-};
-
-export const mapDirResult = (directoryItem: DirectoryItem) => {
-  return {
-    name: directoryItem.data.repo_name,
-    entries: mapFileTree(
-      directoryItem.data.entries,
-      directoryItem.data.relative_path,
-    ),
-    relativePath: directoryItem.data.relative_path,
-    repoRef: directoryItem.data.repo_ref,
-  };
-};
-
-const mapFileTree = (siblings: DirectoryEntry[], relativePath: string) => {
-  return siblings
-    .map((item) => ({
-      type:
-        item.entry_data === 'Directory'
-          ? FileTreeFileType.DIR
-          : FileTreeFileType.FILE,
-      path: `${relativePath}${item.name}`,
-      name:
-        item.entry_data === 'Directory'
-          ? item.name.substring(item.name.length - 1, -1)
-          : item.name,
-      lang:
-        item.entry_data !== 'Directory' ? item.entry_data.File.lang : undefined,
-      children: [],
-      indexed:
-        item.entry_data !== 'Directory' ? item.entry_data.File.indexed : true,
-    }))
-    .sort(sortFiles);
 };
 
 export const mapFileResult = (fileItem: FileItem) => {

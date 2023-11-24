@@ -4,7 +4,7 @@ import CodeLine from '../Code/CodeLine';
 import { Token as TokenType } from '../../../types/prism';
 import { Range, TokenInfoType, TokenInfoWrapped } from '../../../types/results';
 import { getOffsetForIndexAndAlignment } from '../../../utils/scrollUtils';
-import RefsDefsPopup from '../../TooltipCode/RefsDefsPopup';
+import RefsDefsPopup from '../../../old_stuff/components/TooltipCode/RefsDefsPopup';
 import { useOnClickOutside } from '../../../hooks/useOnClickOutsideHook';
 import { findElementInCurrentTab } from '../../../utils/domUtils';
 import Token from './Token';

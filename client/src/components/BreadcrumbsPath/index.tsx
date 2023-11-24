@@ -6,7 +6,7 @@ import {
   splitPathForBreadcrumbs,
 } from '../../utils';
 import { FileTreeFileType } from '../../types';
-import useAppNavigation from '../../hooks/useAppNavigation';
+import useAppNavigation from '../../old_stuff/hooks/useAppNavigation';
 
 type BProps = React.ComponentProps<typeof Breadcrumbs>;
 

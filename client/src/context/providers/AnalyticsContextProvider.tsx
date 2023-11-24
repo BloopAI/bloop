@@ -1,18 +1,16 @@
-import React, { useState, useEffect, useMemo, memo } from 'react';
+import React, { useState, useEffect, useMemo, memo, useContext } from 'react';
 import * as analytics from 'rudder-sdk-js';
 import { AnalyticsContext } from '../analyticsContext';
-import { EnvConfig } from '../../types/general';
+import { EnvContext } from '../envContext';
 
 interface AnalyticsProviderProps {
   children: React.ReactNode;
-  forceAnalytics?: boolean;
-  isSelfServe?: boolean;
-  envConfig: EnvConfig;
 }
 
 export const AnalyticsContextProvider: React.FC<AnalyticsProviderProps> = memo(
-  ({ children, isSelfServe, envConfig }) => {
+  ({ children }) => {
     const [analyticsLoaded, setAnalyticsLoaded] = useState(false);
+    const { envConfig } = useContext(EnvContext);
 
     const loadAnalytics = async () => {
       if (

@@ -1,11 +1,11 @@
 import React, { useCallback, useContext } from 'react';
 import { ArrowOut, FolderClosed } from '../../icons';
-import DirEntry from '../IdeNavigation/DirEntry';
+import DirEntry from '../../old_stuff/components/IdeNavigation/DirEntry';
 import { search } from '../../services/api';
 import { buildRepoQuery } from '../../utils';
 import { Directory } from '../../types/api';
-import { SyncStatus } from '../../types/general';
-import { AppNavigationContext } from '../../context/appNavigationContext';
+import { SyncStatus } from '../../old_stuff/types/general';
+import { AppNavigationContext } from '../../old_stuff/context/appNavigationContext';
 import OverflowTracker from '../OverflowTracker';
 
 type Props = {

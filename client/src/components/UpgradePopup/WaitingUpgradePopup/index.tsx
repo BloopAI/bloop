@@ -7,7 +7,7 @@ import React, {
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { UIContext } from '../../../context/uiContext';
-import SeparateOnboardingStep from '../../SeparateOnboardingStep';
+import Modal from '../../Modal';
 import Button from '../../Button';
 import { CloseSign } from '../../../icons';
 import LiteLoaderContainer from '../../Loaders/LiteLoader';
@@ -58,7 +58,7 @@ const WaitingUpgradePopup = ({}: Props) => {
   }, []);
 
   return (
-    <SeparateOnboardingStep
+    <Modal
       isVisible={isWaitingUpgradePopupOpen}
       onClose={() => setWaitingUpgradePopupOpen(false)}
       noWrapper
@@ -132,7 +132,7 @@ const WaitingUpgradePopup = ({}: Props) => {
           </Button>
         </div>
       </div>
-    </SeparateOnboardingStep>
+    </Modal>
   );
 };
 

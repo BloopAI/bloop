@@ -15,7 +15,7 @@ import {
   copyToClipboard,
 } from '../../../utils';
 import { Commit } from '../../../types';
-import useAppNavigation from '../../../hooks/useAppNavigation';
+import useAppNavigation from '../../../old_stuff/hooks/useAppNavigation';
 import SearchOnPage from '../../SearchOnPage';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
 import { MAX_LINES_BEFORE_VIRTUALIZE } from '../../../consts/code';

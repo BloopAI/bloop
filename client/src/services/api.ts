@@ -17,12 +17,7 @@ import {
   TokenInfoResponse,
   TutorialQuestionType,
 } from '../types/api';
-import {
-  CodeStudioShortType,
-  EnvConfig,
-  RepoType,
-  StudioContextFile,
-} from '../types/general';
+import { CodeStudioShortType, EnvConfig, RepoType } from '../types/general';
 import { getPlainFromStorage, REFRESH_TOKEN_KEY } from './storage';
 
 const DB_API = 'https://api.bloop.ai';

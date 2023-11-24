@@ -4,10 +4,10 @@ import Button from '../Button';
 import { Clipboard } from '../../icons';
 import { copyToClipboard } from '../../utils';
 import FileIcon from '../FileIcon';
-import { MessageResultModify } from '../../types/general';
+import { MessageResultModify } from '../../old_stuff/types/general';
 import { FileTreeFileType } from '../../types';
 import BreadcrumbsPath from '../BreadcrumbsPath';
-import { FileModalContext } from '../../context/fileModalContext';
+import { FileModalContext } from '../../old_stuff/context/fileModalContext';
 
 type Props = {
   data: MessageResultModify['Modify'];

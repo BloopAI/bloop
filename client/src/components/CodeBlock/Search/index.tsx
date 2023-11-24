@@ -1,11 +1,10 @@
-import React, { useCallback, useContext, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import FileIcon from '../../FileIcon';
 import Code from '../Code';
 import { ResultClick, Snippet } from '../../../types/results';
 import Button from '../../Button';
 import BreadcrumbsPath from '../../BreadcrumbsPath';
-import { DeviceContext } from '../../../context/deviceContext';
 import { FileTreeFileType } from '../../../types';
 import FileMenu from '../../FileMenu';
 

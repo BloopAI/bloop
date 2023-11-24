@@ -428,5 +428,13 @@
 	"The following changes represent the git diff for the remote repository. Please note that these changes cannot be applied directly to a remote repository. Use the \"Copy\" button to copy the changes and apply them locally.": "以下の変更は、リモートリポジトリのGit差分を表しています。これらの変更はリモートリポジトリに直接適用できないことに注意してください。「コピー」ボタンを使用して変更をコピーし、ローカルに適用してください。",
 	"Cloning": "クローニング",
 	"Directories": "ディレクトリ",
-	"Languages": "言語"
+	"Languages": "言語",
+	"Subscription": "サブスクリプション",
+	"Docs": "ドキュメント",
+	"Join Discord": "Discordに参加してください",
+	"Follow us on Twitter": "Twitterでフォローします",
+	"System": "システム",
+	"Projects": "プロジェクト",
+	"Project settings": "プロジェクト設定",
+	"New project": "新しいプロジェクト"
 }

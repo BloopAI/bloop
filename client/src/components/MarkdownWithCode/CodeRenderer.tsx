@@ -7,8 +7,8 @@ import {
   useCallback,
   useMemo,
 } from 'react';
-import FileChip from '../Chat/ChatBody/ConversationMessage/FileChip';
-import { FileHighlightsType } from '../../types/general';
+import FileChip from '../../old_stuff/components/Chat/ChatBody/ConversationMessage/FileChip';
+import { FileHighlightsType } from '../../old_stuff/types/general';
 import CodeWithBreadcrumbs from './CodeWithBreadcrumbs';
 import NewCode from './NewCode';
 

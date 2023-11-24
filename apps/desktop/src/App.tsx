@@ -31,6 +31,7 @@ import { polling } from '../../../client/src/utils/requestUtils';
 import ReportBugModal from '../../../client/src/components/ReportBugModal';
 import { UIContext } from '../../../client/src/context/uiContext';
 import { DeviceContextProvider } from '../../../client/src/context/providers/DeviceContextProvider';
+import { EnvContext } from '../../../client/src/context/envContext';
 import TextSearch from './TextSearch';
 import SplashScreen from './SplashScreen';
 
@@ -212,12 +213,18 @@ function App() {
       isRepoManagementAllowed: true,
       forceAnalytics: false,
       isSelfServe: false,
-      envConfig,
-      setEnvConfig,
       showNativeMessage: message,
       relaunch,
     }),
-    [homeDirectory, indexFolder, os, release, envConfig],
+    [homeDirectory, indexFolder, os, release],
+  );
+
+  const envContextValue = useMemo(
+    () => ({
+      envConfig,
+      setEnvConfig,
+    }),
+    [envConfig],
   );
 
   const bugReportContextValue = useMemo(
@@ -230,26 +237,29 @@ function App() {
   );
 
   return (
-    <LocaleContext.Provider value={localeContextValue}>
-      <AnimatePresence initial={false}>
-        {shouldShowSplashScreen && <SplashScreen />}
-      </AnimatePresence>
-      {shouldShowSplashScreen && (
-        <DeviceContextProvider deviceContextValue={deviceContextValue}>
-          <UIContext.BugReport.Provider value={bugReportContextValue}>
-            <ReportBugModal errorBoundaryMessage={serverCrashedMessage} />
-          </UIContext.BugReport.Provider>
-        </DeviceContextProvider>
-      )}
-      <TextSearch contentRoot={contentContainer.current} />
-      <div ref={contentContainer}>
-        <BrowserRouter>
-          {!shouldShowSplashScreen && (
-            <ClientApp deviceContextValue={deviceContextValue} />
+    <DeviceContextProvider
+      deviceContextValue={deviceContextValue}
+      envConfig={envConfig}
+    >
+      <EnvContext.Provider value={envContextValue}>
+        <LocaleContext.Provider value={localeContextValue}>
+          <AnimatePresence initial={false}>
+            {shouldShowSplashScreen && <SplashScreen />}
+          </AnimatePresence>
+          {shouldShowSplashScreen && (
+            <UIContext.BugReport.Provider value={bugReportContextValue}>
+              <ReportBugModal errorBoundaryMessage={serverCrashedMessage} />
+            </UIContext.BugReport.Provider>
           )}
-        </BrowserRouter>
-      </div>
-    </LocaleContext.Provider>
+          <TextSearch contentRoot={contentContainer.current} />
+          <div ref={contentContainer}>
+            <BrowserRouter>
+              {!shouldShowSplashScreen && <ClientApp />}
+            </BrowserRouter>
+          </div>
+        </LocaleContext.Provider>
+      </EnvContext.Provider>
+    </DeviceContextProvider>
   );
 }
 

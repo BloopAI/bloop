@@ -9,8 +9,8 @@ import {
 } from 'react';
 import { ReactMarkdownProps } from 'react-markdown/lib/complex-types';
 import { CodeProps } from 'react-markdown/lib/ast-to-react';
-import { AppNavigationContext } from '../../context/appNavigationContext';
-import { SearchContext } from '../../context/searchContext';
+import { AppNavigationContext } from '../../old_stuff/context/appNavigationContext';
+import { SearchContext } from '../../old_stuff/context/searchContext';
 import { FileHighlightsContext } from '../../context/fileHighlightsContext';
 import LinkRenderer from './LinkRenderer';
 import CodeRenderer from './CodeRenderer';

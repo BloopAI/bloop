@@ -8,8 +8,8 @@ import {
   useRef,
 } from 'react';
 import { CheckIcon, MagnifyTool, MailIcon } from '../../icons';
-import ClearButton from '../ClearButton';
-import RegexButton from '../RegexButton';
+import ClearButton from './ClearButton';
+import RegexButton from './RegexButton';
 
 type Props = {
   value: string;

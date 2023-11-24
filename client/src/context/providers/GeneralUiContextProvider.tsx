@@ -11,7 +11,6 @@ import { UIContext } from '../uiContext';
 import { usePersistentState } from '../../hooks/usePersistentState';
 import { DeviceContext } from '../deviceContext';
 import { getConfig, refreshToken as refreshTokenApi } from '../../services/api';
-import { SettingSections } from '../../components/Settings';
 import {
   ACCESS_TOKEN_KEY,
   ANSWER_SPEED_KEY,
@@ -22,6 +21,7 @@ import {
   THEME,
 } from '../../services/storage';
 import { Theme } from '../../types';
+import { EnvContext } from '../envContext';
 
 type Props = {
   activeTab: string;
@@ -35,7 +35,8 @@ export const GeneralUiContextProvider = memo(
       {},
       'onBoardingState',
     );
-    const { isSelfServe, setEnvConfig } = useContext(DeviceContext);
+    const { isSelfServe } = useContext(DeviceContext);
+    const { setEnvConfig } = useContext(EnvContext);
     const [isGithubConnected, setGithubConnected] = useState(
       isSelfServe ? !!getPlainFromStorage(REFRESH_TOKEN_KEY) : false,
     );

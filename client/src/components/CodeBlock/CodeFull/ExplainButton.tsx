@@ -3,7 +3,7 @@ import { Trans } from 'react-i18next';
 import React, { memo, useContext } from 'react';
 import { Clipboard, Feather, Info, Sparkle } from '../../../icons';
 import { findElementInCurrentTab } from '../../../utils/domUtils';
-import { ChatContext } from '../../../context/chatContext';
+import { ChatContext } from '../../../old_stuff/context/chatContext';
 import { DeviceContext } from '../../../context/deviceContext';
 import { copyToClipboard } from '../../../utils';
 

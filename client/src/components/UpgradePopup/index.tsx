@@ -1,6 +1,6 @@
 import React, { useCallback, useContext, useEffect, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import ModalOrSidebar from '../ModalOrSidebar';
+import Modal from '../Modal';
 import Button from '../Button';
 import { CloseSign } from '../../icons';
 import { DeviceContext } from '../../context/deviceContext';
@@ -47,15 +47,10 @@ const UpgradePopup = () => {
   }, [openLink, link]);
 
   return (
-    <ModalOrSidebar
-      isSidebar={false}
-      shouldShow={isUpgradePopupOpen}
+    <Modal
+      isVisible={isUpgradePopupOpen}
       onClose={() => setUpgradePopupOpen(false)}
-      isModalSidebarTransition={false}
-      setIsModalSidebarTransition={() => {}}
-      shouldStretch={false}
-      fullOverlay
-      containerClassName="max-w-[34rem] max-h-[80vh]"
+      // containerClassName="max-w-[34rem] max-h-[80vh]"
     >
       <div className="relative bg-bg-shade overflow-auto">
         <div>
@@ -89,7 +84,7 @@ const UpgradePopup = () => {
           </Button>
         </div>
       </div>
-    </ModalOrSidebar>
+    </Modal>
   );
 };
 

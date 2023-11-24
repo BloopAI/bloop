@@ -1,5 +1,5 @@
 import { Token } from './prism';
-import { RefDefDataItem, TokenInfoResponse } from './api';
+import { RefDefDataItem } from './api';
 import { FileTreeFileType, RepositoryFile } from './index';
 
 export type BaseSymbolType =

@@ -1,7 +1,7 @@
 import React, { useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DropdownWithIcon } from '../Dropdown';
-import { MenuItemType } from '../../types/general';
+import { MenuItemType } from '../../old_stuff/types/general';
 import { getFileManagerName, isWindowsPath, splitPath } from '../../utils';
 import { MoreHorizontal } from '../../icons';
 import { DeviceContext } from '../../context/deviceContext';

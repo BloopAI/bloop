@@ -8,14 +8,14 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { SearchContext } from '../../../context/searchContext';
+import { SearchContext } from '../../../old_stuff/context/searchContext';
 import { Token as TokenType } from '../../../types/prism';
 import { hashCode } from '../../../utils';
 import { Range, TokenInfoType, TokenInfoWrapped } from '../../../types/results';
 import { getTokenInfo } from '../../../services/api';
 import { MAX_LINES_BEFORE_VIRTUALIZE } from '../../../consts/code';
 import { mapTokenInfo } from '../../../mappers/results';
-import { AppNavigationContext } from '../../../context/appNavigationContext';
+import { AppNavigationContext } from '../../../old_stuff/context/appNavigationContext';
 import { FileHighlightsContext } from '../../../context/fileHighlightsContext';
 import CodeContainerVirtualized from './CodeContainerVirtualized';
 import CodeContainerFull from './CodeContainerFull';

@@ -8,16 +8,16 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation, Trans } from 'react-i18next';
-import ModalOrSidebar from '../ModalOrSidebar';
-import { Bug, CloseSign } from '../../icons';
+import Modal from '../../components/Modal';
+import { BugIcon, CloseSign } from '../../icons';
 import TextInput from '../TextInput';
 import Button from '../Button';
 import { UIContext } from '../../context/uiContext';
 import { EMAIL_REGEX } from '../../consts/validations';
 import { saveBugReport, saveCrashReport } from '../../services/api';
 import { DeviceContext } from '../../context/deviceContext';
-import { TabsContext } from '../../context/tabsContext';
 import { getJsonFromStorage, USER_DATA_FORM } from '../../services/storage';
+import { EnvContext } from '../../context/envContext';
 import ConfirmImg from './ConfirmImg';
 
 type Props = {
@@ -43,9 +43,8 @@ const ReportBugModal = ({
   const { isBugReportModalOpen, setBugReportModalOpen, activeTab } = useContext(
     UIContext.BugReport,
   );
-  const { envConfig, listen, os, release, invokeTauriCommand } =
-    useContext(DeviceContext);
-  const { handleRemoveTab, setActiveTab } = useContext(TabsContext);
+  const { listen, os, release, invokeTauriCommand } = useContext(DeviceContext);
+  const { envConfig } = useContext(EnvContext);
 
   const userForm = useMemo(
     (): { email: string; firstName: string; lastName: string } | null =>
@@ -122,26 +121,20 @@ const ReportBugModal = ({
   );
   const resetState = useCallback(() => {
     if (serverCrashedMessage) {
-      handleRemoveTab(activeTab);
-      setActiveTab('initial');
+      console.log('go to empty page');
     }
     setForm((prev) => ({ ...prev, text: '', emailError: '' }));
     setSubmitted(false);
     setBugReportModalOpen(false);
     setServerCrashedMessage('');
     handleSubmit?.();
-  }, [handleRemoveTab, setActiveTab, serverCrashedMessage, activeTab]);
+  }, [serverCrashedMessage, activeTab]);
 
   return (
-    <ModalOrSidebar
-      isSidebar={false}
-      shouldShow={isBugReportModalOpen || !!forceShow}
+    <Modal
+      isVisible={isBugReportModalOpen || !!forceShow}
       onClose={() => setBugReportModalOpen(false)}
-      isModalSidebarTransition={false}
-      setIsModalSidebarTransition={() => {}}
-      shouldStretch={false}
-      fullOverlay
-      containerClassName="max-w-md2 max-h-[80vh]"
+      // containerClassName="max-w-md2 max-h-[80vh]"
     >
       <div className="p-6 flex flex-col gap-8 relative bg-bg-shade overflow-auto">
         {!isSubmitted ? (
@@ -193,7 +186,7 @@ const ReportBugModal = ({
           ) : (
             <>
               <div className="flex flex-col gap-3 items-center text-label-title">
-                <Bug />
+                <BugIcon />
                 <h4>
                   <Trans>Report a bug</Trans>
                 </h4>
@@ -275,7 +268,7 @@ const ReportBugModal = ({
           </Button>
         </div>
       </div>
-    </ModalOrSidebar>
+    </Modal>
   );
 };
 
