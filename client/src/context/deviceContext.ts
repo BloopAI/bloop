@@ -1,5 +1,4 @@
-import { createContext, Dispatch, SetStateAction } from 'react';
-import { EnvConfig } from '../types/general';
+import { createContext } from 'react';
 
 export type DeviceContextType = {
   openFolderInExplorer: (p: string) => void;
@@ -27,8 +26,6 @@ export type DeviceContextType = {
   isRepoManagementAllowed: boolean;
   forceAnalytics: boolean;
   isSelfServe: boolean;
-  envConfig: EnvConfig;
-  setEnvConfig: Dispatch<SetStateAction<EnvConfig>>;
   showNativeMessage: (m: string, options?: any) => Promise<void> | void;
 };
 
@@ -51,7 +48,5 @@ export const DeviceContext = createContext<DeviceContextType>({
   isRepoManagementAllowed: true,
   forceAnalytics: false,
   isSelfServe: false,
-  envConfig: {},
-  setEnvConfig: () => {},
   showNativeMessage: () => Promise.resolve(),
 });

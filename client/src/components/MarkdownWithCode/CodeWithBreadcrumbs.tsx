@@ -1,28 +1,26 @@
 import React, { useCallback, MouseEvent } from 'react';
 import FileIcon from '../FileIcon';
-import BreadcrumbsPath from '../BreadcrumbsPath';
 import { FileTreeFileType } from '../../types';
-import Code from '../CodeBlock/Code';
+import CodeFragment from '../Code/CodeFragment';
+import BreadcrumbsPathContainer from '../Breadcrumbs/PathContainer';
 import CopyButton from './CopyButton';
 
 type Props = {
   filePath: string;
-  repoName?: string;
   onResultClick: (path: string, lines?: string) => void;
   startLine: number | null;
   language: string;
   code: string;
-  isSummary?: boolean;
+  repoRef?: string;
 };
 
 const CodeWithBreadcrumbs = ({
   filePath,
-  repoName,
   onResultClick,
   startLine,
   language,
   code,
-  isSummary,
+  repoRef,
 }: Props) => {
   const handleResultClick = useCallback(
     (e: MouseEvent) => {
@@ -40,40 +38,34 @@ const CodeWithBreadcrumbs = ({
     },
     [filePath, startLine, code, onResultClick],
   );
+  const onBreadcrumbClick = useCallback(
+    (path: string, type?: FileTreeFileType) => {
+      type === FileTreeFileType.FILE ? onResultClick(path) : {};
+    },
+    [onResultClick],
+  );
 
   return (
     <div
-      className={`text-sm border border-chat-bg-divider rounded-md flex-1 overflow-x-auto cursor-pointer ${
-        isSummary ? '' : 'my-4'
-      }`}
+      className={`text-sm border border-bg-border bg-bg-sub rounded-md flex-1 overflow-x-auto cursor-pointer`}
       onClick={handleResultClick}
     >
       <div
-        className={`flex items-center justify-between gap-2 w-full border-b ${
-          isSummary
-            ? 'bg-chat-bg-sub'
-            : 'bg-chat-bg-shade border-chat-bg-divider'
-        } p-2 cursor-pointer overflow-hidden`}
+        className={`flex items-center justify-between gap-2 w-full border-b border-bg-border bg-bg-base p-2 cursor-pointer overflow-hidden`}
       >
-        <div
-          className={`flex items-center gap-2 w-full cursor-pointer ${
-            isSummary ? '-mt-5' : ''
-          }`}
-        >
+        <div className={`flex items-center gap-2 w-full cursor-pointer`}>
           <FileIcon filename={filePath} />
-          <BreadcrumbsPath
+          <BreadcrumbsPathContainer
             path={filePath}
-            repo={repoName || ''}
-            onClick={(path, type) =>
-              type === FileTreeFileType.FILE ? onResultClick(path) : {}
-            }
+            repoRef={repoRef}
+            onClick={onBreadcrumbClick}
           />
           <CopyButton code={code} isInHeader />
         </div>
       </div>
       <div className="relative">
-        <div className={`relative overflow-x-auto py-4 bg-chat-bg-base code-s`}>
-          <Code
+        <div className={`relative overflow-x-auto py-4 code-mini`}>
+          <CodeFragment
             code={code}
             language={language}
             showLines={startLine !== null}

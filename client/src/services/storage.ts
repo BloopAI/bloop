@@ -16,25 +16,29 @@ export const getJsonFromStorage = <T>(key: string): T | null => {
     return null;
   }
 };
+export const saveArrayToStorage = (
+  key: string,
+  value: string[],
+  maxSize: number,
+) => saveJsonToStorage(key, value.slice(-maxSize));
 
-export const CHOSEN_SCAN_FOLDER_KEY = 'chosen_scan_folder';
-export const SEARCH_HISTORY_KEY = 'search_history';
+export const updateArrayInStorage = (key: string, newValue: string) => {
+  const oldValues = getJsonFromStorage<string[]>(key) || [];
+  const newValues = [...oldValues.filter((v) => v !== newValue), newValue];
+  saveArrayToStorage(key, newValues, 10);
+};
+
 export const ONBOARDING_DONE_KEY = 'onboarding_done';
-export const IS_ANALYTICS_ALLOWED_KEY = 'is_analytics_allowed';
-export const SESSION_ID_KEY = 'session_id';
-export const DEVICE_ID = 'device_id';
 export const USER_DATA_FORM = 'user_data_form';
 export const THEME = 'theme';
-export const TABS_KEY = 'tabs';
-export const LAST_ACTIVE_TAB_KEY = 'last_active_tab';
-export const TABS_HISTORY_KEY = 'tabs_history';
 export const STUDIO_GUIDE_DONE = 'studio_guide_done';
 export const LANGUAGE_KEY = 'language';
-export const RIGHT_SIDEBAR_WIDTH_KEY = 'right_sidebar_width_key';
-export const LEFT_SIDEBAR_WIDTH_KEY = 'left_sidebar_width_key';
+export const RIGHT_SIDEBAR_WIDTH_KEY = 'right_sidebar_width';
+export const LEFT_SIDEBAR_WIDTH_KEY = 'left_nav_width_key';
 export const LOADING_STEPS_SHOWN_KEY = 'loading_steps_shown';
 export const ANSWER_SPEED_KEY = 'answer_speed_key';
-export const HIDE_TUTORIALS_KEY = 'hide_tutorials';
 export const ACCESS_TOKEN_KEY = 'access_token';
 export const REFRESH_TOKEN_KEY = 'refresh_token';
 export const USER_FONT_SIZE_KEY = 'user_font_size';
+export const PROJECT_KEY = 'project';
+export const RECENT_COMMANDS_KEY = 'recent_commands';

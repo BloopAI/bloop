@@ -1,12 +1,13 @@
-[data-theme="default"] {
+[data-theme="dark"] {
     /********************************************************* * Tokens */
     /********************************************************* * Language Specific */
     /********************************************************* * Line highlighting */
 }
-[data-theme="default"] pre[class*="language-"], [data-theme="default"] code[class*="language-"] {
+[data-theme="dark"] pre[class*="language-"], [data-theme="dark"] code[class*="language-"],
+[data-theme="black"] pre[class*="language-"], [data-theme="black"] code[class*="language-"] {
     color: #d4d4d4;
     text-shadow: none;
-    font-family: Menlo, Monaco, Consolas, "Andale Mono", "Ubuntu Mono", "Courier New", monospace;
+    font-family: "Fira Code", Menlo, Monaco, Consolas, "Andale Mono", "Ubuntu Mono", "Courier New", monospace;
     direction: ltr;
     text-align: left;
     white-space: pre;
@@ -21,16 +22,24 @@
     -ms-hyphens: none;
     hyphens: none;
 }
-[data-theme="default"] pre[class*="language-"]::selection, [data-theme="default"] code[class*="language-"]::selection, [data-theme="default"] pre[class*="language-"] *::selection, [data-theme="default"] code[class*="language-"] *::selection {
+[data-theme="dark"] pre[class*="language-"]::selection,
+[data-theme="dark"] code[class*="language-"]::selection,
+[data-theme="dark"] pre[class*="language-"] *::selection,
+[data-theme="dark"] code[class*="language-"] *::selection,
+[data-theme="black"] pre[class*="language-"]::selection,
+[data-theme="black"] code[class*="language-"]::selection,
+[data-theme="black"] pre[class*="language-"] *::selection,
+[data-theme="black"] code[class*="language-"] *::selection {
     text-shadow: none;
     background: #264f78;
 }
 @media print {
-    [data-theme="default"] pre[class*="language-"], [data-theme="default"] code[class*="language-"] {
+    [data-theme="dark"] pre[class*="language-"], [data-theme="dark"] code[class*="language-"],
+    [data-theme="black"] pre[class*="language-"], [data-theme="black"] code[class*="language-"] {
         text-shadow: none;
     }
 }
-[data-theme="default"] pre[class*="language-"] {
+[data-theme="dark"] pre[class*="language-"], [data-theme="black"] pre[class*="language-"] {
     /*padding: 1em;
     */
     /*margin: .5em 0;
@@ -39,150 +48,150 @@
     */
     background: transparent;
 }
-[data-theme="default"] :not(pre) > code[class*="language-"] {
+[data-theme="dark"] :not(pre) > code[class*="language-"] , [data-theme="black"] :not(pre) > code[class*="language-"] {
     padding: 0.1em 0.3em;
     border-radius: 0.3em;
     color: #db4c69;
     /*background: #1e1e1e;
     */
 }
-[data-theme="default"] .namespace {
+[data-theme="dark"] .namespace , [data-theme="black"] .namespace {
     opacity: 0.7;
 }
-[data-theme="default"] .token.doctype .token.doctype-tag {
+[data-theme="dark"] .token.doctype .token.doctype-tag , [data-theme="black"] .token.doctype .token.doctype-tag {
     color: #569cd6;
 }
-[data-theme="default"] .token.doctype .token.name {
+[data-theme="dark"] .token.doctype .token.name , [data-theme="black"] .token.doctype .token.name {
     color: #9cdcfe;
 }
-[data-theme="default"] .token.comment, [data-theme="default"] .token.prolog {
+[data-theme="dark"] .token.comment, [data-theme="black"] .token.comment, [data-theme="dark"] .token.prolog , [data-theme="black"] .token.prolog {
     color: #6a9955;
 }
-[data-theme="default"] .token.property, [data-theme="default"] .token.tag, [data-theme="default"] .token.boolean, [data-theme="default"] .token.number, [data-theme="default"] .token.constant, [data-theme="default"] .token.symbol, [data-theme="default"] .token.inserted, [data-theme="default"] .token.unit {
+[data-theme="dark"] .token.property, [data-theme="black"] .token.property, [data-theme="dark"] .token.tag, [data-theme="black"] .token.tag, [data-theme="dark"] .token.boolean, [data-theme="black"] .token.boolean, [data-theme="dark"] .token.number, [data-theme="black"] .token.number, [data-theme="dark"] .token.constant, [data-theme="black"] .token.constant, [data-theme="dark"] .token.symbol, [data-theme="black"] .token.symbol, [data-theme="dark"] .token.inserted, [data-theme="black"] .token.inserted, [data-theme="dark"] .token.unit , [data-theme="black"] .token.unit {
     color: #b5cea8;
 }
-[data-theme="default"] .token.tag {
+[data-theme="dark"] .token.tag , [data-theme="black"] .token.tag {
     color: #569cd6;
 }
-[data-theme="default"] .token.punctuation, [data-theme="default"] .language-html .language-css .token.punctuation, [data-theme="default"] .language-html .language-javascript .token.punctuation {
+[data-theme="dark"] .token.punctuation, [data-theme="black"] .token.punctuation, [data-theme="dark"] .language-html .language-css .token.punctuation, [data-theme="black"] .language-html .language-css .token.punctuation, [data-theme="dark"] .language-html .language-javascript .token.punctuation , [data-theme="black"] .language-html .language-javascript .token.punctuation {
     color: #d4d4d4;
 }
-[data-theme="default"] .token.selector, [data-theme="default"] .token.attr-name, [data-theme="default"] .token.string, [data-theme="default"] .token.char, [data-theme="default"] .token.builtin, [data-theme="default"] .token.deleted {
+[data-theme="dark"] .token.selector, [data-theme="black"] .token.selector, [data-theme="dark"] .token.attr-name, [data-theme="black"] .token.attr-name, [data-theme="dark"] .token.string, [data-theme="black"] .token.string, [data-theme="dark"] .token.char, [data-theme="black"] .token.char, [data-theme="dark"] .token.builtin, [data-theme="black"] .token.builtin, [data-theme="dark"] .token.deleted , [data-theme="black"] .token.deleted {
     color: #ce9178;
 }
-[data-theme="default"] .language-css .token.string.url {
+[data-theme="dark"] .language-css .token.string.url , [data-theme="black"] .language-css .token.string.url {
     text-decoration: underline;
 }
-[data-theme="default"] .token.operator, [data-theme="default"] .token.entity {
+[data-theme="dark"] .token.operator, [data-theme="black"] .token.operator, [data-theme="dark"] .token.entity , [data-theme="black"] .token.entity {
     color: #d4d4d4;
 }
-[data-theme="default"] .token.operator.arrow {
+[data-theme="dark"] .token.operator.arrow , [data-theme="black"] .token.operator.arrow {
     color: #569cd6;
 }
-[data-theme="default"] .token.atrule {
+[data-theme="dark"] .token.atrule , [data-theme="black"] .token.atrule {
     color: #ce9178;
 }
-[data-theme="default"] .token.atrule .token.rule {
+[data-theme="dark"] .token.atrule .token.rule , [data-theme="black"] .token.atrule .token.rule {
     color: #c586c0;
 }
-[data-theme="default"] .token.atrule .token.url {
+[data-theme="dark"] .token.atrule .token.url , [data-theme="black"] .token.atrule .token.url {
     color: #9cdcfe;
 }
-[data-theme="default"] .token.atrule .token.url .token.function {
+[data-theme="dark"] .token.atrule .token.url .token.function , [data-theme="black"] .token.atrule .token.url .token.function {
     color: #dcdcaa;
 }
-[data-theme="default"] .token.atrule .token.url .token.punctuation {
+[data-theme="dark"] .token.atrule .token.url .token.punctuation , [data-theme="black"] .token.atrule .token.url .token.punctuation {
     color: #d4d4d4;
 }
-[data-theme="default"] .token.keyword {
+[data-theme="dark"] .token.keyword , [data-theme="black"] .token.keyword {
     color: #569cd6;
 }
-[data-theme="default"] .token.keyword.module, [data-theme="default"] .token.keyword.control-flow {
+[data-theme="dark"] .token.keyword.module, [data-theme="black"] .token.keyword.module, [data-theme="dark"] .token.keyword.control-flow , [data-theme="black"] .token.keyword.control-flow {
     color: #c586c0;
 }
-[data-theme="default"] .token.function, [data-theme="default"] .token.function .token.maybe-class-name {
+[data-theme="dark"] .token.function, [data-theme="black"] .token.function, [data-theme="dark"] .token.function .token.maybe-class-name , [data-theme="black"] .token.function .token.maybe-class-name {
     color: #dcdcaa;
 }
-[data-theme="default"] .token.regex {
+[data-theme="dark"] .token.regex , [data-theme="black"] .token.regex {
     color: #d16969;
 }
-[data-theme="default"] .token.important {
+[data-theme="dark"] .token.important , [data-theme="black"] .token.important {
     color: #569cd6;
 }
-[data-theme="default"] .token.italic {
+[data-theme="dark"] .token.italic , [data-theme="black"] .token.italic {
     font-style: italic;
 }
-[data-theme="default"] .token.constant {
+[data-theme="dark"] .token.constant , [data-theme="black"] .token.constant {
     color: #9cdcfe;
 }
-[data-theme="default"] .token.class-name, [data-theme="default"] .token.maybe-class-name {
+[data-theme="dark"] .token.class-name, [data-theme="black"] .token.class-name, [data-theme="dark"] .token.maybe-class-name , [data-theme="black"] .token.maybe-class-name {
     color: #4ec9b0;
 }
-[data-theme="default"] .token.console {
+[data-theme="dark"] .token.console , [data-theme="black"] .token.console {
     color: #9cdcfe;
 }
-[data-theme="default"] .token.parameter {
+[data-theme="dark"] .token.parameter , [data-theme="black"] .token.parameter {
     color: #9cdcfe;
 }
-[data-theme="default"] .token.interpolation {
+[data-theme="dark"] .token.interpolation , [data-theme="black"] .token.interpolation {
     color: #9cdcfe;
 }
-[data-theme="default"] .token.punctuation.interpolation-punctuation {
+[data-theme="dark"] .token.punctuation.interpolation-punctuation , [data-theme="black"] .token.punctuation.interpolation-punctuation {
     color: #569cd6;
 }
-[data-theme="default"] .token.boolean {
+[data-theme="dark"] .token.boolean , [data-theme="black"] .token.boolean {
     color: #569cd6;
 }
-[data-theme="default"] .token.property, [data-theme="default"] .token.variable, [data-theme="default"] .token.imports .token.maybe-class-name, [data-theme="default"] .token.exports .token.maybe-class-name {
+[data-theme="dark"] .token.property, [data-theme="black"] .token.property, [data-theme="dark"] .token.variable, [data-theme="black"] .token.variable, [data-theme="dark"] .token.imports .token.maybe-class-name, [data-theme="black"] .token.imports .token.maybe-class-name, [data-theme="dark"] .token.exports .token.maybe-class-name , [data-theme="black"] .token.exports .token.maybe-class-name {
     color: #9cdcfe;
 }
-[data-theme="default"] .token.selector {
+[data-theme="dark"] .token.selector , [data-theme="black"] .token.selector {
     color: #d7ba7d;
 }
-[data-theme="default"] .token.escape {
+[data-theme="dark"] .token.escape , [data-theme="black"] .token.escape {
     color: #d7ba7d;
 }
-[data-theme="default"] .token.tag .token.punctuation {
+[data-theme="dark"] .token.tag .token.punctuation , [data-theme="black"] .token.tag .token.punctuation {
     color: #808080;
 }
-[data-theme="default"] .token.cdata {
+[data-theme="dark"] .token.cdata , [data-theme="black"] .token.cdata {
     color: #808080;
 }
-[data-theme="default"] .token.attr-name {
+[data-theme="dark"] .token.attr-name , [data-theme="black"] .token.attr-name {
     color: #9cdcfe;
 }
-[data-theme="default"] .token.attr-value, [data-theme="default"] .token.attr-value .token.punctuation {
+[data-theme="dark"] .token.attr-value, [data-theme="black"] .token.attr-value, [data-theme="dark"] .token.attr-value .token.punctuation , [data-theme="black"] .token.attr-value .token.punctuation {
     color: #ce9178;
 }
-[data-theme="default"] .token.attr-value .token.punctuation.attr-equals {
+[data-theme="dark"] .token.attr-value .token.punctuation.attr-equals , [data-theme="black"] .token.attr-value .token.punctuation.attr-equals {
     color: #d4d4d4;
 }
-[data-theme="default"] .token.entity {
+[data-theme="dark"] .token.entity , [data-theme="black"] .token.entity {
     color: #569cd6;
 }
-[data-theme="default"] .token.namespace {
+[data-theme="dark"] .token.namespace , [data-theme="black"] .token.namespace {
     color: #4ec9b0;
 }
-[data-theme="default"] pre[class*="language-javascript"], [data-theme="default"] code[class*="language-javascript"], [data-theme="default"] pre[class*="language-jsx"], [data-theme="default"] code[class*="language-jsx"], [data-theme="default"] pre[class*="language-typescript"], [data-theme="default"] code[class*="language-typescript"], [data-theme="default"] pre[class*="language-tsx"], [data-theme="default"] code[class*="language-tsx"] {
+[data-theme="dark"] pre[class*="language-javascript"], [data-theme="black"] pre[class*="language-javascript"], [data-theme="dark"] code[class*="language-javascript"], [data-theme="black"] code[class*="language-javascript"], [data-theme="dark"] pre[class*="language-jsx"], [data-theme="black"] pre[class*="language-jsx"], [data-theme="dark"] code[class*="language-jsx"], [data-theme="black"] code[class*="language-jsx"], [data-theme="dark"] pre[class*="language-typescript"], [data-theme="black"] pre[class*="language-typescript"], [data-theme="dark"] code[class*="language-typescript"], [data-theme="black"] code[class*="language-typescript"], [data-theme="dark"] pre[class*="language-tsx"], [data-theme="black"] pre[class*="language-tsx"], [data-theme="dark"] code[class*="language-tsx"] , [data-theme="black"] code[class*="language-tsx"] {
     color: #9cdcfe;
 }
-[data-theme="default"] pre[class*="language-css"], [data-theme="default"] code[class*="language-css"] {
+[data-theme="dark"] pre[class*="language-css"], [data-theme="black"] pre[class*="language-css"], [data-theme="dark"] code[class*="language-css"] , [data-theme="black"] code[class*="language-css"] {
     color: #ce9178;
 }
-[data-theme="default"] pre[class*="language-html"], [data-theme="default"] code[class*="language-html"] {
+[data-theme="dark"] pre[class*="language-html"], [data-theme="black"] pre[class*="language-html"], [data-theme="dark"] code[class*="language-html"] , [data-theme="black"] code[class*="language-html"] {
     color: #d4d4d4;
 }
-[data-theme="default"] .language-regex .token.anchor {
+[data-theme="dark"] .language-regex .token.anchor , [data-theme="black"] .language-regex .token.anchor {
     color: #dcdcaa;
 }
-[data-theme="default"] .language-html .token.punctuation {
+[data-theme="dark"] .language-html .token.punctuation , [data-theme="black"] .language-html .token.punctuation {
     color: #808080;
 }
-[data-theme="default"] pre[class*="language-"] > code[class*="language-"] {
+[data-theme="dark"] pre[class*="language-"] > code[class*="language-"] , [data-theme="black"] pre[class*="language-"] > code[class*="language-"] {
     position: relative;
     z-index: 1;
 }
-[data-theme="default"] .line-highlight.line-highlight {
+[data-theme="dark"] .line-highlight.line-highlight , [data-theme="black"] .line-highlight.line-highlight {
     background: #f7ebc6;
     box-shadow: inset 5px 0 0 #f7d87c;
     z-index: 0;
@@ -197,7 +206,7 @@
     [data-theme="system"] pre[class*="language-"], [data-theme="system"] code[class*="language-"] {
         color: #d4d4d4;
         text-shadow: none;
-        font-family: Menlo, Monaco, Consolas, "Andale Mono", "Ubuntu Mono", "Courier New", monospace;
+        font-family: "Fira Code", Menlo, Monaco, Consolas, "Andale Mono", "Ubuntu Mono", "Courier New", monospace;
         direction: ltr;
         text-align: left;
         white-space: pre;

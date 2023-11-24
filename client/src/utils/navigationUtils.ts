@@ -1,7 +1,6 @@
 import { Location } from 'react-router-dom';
-import { NavigationItem } from '../types/general';
 
-export const buildURLPart = (navItem: NavigationItem) => {
+export const buildURLPart = (navItem: any) => {
   switch (navItem?.type) {
     case 'search':
       return `search${
@@ -56,9 +55,9 @@ export const getNavItemFromURL = (location: Location, repoName: string) => {
   if (!possibleTypes.includes(type)) {
     return undefined;
   }
-  const navItem: NavigationItem = {
+  const navItem: any = {
     isInitial: true,
-    type: type as NavigationItem['type'],
+    type: type,
     searchType: 0,
     repo: repoName,
   };
@@ -103,7 +102,7 @@ export const getNavItemFromURL = (location: Location, repoName: string) => {
     ? [navItem]
     : [
         {
-          type: 'repo' as NavigationItem['type'],
+          type: 'repo',
           repo: repoName,
           isInitial: true,
         },
