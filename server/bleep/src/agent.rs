@@ -195,8 +195,13 @@ impl Agent {
             }
 
             Action::Answer { paths } => {
-                self.answer(paths).await.context("answer action failed")?;
-                return Ok(None);
+                return match self.answer(paths).await {
+                    Ok(_) => Ok(None),
+                    Err(e) => {
+                        error!(%e, %self.thread_id, "failed to answer");
+                        Err(e)
+                    }
+                };
             }
 
             Action::Path { query } => self.path_search(query).await?,
