@@ -8,17 +8,15 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation, Trans } from 'react-i18next';
-import ModalOrSidebar from '../ModalOrSidebar';
-import { Bug, CloseSign } from '../../icons';
+import Modal from '../../components/Modal';
+import { CloseSignIcon } from '../../icons';
 import TextInput from '../TextInput';
 import Button from '../Button';
 import { UIContext } from '../../context/uiContext';
-import { EMAIL_REGEX } from '../../consts/validations';
 import { saveBugReport, saveCrashReport } from '../../services/api';
 import { DeviceContext } from '../../context/deviceContext';
-import { TabsContext } from '../../context/tabsContext';
 import { getJsonFromStorage, USER_DATA_FORM } from '../../services/storage';
-import ConfirmImg from './ConfirmImg';
+import { EnvContext } from '../../context/envContext';
 
 type Props = {
   errorBoundaryMessage?: string;
@@ -37,15 +35,13 @@ const ReportBugModal = ({
     text: '',
     emailError: '',
   });
-  const [isSubmitted, setSubmitted] = useState(false);
   const [serverLog, setServerLog] = useState('');
   const [serverCrashedMessage, setServerCrashedMessage] = useState('');
-  const { isBugReportModalOpen, setBugReportModalOpen, activeTab } = useContext(
+  const { isBugReportModalOpen, setBugReportModalOpen } = useContext(
     UIContext.BugReport,
   );
-  const { envConfig, listen, os, release, invokeTauriCommand } =
-    useContext(DeviceContext);
-  const { handleRemoveTab, setActiveTab } = useContext(TabsContext);
+  const { listen, os, release, invokeTauriCommand } = useContext(DeviceContext);
+  const { envConfig } = useContext(EnvContext);
 
   const userForm = useMemo(
     (): { email: string; firstName: string; lastName: string } | null =>
@@ -116,154 +112,35 @@ const ReportBugModal = ({
           server_log: serverLog,
         });
       }
-      setSubmitted(true);
+      resetState();
     },
     [form, envConfig.tracking_id, release, serverLog],
   );
   const resetState = useCallback(() => {
     if (serverCrashedMessage) {
-      handleRemoveTab(activeTab);
-      setActiveTab('initial');
+      console.log('go to empty page');
     }
     setForm((prev) => ({ ...prev, text: '', emailError: '' }));
-    setSubmitted(false);
     setBugReportModalOpen(false);
     setServerCrashedMessage('');
     handleSubmit?.();
-  }, [handleRemoveTab, setActiveTab, serverCrashedMessage, activeTab]);
+  }, [serverCrashedMessage]);
 
   return (
-    <ModalOrSidebar
-      isSidebar={false}
-      shouldShow={isBugReportModalOpen || !!forceShow}
+    <Modal
+      isVisible={isBugReportModalOpen || !!forceShow}
       onClose={() => setBugReportModalOpen(false)}
-      isModalSidebarTransition={false}
-      setIsModalSidebarTransition={() => {}}
-      shouldStretch={false}
-      fullOverlay
-      containerClassName="max-w-md2 max-h-[80vh]"
+      containerClassName="max-w-lg max-h-[80vh]"
     >
-      <div className="p-6 flex flex-col gap-8 relative bg-bg-shade overflow-auto">
-        {!isSubmitted ? (
-          serverCrashedMessage ? (
-            <>
-              <div className="flex flex-col gap-3 items-center">
-                <h4 className="text-label-title">
-                  <Trans>bloop crashed unexpectedly</Trans>
-                </h4>
-                <p className="body-s text-label-base text-center">
-                  <Trans>
-                    By submitting this crash report you agree to send it to
-                    bloop for investigation.
-                  </Trans>
-                </p>
-              </div>
-              <form className="flex flex-col gap-4 overflow-auto">
-                <TextInput
-                  value={form.text}
-                  onChange={onChange}
-                  name="text"
-                  multiline
-                  variant="filled"
-                  placeholder={t`Provide any steps necessary to reproduce the problem...`}
-                />
-                <div className="flex flex-col overflow-auto">
-                  <p className="body-s text-label-title mb-1">
-                    <Trans>Problem details and System configuration</Trans>
-                  </p>
-                  <p className="body-s text-label-base border border-bg-border p-2.5 rounded-4 overflow-auto">
-                    {serverCrashedMessage}
-                    <br />
-                    <br />
-                    Type: {os.type}
-                    <br />
-                    Platform: {os.platform}
-                    <br />
-                    Arch: {os.arch}
-                    <br />
-                    Version: {os.version}
-                    <br />
-                  </p>
-                </div>
-              </form>
-              <Button type="submit" onClick={onSubmit}>
-                <Trans>Submit crash report</Trans>
-              </Button>
-            </>
-          ) : (
-            <>
-              <div className="flex flex-col gap-3 items-center text-label-title">
-                <Bug />
-                <h4>
-                  <Trans>Report a bug</Trans>
-                </h4>
-                <p className="body-s text-label-base text-center">
-                  <Trans>
-                    We want to make this the best experience for you. If you
-                    encountered a bug, please submit this bug report to us. Our
-                    team will investigate as soon as possible.
-                  </Trans>
-                </p>
-              </div>
-              <form className="flex flex-col gap-4">
-                <TextInput
-                  value={form.name}
-                  onChange={onChange}
-                  name="name"
-                  variant="filled"
-                  placeholder={t`Full name`}
-                />
-                <TextInput
-                  value={form.email}
-                  onChange={onChange}
-                  validate={() => {
-                    if (!EMAIL_REGEX.test(form.email)) {
-                      setForm((prev) => ({
-                        ...prev,
-                        emailError: t`Email is not valid`,
-                      }));
-                    }
-                  }}
-                  error={form.emailError}
-                  name="email"
-                  variant="filled"
-                  placeholder={t`Email address`}
-                />
-                <TextInput
-                  value={form.text}
-                  onChange={onChange}
-                  name="text"
-                  multiline
-                  variant="filled"
-                  placeholder={t`Describe the bug to help us reproduce it...`}
-                />
-              </form>
-              <Button type="submit" onClick={onSubmit} disabled={!form.text}>
-                <Trans>Submit bug report</Trans>
-              </Button>
-            </>
-          )
-        ) : (
-          <>
-            <div className="flex flex-col gap-3 items-center">
-              <h4>
-                <Trans>Thank you!</Trans>
-              </h4>
-              <p className="body-s text-label-base text-center">
-                <Trans>
-                  We’ll investigate and reach out back soon if necessary.
-                </Trans>
-              </p>
-            </div>
-            <div className="w-full">
-              <ConfirmImg />
-            </div>
-            <Button variant="secondary" onClick={resetState}>
-              <Trans>Got it!</Trans>
-            </Button>
-          </>
-        )}
-        <div className="absolute top-2 right-2">
+      <div className="flex flex-col relative bg-bg-shade overflow-auto">
+        <div className="flex h-13 px-3 items-center justify-between border-b border-bg-border">
+          <p className="title-s select-none text-label-title">
+            {serverCrashedMessage ? (
+              <Trans>bloop crashed unexpectedly</Trans>
+            ) : (
+              <Trans>Report a bug</Trans>
+            )}
+          </p>
           <Button
             onlyIcon
             title={t`Close`}
@@ -271,11 +148,67 @@ const ReportBugModal = ({
             size="small"
             onClick={resetState}
           >
-            <CloseSign />
+            <CloseSignIcon sizeClassName="w-3.5 h-3.5" />
+          </Button>
+        </div>
+        <div className="flex flex-col p-3 gap-4">
+          <p className="select-none body-base text-label-base">
+            {serverCrashedMessage ? (
+              <Trans>
+                By submitting this crash report you agree to send it to bloop
+                for investigation.
+              </Trans>
+            ) : (
+              <Trans>
+                We want to make this the best experience for you. If you
+                encountered a bug, please submit this bug report to us. Our team
+                will investigate as soon as possible.
+              </Trans>
+            )}
+          </p>
+          <TextInput
+            value={form.text}
+            onChange={onChange}
+            name="text"
+            multiline
+            placeholder={t`Provide any steps necessary to reproduce the problem...`}
+          />
+          {!!serverCrashedMessage && (
+            <div>
+              <p className="body-s-b text-label-title mb-2">
+                <Trans>Problem details and System configuration</Trans>
+              </p>
+              <p className="body-s-b text-label-title p-3 rounded-6 bg-bg-base overflow-auto">
+                {serverCrashedMessage}
+                <br />
+                <br />
+                Type: {os.type}
+                <br />
+                Platform: {os.platform}
+                <br />
+                Arch: {os.arch}
+                <br />
+                Version: {os.version}
+                <br />
+              </p>
+            </div>
+          )}
+        </div>
+        <div className="flex items-center px-3 gap-3 justify-end border-t border-bg-border h-13">
+          <Button variant="tertiary" size="small" onClick={resetState}>
+            <Trans>Cancel</Trans>
+          </Button>
+          <Button
+            variant="primary"
+            size="small"
+            onClick={onSubmit}
+            disabled={!form.text && !serverCrashedMessage}
+          >
+            <Trans>Submit bug report</Trans>
           </Button>
         </div>
       </div>
-    </ModalOrSidebar>
+    </Modal>
   );
 };
 

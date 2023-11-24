@@ -1,71 +1,28 @@
 import IconWrapper from './Wrapper';
 
 const RawIcon = (
-  <svg viewBox="0 0 14 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="1.5" cy="13.5" r="1.5" fill="currentColor" />
-    <rect x="8" width="2" height="10" fill="currentColor" />
-    <rect
-      x="4"
-      y="6"
-      width="2"
-      height="10"
-      transform="rotate(-90 4 6)"
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 14" fill="none">
+    <path
+      d="M3.79183 11.6667C3.79183 12.3111 3.2695 12.8334 2.62516 12.8334C1.98083 12.8334 1.4585 12.3111 1.4585 11.6667C1.4585 11.0224 1.98083 10.5001 2.62516 10.5001C3.2695 10.5001 3.79183 11.0224 3.79183 11.6667Z"
       fill="currentColor"
     />
-    <rect
-      x="4.87521"
-      y="2.05371"
-      width="1.66667"
-      height="10"
-      transform="rotate(-45 4.87521 2.05371)"
+    <path
+      d="M7.87516 1.16675H9.62516V9.33342H7.87516V1.16675Z"
       fill="currentColor"
     />
-    <rect
-      x="6.05372"
-      y="9.12482"
-      width="1.66667"
-      height="10"
-      transform="rotate(-135 6.05372 9.12482)"
+    <path
+      d="M4.37516 5.83342V4.08342L12.5418 4.08341V5.83341L4.37516 5.83342Z"
+      fill="currentColor"
+    />
+    <path
+      d="M5.31795 2.76009L6.25094 1.8271L11.8489 7.42503L10.9159 8.35802L5.31795 2.76009Z"
+      fill="currentColor"
+    />
+    <path
+      d="M6.25106 8.35815L5.31807 7.42517L10.916 1.82724L11.849 2.76023L6.25106 8.35815Z"
       fill="currentColor"
     />
   </svg>
 );
 
-const BoxedIcon = (
-  <svg
-    width="20"
-    height="20"
-    viewBox="0 0 20 20"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <circle cx="4.5" cy="16.5" r="1.5" fill="currentColor" />
-    <rect x="11" y="3" width="2" height="10" fill="currentColor" />
-    <rect
-      x="7"
-      y="9"
-      width="2"
-      height="10"
-      transform="rotate(-90 7 9)"
-      fill="currentColor"
-    />
-    <rect
-      x="7.87524"
-      y="5.05374"
-      width="1.66667"
-      height="10"
-      transform="rotate(-45 7.87524 5.05374)"
-      fill="currentColor"
-    />
-    <rect
-      x="9.05371"
-      y="12.1248"
-      width="1.66667"
-      height="10"
-      transform="rotate(-135 9.05371 12.1248)"
-      fill="currentColor"
-    />
-  </svg>
-);
-
-export default IconWrapper(RawIcon, BoxedIcon);
+export default IconWrapper(RawIcon);

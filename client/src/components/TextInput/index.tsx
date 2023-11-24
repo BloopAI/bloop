@@ -7,9 +7,9 @@ import {
   ReactElement,
   useRef,
 } from 'react';
-import { CheckIcon, MagnifyTool, MailIcon } from '../../icons';
-import ClearButton from '../ClearButton';
-import RegexButton from '../RegexButton';
+import { CheckIcon, MagnifyToolIcon, MailIcon } from '../../icons';
+import ClearButton from './ClearButton';
+import RegexButton from './RegexButton';
 
 type Props = {
   value: string;
@@ -21,21 +21,17 @@ type Props = {
   error?: string | null;
   success?: boolean;
   disabled?: boolean;
-  regex?: boolean;
-  variant?: 'outlined' | 'filled';
   type?: HTMLInputTypeAttribute;
   onSubmit?: (e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   onEscape?: () => void;
-  onRegexClick?: () => void;
-  validate?: () => void;
-  regexEnabled?: boolean;
+  onBlur?: () => void;
   autoFocus?: boolean;
   inputClassName?: string;
   forceClear?: boolean;
   noBorder?: boolean;
   startIcon?: ReactElement;
   endIcon?: ReactElement;
-  height?: 'small' | 'medium' | 'high';
+  size?: 'small' | 'medium' | 'large';
 };
 
 type SingleLineProps = Props & {
@@ -65,6 +61,12 @@ const borderMap = {
   },
 };
 
+const sizesMap = {
+  small: { label: 'body-mini-b', container: 'h-7 px-2' },
+  medium: { label: 'body-s-b', container: 'h-8 pl-2.5 pr-2' },
+  large: { label: 'body-s-b', container: 'h-9 pl-3 pr-2.5' },
+};
+
 const TextInput = forwardRef(function TextInputWithRef(
   {
     value,
@@ -77,13 +79,9 @@ const TextInput = forwardRef(function TextInputWithRef(
     error,
     success,
     disabled,
-    variant = 'outlined',
     type,
     onSubmit,
-    validate,
-    regex,
-    onRegexClick,
-    regexEnabled,
+    onBlur,
     multiline,
     autoFocus,
     inputClassName,
@@ -92,7 +90,7 @@ const TextInput = forwardRef(function TextInputWithRef(
     startIcon,
     endIcon,
     noBorder,
-    height = 'medium',
+    size = 'medium',
   }: Props & (SingleLineProps | MultilineProps),
   ref: ForwardedRef<HTMLInputElement>,
 ) {
@@ -110,52 +108,35 @@ const TextInput = forwardRef(function TextInputWithRef(
     }
   };
 
-  const handleRegex = () => {
-    onRegexClick?.();
-  };
-
   return (
     <div
-      className={`flex flex-col gap-1 w-full ${
+      className={`flex flex-col gap-2 w-full ${
         disabled ? 'text-label-base' : 'text-label-title'
-      } body-s`}
+      } body-base`}
     >
       {label || helperText ? (
-        <div className="flex justify-between items-center w-full">
-          <label>{label}</label>
+        <div className={`flex justify-between items-center w-full`}>
+          <label className={`${sizesMap[size].label}`}>{label}</label>
           <span className={`text-label-base caption`}>{helperText}</span>
         </div>
       ) : null}
       <div
-        className={`group ${noBorder ? '' : 'border'} ${
-          height === 'high'
-            ? 'h-12 rounded-xl'
-            : multiline
-            ? 'p-2 rounded'
-            : height === 'small'
-            ? 'h-8 rounded'
-            : 'h-10 rounded'
-        } flex box-border items-center ${
-          noBorder
-            ? ''
-            : disabled
-            ? borderMap[variant].disabled
-            : error
-            ? borderMap[variant].error
-            : success
-            ? borderMap[variant].success
-            : borderMap[variant].default
-        } ${disabled || variant === 'filled' || success ? 'bg-bg-base' : ''} ${
-          variant === 'filled' ? 'hover:bg-bg-base-hover' : ''
-        } transition-all duration-300 ease-in-bounce relative`}
+        className={`group border border-bg-border rounded bg-bg-base ${
+          multiline ? 'p-2' : sizesMap[size].container
+        } flex box-border items-center transition-all duration-150 ease-in-out relative`}
       >
         {type === 'email' || type === 'search' || startIcon ? (
           <span
-            className={`w-5 mx-2.5 flex items-center flex-shrink-0 ${
+            className={`w-3.5 mr-2.5 flex items-center flex-shrink-0 ${
               disabled ? 'text-label-muted' : 'text-label-base'
-            } group-hover:text-label-title group-focus-within:text-label-title transition-all duration-300 ease-in-bounce`}
+            } group-hover:text-label-title group-focus-within:text-label-title transition-all duration-150 ease-in-out`}
           >
-            {startIcon || (type === 'email' ? <MailIcon /> : <MagnifyTool />)}
+            {startIcon ||
+              (type === 'email' ? (
+                <MailIcon sizeClassName="w-3.5 h-3.5" />
+              ) : (
+                <MagnifyToolIcon sizeClassName="w-3.5 h-3.5" />
+              ))}
           </span>
         ) : null}
         {multiline ? (
@@ -166,14 +147,13 @@ const TextInput = forwardRef(function TextInputWithRef(
             id={id}
             name={name}
             disabled={disabled}
-            rows={4}
-            onBlur={validate}
+            rows={6}
+            onBlur={onBlur}
             autoComplete="off"
             spellCheck="false"
             className={`bg-transparent resize-none border-none focus:outline-none w-full 
-            group-focus-within:placeholder:text-label-title group-hover:placeholder:text-label-title 
-            disabled:placeholder:text-label-muted placeholder:text-label-base
-            transition-all duration-300 ease-in-bounce outline-none outline-0`}
+            placeholder:text-label-muted disabled:placeholder:text-label-faint
+            transition-all duration-150 ease-in-out outline-none outline-0`}
             onKeyDown={handleEnter}
           />
         ) : (
@@ -186,17 +166,12 @@ const TextInput = forwardRef(function TextInputWithRef(
             type={type}
             disabled={disabled}
             ref={ref || inputRef}
-            onBlur={validate}
+            onBlur={onBlur}
             autoComplete="off"
             spellCheck="false"
-            className={`bg-transparent border-none focus:outline-none w-full  ${
-              type === 'email' || type === 'search' || startIcon
-                ? 'pr-2.5'
-                : 'px-2.5'
-            } transition-all duration-300 ease-in-bounce outline-none outline-0 ${inputClassName}
-            placeholder:text-label-base disabled:placeholder:text-label-muted
-            group-focus-within:placeholder:text-label-title group-hover:placeholder:text-label-title
-            placeholder:transition-all placeholder:duration-300 placeholder:ease-in-bounce`}
+            className={`bg-transparent border-none focus:outline-none w-full
+            transition-all duration-150 ease-in-out outline-none outline-0 ${inputClassName}
+            placeholder:text-label-muted disabled:placeholder:text-label-faint`}
             onKeyDown={handleEnter}
             autoFocus={autoFocus}
           />
@@ -223,21 +198,12 @@ const TextInput = forwardRef(function TextInputWithRef(
             className="w-5 mr-2.5 flex items-center group-focus-within:hidden text-bg-success right-0
           top-1/2 -translate-y-1/2 absolute"
           >
-            <CheckIcon />
+            <CheckIcon sizeClassName="w-5 h-5" />
           </span>
         ) : null}
         {endIcon}
-        {regex ? (
-          <RegexButton
-            onClick={handleRegex}
-            clasName={'mr-2'}
-            active={!!regexEnabled}
-          />
-        ) : (
-          ''
-        )}
       </div>
-      {error ? <span className="text-bg-danger caption">{error}</span> : null}
+      {error ? <span className="text-red caption">{error}</span> : null}
     </div>
   );
 });

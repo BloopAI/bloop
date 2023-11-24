@@ -1,14 +1,12 @@
 import { createContext, Dispatch, SetStateAction } from 'react';
-import { RepoType } from '../types/general';
+import { IndexingStatusType } from '../types/general';
 
 type ContextType = {
-  repositories?: RepoType[];
-  setRepositories: Dispatch<SetStateAction<RepoType[] | undefined>>;
-  fetchRepos: () => void;
+  indexingStatus: IndexingStatusType;
+  setIndexingStatus: Dispatch<SetStateAction<IndexingStatusType>>;
 };
 
 export const RepositoriesContext = createContext<ContextType>({
-  repositories: [],
-  setRepositories: () => {},
-  fetchRepos: () => {},
+  indexingStatus: {},
+  setIndexingStatus: () => {},
 });

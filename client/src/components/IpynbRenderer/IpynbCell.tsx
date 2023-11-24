@@ -4,9 +4,9 @@ import remarkMath from 'remark-math';
 import rehypeMathJax from 'rehype-mathjax';
 import sanitizeHtml from 'sanitize-html';
 import Convert from 'ansi-to-html';
-import Code from '../CodeBlock/Code';
 import { IpynbCellType } from '../../types/general';
 import { escapeHtml } from '../../utils';
+import CodeFragment from '../Code/CodeFragment';
 
 const convertAnsi = new Convert();
 
@@ -64,7 +64,7 @@ const Cell: React.FC<CellProps> = ({ cell, seq }) => {
                     }}
                   >
                     {source && (
-                      <Code
+                      <CodeFragment
                         code={source}
                         language={cell.language || 'python'}
                         showLines={false}

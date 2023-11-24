@@ -1,55 +1,27 @@
-import {
-  Dispatch,
-  memo,
-  MutableRefObject,
-  ReactNode,
-  SetStateAction,
-  useCallback,
-  useMemo,
-} from 'react';
-import FileChip from '../Chat/ChatBody/ConversationMessage/FileChip';
-import { FileHighlightsType } from '../../types/general';
+import { memo, ReactNode, useCallback, useContext, useMemo } from 'react';
+import { TabTypesEnum } from '../../types/general';
+import { TabsContext } from '../../context/tabsContext';
 import CodeWithBreadcrumbs from './CodeWithBreadcrumbs';
 import NewCode from './NewCode';
 
 type Props = {
   children: ReactNode[];
-  repoName?: string;
-  fileChips: MutableRefObject<never[]>;
-  hideCode?: boolean;
-  updateScrollToIndex: (lines: string) => void;
-  setFileHighlights: Dispatch<SetStateAction<FileHighlightsType>>;
-  setHoveredLines: Dispatch<SetStateAction<[number, number] | null>>;
   className?: string;
   propsJSON: string;
   inline?: boolean;
-  navigateFullResult: (
-    path: string,
-    pathParams?: Record<string, string>,
-    recordId?: number,
-    threadId?: string,
-  ) => void;
-  recordId?: number;
-  threadId?: string;
   isCodeStudio?: boolean;
+  side: 'left' | 'right';
 };
 
 const CodeRenderer = ({
   className,
   children,
   inline,
-  hideCode,
-  updateScrollToIndex,
-  fileChips,
-  setFileHighlights,
-  setHoveredLines,
-  repoName,
   propsJSON,
-  navigateFullResult,
-  recordId,
-  threadId,
   isCodeStudio,
+  side,
 }: Props) => {
+  const { openNewTab } = useContext(TabsContext.Handlers);
   const matchLang = useMemo(
     () =>
       /lang:(\w+)/.exec(className || '') ||
@@ -64,6 +36,10 @@ const CodeRenderer = ({
   const matchPath = useMemo(
     () => /path:(.*?)(,|$)/.exec(className || ''),
     [className],
+  );
+  const [repoRef, filePath] = useMemo(
+    () => matchPath?.[1].split(':') || [],
+    [matchPath],
   );
   const matchLines = useMemo(
     () => /lines:(.+)/.exec(className || ''),
@@ -92,14 +68,23 @@ const CodeRenderer = ({
     [children],
   );
 
-  const linesToUse: [number, number] | undefined = useMemo(
-    () => [lines[0], lines[1] ?? lines[0]],
-    [lines],
+  const onClick = useCallback(
+    (path?: string, linesToGo?: string) => {
+      openNewTab(
+        {
+          type: TabTypesEnum.FILE,
+          path: path || filePath,
+          repoRef,
+          scrollToLine:
+            linesToGo || lines
+              ? `${lines[0]}_${lines[1] ?? lines[0]}`
+              : undefined,
+        },
+        side === 'left' ? 'right' : 'left',
+      );
+    },
+    [openNewTab, filePath, repoRef, lines, side],
   );
-
-  const handleChipClick = useCallback(() => {
-    updateScrollToIndex(`${lines[0]}_${lines[1] ?? lines[0]}`);
-  }, [updateScrollToIndex, lines]);
 
   return (
     <>
@@ -107,39 +92,19 @@ const CodeRenderer = ({
       (matchType?.[1] || matchLang?.[1]) &&
       typeof children[0] === 'string' ? (
         matchType?.[1] === 'Quoted' ? (
-          hideCode ? (
-            <FileChip
-              fileName={matchPath?.[1] || ''}
-              filePath={matchPath?.[1] || ''}
-              skipIcon={false}
-              onClick={handleChipClick}
-              lines={linesToUse}
-              fileChips={fileChips}
-              setFileHighlights={setFileHighlights}
-              setHoveredLines={setHoveredLines}
-            />
-          ) : (
-            <CodeWithBreadcrumbs
-              code={code}
-              language={matchLang?.[1] || ''}
-              filePath={matchPath?.[1] || ''}
-              onResultClick={(path, lines) => {
-                navigateFullResult(
-                  path,
-                  lines ? { scrollToLine: lines } : undefined,
-                  recordId,
-                  threadId,
-                );
-              }}
-              startLine={lines[0] ? lines[0] : null}
-              repoName={repoName}
-            />
-          )
+          <CodeWithBreadcrumbs
+            code={code}
+            repoRef={repoRef}
+            language={matchLang?.[1] || ''}
+            filePath={filePath || ''}
+            onResultClick={onClick}
+            startLine={lines[0] ? lines[0] : null}
+          />
         ) : (
           <NewCode
             code={code}
             language={matchLang?.[1] || ''}
-            filePath={matchPath?.[1] || ''}
+            filePath={filePath || ''}
             isCodeStudio={isCodeStudio}
           />
         )

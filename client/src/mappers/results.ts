@@ -1,7 +1,6 @@
 import {
   CodeItem,
-  DirectoryEntry,
-  DirectoryItem,
+  File,
   FileItem,
   FileResItem,
   RangeLine,
@@ -18,8 +17,6 @@ import {
   ResultItemType,
   ResultType,
 } from '../types/results';
-import { FileTreeFileType } from '../types';
-import { sortFiles } from '../utils/file';
 
 const mapRepoResults = (item: RepoItem, id: number): RepoResult => {
   return {
@@ -27,17 +24,15 @@ const mapRepoResults = (item: RepoItem, id: number): RepoResult => {
     id,
     branches: 0,
     files: 0,
-    repository: item.data.name.text,
     highlights: item.data.name.highlights,
     repoName: item.data.name.text,
+    repoRef: item.data.repo_ref,
   };
 };
 
 const mapCodeResults = (item: CodeItem, id: number): CodeResult => {
   return {
     type: ResultItemType.CODE,
-    branch: '',
-    code: '',
     snippets: item.data.snippets.map((snippet) => ({
       code: snippet.data,
       lineStart: snippet.line_range.start,
@@ -52,7 +47,7 @@ const mapCodeResults = (item: CodeItem, id: number): CodeResult => {
     })),
     language: item.data.lang,
     relativePath: item.data.relative_path,
-    repoPath: item.data.repo_ref.replace('local/', ''),
+    repoRef: item.data.repo_ref,
     id,
     repoName: item.data.repo_name,
   };
@@ -63,7 +58,7 @@ const mapFileResults = (item: FileResItem, id: number): FileResult => {
     relativePath: item.data.relative_path.text,
     type: ResultItemType.FILE,
     lines: 0,
-    repoPath: item.data.repo_ref.replace('local/', ''),
+    repoRef: item.data.repo_ref,
     id,
     language: item.data.lang,
     highlights: item.data.relative_path.highlights,
@@ -108,53 +103,6 @@ export const mapRanges = (
     res[item.start.line].push({ start: item.start.byte, end: item.end.byte });
   });
   return res;
-};
-
-export const mapDirResult = (directoryItem: DirectoryItem) => {
-  return {
-    name: directoryItem.data.repo_name,
-    entries: mapFileTree(
-      directoryItem.data.entries,
-      directoryItem.data.relative_path,
-    ),
-    relativePath: directoryItem.data.relative_path,
-    repoRef: directoryItem.data.repo_ref,
-  };
-};
-
-const mapFileTree = (siblings: DirectoryEntry[], relativePath: string) => {
-  return siblings
-    .map((item) => ({
-      type:
-        item.entry_data === 'Directory'
-          ? FileTreeFileType.DIR
-          : FileTreeFileType.FILE,
-      path: `${relativePath}${item.name}`,
-      name:
-        item.entry_data === 'Directory'
-          ? item.name.substring(item.name.length - 1, -1)
-          : item.name,
-      lang:
-        item.entry_data !== 'Directory' ? item.entry_data.File.lang : undefined,
-      children: [],
-      indexed:
-        item.entry_data !== 'Directory' ? item.entry_data.File.indexed : true,
-    }))
-    .sort(sortFiles);
-};
-
-export const mapFileResult = (fileItem: FileItem) => {
-  return {
-    language: fileItem.data.lang,
-    repoPath: fileItem.data.repo_ref,
-    relativePath: fileItem.data.relative_path,
-    code: fileItem.data.contents,
-    hoverableRanges: [],
-    repoName: fileItem.data.repo_name,
-    size: fileItem.data.size,
-    loc: fileItem.data.sloc,
-    indexed: fileItem.data.indexed,
-  };
 };
 
 export const mapTokenInfo = (

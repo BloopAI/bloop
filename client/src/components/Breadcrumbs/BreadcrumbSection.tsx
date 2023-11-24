@@ -1,4 +1,4 @@
-import { MouseEvent, ReactElement } from 'react';
+import { memo, MouseEvent, ReactElement, useCallback } from 'react';
 import { Range } from '../../types/results';
 
 type HighlightedString = {
@@ -44,7 +44,7 @@ const BreadcrumbSection = ({
   limitSectionWidth,
   nonInteractive,
 }: Props) => {
-  const getHighlight = () => {
+  const getHighlight = useCallback(() => {
     if (highlight) {
       const left = label.substring(0, highlight.start);
       const search = label.substring(highlight.start, highlight.end + 1);
@@ -60,7 +60,7 @@ const BreadcrumbSection = ({
       );
     }
     return label;
-  };
+  }, [highlight, label]);
   return (
     <button
       className={`flex items-center gap-1 ${
@@ -86,4 +86,4 @@ const BreadcrumbSection = ({
   );
 };
 
-export default BreadcrumbSection;
+export default memo(BreadcrumbSection);

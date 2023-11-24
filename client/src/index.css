@@ -1,95 +1,118 @@
 @import "./file-icons.css";
-@import "circleProgress.css";
 
 @import "themes/default-dark.css";
 @import "themes/default-light.css";
-@import "themes/vscode-default-dark.css";
-@import "themes/vscode-default-light.css";
-@import "themes/monokai.css";
-@import "themes/solarized-light.css";
-@import "themes/solarized-dark.css";
-@import "themes/abyss.css";
-@import "themes/gruvbox-dark.css";
-@import "themes/gruvbox-light.css";
-@import "themes/kimbie-dark.css";
-@import "themes/quiet-light.css";
-@import "themes/tomorrow-night-blue.css";
-@import "themes/atom-one-dark-pro.css";
-@import "themes/github-dark.css";
-@import "themes/github-light.css";
-@import "themes/dracula.css";
-@import "themes/darcula.css";
-@import "themes/night-owl.css";
-@import "themes/material.css";
 
 @font-face {
   font-family: Menlo;
   font-weight: normal;
   font-style: normal;
-  src: url("./fonts/Menlo-Regular.ttf");
+  src: url("fonts/Menlo-Regular.ttf");
 }
 
 @font-face {
   font-family: Inter;
   font-weight: 100;
   font-style: normal;
-  src: url("./fonts/Inter/Inter-Thin.ttf");
+  src: url("fonts/Inter/Inter-Thin.ttf");
 }
 
 @font-face {
   font-family: Inter;
   font-weight: 200;
   font-style: normal;
-  src: url("./fonts/Inter/Inter-ExtraLight.ttf");
+  src: url("fonts/Inter/Inter-ExtraLight.ttf");
 }
 
 @font-face {
   font-family: Inter;
   font-weight: 300;
   font-style: normal;
-  src: url("./fonts/Inter/Inter-Light.ttf");
+  src: url("fonts/Inter/Inter-Light.ttf");
 }
 
 @font-face {
   font-family: Inter;
   font-weight: 400;
   font-style: normal;
-  src: url("./fonts/Inter/Inter-Regular.ttf");
+  src: url("fonts/Inter/Inter-Regular.ttf");
 }
 
 @font-face {
   font-family: Inter;
   font-weight: 500;
   font-style: normal;
-  src: url("./fonts/Inter/Inter-Medium.ttf");
+  src: url("fonts/Inter/Inter-Medium.ttf");
 }
 
 @font-face {
   font-family: Inter;
   font-weight: 600;
   font-style: normal;
-  src: url("./fonts/Inter/Inter-SemiBold.ttf");
+  src: url("fonts/Inter/Inter-SemiBold.ttf");
 }
 
 @font-face {
   font-family: Inter;
   font-weight: 700;
   font-style: normal;
-  src: url("./fonts/Inter/Inter-Bold.ttf");
+  src: url("fonts/Inter/Inter-Bold.ttf");
 }
 
 @font-face {
   font-family: Inter;
   font-weight: 800;
   font-style: normal;
-  src: url("./fonts/Inter/Inter-ExtraBold.ttf");
+  src: url("fonts/Inter/Inter-ExtraBold.ttf");
 }
 
 @font-face {
   font-family: Inter;
   font-weight: 900;
   font-style: normal;
-  src: url("./fonts/Inter/Inter-Black.ttf");
+  src: url("fonts/Inter/Inter-Black.ttf");
+}
+
+@font-face {
+  font-family: "Fira Code";
+  font-weight: normal;
+  font-style: normal;
+  src: url("fonts/FiraCode/FiraCode-Regular.ttf");
+}
+
+@font-face {
+  font-family: "Fira Code";
+  font-weight: 300;
+  font-style: normal;
+  src: url("fonts/FiraCode/FiraCode-Light.ttf");
+}
+
+@font-face {
+  font-family: "Fira Code";
+  font-weight: 400;
+  font-style: normal;
+  src: url("fonts/FiraCode/FiraCode-Regular.ttf");
+}
+
+@font-face {
+  font-family: "Fira Code";
+  font-weight: 500;
+  font-style: normal;
+  src: url("fonts/FiraCode/FiraCode-Medium.ttf");
+}
+
+@font-face {
+  font-family: "Fira Code";
+  font-weight: 600;
+  font-style: normal;
+  src: url("fonts/FiraCode/FiraCode-SemiBold.ttf");
+}
+
+@font-face {
+  font-family: "Fira Code";
+  font-weight: 700;
+  font-style: normal;
+  src: url("fonts/FiraCode/FiraCode-Bold.ttf");
 }
 
 @tailwind base;
@@ -99,147 +122,339 @@
 
 @layer base {
   body {
-    --default-dark-bg-base: 35, 35, 39; /* #232327 */
-    --default-dark-bg-base-hover: 48, 48, 57;
-    --default-dark-bg-shade: 41, 41, 47; /* #29292F */
-    --default-dark-bg-sub: 26, 26, 31; /* #1A1A1F */
-    --default-dark-bg-border: 48, 48, 55;
-    --default-dark-bg-border-hover: 68, 68, 81; /* #444451 */
-    --default-dark-bg-main: 91, 110, 221;
-    --default-dark-bg-main-hover: 114, 133, 238;
-    --default-dark-bg-danger: 199, 54, 62; /* #C7363E */
-    --default-dark-bg-danger-hover: 215, 66, 74;
-    --default-dark-bg-success: 21, 128, 61;
-    --default-dark-bg-success-hover: 33, 197, 94;
-    --default-dark-label-control: 255, 255, 255;
-    --default-dark-label-faint: 57, 57, 57;
-    --default-dark-label-muted: 85, 85, 85;
-    --default-dark-label-base: 185, 185, 185; /* #B9B9B9 */
-    --default-dark-label-title: 238, 238, 238; /* #EEEEEE */
-    --default-dark-label-link: 104, 141, 222;
-    --default-dark-chat-bg-base: 37, 38, 56;
-    --default-dark-chat-bg-base-hover: 43, 44, 66; /* #2B2C42 */
-    --default-dark-chat-bg-shade: 31, 32, 49;
-    --default-dark-chat-bg-sub: 21, 22, 32;
-    --default-dark-chat-bg-border: 57, 58, 74;
-    --default-dark-chat-bg-border-hover: 71, 72, 98;
-    --default-dark-chat-bg-divider: 45, 45, 58;
+    --default-black-bg-sub: 11, 11, 15; /* #0B0B0F */
+    --default-black-bg-sub-hover: 16, 16, 22; /* #101016 */
+    --default-black-bg-base: 24, 26, 31; /* #181A1F */
+    --default-black-bg-base-hover: 38, 39, 46; /* #26272E */
+    --default-black-bg-selected: 94, 135, 203; /* #5E87CB 12% */
+    --default-black-bg-shade: 31, 31, 42; /* #1F1F2A */
+    --default-black-bg-shade-hover: 37, 37, 52; /* #252534 */
+    --default-black-bg-border: 41, 43, 48; /* #292B30 */
+    --default-black-bg-border-hover: 60, 63, 72; /* #3C3F48 */
+    --default-black-bg-border-selected: 94, 135, 203; /* #5E87CB */
+    --default-black-bg-divider: 29, 30, 34; /* #1D1E22 */
+    --default-black-bg-contrast: 240, 243, 248; /* #F0F3F8 */
+    --default-black-bg-contrast-hover: 222, 227, 234; /* #DEE3EA */
 
-    --default-dark-bg-highlight: 253, 201, 0;
+    --default-black-label-title: 249, 251, 254; /* #F9FBFE */
+    --default-black-label-base: 166, 176, 187; /* #A6B0BB */
+    --default-black-label-muted: 111, 117, 123; /* #6F757B */
+    --default-black-label-faint: 62, 64, 70; /* #3E4046 */
+    --default-black-label-link: 70, 128, 224; /* #4680E0 */
+    --default-black-label-contrast: 11, 11, 15; /* #0B0B0F */
+    --default-black-label-control: 254, 254, 255; /* #FEFEFF */
+
+    --default-black-sub-surface: 11, 11, 15; /* #0B0B0F, 75% */
+    --default-black-shade-surface: 31, 31, 42; /* #1F1F2A, 75% */
+    --default-black-base-surface: 24, 26, 31; /* #181A1F, 75% */
+
+    --default-black-brand-default: 91, 110, 221; /* #5B6EDD */
+    --default-black-brand-default-hover: 99, 121, 249; /* #6379F9 */
+    --default-black-brand-default-subtitle: 39, 45, 80; /* #272D50 */
+    --default-black-brand-studio: 199, 54, 115; /* #C73673 */
+    --default-black-brand-studio-hover: 240, 54, 132; /* #F03684 */
+    --default-black-brand-studio-subtle: 68, 25, 43; /* #44192B */
+
+    --default-black-green: 112, 161, 102; /* #70A166 */
+    --default-black-green-subtle: 28, 44, 28; /* #1C2C1C */
+    --default-black-green-subtle-hover: 35, 56, 35; /* #233823 */
+    --default-black-red: 197, 92, 87; /* #C55C57 */
+    --default-black-red-subtle: 51, 26, 26; /* #331A1A */
+    --default-black-red-subtle-hover: 68, 34, 34; /* #442222 */
+    --default-black-yellow: 234, 184, 92; /* #EAB85C */
+    --default-black-yellow-subtle: 45, 29, 8; /* #2D1D08 */
+    --default-black-yellow-subtle-hover: 65, 42, 12; /* #412A0C */
+    --default-black-blue: 65, 111, 229; /* #416FE5 */
+    --default-black-blue-subtle: 23, 35, 57; /* #172339 */
+    --default-black-blue-subtle-hover: 29, 44, 71; /* #1D2C47 */
+
+    --default-black-line-select: 25, 50, 82; /* #193252 */
+
+
+    --default-dark-bg-sub: 17, 19, 28; /* #11131C */
+    --default-dark-bg-sub-hover: 21, 24, 35; /* #151823 */
+    --default-dark-bg-base: 18, 24, 38; /* #121826 */
+    --default-dark-bg-base-hover: 26, 33, 49; /* #1A2131 */
+    --default-dark-bg-selected: 94, 135, 203; /* #5E87CB 12% */
+    --default-dark-bg-shade: 28, 31, 45; /* #1C1F2D */
+    --default-dark-bg-shade-hover: 34, 38, 55; /* #222637 */
+    --default-dark-bg-border: 37, 46, 60; /* #252E3C */
+    --default-dark-bg-border-hover: 46, 56, 73; /* #2E3849 */
+    --default-dark-bg-border-selected: 94, 135, 203; /* #5E87CB */
+    --default-dark-bg-divider: 25, 32, 44; /* #19202C */
+    --default-dark-bg-contrast: 240, 243, 248; /* #F0F3F8 */
+    --default-dark-bg-contrast-hover: 229, 233, 239; /* #E5E9EF */
+
+    --default-dark-label-title: 240, 243, 248; /* #F0F3F8 */
+    --default-dark-label-base: 157, 163, 174; /* #9DA3AE */
+    --default-dark-label-muted: 108, 114, 127; /* #6C727F */
+    --default-dark-label-faint: 57, 65, 80; /* #394150 */
+    --default-dark-label-link: 81, 118, 181; /* #5176B5 */
+    --default-dark-label-contrast: 4, 7, 17; /* #040711 */
+    --default-dark-label-control: 254, 254, 255; /* #FEFEFF */
+
+    --default-dark-sub-surface: 17, 19, 28; /* #11131C, 75% */
+    --default-dark-shade-surface: 28, 31, 45; /* #1C1F2D, 75% */
+    --default-dark-base-surface: 18, 24, 38; /* #121826, 75% */
+
+    --default-dark-brand-default: 91, 110, 221; /* #5B6EDD */
+    --default-dark-brand-default-hover: 99, 121, 249; /* #6379F9 */
+    --default-dark-brand-default-subtitle: 39, 45, 80; /* #272D50 */
+    --default-dark-brand-studio: 199, 54, 115; /* #C73673 */
+    --default-dark-brand-studio-hover: 240, 54, 132; /* #F03684 */
+    --default-dark-brand-studio-subtle: 68, 25, 43; /* #44192B */
+
+    --default-dark-green: 112, 161, 102; /* #70A166 */
+    --default-dark-green-subtle: 28, 44, 28; /* #1C2C1C */
+    --default-dark-green-subtle-hover: 35, 56, 35; /* #233823 */
+    --default-dark-red: 197, 92, 87; /* #C55C57 */
+    --default-dark-red-subtle: 51, 26, 26; /* #331A1A */
+    --default-dark-red-subtle-hover: 68, 34, 34; /* #442222 */
+    --default-dark-yellow: 234, 184, 92; /* #EAB85C */
+    --default-dark-yellow-subtle: 45, 29, 8; /* #2D1D08 */
+    --default-dark-yellow-subtle-hover: 65, 42, 12; /* #412A0C */
+    --default-dark-blue: 65, 111, 229; /* #416FE5 */
+    --default-dark-blue-subtle: 23, 35, 57; /* #172339 */
+    --default-dark-blue-subtle-hover: 29, 44, 71; /* #1D2C47 */
+
+    --default-dark-line-select: 25, 50, 82; /* #193252 */
+
+
+    --default-light-bg-sub: 250, 250, 250; /* #FAFAFA */
+    --default-light-bg-sub-hover: 241, 241, 242; /* #F1F1F2 */
+    --default-light-bg-base: 255, 255, 255; /* #FFFFFF */
+    --default-light-bg-base-hover: 234, 237, 243; /* #EAEDF3 */
+    --default-light-bg-selected: 94, 149, 241; /* #5E95F1 12% */
+    --default-light-bg-shade: 241, 243, 248; /* #F1F3F8 */
+    --default-light-bg-shade-hover: 231, 234, 242; /* #E7EAF2 */
+    --default-light-bg-border: 216, 220, 226; /* #D8DCE2 */
+    --default-light-bg-border-hover: 186, 190, 197; /* #BABEC5 */
+    --default-light-bg-border-selected: 94, 149, 241; /* #5E95F1 */
+    --default-light-bg-divider: 234, 236, 241; /* #EAECF1 */
+    --default-light-bg-contrast: 39, 39, 41; /* #272729 */
+    --default-light-bg-contrast-hover: 25, 25, 28; /* #19191C */
+
+    --default-light-label-title: 4, 7, 17; /* #040711 */
+    --default-light-label-base: 56, 64, 77; /* #38404D */
+    --default-light-label-muted: 108, 114, 127; /* #6C727F */
+    --default-light-label-faint: 157, 163, 174; /* #9DA3AE */
+    --default-light-label-link: 70, 128, 224; /* #4680E0 */
+    --default-light-label-contrast: 255, 255, 255; /* #FFFFFF */
+    --default-light-label-control: 255, 255, 255; /* #FFFFFF */
+
+    --default-light-sub-surface: 250, 250, 250; /* #FAFAFA, 75% */
+    --default-light-shade-surface: 247, 248, 251; /* #F7F8FB, 75% */
+    --default-light-base-surface: 255, 255, 255; /* #FFFFFF, 75% */
+
+    --default-light-brand-default: 91, 110, 221; /* #5B6EDD */
+    --default-light-brand-default-hover: 74, 93, 204; /* #4A5DCC */
+    --default-light-brand-default-subtitle: 224, 229, 252; /* #E0E5FC */
+    --default-light-brand-studio: 199, 54, 115; /* #C73673 */
+    --default-light-brand-studio-hover: 181, 41, 100; /* #B52964 */
+    --default-light-brand-studio-subtle: 255, 207, 227; /* #FFCFE3 */
+
+    --default-light-green: 120, 194, 106; /* #78C26A */
+    --default-light-green-subtle: 226, 245, 221; /* #E2F5DD */
+    --default-light-green-subtle-hover: 216, 236, 210; /* #D8ECD2 */
+    --default-light-red: 221, 79, 72; /* #DD4F48 */
+    --default-light-red-subtle: 248, 224, 220; /* #F8E0DC */
+    --default-light-red-subtle-hover: 238, 194, 186; /* #EEC2BA */
+    --default-light-yellow: 237, 171, 50; /* #EDAB32 */
+    --default-light-yellow-subtle: 246, 237, 208; /* #F6EDD0 */
+    --default-light-yellow-subtle-hover: 240, 231, 199; /* #F0E7C7 */
+    --default-light-blue: 49, 104, 246; /* #3168F6 */
+    --default-light-blue-subtle: 224, 234, 246; /* #E0EAF6 */
+    --default-light-blue-subtle-hover: 221, 233, 247; /* #DDE9F7 */
+
+    --default-light-line-select: 190, 218, 247; /* #BEDAF7 */
 
     --default-dark-shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.16);
     --default-dark-shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.16);
-    --default-dark-shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.75);
-    --default-dark-shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
-    --default-dark-shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
-    --default-dark-shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
+    --default-dark-shadow-float: 0px 4px 32px 0px rgba(0, 0, 0, 0.35);
+    --default-dark-shadow-high: 0px 8px 24px 0px rgba(0,0,0,0.35);
+    --default-dark-shadow-medium: 0px 8px 24px 0px rgba(0,0,0,0.35);
+    --default-dark-shadow-low: 0px 8px 24px 0px rgba(0,0,0,0.35);
 
     --default-dark-onboarding-chats-img: url("../public/chatsImage-dark.png");
-
-    --default-light-bg-base: 243, 243, 243;
-    --default-light-bg-base-hover: 236, 236, 236;
-    --default-light-bg-shade: 249, 249, 249;
-    --default-light-bg-sub: 255, 255, 255;
-    --default-light-bg-border: 230, 230, 230;
-    --default-light-bg-border-hover: 211, 211, 211;
-    --default-light-bg-main: 93, 117, 255;
-    --default-light-bg-main-hover: 69, 89, 205;
-    --default-light-bg-danger: 215, 66, 74;
-    --default-light-bg-danger-hover: 199, 54, 62;
-    --default-light-bg-success: 21, 128, 61;
-    --default-light-bg-success-hover: 33, 197, 94;
-    --default-light-label-control: 255, 255, 255;
-    --default-light-label-faint: 173, 173, 173;
-    --default-light-label-muted: 98, 98, 98;
-    --default-light-label-base: 57, 57, 57;
-    --default-light-label-title: 21, 21, 21;
-    --default-light-label-link: 78, 128, 238;
-    --default-light-chat-bg-base: 226, 227, 243;
-    --default-light-chat-bg-base-hover: 217, 218, 251;
-    --default-light-chat-bg-shade: 248, 248, 255;
-    --default-light-chat-bg-sub: 237, 237, 250;
-    --default-light-chat-bg-border: 195, 197, 225;
-    --default-light-chat-bg-border-hover: 184, 187, 225;
-    --default-light-chat-bg-divider: 216, 217, 234;
-
-    --default-light-bg-highlight: 253, 201, 0;
+    --default-dark-bloop-head-img: url("../public/bloopHeadMascot.png");
 
     --default-light-shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.08);
     --default-light-shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.08);
-    --default-light-shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.28);
-    --default-light-shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
-    --default-light-shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
-    --default-light-shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
+    --default-light-shadow-float: 0px 4px 32px 0px rgba(0,0,0,0.16);
+    --default-light-shadow-high: 0px 8px 24px 0px rgba(0,0,0,0.08);
+    --default-light-shadow-medium: 0px 1px 8px 0px rgba(0,0,0,0.12);
+    --default-light-shadow-low: 0px 1px 2px 0px rgba(0,0,0,0.08);
 
     --default-light-onboarding-chats-img: url("../public/chatsImage-light.png");
+    --default-light-bloop-head-img: url("../public/bloopHeadMascotLight.png");
   }
-    [data-theme="default"], body:not([data-theme]) {
-      --bg-base: var(--default-dark-bg-base);
-      --bg-base-hover: var(--default-dark-bg-base-hover);
-      --bg-shade: var(--default-dark-bg-shade);
-      --bg-sub: var(--default-dark-bg-sub);
-      --bg-border: var(--default-dark-bg-border);
-      --bg-border-hover: var(--default-dark-bg-border-hover);
-      --bg-main: var(--default-dark-bg-main);
-      --bg-main-hover: var(--default-dark-bg-main-hover);
-      --bg-danger: var(--default-dark-bg-danger);
-      --bg-danger-hover: var(--default-dark-bg-danger-hover);
-      --bg-success: var(--default-dark-bg-success);
-      --bg-success-hover: var(--default-dark-bg-success-hover);
-      --label-control: var(--default-dark-label-control);
-      --label-faint: var(--default-dark-label-faint);
-      --label-muted: var(--default-dark-label-muted);
-      --label-base: var(--default-dark-label-base);
-      --label-title: var(--default-dark-label-title);
-      --label-link: var(--default-dark-label-link);
-      --chat-bg-base: var(--default-dark-chat-bg-base);
-      --chat-bg-base-hover: var(--default-dark-chat-bg-base-hover);
-      --chat-bg-shade: var(--default-dark-chat-bg-shade);
-      --chat-bg-sub: var(--default-dark-chat-bg-sub);
-      --chat-bg-border: var(--default-dark-chat-bg-border);
-      --chat-bg-border-hover: var(--default-dark-chat-bg-border-hover);
-      --chat-bg-divider: var(--default-dark-chat-bg-divider);
+  body[data-theme="dark"], body:not([data-theme]) {
+    --bg-sub: var(--default-dark-bg-sub);
+    --bg-sub-hover: var(--default-dark-bg-sub-hover);
+    --bg-base: var(--default-dark-bg-base);
+    --bg-base-hover: var(--default-dark-bg-base-hover);
+    --bg-selected: var(--default-dark-bg-selected);
+    --bg-shade: var(--default-dark-bg-shade);
+    --bg-shade-hover: var(--default-dark-bg-shade-hover);
+    --bg-border: var(--default-dark-bg-border);
+    --bg-border-hover: var(--default-dark-bg-border-hover);
+    --bg-border-selected: var(--default-dark-bg-border-selected);
+    --bg-divider: var(--default-dark-bg-divider);
+    --bg-contrast: var(--default-dark-bg-contrast);
+    --bg-contrast-hover: var(--default-dark-bg-contrast-hover);
 
-      --bg-highlight: var(--default-dark-bg-highlight);
+    --label-title: var(--default-dark-label-title);
+    --label-base: var(--default-dark-label-base);
+    --label-muted: var(--default-dark-label-muted);
+    --label-faint: var(--default-dark-label-faint);
+    --label-link: var(--default-dark-label-link);
+    --label-contrast: var(--default-dark-label-contrast);
+    --label-control: var(--default-dark-label-control);
 
-      --shadow-rings-blue: var(--default-dark-shadow-rings-blue);
-      --shadow-rings-gray: var(--default-dark-shadow-rings-gray);
-      --shadow-float: var(--default-dark-shadow-float);
-      --shadow-high: var(--default-dark-shadow-high);
-      --shadow-medium: var(--default-dark-shadow-medium);
-      --shadow-low: var(--default-dark-shadow-low);
+    --sub-surface: var(--default-dark-sub-surface);
+    --shade-surface: var(--default-dark-shade-surface);
+    --base-surface: var(--default-dark-base-surface);
 
-      --onboarding-chats-img: var(--default-dark-onboarding-chats-img);
-    }
+    --brand-default: var(--default-dark-brand-default);
+    --brand-default-hover: var(--default-dark-brand-default-hover);
+    --brand-default-subtitle: var(--default-dark-brand-default-subtitle);
+    --brand-studio: var(--default-dark-brand-studio);
+    --brand-studio-hover: var(--default-dark-brand-studio-hover);
+    --brand-studio-subtle: var(--default-dark-brand-studio-subtle);
+
+    --green: var(--default-dark-green);
+    --green-subtle: var(--default-dark-green-subtle);
+    --green-subtle-hover: var(--default-dark-green-subtle-hover);
+    --red: var(--default-dark-red);
+    --red-subtle: var(--default-dark-red-subtle);
+    --red-subtle-hover: var(--default-dark-red-subtle-hover);
+    --yellow: var(--default-dark-yellow);
+    --yellow-subtle: var(--default-dark-yellow-subtle);
+    --yellow-subtle-hover: var(--default-dark-yellow-subtle-hover);
+    --blue: var(--default-dark-blue);
+    --blue-subtle: var(--default-dark-blue-subtle);
+    --blue-subtle-hover: var(--default-dark-blue-subtle-hover);
+
+    --line-select: var(--default-dark-line-select);
+
+    --shadow-rings-blue: var(--default-dark-shadow-rings-blue);
+    --shadow-rings-gray: var(--default-dark-shadow-rings-gray);
+    --shadow-float: var(--default-dark-shadow-float);
+    --shadow-high: var(--default-dark-shadow-high);
+    --shadow-medium: var(--default-dark-shadow-medium);
+    --shadow-low: var(--default-dark-shadow-low);
+
+    --onboarding-chats-img: var(--default-dark-onboarding-chats-img);
+    --bloop-head-img: var(--default-dark-bloop-head-img);
+  }
+  body[data-theme="black"] {
+    --bg-sub: var(--default-black-bg-sub);
+    --bg-sub-hover: var(--default-black-bg-sub-hover);
+    --bg-base: var(--default-black-bg-base);
+    --bg-base-hover: var(--default-black-bg-base-hover);
+    --bg-selected: var(--default-black-bg-selected);
+    --bg-shade: var(--default-black-bg-shade);
+    --bg-shade-hover: var(--default-black-bg-shade-hover);
+    --bg-border: var(--default-black-bg-border);
+    --bg-border-hover: var(--default-black-bg-border-hover);
+    --bg-border-selected: var(--default-black-bg-border-selected);
+    --bg-divider: var(--default-black-bg-divider);
+    --bg-contrast: var(--default-black-bg-contrast);
+    --bg-contrast-hover: var(--default-black-bg-contrast-hover);
+
+    --label-title: var(--default-black-label-title);
+    --label-base: var(--default-black-label-base);
+    --label-muted: var(--default-black-label-muted);
+    --label-faint: var(--default-black-label-faint);
+    --label-link: var(--default-black-label-link);
+    --label-contrast: var(--default-black-label-contrast);
+    --label-control: var(--default-black-label-control);
+
+    --sub-surface: var(--default-black-sub-surface);
+    --shade-surface: var(--default-black-shade-surface);
+    --base-surface: var(--default-black-base-surface);
+
+    --brand-default: var(--default-black-brand-default);
+    --brand-default-hover: var(--default-black-brand-default-hover);
+    --brand-default-subtitle: var(--default-black-brand-default-subtitle);
+    --brand-studio: var(--default-black-brand-studio);
+    --brand-studio-hover: var(--default-black-brand-studio-hover);
+    --brand-studio-subtle: var(--default-black-brand-studio-subtle);
+
+    --green: var(--default-black-green);
+    --green-subtle: var(--default-black-green-subtle);
+    --green-subtle-hover: var(--default-black-green-subtle-hover);
+    --red: var(--default-black-red);
+    --red-subtle: var(--default-black-red-subtle);
+    --red-subtle-hover: var(--default-black-red-subtle-hover);
+    --yellow: var(--default-black-yellow);
+    --yellow-subtle: var(--default-black-yellow-subtle);
+    --yellow-subtle-hover: var(--default-black-yellow-subtle-hover);
+    --blue: var(--default-black-blue);
+    --blue-subtle: var(--default-black-blue-subtle);
+    --blue-subtle-hover: var(--default-black-blue-subtle-hover);
+
+    --line-select: var(--default-black-line-select);
+
+    --shadow-rings-blue: var(--default-dark-shadow-rings-blue);
+    --shadow-rings-gray: var(--default-dark-shadow-rings-gray);
+    --shadow-float: var(--default-dark-shadow-float);
+    --shadow-high: var(--default-dark-shadow-high);
+    --shadow-medium: var(--default-dark-shadow-medium);
+    --shadow-low: var(--default-dark-shadow-low);
+
+    --onboarding-chats-img: var(--default-dark-onboarding-chats-img);
+    --bloop-head-img: var(--default-dark-bloop-head-img);
+  }
   @media (prefers-color-scheme: dark) {
-    [data-theme="system"] {
+    body[data-theme="system"] {
+      --bg-sub: var(--default-dark-bg-sub);
+      --bg-sub-hover: var(--default-dark-bg-sub-hover);
       --bg-base: var(--default-dark-bg-base);
       --bg-base-hover: var(--default-dark-bg-base-hover);
+      --bg-selected: var(--default-dark-bg-selected);
       --bg-shade: var(--default-dark-bg-shade);
-      --bg-sub: var(--default-dark-bg-sub);
+      --bg-shade-hover: var(--default-dark-bg-shade-hover);
       --bg-border: var(--default-dark-bg-border);
       --bg-border-hover: var(--default-dark-bg-border-hover);
-      --bg-main: var(--default-dark-bg-main);
-      --bg-main-hover: var(--default-dark-bg-main-hover);
-      --bg-danger: var(--default-dark-bg-danger);
-      --bg-danger-hover: var(--default-dark-bg-danger-hover);
-      --bg-success: var(--default-dark-bg-success);
-      --bg-success-hover: var(--default-dark-bg-success-hover);
-      --label-control: var(--default-dark-label-control);
-      --label-faint: var(--default-dark-label-faint);
-      --label-muted: var(--default-dark-label-muted);
-      --label-base: var(--default-dark-label-base);
-      --label-title: var(--default-dark-label-title);
-      --label-link: var(--default-dark-label-link);
-      --chat-bg-base: var(--default-dark-chat-bg-base);
-      --chat-bg-base-hover: var(--default-dark-chat-bg-base-hover);
-      --chat-bg-shade: var(--default-dark-chat-bg-shade);
-      --chat-bg-sub: var(--default-dark-chat-bg-sub);
-      --chat-bg-border: var(--default-dark-chat-bg-border);
-      --chat-bg-border-hover: var(--default-dark-chat-bg-border-hover);
-      --chat-bg-divider: var(--default-dark-chat-bg-divider);
+      --bg-border-selected: var(--default-dark-bg-border-selected);
+      --bg-divider: var(--default-dark-bg-divider);
+      --bg-contrast: var(--default-dark-bg-contrast);
+      --bg-contrast-hover: var(--default-dark-bg-contrast-hover);
 
-      --bg-highlight: var(--default-dark-bg-highlight);
+      --label-title: var(--default-dark-label-title);
+      --label-base: var(--default-dark-label-base);
+      --label-muted: var(--default-dark-label-muted);
+      --label-faint: var(--default-dark-label-faint);
+      --label-link: var(--default-dark-label-link);
+      --label-contrast: var(--default-dark-label-contrast);
+      --label-control: var(--default-dark-label-control);
+
+      --sub-surface: var(--default-dark-sub-surface);
+      --shade-surface: var(--default-dark-shade-surface);
+      --base-surface: var(--default-dark-base-surface);
+
+      --brand-default: var(--default-dark-brand-default);
+      --brand-default-hover: var(--default-dark-brand-default-hover);
+      --brand-default-subtitle: var(--default-dark-brand-default-subtitle);
+      --brand-studio: var(--default-dark-brand-studio);
+      --brand-studio-hover: var(--default-dark-brand-studio-hover);
+      --brand-studio-subtle: var(--default-dark-brand-studio-subtle);
+
+      --green: var(--default-dark-green);
+      --green-subtle: var(--default-dark-green-subtle);
+      --green-subtle-hover: var(--default-dark-green-subtle-hover);
+      --red: var(--default-dark-red);
+      --red-subtle: var(--default-dark-red-subtle);
+      --red-subtle-hover: var(--default-dark-red-subtle-hover);
+      --yellow: var(--default-dark-yellow);
+      --yellow-subtle: var(--default-dark-yellow-subtle);
+      --yellow-subtle-hover: var(--default-dark-yellow-subtle-hover);
+      --blue: var(--default-dark-blue);
+      --blue-subtle: var(--default-dark-blue-subtle);
+      --blue-subtle-hover: var(--default-dark-blue-subtle-hover);
+
+      --line-select: var(--default-dark-line-select);
 
       --shadow-rings-blue: var(--default-dark-shadow-rings-blue);
       --shadow-rings-gray: var(--default-dark-shadow-rings-gray);
@@ -249,75 +464,117 @@
       --shadow-low: var(--default-dark-shadow-low);
 
       --onboarding-chats-img: var(--default-dark-onboarding-chats-img);
+      --bloop-head-img: var(--default-dark-bloop-head-img);
     }
   }
-    [data-theme="default-light"] {
-      --bg-base: var(--default-light-bg-base);
-      --bg-base-hover: var(--default-light-bg-base-hover);
-      --bg-shade: var(--default-light-bg-shade);
-      --bg-sub: var(--default-light-bg-sub);
-      --bg-border: var(--default-light-bg-border);
-      --bg-border-hover: var(--default-light-bg-border-hover);
-      --bg-main: var(--default-light-bg-main);
-      --bg-main-hover: var(--default-light-bg-main-hover);
-      --bg-danger: var(--default-light-bg-danger);
-      --bg-danger-hover: var(--default-light-bg-danger-hover);
-      --bg-success: var(--default-light-bg-success);
-      --bg-success-hover: var(--default-light-bg-success-hover);
-      --label-control: var(--default-light-label-control);
-      --label-faint: var(--default-light-label-faint);
-      --label-muted: var(--default-light-label-muted);
-      --label-base: var(--default-light-label-base);
-      --label-title: var(--default-light-label-title);
-      --label-link: var(--default-light-label-link);
-      --chat-bg-base: var(--default-light-chat-bg-base);
-      --chat-bg-base-hover: var(--default-light-chat-bg-base-hover);
-      --chat-bg-shade: var(--default-light-chat-bg-shade);
-      --chat-bg-sub: var(--default-light-chat-bg-sub);
-      --chat-bg-border: var(--default-light-chat-bg-border);
-      --chat-bg-border-hover: var(--default-light-chat-bg-border-hover);
-      --chat-bg-divider: var(--default-light-chat-bg-divider);
+  body[data-theme="light"] {
+    --bg-sub: var(--default-light-bg-sub);
+    --bg-sub-hover: var(--default-light-bg-sub-hover);
+    --bg-base: var(--default-light-bg-base);
+    --bg-base-hover: var(--default-light-bg-base-hover);
+    --bg-selected: var(--default-light-bg-selected);
+    --bg-shade: var(--default-light-bg-shade);
+    --bg-shade-hover: var(--default-light-bg-shade-hover);
+    --bg-border: var(--default-light-bg-border);
+    --bg-border-hover: var(--default-light-bg-border-hover);
+    --bg-border-selected: var(--default-light-bg-border-selected);
+    --bg-divider: var(--default-light-bg-divider);
+    --bg-contrast: var(--default-light-bg-contrast);
+    --bg-contrast-hover: var(--default-light-bg-contrast-hover);
 
-      --bg-highlight: var(--default-light-bg-highlight);
+    --label-title: var(--default-light-label-title);
+    --label-base: var(--default-light-label-base);
+    --label-muted: var(--default-light-label-muted);
+    --label-faint: var(--default-light-label-faint);
+    --label-link: var(--default-light-label-link);
+    --label-contrast: var(--default-light-label-contrast);
+    --label-control: var(--default-light-label-control);
 
-      --shadow-rings-blue: var(--default-light-shadow-rings-blue);
-      --shadow-rings-gray: var(--default-light-shadow-rings-gray);
-      --shadow-float: var(--default-light-shadow-float);
-      --shadow-high: var(--default-light-shadow-high);
-      --shadow-medium: var(--default-light-shadow-medium);
-      --shadow-low: var(--default-light-shadow-low);
+    --sub-surface: var(--default-light-sub-surface);
+    --shade-surface: var(--default-light-shade-surface);
+    --base-surface: var(--default-light-base-surface);
 
-      --onboarding-chats-img: var(--default-dark-onboarding-chats-img);
-    }
+    --brand-default: var(--default-light-brand-default);
+    --brand-default-hover: var(--default-light-brand-default-hover);
+    --brand-default-subtitle: var(--default-light-brand-default-subtitle);
+    --brand-studio: var(--default-light-brand-studio);
+    --brand-studio-hover: var(--default-light-brand-studio-hover);
+    --brand-studio-subtle: var(--default-light-brand-studio-subtle);
+
+    --green: var(--default-light-green);
+    --green-subtle: var(--default-light-green-subtle);
+    --green-subtle-hover: var(--default-light-green-subtle-hover);
+    --red: var(--default-light-red);
+    --red-subtle: var(--default-light-red-subtle);
+    --red-subtle-hover: var(--default-light-red-subtle-hover);
+    --yellow: var(--default-light-yellow);
+    --yellow-subtle: var(--default-light-yellow-subtle);
+    --yellow-subtle-hover: var(--default-light-yellow-subtle-hover);
+    --blue: var(--default-light-blue);
+    --blue-subtle: var(--default-light-blue-subtle);
+    --blue-subtle-hover: var(--default-light-blue-subtle-hover);
+
+    --line-select: var(--default-light-line-select);
+
+    --shadow-rings-blue: var(--default-light-shadow-rings-blue);
+    --shadow-rings-gray: var(--default-light-shadow-rings-gray);
+    --shadow-float: var(--default-light-shadow-float);
+    --shadow-high: var(--default-light-shadow-high);
+    --shadow-medium: var(--default-light-shadow-medium);
+    --shadow-low: var(--default-light-shadow-low);
+
+    --onboarding-chats-img: var(--default-dark-onboarding-chats-img);
+    --bloop-head-img: var(--default-light-bloop-head-img);
+  }
   @media (prefers-color-scheme: light) {
-    [data-theme="system"] {
+    body[data-theme="system"] {
+      --bg-sub: var(--default-light-bg-sub);
+      --bg-sub-hover: var(--default-light-bg-sub-hover);
       --bg-base: var(--default-light-bg-base);
       --bg-base-hover: var(--default-light-bg-base-hover);
+      --bg-selected: var(--default-light-bg-selected);
       --bg-shade: var(--default-light-bg-shade);
-      --bg-sub: var(--default-light-bg-sub);
+      --bg-shade-hover: var(--default-light-bg-shade-hover);
       --bg-border: var(--default-light-bg-border);
       --bg-border-hover: var(--default-light-bg-border-hover);
-      --bg-main: var(--default-light-bg-main);
-      --bg-main-hover: var(--default-light-bg-main-hover);
-      --bg-danger: var(--default-light-bg-danger);
-      --bg-danger-hover: var(--default-light-bg-danger-hover);
-      --bg-success: var(--default-light-bg-success);
-      --bg-success-hover: var(--default-light-bg-success-hover);
-      --label-control: var(--default-light-label-control);
-      --label-faint: var(--default-light-label-faint);
-      --label-muted: var(--default-light-label-muted);
-      --label-base: var(--default-light-label-base);
-      --label-title: var(--default-light-label-title);
-      --label-link: var(--default-light-label-link);
-      --chat-bg-base: var(--default-light-chat-bg-base);
-      --chat-bg-base-hover: var(--default-light-chat-bg-base-hover);
-      --chat-bg-shade: var(--default-light-chat-bg-shade);
-      --chat-bg-sub: var(--default-light-chat-bg-sub);
-      --chat-bg-border: var(--default-light-chat-bg-border);
-      --chat-bg-border-hover: var(--default-light-chat-bg-border-hover);
-      --chat-bg-divider: var(--default-light-chat-bg-divider);
+      --bg-border-selected: var(--default-light-bg-border-selected);
+      --bg-divider: var(--default-light-bg-divider);
+      --bg-contrast: var(--default-light-bg-contrast);
+      --bg-contrast-hover: var(--default-light-bg-contrast-hover);
 
-      --bg-highlight: var(--default-light-bg-highlight);
+      --label-title: var(--default-light-label-title);
+      --label-base: var(--default-light-label-base);
+      --label-muted: var(--default-light-label-muted);
+      --label-faint: var(--default-light-label-faint);
+      --label-link: var(--default-light-label-link);
+      --label-contrast: var(--default-light-label-contrast);
+      --label-control: var(--default-light-label-control);
+
+      --sub-surface: var(--default-light-sub-surface);
+      --shade-surface: var(--default-light-shade-surface);
+      --base-surface: var(--default-light-base-surface);
+
+      --brand-default: var(--default-light-brand-default);
+      --brand-default-hover: var(--default-light-brand-default-hover);
+      --brand-default-subtitle: var(--default-light-brand-default-subtitle);
+      --brand-studio: var(--default-light-brand-studio);
+      --brand-studio-hover: var(--default-light-brand-studio-hover);
+      --brand-studio-subtle: var(--default-light-brand-studio-subtle);
+
+      --green: var(--default-light-green);
+      --green-subtle: var(--default-light-green-subtle);
+      --green-subtle-hover: var(--default-light-green-subtle-hover);
+      --red: var(--default-light-red);
+      --red-subtle: var(--default-light-red-subtle);
+      --red-subtle-hover: var(--default-light-red-subtle-hover);
+      --yellow: var(--default-light-yellow);
+      --yellow-subtle: var(--default-light-yellow-subtle);
+      --yellow-subtle-hover: var(--default-light-yellow-subtle-hover);
+      --blue: var(--default-light-blue);
+      --blue-subtle: var(--default-light-blue-subtle);
+      --blue-subtle-hover: var(--default-light-blue-subtle-hover);
+
+      --line-select: var(--default-light-line-select);
 
       --shadow-rings-blue: var(--default-light-shadow-rings-blue);
       --shadow-rings-gray: var(--default-light-shadow-rings-gray);
@@ -327,682 +584,9 @@
       --shadow-low: var(--default-light-shadow-low);
 
       --onboarding-chats-img: var(--default-dark-onboarding-chats-img);
+      --bloop-head-img: var(--default-light-bloop-head-img);
     }
   }
-    [data-theme="vsc-default-dark"] {
-      --bg-base: 37, 37, 38;
-      --bg-base-hover: 60, 60, 60;
-      --bg-shade: 45, 45, 45;
-      --bg-sub: 30, 30, 30;
-      --bg-border: 64, 64, 64;
-      --bg-border-hover: 112, 112, 112;
-      --bg-main: 91, 110, 221;
-      --bg-main-hover: 114, 133, 238;
-      --bg-danger: 199, 54, 62;
-      --bg-danger-hover: 215, 66, 74;
-      --bg-success: 21, 128, 61;
-      --bg-success-hover: 33, 197, 94;
-      --label-control: 255, 255, 255;
-      --label-faint: 57, 57, 57;
-      --label-muted: 85, 85, 85;
-      --label-base: 185, 185, 185;
-      --label-title: 238, 238, 238;
-      --label-link: 104, 141, 222;
-      --chat-bg-base: 37, 38, 56;
-      --chat-bg-base-hover: 43, 44, 66;
-      --chat-bg-shade: 31, 32, 49;
-      --chat-bg-sub: 21, 22, 32;
-      --chat-bg-border: 57, 58, 74;
-      --chat-bg-border-hover: 71, 72, 98;
-      --chat-bg-divider: 45, 45, 58;
-
-      --bg-highlight: 253, 201, 0;
-
-      --shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.16);
-      --shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.16);
-      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.75);
-      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
-      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
-      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
-
-      --onboarding-chats-img: url("../public/chatsImage-dark.png");
-    }
-    [data-theme="vsc-default-light"] {
-      --bg-base: 243, 243, 243;
-      --bg-base-hover: 236, 236, 236;
-      --bg-shade: 228, 230, 241;
-      --bg-sub: 255, 255, 255;
-      --bg-border: 211, 211, 211;
-      --bg-border-hover: 147, 147, 147;
-      --bg-main: 93, 117, 255;
-      --bg-main-hover: 69, 89, 205;
-      --bg-danger: 215, 66, 74;
-      --bg-danger-hover: 199, 54, 62;
-      --bg-success: 21, 128, 61;
-      --bg-success-hover: 33, 197, 94;
-      --label-control: 255, 255, 255;
-      --label-faint: 173, 173, 173;
-      --label-muted: 98, 98, 98;
-      --label-base: 57, 57, 57;
-      --label-title: 21, 21, 21;
-      --label-link: 78, 128, 238;
-      --chat-bg-base: 243, 243, 243;
-      --chat-bg-base-hover: 236, 236, 236;
-      --chat-bg-shade: 228, 230, 241;
-      --chat-bg-sub: 255, 255, 255;
-      --chat-bg-border: 211, 211, 211;
-      --chat-bg-border-hover: 147, 147, 147;
-      --chat-bg-divider: 216, 217, 234;
-
-      --bg-highlight: 253, 201, 0;
-
-      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.28);
-      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
-      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
-      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
-
-      --onboarding-chats-img: url("../public/chatsImage-light.png");
-    }
-    [data-theme="monokai"] {
-      --bg-sub: 30, 31, 28;
-      --bg-base: 39, 40, 34;
-      --bg-base-hover: 52, 53, 47;
-      --bg-shade: 50, 51, 43;
-      --bg-border: 70, 71, 65;
-      --bg-border-hover: 118, 119, 113;
-      --bg-main: 91, 110, 221;
-      --bg-main-hover: 114, 133, 238;
-      --bg-danger: 199, 54, 62;
-      --bg-danger-hover: 215, 66, 74;
-      --bg-success: 21, 128, 61;
-      --bg-success-hover: 33, 197, 94;
-      --label-control: 255, 255, 255;
-      --label-faint: 57, 57, 57;
-      --label-muted: 117, 113, 94;
-      --label-base: 196, 192, 174;
-      --label-title: 248, 248, 242;
-      --label-link: 104, 141, 222;
-      --chat-bg-sub: 30, 31, 28;
-      --chat-bg-base: 39, 40, 34;
-      --chat-bg-base-hover: 52, 53, 47;
-      --chat-bg-shade: 50, 51, 43;
-      --chat-bg-border: 70, 71, 65;
-      --chat-bg-border-hover: 118, 119, 113;
-      --chat-bg-divider: 70, 71, 65;
-
-      --bg-highlight: 253, 201, 0;
-
-      --shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.16);
-      --shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.16);
-      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.75);
-      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
-      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
-      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
-
-      --onboarding-chats-img: url("../public/chatsImage-dark.png");
-    }
-    [data-theme="abyss"] {
-      --bg-base: 6, 6, 33;
-      --bg-base-hover: 6, 25, 64;
-      --bg-shade: 5, 19, 54;
-      --bg-sub: 0, 12, 24;
-      --bg-border: 0, 41, 82;
-      --bg-border-hover: 32, 73, 114;
-      --bg-main: 91, 110, 221;
-      --bg-main-hover: 114, 133, 238;
-      --bg-danger: 199, 54, 62;
-      --bg-danger-hover: 215, 66, 74;
-      --bg-success: 21, 128, 61;
-      --bg-success-hover: 33, 197, 94;
-      --label-control: 255, 255, 255;
-      --label-faint: 57, 57, 57;
-      --label-muted: 85, 85, 85;
-      --label-base: 185, 185, 185;
-      --label-title: 238, 238, 238;
-      --label-link: 104, 141, 222;
-      --chat-bg-base: 6, 6, 33;
-      --chat-bg-base-hover: 6, 25, 64;
-      --chat-bg-shade: 5, 19, 54;
-      --chat-bg-sub: 0, 12, 24;
-      --chat-bg-border: 0, 41, 82;
-      --chat-bg-border-hover: 32, 73, 114;
-      --chat-bg-divider: 33, 33, 60;
-
-      --bg-highlight: 253, 201, 0;
-
-      --shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.16);
-      --shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.16);
-      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.75);
-      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
-      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
-      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
-
-      --onboarding-chats-img: url("../public/chatsImage-dark.png");
-    }
-    [data-theme="atom-one-dark-pro"] {
-      --bg-base: 40, 44, 52;
-      --bg-base-hover: 44, 49, 58;
-      --bg-shade: 44, 49, 60;
-      --bg-sub: 33, 37, 43;
-      --bg-border: 59, 64, 72;
-      --bg-border-hover: 69, 74, 82;
-      --bg-main: 91, 110, 221;
-      --bg-main-hover: 114, 133, 238;
-      --bg-danger: 199, 54, 62;
-      --bg-danger-hover: 215, 66, 74;
-      --bg-success: 21, 128, 61;
-      --bg-success-hover: 33, 197, 94;
-      --label-control: 255, 255, 255;
-      --label-faint: 57, 57, 57;
-      --label-muted: 85, 85, 85;
-      --label-base: 185, 185, 185;
-      --label-title: 238, 238, 238;
-      --label-link: 104, 141, 222;
-      --chat-bg-base: 40, 44, 52;
-      --chat-bg-base-hover: 44, 49, 58;
-      --chat-bg-shade: 44, 49, 60;
-      --chat-bg-sub: 33, 37, 43;
-      --chat-bg-border: 59, 64, 72;
-      --chat-bg-border-hover: 69, 74, 82;
-      --chat-bg-divider: 45, 45, 58;
-
-      --bg-highlight: 253, 201, 0;
-
-      --shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.16);
-      --shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.16);
-      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.75);
-      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
-      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
-      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
-
-      --onboarding-chats-img: url("../public/chatsImage-dark.png");
-    }
-    [data-theme="darcula"] {
-      --bg-base: 40, 40, 40;
-      --bg-base-hover: 45, 45, 45;
-      --bg-shade: 49, 51, 53;
-      --bg-sub: 43, 43, 43;
-      --bg-border: 55, 55, 55;
-      --bg-border-hover: 65, 65, 65;
-      --bg-main: 91, 110, 221;
-      --bg-main-hover: 114, 133, 238;
-      --bg-danger: 199, 54, 62;
-      --bg-danger-hover: 215, 66, 74;
-      --bg-success: 21, 128, 61;
-      --bg-success-hover: 33, 197, 94;
-      --label-control: 255, 255, 255;
-      --label-faint: 57, 57, 57;
-      --label-muted: 105, 105, 105;
-      --label-base: 185, 185, 185;
-      --label-title: 238, 238, 238;
-      --label-link: 104, 141, 222;
-      --chat-bg-base: 40, 40, 40;
-      --chat-bg-base-hover: 45, 45, 45;
-      --chat-bg-shade: 49, 51, 53;
-      --chat-bg-sub: 43, 43, 43;
-      --chat-bg-border: 55, 55, 55;
-      --chat-bg-border-hover: 65, 65, 65;
-      --chat-bg-divider: 53, 53, 53;
-
-      --bg-highlight: 253, 201, 0;
-
-      --shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.16);
-      --shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.16);
-      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.75);
-      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
-      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
-      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
-
-      --onboarding-chats-img: url("../public/chatsImage-dark.png");
-    }
-    [data-theme="dracula"] {
-      --bg-base: 33, 34, 44;
-      --bg-base-hover: 52, 55, 70;
-      --bg-shade: 40, 42, 54;
-      --bg-sub: 25, 26, 33;
-      --bg-border: 55, 60, 72;
-      --bg-border-hover: 65, 70, 82;
-      --bg-main: 91, 110, 221;
-      --bg-main-hover: 114, 133, 238;
-      --bg-danger: 199, 54, 62;
-      --bg-danger-hover: 215, 66, 74;
-      --bg-success: 21, 128, 61;
-      --bg-success-hover: 33, 197, 94;
-      --label-control: 255, 255, 255;
-      --label-faint: 57, 57, 57;
-      --label-muted: 98, 114, 164;
-      --label-base: 162, 172, 199;
-      --label-title: 248, 248, 242;
-      --label-link: 104, 141, 222;
-      --chat-bg-base: 33, 34, 44;
-      --chat-bg-base-hover: 52, 55, 70;
-      --chat-bg-shade: 40, 42, 54;
-      --chat-bg-sub: 25, 26, 33;
-      --chat-bg-border: 98, 114, 164;
-      --chat-bg-border-hover: 110, 126, 183;
-      --chat-bg-divider: 127, 60, 99;
-
-      --bg-highlight: 253, 201, 0;
-
-      --shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.16);
-      --shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.16);
-      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.75);
-      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
-      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
-      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
-
-      --onboarding-chats-img: url("../public/chatsImage-dark.png");
-    }
-    [data-theme="github-dark"] {
-      --bg-base: 36, 41, 46;
-      --bg-base-hover: 40, 46, 52;
-      --bg-shade: 43, 48, 54;
-      --bg-sub: 31, 36, 40;
-      --bg-border: 55, 60, 72;
-      --bg-border-hover: 65, 70, 82;
-      --bg-main: 91, 110, 221;
-      --bg-main-hover: 114, 133, 238;
-      --bg-danger: 199, 54, 62;
-      --bg-danger-hover: 215, 66, 74;
-      --bg-success: 21, 128, 61;
-      --bg-success-hover: 33, 197, 94;
-      --label-control: 255, 255, 255;
-      --label-faint: 57, 57, 57;
-      --label-muted: 149, 157, 165;
-      --label-base: 185, 185, 185;
-      --label-title: 248, 248, 242;
-      --label-link: 104, 141, 222;
-      --chat-bg-base: 36, 41, 46;
-      --chat-bg-base-hover: 40, 46, 52;
-      --chat-bg-shade: 43, 48, 54;
-      --chat-bg-sub: 31, 36, 40;
-      --chat-bg-border: 55, 60, 72;
-      --chat-bg-border-hover: 65, 70, 82;
-      --chat-bg-divider: 55, 60, 72;
-
-      --bg-highlight: 253, 201, 0;
-
-      --shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.16);
-      --shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.16);
-      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.75);
-      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
-      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
-      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
-
-      --onboarding-chats-img: url("../public/chatsImage-dark.png");
-    }
-    [data-theme="gruvbox-dark"] {
-      --bg-base: 40, 40, 40;
-      --bg-base-hover: 60, 56, 54;
-      --bg-shade: 50, 48, 47;
-      --bg-sub: 30, 30, 30;
-      --bg-border: 60, 56, 54;
-      --bg-border-hover: 70, 66, 64;
-      --bg-main: 91, 110, 221;
-      --bg-main-hover: 114, 133, 238;
-      --bg-danger: 199, 54, 62;
-      --bg-danger-hover: 215, 66, 74;
-      --bg-success: 21, 128, 61;
-      --bg-success-hover: 33, 197, 94;
-      --label-control: 255, 255, 255;
-      --label-faint: 57, 57, 57;
-      --label-muted: 169, 157, 145;
-      --label-base: 195, 195, 195;
-      --label-title: 248, 248, 242;
-      --label-link: 104, 141, 222;
-      --chat-bg-base: 40, 40, 40;
-      --chat-bg-base-hover: 56, 60, 54;
-      --chat-bg-shade: 48, 50, 47;
-      --chat-bg-sub: 30, 30, 30;
-      --chat-bg-border: 56, 60, 54;
-      --chat-bg-border-hover: 66, 70, 64;
-      --chat-bg-divider: 56, 60, 54;
-
-      --bg-highlight: 253, 201, 0;
-
-      --shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.16);
-      --shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.16);
-      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.75);
-      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
-      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
-      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
-
-      --onboarding-chats-img: url("../public/chatsImage-dark.png");
-    }
-    [data-theme="kimbie-dark"] {
-      --bg-base: 34, 26, 15;
-      --bg-base-hover: 50, 35, 14;
-      --bg-shade: 54, 39, 18;
-      --bg-sub: 19, 21, 16;
-      --bg-border: 59, 55, 45;
-      --bg-border-hover: 69, 65, 55;
-      --bg-main: 91, 110, 221;
-      --bg-main-hover: 114, 133, 238;
-      --bg-danger: 199, 54, 62;
-      --bg-danger-hover: 215, 66, 74;
-      --bg-success: 21, 128, 61;
-      --bg-success-hover: 33, 197, 94;
-      --label-control: 255, 255, 255;
-      --label-faint: 57, 57, 57;
-      --label-muted: 169, 157, 145;
-      --label-base: 195, 195, 195;
-      --label-title: 248, 248, 242;
-      --label-link: 104, 141, 222;
-      --chat-bg-base: 37, 56, 38;
-      --chat-bg-base-hover: 43, 66, 44;
-      --chat-bg-shade: 31, 49, 32;
-      --chat-bg-sub: 21, 32, 22;
-      --chat-bg-border: 57, 74, 58;
-      --chat-bg-border-hover: 71, 98, 72;
-      --chat-bg-divider: 45, 58, 45;
-
-      --bg-highlight: 253, 201, 0;
-
-      --shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.16);
-      --shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.16);
-      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.75);
-      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
-      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
-      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
-
-      --onboarding-chats-img: url("../public/chatsImage-dark.png");
-    }
-    [data-theme="material"] {
-      --bg-base: 33, 33, 33;
-      --bg-base-hover: 43, 43, 43;
-      --bg-shade: 38, 38, 38;
-      --bg-sub: 30, 30, 30;
-      --bg-border: 43, 43, 43;
-      --bg-border-hover: 53, 53, 53;
-      --bg-main: 91, 110, 221;
-      --bg-main-hover: 114, 133, 238;
-      --bg-danger: 199, 54, 62;
-      --bg-danger-hover: 215, 66, 74;
-      --bg-success: 21, 128, 61;
-      --bg-success-hover: 33, 197, 94;
-      --label-control: 255, 255, 255;
-      --label-faint: 57, 57, 57;
-      --label-muted: 97, 97, 97;
-      --label-base: 195, 195, 195;
-      --label-title: 248, 248, 242;
-      --label-link: 104, 141, 222;
-      --chat-bg-base: 33, 33, 33;
-      --chat-bg-base-hover: 43, 43, 43;
-      --chat-bg-shade: 38, 38, 38;
-      --chat-bg-sub: 30, 30, 30;
-      --chat-bg-border: 43, 43, 43;
-      --chat-bg-border-hover: 53, 53, 53;
-      --chat-bg-divider: 43, 43, 43;
-
-      --bg-highlight: 253, 201, 0;
-
-      --shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.16);
-      --shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.16);
-      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.75);
-      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
-      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
-      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
-
-      --onboarding-chats-img: url("../public/chatsImage-dark.png");
-    }
-    [data-theme="night-owl"] {
-      --bg-base: 1, 22, 39;
-      --bg-base-hover: 11, 41, 66;
-      --bg-shade: 6, 31, 52;
-      --bg-sub: 1, 17, 29;
-      --bg-border: 39, 43, 59;
-      --bg-border-hover: 49, 53, 69;
-      --bg-main: 91, 110, 221;
-      --bg-main-hover: 114, 133, 238;
-      --bg-danger: 199, 54, 62;
-      --bg-danger-hover: 215, 66, 74;
-      --bg-success: 21, 128, 61;
-      --bg-success-hover: 33, 197, 94;
-      --label-control: 255, 255, 255;
-      --label-faint: 57, 57, 57;
-      --label-muted: 95, 126, 151;
-      --label-base: 178, 192, 217;
-      --label-title: 210, 222, 231;
-      --label-link: 104, 141, 222;
-      --chat-bg-base: 22, 1, 39;
-      --chat-bg-base-hover: 41, 11, 66;
-      --chat-bg-shade: 31, 6, 52;
-      --chat-bg-sub: 17, 1, 29;
-      --chat-bg-border: 43, 39, 59;
-      --chat-bg-border-hover: 53, 49, 69;
-      --chat-bg-divider: 43, 39, 59;
-
-      --bg-highlight: 253, 201, 0;
-
-      --shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.16);
-      --shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.16);
-      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.75);
-      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
-      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
-      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
-
-      --onboarding-chats-img: url("../public/chatsImage-dark.png");
-    }
-    [data-theme="solarized-dark"] {
-      --bg-base: 0, 43, 55;
-      --bg-base-hover: 0, 64, 82;
-      --bg-shade: 0, 53, 68;
-      --bg-sub: 0, 33, 43;
-      --bg-border: 0, 56, 71;
-      --bg-border-hover: 0, 66, 81;
-      --bg-main: 91, 110, 221;
-      --bg-main-hover: 114, 133, 238;
-      --bg-danger: 199, 54, 62;
-      --bg-danger-hover: 215, 66, 74;
-      --bg-success: 21, 128, 61;
-      --bg-success-hover: 33, 197, 94;
-      --label-control: 255, 255, 255;
-      --label-faint: 57, 57, 57;
-      --label-muted: 133, 174, 176;
-      --label-base: 191, 218, 219;
-      --label-title: 210, 222, 231;
-      --label-link: 104, 141, 222;
-      --chat-bg-base: 0, 43, 55;
-      --chat-bg-base-hover: 0, 64, 82;
-      --chat-bg-shade: 0, 53, 68;
-      --chat-bg-sub: 0, 33, 43;
-      --chat-bg-border: 0, 56, 71;
-      --chat-bg-border-hover: 0, 66, 81;
-      --chat-bg-divider: 0, 56, 71;
-
-      --bg-highlight: 253, 201, 0;
-
-      --shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.16);
-      --shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.16);
-      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.75);
-      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
-      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
-      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
-
-      --onboarding-chats-img: url("../public/chatsImage-dark.png");
-    }
-    [data-theme="tomorrow-night-blue"] {
-      --bg-base: 0, 23, 51;
-      --bg-base-hover: 0, 36, 81;
-      --bg-shade: 0, 28, 64;
-      --bg-sub: 0, 17, 38;
-      --bg-border: 34, 39, 95;
-      --bg-border-hover: 64, 79, 125;
-      --bg-main: 91, 110, 221;
-      --bg-main-hover: 114, 133, 238;
-      --bg-danger: 199, 54, 62;
-      --bg-danger-hover: 215, 66, 74;
-      --bg-success: 21, 128, 61;
-      --bg-success-hover: 33, 197, 94;
-      --label-control: 255, 255, 255;
-      --label-faint: 57, 57, 57;
-      --label-muted: 114, 133, 183;
-      --label-base: 168, 184, 222;
-      --label-title: 210, 222, 231;
-      --label-link: 104, 141, 222;
-      --chat-bg-base: 43, 37, 56;
-      --chat-bg-base-hover: 50, 43, 66;
-      --chat-bg-shade: 40, 31, 49;
-      --chat-bg-sub: 18, 16, 24;
-      --chat-bg-border: 57, 44, 73;
-      --chat-bg-border-hover: 94, 73, 122;
-      --chat-bg-divider: 56, 50, 73;
-
-      --bg-highlight: 253, 201, 0;
-
-      --shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.16);
-      --shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.16);
-      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.75);
-      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
-      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
-      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
-
-      --onboarding-chats-img: url("../public/chatsImage-dark.png");
-    }
-    [data-theme="github-light"] {
-      --bg-base: 255, 255, 255;
-      --bg-base-hover: 237, 242, 245;
-      --bg-shade: 246, 248, 250;
-      --bg-sub: 235, 240, 244;
-      --bg-border: 215, 218, 222;
-      --bg-border-hover: 225, 228, 232;
-      --bg-main: 93, 117, 255;
-      --bg-main-hover: 69, 89, 205;
-      --bg-danger: 215, 66, 74;
-      --bg-danger-hover: 199, 54, 62;
-      --bg-success: 21, 128, 61;
-      --bg-success-hover: 33, 197, 94;
-      --label-control: 255, 255, 255;
-      --label-faint: 173, 173, 173;
-      --label-muted: 98, 98, 98;
-      --label-base: 57, 57, 57;
-      --label-title: 21, 21, 21;
-      --label-link: 78, 128, 238;
-      --chat-bg-base: 255, 255, 255;
-      --chat-bg-base-hover: 237, 242, 245;
-      --chat-bg-shade: 246, 248, 250;
-      --chat-bg-sub: 235, 240, 244;
-      --chat-bg-border: 215, 218, 222;
-      --chat-bg-border-hover: 225, 228, 232;
-      --chat-bg-divider: 215, 218, 222;
-
-      --bg-highlight: 253, 201, 0;
-
-      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.28);
-      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
-      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
-      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
-
-      --onboarding-chats-img: url("../public/chatsImage-light.png");
-    }
-    [data-theme="gruvbox-light"] {
-      --bg-base: 251, 241, 199;
-      --bg-base-hover: 235, 219, 178;
-      --bg-shade: 243, 230, 188;
-      --bg-sub: 235, 219, 178;
-      --bg-border: 182, 170, 139;
-      --bg-border-hover: 148, 139, 113;
-      --bg-main: 93, 117, 255;
-      --bg-main-hover: 69, 89, 205;
-      --bg-danger: 215, 66, 74;
-      --bg-danger-hover: 199, 54, 62;
-      --bg-success: 21, 128, 61;
-      --bg-success-hover: 33, 197, 94;
-      --label-control: 255, 255, 255;
-      --label-faint: 173, 173, 173;
-      --label-muted: 98, 98, 98;
-      --label-base: 57, 57, 57;
-      --label-title: 21, 21, 21;
-      --label-link: 78, 128, 238;
-      --chat-bg-base: 251, 241, 199;
-      --chat-bg-base-hover: 235, 219, 178;
-      --chat-bg-shade: 243, 230, 188;
-      --chat-bg-sub: 235, 219, 178;
-      --chat-bg-border: 182, 170, 139;
-      --chat-bg-border-hover: 148, 139, 113;
-      --chat-bg-divider: 182, 170, 139;
-
-      --bg-highlight: 253, 201, 0;
-
-      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.28);
-      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
-      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
-      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
-
-      --onboarding-chats-img: url("../public/chatsImage-light.png");
-    }
-    [data-theme="quiet-light"] {
-      --bg-base: 237, 232, 239;
-      --bg-base-hover: 247, 242, 249;
-      --bg-shade: 237, 237, 245;
-      --bg-sub: 245, 245, 245;
-      --bg-border: 213, 213, 213;
-      --bg-border-hover: 203, 203, 203;
-      --bg-main: 93, 117, 255;
-      --bg-main-hover: 69, 89, 205;
-      --bg-danger: 215, 66, 74;
-      --bg-danger-hover: 199, 54, 62;
-      --bg-success: 21, 128, 61;
-      --bg-success-hover: 33, 197, 94;
-      --label-control: 255, 255, 255;
-      --label-faint: 173, 173, 173;
-      --label-muted: 98, 98, 98;
-      --label-base: 57, 57, 57;
-      --label-title: 21, 21, 21;
-      --label-link: 78, 128, 238;
-      --chat-bg-base: 237, 232, 239;
-      --chat-bg-base-hover: 247, 242, 249;
-      --chat-bg-shade: 237, 237, 245;
-      --chat-bg-sub: 245, 245, 245;
-      --chat-bg-border: 213, 213, 213;
-      --chat-bg-border-hover: 203, 203, 203;
-      --chat-bg-divider: 213, 213, 213;
-
-      --bg-highlight: 253, 201, 0;
-
-      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.28);
-      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
-      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
-      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
-
-      --onboarding-chats-img: url("../public/chatsImage-light.png");
-    }
-    [data-theme="solarized-light"] {
-      --bg-base: 238, 232, 213;
-      --bg-base-hover: 221, 214, 193;
-      --bg-shade: 245, 242, 220;
-      --bg-sub: 253, 246, 227;
-      --bg-border: 221, 214, 193;
-      --bg-border-hover: 211, 204, 183;
-      --bg-main: 138, 156, 255;
-      --bg-main-hover: 93, 117, 255;
-      --bg-danger: 215, 66, 74;
-      --bg-danger-hover: 199, 54, 62;
-      --bg-success: 21, 128, 61;
-      --bg-success-hover: 33, 197, 94;
-      --label-control: 255, 255, 255;
-      --label-faint: 173, 173, 173;
-      --label-muted: 98, 98, 98;
-      --label-base: 57, 57, 57;
-      --label-title: 21, 21, 21;
-      --label-link: 78, 128, 238;
-      --chat-bg-base: 238, 232, 213;
-      --chat-bg-base-hover: 221, 214, 193;
-      --chat-bg-shade: 245, 242, 220;
-      --chat-bg-sub: 253, 246, 227;
-      --chat-bg-border: 221, 214, 193;
-      --chat-bg-border-hover: 211, 204, 183;
-      --chat-bg-divider: 221, 214, 193;
-
-      --bg-highlight: 253, 201, 0;
-
-      --shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.28);
-      --shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
-      --shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
-      --shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
-
-      --onboarding-chats-img: url("../public/chatsImage-light.png");
-    }
 }
 
 body {
@@ -1096,6 +680,33 @@ h5, .h5 {
   cursor: default;
 }
 
+.headline-b {
+  font-family: 'Inter', sans-serif;
+  font-size: 1.625rem;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 123.077%;
+  letter-spacing: -0.26px;
+}
+
+.title-s {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.9375rem;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 133%;
+  letter-spacing: -0.15px;
+}
+
+.title-m-b {
+  font-family: 'Inter', sans-serif;
+  font-size: 1.0625rem;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 129.412%;
+  letter-spacing: -0.17px;
+}
+
 .subhead-l {
   font-family: 'Inter', sans-serif;
   font-style: normal;
@@ -1154,18 +765,56 @@ h5, .h5 {
   font-family: 'Inter', sans-serif;
   font-style: normal;
   font-weight: 400;
-  font-size: 0.875rem;
-  line-height: 160%;
-  letter-spacing: -0.02em;
+  font-size: 0.8125rem;
+  line-height: 123.077%;
 }
 
-.body-s-strong {
+.body-s-b {
   font-family: 'Inter', sans-serif;
   font-style: normal;
   font-weight: 500;
-  font-size: 0.875rem;
-  line-height: 160%;
-  letter-spacing: -0.02em;
+  font-size: 0.8125rem;
+  line-height: 123.077%;
+}
+
+.body-mini {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  font-size: 0.75rem;
+  line-height: 116.667%;
+}
+
+.body-mini-b {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 500;
+  font-size: 0.75rem;
+  line-height: 116.667%;
+}
+
+.body-tiny {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  font-size: 0.625rem;
+  line-height: 120%;
+}
+
+.body-base-b {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 500;
+  font-size: 0.937rem;
+  line-height: 133.333%;
+}
+
+.body-base {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  font-size: 0.937rem;
+  line-height: 133.333%;
 }
 
 .callout {
@@ -1196,23 +845,29 @@ h5, .h5 {
 }
 
 .code-s {
-  font-family: Menlo, sans-serif;
+  font-family: "Fira Code", sans-serif;
   font-style: normal;
   font-weight: 400;
-  font-size: 0.75rem;
-  line-height: 150%;
+  font-size: 0.8125rem;
+  line-height: 161%;
+  letter-spacing: -0.13px;
 }
 
 .code-m {
-  font-family: Menlo, sans-serif;
+  font-family: "Fira Code", sans-serif;
   font-style: normal;
   font-weight: 400;
   font-size: 1rem;
   line-height: 160%;
 }
 
-.hide-scrollbar::-webkit-scrollbar {
-  display: none;
+.code-mini {
+  font-family: "Fira Code", sans-serif;
+  font-size: 0.75rem;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 166.667%;
+  letter-spacing: -0.12px;
 }
 
 .ellipsis {
@@ -1313,14 +968,29 @@ h5, .h5 {
   display: none;
 }
 
-.scrollbar-hide::-webkit-scrollbar {
+.show-scrollbar::-webkit-scrollbar {
+  display: initial;
+  width: 7px;
+}
+
+.show-scrollbar *::-webkit-scrollbar {
   display: none;
+}
+
+.show-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-bg-base-hover hover:bg-bg-border-hover rounded-full
 }
 
 /* For IE, Edge and Firefox */
 .scrollbar-hide {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
+}
+
+/* For IE, Edge and Firefox */
+.scrollbar-show {
+  -ms-overflow-style: initial;  /* IE and Edge */
+  scrollbar-width: initial;  /* Firefox */
 }
 
 .readme h1, .readme h2, .readme h3, .readme h4, .readme h5, .readme h6, .readme p, .readme span, .readme div,
@@ -1473,15 +1143,19 @@ h5, .h5 {
 }
 
 .search-highlight {
-  background-color: rgba(var(--bg-highlight), 0.25);
+  background-color: rgba(var(--yellow), 0.25);
 }
 
 .search-highlight-active {
-  background-color: rgba(var(--bg-highlight), 0.8);
+  background-color: rgba(var(--yellow), 0.5);
 }
 
 .onboarding-chats-img {
   content: var(--onboarding-chats-img);
+}
+
+.bloop-head-img {
+  content: var(--bloop-head-img);
 }
 
 .notransition * {
@@ -1530,7 +1204,7 @@ h5, .h5 {
 }
 
 .ProseMirror[data-placeholder]::before {
-  color: currentColor;
+  color: rgb(var(--label-muted));
   position: absolute;
   content: attr(data-placeholder);
   pointer-events: none;
@@ -1543,6 +1217,13 @@ img.ProseMirror-separator {
 }
 
 .suggestion-item-active .suggestion-item {
-  @apply bg-chat-bg-base-hover
+  @apply bg-bg-selected
 }
 /* prose mirror editor end */
+
+.icon-stroked path {
+  stroke: rgb(var(--bg-sub));
+  stroke-width: 1px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
