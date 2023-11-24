@@ -74,6 +74,7 @@ pub struct Create {
 pub async fn create(
     app: Extension<Application>,
     user: Extension<User>,
+    Path(project_id): Path<i64>,
     Json(params): Json<Create>,
 ) -> webserver::Result<String> {
     let mut transaction = app.sql.begin().await?;
@@ -81,7 +82,8 @@ pub async fn create(
     let user_id = user.username().ok_or_else(no_user_id)?.to_string();
 
     let studio_id: i64 = sqlx::query! {
-        "INSERT INTO studios (user_id, name) VALUES (?, ?) RETURNING id",
+        "INSERT INTO studios (project_id, user_id, name) VALUES (?, ?, ?) RETURNING id",
+        project_id,
         user_id,
         params.name,
     }
@@ -170,23 +172,24 @@ pub struct Get {
 pub async fn get(
     app: Extension<Application>,
     user: Extension<User>,
-    Path(id): Path<i64>,
+    Path((project_id, studio_id)): Path<(i64, i64)>,
     Query(params): Query<Get>,
 ) -> webserver::Result<Json<Studio>> {
     let user_id = user.username().ok_or_else(no_user_id)?.to_string();
 
     let snapshot_id = match params.snapshot_id {
         Some(id) => id,
-        None => latest_snapshot_id(id, &*app.sql, &user_id).await?,
+        None => latest_snapshot_id(studio_id, &*app.sql, &user_id).await?,
     };
 
     let row = sqlx::query! {
         "SELECT s.id, s.name, ss.context, ss.doc_context, ss.messages, ss.modified_at
         FROM studios s
         INNER JOIN studio_snapshots ss ON ss.id = ?
-        WHERE s.id = ? AND s.user_id = ?",
+        WHERE s.id = ? AND s.project_id = ? AND s.user_id = ?",
         snapshot_id,
-        id,
+        studio_id,
+        project_id,
         user_id,
     }
     .fetch_optional(&*app.sql)
@@ -223,7 +226,7 @@ pub struct Patch {
 pub async fn patch(
     app: Extension<Application>,
     user: Extension<User>,
-    Path(studio_id): Path<i64>,
+    Path((project_id, studio_id)): Path<(i64, i64)>,
     Json(patch): Json<Patch>,
 ) -> webserver::Result<Json<TokenCounts>> {
     let user_id = user.username().ok_or_else(no_user_id)?.to_string();
@@ -237,9 +240,10 @@ pub async fn patch(
 
     // Ensure the ID is valid first.
     sqlx::query!(
-        "SELECT id FROM studios WHERE id = ? AND user_id = ?",
+        "SELECT id FROM studios WHERE id = ? AND project_id = ? AND user_id = ?",
         studio_id,
-        user_id
+        project_id,
+        user_id,
     )
     .fetch_optional(&mut transaction)
     .await?
@@ -331,14 +335,15 @@ pub async fn patch(
 pub async fn delete(
     app: Extension<Application>,
     user: Extension<User>,
-    Path(id): Path<i64>,
+    Path((project_id, studio_id)): Path<(i64, i64)>,
 ) -> webserver::Result<()> {
     let user_id = user.username().ok_or_else(no_user_id)?.to_string();
 
     sqlx::query!(
-        "DELETE FROM studios WHERE id = ? AND user_id = ? RETURNING id",
-        id,
-        user_id
+        "DELETE FROM studios WHERE id = ? AND project_id = ? AND user_id = ? RETURNING id",
+        studio_id,
+        project_id,
+        user_id,
     )
     .fetch_optional(&*app.sql)
     .await?
@@ -358,6 +363,7 @@ pub struct ListItem {
 pub async fn list(
     app: Extension<Application>,
     user: Extension<User>,
+    Path(project_id): Path<i64>,
 ) -> webserver::Result<Json<Vec<ListItem>>> {
     let user_id = user.username().ok_or_else(no_user_id)?.to_string();
 
@@ -369,11 +375,12 @@ pub async fn list(
             ss.context
         FROM studios s
         INNER JOIN studio_snapshots ss ON s.id = ss.studio_id
-        WHERE s.user_id = ? AND (ss.studio_id, ss.modified_at) IN (
+        WHERE s.project_id = ? AND s.user_id = ? AND (ss.studio_id, ss.modified_at) IN (
             SELECT studio_id, MAX(modified_at)
             FROM studio_snapshots
             GROUP BY studio_id
         )",
+        project_id,
         user_id,
     )
     .fetch_all(&*app.sql)
@@ -683,7 +690,7 @@ fn count_tokens_for_file(path: &str, body: &str, ranges: &[Range<usize>]) -> usi
 pub async fn generate(
     app: Extension<Application>,
     user: Extension<User>,
-    Path(studio_id): Path<i64>,
+    Path((_project_id, studio_id)): Path<(i64, i64)>,
 ) -> webserver::Result<Sse<Pin<Box<dyn tokio_stream::Stream<Item = Result<sse::Event>> + Send>>>> {
     let user_id = user.username().ok_or_else(no_user_id)?.to_string();
 
@@ -926,7 +933,7 @@ mod structured_diff {
 pub async fn diff(
     app: Extension<Application>,
     user: Extension<User>,
-    Path(studio_id): Path<i64>,
+    Path((_project_id, studio_id)): Path<(i64, i64)>,
 ) -> webserver::Result<Json<structured_diff::Diff>> {
     let user_id = user.username().ok_or_else(no_user_id)?.to_string();
 
@@ -1261,7 +1268,7 @@ async fn validate_add_file(
 pub async fn diff_apply(
     app: State<Application>,
     user: Extension<User>,
-    Path(studio_id): Path<i64>,
+    Path((_project_id, studio_id)): Path<(i64, i64)>,
     diff: String,
 ) -> webserver::Result<()> {
     let user_id = user.username().ok_or_else(no_user_id)?.to_string();
@@ -1421,6 +1428,7 @@ pub struct Import {
 pub async fn import(
     app: Extension<Application>,
     user: Extension<User>,
+    Path(project_id): Path<i64>,
     Query(params): Query<Import>,
 ) -> webserver::Result<String> {
     let mut transaction = app.sql.begin().await?;
@@ -1484,8 +1492,9 @@ pub async fn import(
         Some(id) => id,
         None => {
             sqlx::query!(
-                "INSERT INTO studios(name, user_id) VALUES (?, ?) RETURNING id",
+                "INSERT INTO studios(name, project_id, user_id) VALUES (?, ?, ?) RETURNING id",
                 conversation.title,
+                project_id,
                 user_id,
             )
             .fetch_one(&mut transaction)
@@ -1649,16 +1658,17 @@ pub struct Snapshot {
 pub async fn list_snapshots(
     app: Extension<Application>,
     user: Extension<User>,
-    Path(studio_id): Path<i64>,
+    Path((project_id, studio_id)): Path<(i64, i64)>,
 ) -> webserver::Result<Json<Vec<Snapshot>>> {
     let user_id = user.username().ok_or_else(no_user_id)?.to_string();
 
     sqlx::query! {
         "SELECT ss.id as 'id!', ss.modified_at, ss.context, ss.doc_context, ss.messages
         FROM studio_snapshots ss
-        JOIN studios s ON s.id = ss.studio_id AND s.user_id = ?
+        JOIN studios s ON s.id = ss.studio_id AND s.project_id = ? AND s.user_id = ?
         WHERE ss.studio_id = ?
         ORDER BY modified_at DESC",
+        project_id,
         user_id,
         studio_id,
     }
@@ -1683,7 +1693,7 @@ pub async fn list_snapshots(
 pub async fn delete_snapshot(
     app: Extension<Application>,
     user: Extension<User>,
-    Path((studio_id, snapshot_id)): Path<(i64, i64)>,
+    Path((project_id, studio_id, snapshot_id)): Path<(i64, i64, i64)>,
 ) -> webserver::Result<()> {
     let user_id = user.username().ok_or_else(no_user_id)?.to_string();
 
@@ -1692,10 +1702,11 @@ pub async fn delete_snapshot(
         WHERE id IN (
             SELECT ss.id
             FROM studio_snapshots ss
-            JOIN studios s ON s.id = ss.studio_id AND s.user_id = ?
+            JOIN studios s ON s.id = ss.studio_id AND s.project_id = ? AND s.user_id = ?
             WHERE ss.id = ? AND ss.studio_id = ?
         )
         RETURNING id",
+        project_id,
         user_id,
         snapshot_id,
         studio_id,
