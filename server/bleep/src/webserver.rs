@@ -25,6 +25,7 @@ pub mod hoverable;
 mod index;
 pub mod intelligence;
 pub mod middleware;
+mod project;
 mod query;
 mod quota;
 pub mod repos;
@@ -96,32 +97,45 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
             get(answer::conversations::thread),
         )
         .route("/answer/vote", post(answer::vote))
-        .nest(
+        .route("/projects", get(project::list).post(project::create))
+        .route(
             "/projects/:project_id",
-            Router::new()
-                .route("/studio", post(studio::create))
-                .route("/studio", get(studio::list))
-                .route(
-                    "/studio/:studio_id",
-                    get(studio::get).patch(studio::patch).delete(studio::delete),
-                )
-                .route("/studio/import", post(studio::import))
-                .route("/studio/:studio_id/generate", get(studio::generate))
-                .route("/studio/:studio_id/diff", get(studio::diff))
-                .route("/studio/:studio_id/diff/apply", post(studio::diff_apply))
-                .route("/studio/:studio_id/snapshots", get(studio::list_snapshots))
-                .route(
-                    "/studio/:studio_id/snapshots/:snapshot_id",
-                    delete(studio::delete_snapshot),
-                )
-                .route(
-                    "/studio/file-token-count",
-                    post(studio::get_file_token_count),
-                )
-                .route(
-                    "/studio/doc-file-token-count",
-                    post(studio::get_doc_file_token_count),
-                ),
+            get(project::get).post(project::update),
+        )
+        .route("/projects/:project_id/studios", post(studio::create))
+        .route("/projects/:project_id/studios", get(studio::list))
+        .route(
+            "/projects/:project_id/studios/:studio_id",
+            get(studio::get).patch(studio::patch).delete(studio::delete),
+        )
+        .route("/projects/:project_id/studios/import", post(studio::import))
+        .route(
+            "/projects/:project_id/studios/:studio_id/generate",
+            get(studio::generate),
+        )
+        .route(
+            "/projects/:project_id/studios/:studio_id/diff",
+            get(studio::diff),
+        )
+        .route(
+            "/projects/:project_id/studios/:studio_id/diff/apply",
+            post(studio::diff_apply),
+        )
+        .route(
+            "/projects/:project_id/studios/:studio_id/snapshots",
+            get(studio::list_snapshots),
+        )
+        .route(
+            "/projects/:project_id/studios/:studio_id/snapshots/:snapshot_id",
+            delete(studio::delete_snapshot),
+        )
+        .route(
+            "/projects/:project_id/studios/file-token-count",
+            post(studio::get_file_token_count),
+        )
+        .route(
+            "/projects/:project_id/studios/doc-file-token-count",
+            post(studio::get_doc_file_token_count),
         )
         .route("/template", post(template::create))
         .route("/template", get(template::list))
@@ -358,4 +372,8 @@ async fn health(State(app): State<Application>) {
     // panic is fine here, we don't need exact reporting of
     // subsystem checks at this stage
     app.semantic.health_check().await.unwrap()
+}
+
+fn no_user_id() -> Error {
+    Error::user("didn't have user ID")
 }

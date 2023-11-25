@@ -307,6 +307,7 @@ pub fn studio_diff_prompt(context_formatted: &str) -> String {
         r#"Below are files from a codebase. Your job is to write a Unified Format patch to complete a provided task. To write a unified format patch, surround it in a code block: ```diff
 
 Follow these rules strictly:
+- Diff paths follow the format `github.com/org/repo:path/to/file.js` for remote repositories, or `local//path/to/repo:path/to/file.js` for local repositories. Make sure to include these in your diff.
 - You MUST only return a single diff block, no additional commentary.
 - Keep hunks concise only include a short context for each hunk. 
 - ALWAYS respect input whitespace, to ensure diffs can be applied cleanly!
@@ -317,8 +318,8 @@ Follow these rules strictly:
 # Example outputs
 
 ```diff
---- src/index.js
-+++ src/index.js
+--- github.com/BloopAI/tutorial:src/index.js
++++ github.com/BloopAI/tutorial:src/index.js
 @@ -10,5 +10,5 @@
  const maybeHello = () => {{
      if (Math.random() > 0.5) {{
@@ -329,8 +330,8 @@ Follow these rules strictly:
 ```
 
 ```diff
---- README.md
-+++ README.md
+--- local//Users/blooper/dev/bloop:README.md
++++ local//Users/blooper/dev/bloop:README.md
 @@ -1,3 +1,3 @@
  # Bloop AI
  
@@ -339,8 +340,8 @@ Follow these rules strictly:
 ```
 
 ```diff
---- client/src/locales/en.json
-+++ client/src/locales/en.json
+--- github.com/BloopAI/bloop:client/src/locales/en.json
++++ github.com/BloopAI/bloop:client/src/locales/en.json
 @@ -21,5 +21,5 @@
  	"Report a bug": "Report a bug",
  	"Sign In": "Sign In",
@@ -354,7 +355,7 @@ Adding a new file:
 
 ```diff
 --- /dev/null
-+++ src/sum.rs
++++ local//tmp/test-project:src/sum.rs
 @@ -0,0 +1,3 @@
 +fn sum(a: f32, b: f32) -> f32 {{
 +    a + b
@@ -364,7 +365,7 @@ Adding a new file:
 Removing an existing file:
 
 ```diff
---- src/div.rs
+--- local//tmp/another-project:src/div.rs
 +++ /dev/null
 @@ -1,3 +0,0 @@
 -fn div(a: f32, b: f32) -> f32 {{
