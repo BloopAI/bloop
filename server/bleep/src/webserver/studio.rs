@@ -34,10 +34,6 @@ mod diff;
 
 const LLM_GATEWAY_MODEL: &str = "gpt-4-1106-preview";
 
-fn no_user_id() -> Error {
-    Error::user("didn't have user ID")
-}
-
 fn studio_not_found() -> Error {
     Error::not_found("unknown code studio ID")
 }
@@ -53,12 +49,13 @@ where
     sqlx::query! {
         "SELECT ss.id
         FROM studio_snapshots ss
-        JOIN studios s ON s.id = ss.studio_id AND s.user_id = ?
-        WHERE ss.studio_id = ?
+        JOIN studios s ON s.id = ss.studio_id
+        JOIN projects p ON s.project_id = p.id
+        WHERE ss.studio_id = ? AND p.user_id = ?
         ORDER BY ss.modified_at DESC
         LIMIT 1",
-        user_id,
         studio_id,
+        user_id,
     }
     .fetch_optional(exec)
     .await?
@@ -79,12 +76,9 @@ pub async fn create(
 ) -> webserver::Result<String> {
     let mut transaction = app.sql.begin().await?;
 
-    let user_id = user.username().ok_or_else(no_user_id)?.to_string();
-
     let studio_id: i64 = sqlx::query! {
-        "INSERT INTO studios (project_id, user_id, name) VALUES (?, ?, ?) RETURNING id",
+        "INSERT INTO studios (project_id, name) VALUES (?, ?) RETURNING id",
         project_id,
-        user_id,
         params.name,
     }
     .fetch_one(&mut transaction)
@@ -175,7 +169,7 @@ pub async fn get(
     Path((project_id, studio_id)): Path<(i64, i64)>,
     Query(params): Query<Get>,
 ) -> webserver::Result<Json<Studio>> {
-    let user_id = user.username().ok_or_else(no_user_id)?.to_string();
+    let user_id = user.username().ok_or_else(super::no_user_id)?.to_string();
 
     let snapshot_id = match params.snapshot_id {
         Some(id) => id,
@@ -186,11 +180,10 @@ pub async fn get(
         "SELECT s.id, s.name, ss.context, ss.doc_context, ss.messages, ss.modified_at
         FROM studios s
         INNER JOIN studio_snapshots ss ON ss.id = ?
-        WHERE s.id = ? AND s.project_id = ? AND s.user_id = ?",
+        WHERE s.id = ? AND s.project_id = ?",
         snapshot_id,
         studio_id,
         project_id,
-        user_id,
     }
     .fetch_optional(&*app.sql)
     .await?
@@ -229,7 +222,7 @@ pub async fn patch(
     Path((project_id, studio_id)): Path<(i64, i64)>,
     Json(patch): Json<Patch>,
 ) -> webserver::Result<Json<TokenCounts>> {
-    let user_id = user.username().ok_or_else(no_user_id)?.to_string();
+    let user_id = user.username().ok_or_else(super::no_user_id)?.to_string();
 
     let mut transaction = app.sql.begin().await?;
 
@@ -240,7 +233,9 @@ pub async fn patch(
 
     // Ensure the ID is valid first.
     sqlx::query!(
-        "SELECT id FROM studios WHERE id = ? AND project_id = ? AND user_id = ?",
+        "SELECT s.id FROM studios s
+        JOIN projects p ON p.id = s.project_id
+        WHERE s.id = ? AND p.id = ? AND p.user_id = ?",
         studio_id,
         project_id,
         user_id,
@@ -337,10 +332,14 @@ pub async fn delete(
     user: Extension<User>,
     Path((project_id, studio_id)): Path<(i64, i64)>,
 ) -> webserver::Result<()> {
-    let user_id = user.username().ok_or_else(no_user_id)?.to_string();
+    let user_id = user.username().ok_or_else(super::no_user_id)?.to_string();
 
     sqlx::query!(
-        "DELETE FROM studios WHERE id = ? AND project_id = ? AND user_id = ? RETURNING id",
+        "DELETE FROM studios
+        WHERE id = $1 AND project_id = $2 AND EXISTS (
+            SELECT p.id FROM projects p WHERE p.id = $2 AND p.user_id = $3
+        )
+        RETURNING id",
         studio_id,
         project_id,
         user_id,
@@ -365,7 +364,7 @@ pub async fn list(
     user: Extension<User>,
     Path(project_id): Path<i64>,
 ) -> webserver::Result<Json<Vec<ListItem>>> {
-    let user_id = user.username().ok_or_else(no_user_id)?.to_string();
+    let user_id = user.username().ok_or_else(super::no_user_id)?.to_string();
 
     let studios = sqlx::query!(
         "SELECT
@@ -375,7 +374,8 @@ pub async fn list(
             ss.context
         FROM studios s
         INNER JOIN studio_snapshots ss ON s.id = ss.studio_id
-        WHERE s.project_id = ? AND s.user_id = ? AND (ss.studio_id, ss.modified_at) IN (
+        INNER JOIN projects p ON p.id = s.project_id
+        WHERE s.project_id = ? AND p.user_id = ? AND (ss.studio_id, ss.modified_at) IN (
             SELECT studio_id, MAX(modified_at)
             FROM studio_snapshots
             GROUP BY studio_id
@@ -695,7 +695,7 @@ pub async fn generate(
     user: Extension<User>,
     Path((_project_id, studio_id)): Path<(i64, i64)>,
 ) -> webserver::Result<Sse<Pin<Box<dyn tokio_stream::Stream<Item = Result<sse::Event>> + Send>>>> {
-    let user_id = user.username().ok_or_else(no_user_id)?.to_string();
+    let user_id = user.username().ok_or_else(super::no_user_id)?.to_string();
 
     let snapshot_id = latest_snapshot_id(studio_id, &*app.sql, &user_id).await?;
 
@@ -808,7 +808,7 @@ async fn generate_llm_context(
     s += "##### PATHS #####\n";
 
     for file in context.iter().filter(|f| !f.hidden) {
-        s += &format!("{}\n", file.path);
+        s += &format!("{}:{}\n", file.repo, file.path);
     }
 
     s += "\n##### CODE CHUNKS #####\n\n";
@@ -847,7 +847,7 @@ async fn generate_llm_context(
                 .map(String::as_str)
                 .collect::<String>();
 
-            s += &format!("### {} ###\n{snippet}\n", file.path);
+            s += &format!("### {}:{} ###\n{snippet}\n", file.repo, file.path);
         }
     }
 
@@ -938,7 +938,7 @@ pub async fn diff(
     user: Extension<User>,
     Path((_project_id, studio_id)): Path<(i64, i64)>,
 ) -> webserver::Result<Json<structured_diff::Diff>> {
-    let user_id = user.username().ok_or_else(no_user_id)?.to_string();
+    let user_id = user.username().ok_or_else(super::no_user_id)?.to_string();
 
     let snapshot_id = latest_snapshot_id(studio_id, &*app.sql, &user_id).await?;
 
@@ -1003,20 +1003,8 @@ pub async fn diff(
     let response = llm_gateway.chat(&messages, None).await?;
     let diff_chunks = diff::extract(&response)?.collect::<Vec<_>>();
 
-    let (repo, branch) = context
-        .first()
-        .map(|cf| (cf.repo.clone(), cf.branch.clone()))
-        // We make a hard assumption in the design of diffs that a studio can only contain files
-        // from one repository. This allows us to determine which repository to create new files
-        // or delete files in, without having to prefix file paths with repository names.
-        //
-        // If we can't find *any* files in the context to detect the current repository,
-        // creating/deleting a file like `index.js` is ambiguous, so we just return an error.
-        .context("could not determine studio repository, studio didn't contain any files")?;
-
     let valid_chunks = futures::stream::iter(diff_chunks)
         .map(|mut chunk| {
-            let (repo, branch) = (repo.clone(), branch.clone());
             let app = (*app).clone();
             let llm_context = llm_context.clone();
             let llm_gateway = llm_gateway.clone();
@@ -1033,14 +1021,16 @@ pub async fn diff(
                             return Ok(None);
                         }
 
+                        let (repo, path) = parse_diff_path(src)?;
+
                         chunk.hunks = rectify_hunks(
                             &app,
                             &llm_context,
                             &llm_gateway,
                             chunk.hunks.iter(),
-                            src,
+                            path,
                             &repo,
-                            branch.as_deref(),
+                            None,
                         )
                         .await?;
 
@@ -1048,7 +1038,8 @@ pub async fn diff(
                     }
 
                     (Some(src), None) => {
-                        if validate_delete_file(&app, src, &repo, branch.as_deref()).await? {
+                        let (repo, path) = parse_diff_path(src)?;
+                        if validate_delete_file(&app, path, &repo, None).await? {
                             Ok(Some(chunk))
                         } else {
                             Ok(None)
@@ -1056,7 +1047,8 @@ pub async fn diff(
                     }
 
                     (None, Some(dst)) => {
-                        if validate_add_file(&app, &chunk, dst, &repo, branch.as_deref()).await? {
+                        let (repo, path) = parse_diff_path(dst)?;
+                        if validate_add_file(&app, &chunk, path, &repo, None).await? {
                             Ok(Some(chunk))
                         } else {
                             Ok(None)
@@ -1081,20 +1073,21 @@ pub async fn diff(
 
     for chunk in valid_chunks {
         let path = chunk.src.as_deref().or(chunk.dst.as_deref()).unwrap();
+        let (repo, path) = parse_diff_path(&path)?;
         let lang = if let Some(l) = file_langs.get(path) {
             Some(l.clone())
         } else {
-            let detected_lang = if let Some(src) = &chunk.src {
+            let detected_lang = if chunk.src.is_some() {
                 let doc = app
                     .indexes
                     .file
-                    .by_path(&repo, src, branch.as_deref())
+                    .by_path(&repo, path, None)
                     .await?
                     .context("path did not exist in the index")?;
 
                 doc.lang
             } else {
-                hyperpolyglot::detect(std::path::Path::new(&chunk.dst.as_deref().unwrap()))
+                hyperpolyglot::detect(std::path::Path::new(&path))
                     .ok()
                     .flatten()
                     .map(|detection| detection.language().to_owned())
@@ -1112,7 +1105,7 @@ pub async fn diff(
 
             lang: lang.clone(),
             repo: repo.clone(),
-            branch: branch.clone(),
+            branch: None,
             file: path.to_owned(),
             hunks: chunk
                 .hunks
@@ -1130,6 +1123,16 @@ pub async fn diff(
     }
 
     Ok(Json(out))
+}
+
+fn parse_diff_path(p: &str) -> Result<(RepoRef, &str)> {
+    let (repo, path) = p
+        .split_once(':')
+        .context("diff path did not conform to repo:path syntax")?;
+
+    let repo = repo.parse().context("repo ref was invalid")?;
+
+    Ok((repo, path))
 }
 
 fn context_repo_branch(context: &[ContextFile]) -> Result<(RepoRef, Option<String>)> {
@@ -1274,7 +1277,7 @@ pub async fn diff_apply(
     Path((_project_id, studio_id)): Path<(i64, i64)>,
     diff: String,
 ) -> webserver::Result<()> {
-    let user_id = user.username().ok_or_else(no_user_id)?.to_string();
+    let user_id = user.username().ok_or_else(super::no_user_id)?.to_string();
 
     let snapshot_id = latest_snapshot_id(studio_id, &*app.sql, &user_id).await?;
 
@@ -1292,13 +1295,27 @@ pub async fn diff_apply(
 
     let diff_chunks = diff::relaxed_parse(&diff);
 
-    let (repo, branch) = context_repo_branch(&context)?;
+    let mut dirty_repos = HashSet::new();
 
     for (i, chunk) in diff_chunks.enumerate() {
-        let mut file_content = if let Some(src) = &chunk.src {
+        let (repo, path) = chunk
+            .src
+            .as_ref()
+            .or(chunk.dst.as_ref())
+            .context("diff was missing src and dst")
+            .and_then(|p| parse_diff_path(p))?;
+
+        let Some(repo_path) = repo.local_path() else {
+            error!("cannot apply patch to remote repo");
+            continue;
+        };
+
+        dirty_repos.insert(repo.clone());
+
+        let mut file_content = if chunk.src.is_some() {
             app.indexes
                 .file
-                .by_path(&repo, src, branch.as_deref())
+                .by_path(&repo, &path, None)
                 .await?
                 .context("path did not exist in the index")?
                 .content
@@ -1324,13 +1341,9 @@ pub async fn diff_apply(
             }
         }
 
-        let Some(repo_path) = repo.local_path() else {
-            error!("cannot apply patch to remote repo");
-            continue;
-        };
+        let file_path = repo_path.join(path);
 
-        if let Some(dst) = &chunk.dst {
-            let file_path = repo_path.join(dst);
+        if chunk.dst.is_some() {
             std::fs::write(file_path, file_content).context("failed to patch file on disk")?;
         } else {
             if !file_content.trim().is_empty() {
@@ -1339,21 +1352,22 @@ pub async fn diff_apply(
                 ));
             }
 
-            let file_path = repo_path.join(chunk.src.clone().unwrap());
             std::fs::remove_file(file_path).context("failed to delete file on disk")?;
         }
     }
 
     // Force a re-sync.
-    let _ = crate::webserver::repos::sync(
-        Query(webserver::repos::RepoParams {
-            repo,
-            shallow: false,
-        }),
-        app,
-        user,
-    )
-    .await?;
+    for repo in dirty_repos {
+        let _ = crate::webserver::repos::sync(
+            Query(webserver::repos::RepoParams {
+                repo,
+                shallow: false,
+            }),
+            app.clone(),
+            user.clone(),
+        )
+        .await?;
+    }
 
     Ok(())
 }
@@ -1366,7 +1380,7 @@ async fn populate_studio_name(
     user: Extension<User>,
     studio_id: i64,
 ) -> webserver::Result<()> {
-    let user_id = user.username().ok_or_else(no_user_id)?.to_string();
+    let user_id = user.username().ok_or_else(super::no_user_id)?.to_string();
 
     let snapshot_id = latest_snapshot_id(studio_id, &*app.sql, &user_id).await?;
     let needs_name = sqlx::query! {
@@ -1436,7 +1450,7 @@ pub async fn import(
 ) -> webserver::Result<String> {
     let mut transaction = app.sql.begin().await?;
 
-    let user_id = user.username().ok_or_else(no_user_id)?.to_string();
+    let user_id = user.username().ok_or_else(super::no_user_id)?.to_string();
 
     let thread_id = params.thread_id.to_string();
 
@@ -1495,10 +1509,9 @@ pub async fn import(
         Some(id) => id,
         None => {
             sqlx::query!(
-                "INSERT INTO studios(name, project_id, user_id) VALUES (?, ?, ?) RETURNING id",
+                "INSERT INTO studios(name, project_id) VALUES (?, ?) RETURNING id",
                 conversation.title,
                 project_id,
-                user_id,
             )
             .fetch_one(&mut transaction)
             .await?
@@ -1663,17 +1676,18 @@ pub async fn list_snapshots(
     user: Extension<User>,
     Path((project_id, studio_id)): Path<(i64, i64)>,
 ) -> webserver::Result<Json<Vec<Snapshot>>> {
-    let user_id = user.username().ok_or_else(no_user_id)?.to_string();
+    let user_id = user.username().ok_or_else(super::no_user_id)?.to_string();
 
     sqlx::query! {
         "SELECT ss.id as 'id!', ss.modified_at, ss.context, ss.doc_context, ss.messages
         FROM studio_snapshots ss
-        JOIN studios s ON s.id = ss.studio_id AND s.project_id = ? AND s.user_id = ?
-        WHERE ss.studio_id = ?
+        JOIN studios s ON s.id = ss.studio_id AND s.project_id = ?
+        JOIN projects p ON p.id = s.project_id
+        WHERE ss.studio_id = ? AND p.user_id = ?
         ORDER BY modified_at DESC",
         project_id,
-        user_id,
         studio_id,
+        user_id,
     }
     .fetch(&*app.sql)
     .map_err(Error::internal)
@@ -1698,21 +1712,22 @@ pub async fn delete_snapshot(
     user: Extension<User>,
     Path((project_id, studio_id, snapshot_id)): Path<(i64, i64, i64)>,
 ) -> webserver::Result<()> {
-    let user_id = user.username().ok_or_else(no_user_id)?.to_string();
+    let user_id = user.username().ok_or_else(super::no_user_id)?.to_string();
 
     sqlx::query! {
         "DELETE FROM studio_snapshots
         WHERE id IN (
             SELECT ss.id
             FROM studio_snapshots ss
-            JOIN studios s ON s.id = ss.studio_id AND s.project_id = ? AND s.user_id = ?
-            WHERE ss.id = ? AND ss.studio_id = ?
+            JOIN studios s ON s.id = ss.studio_id
+            JOIN projects p ON p.id = s.project_id
+            WHERE ss.id = ? AND ss.studio_id = ? AND s.project_id = ? AND p.user_id = ?
         )
         RETURNING id",
-        project_id,
-        user_id,
         snapshot_id,
         studio_id,
+        project_id,
+        user_id,
     }
     .fetch_optional(&*app.sql)
     .await?
