@@ -338,7 +338,7 @@ impl Semantic {
             must: build_conditions(parsed_query),
             ..Default::default()
         });
-        
+
         let response = self
             .qdrant
             .search_points(&SearchPoints {
@@ -498,7 +498,11 @@ impl Semantic {
         concatenated.extend(lexical_scores);
         concatenated.extend(payload_scores);
         // group by requires pre-sorting
-        concatenated.sort_by(|a, b| b.1.id.partial_cmp(&a.1.id).unwrap_or(std::cmp::Ordering::Equal));
+        concatenated.sort_by(|a, b| {
+            b.1.id
+                .partial_cmp(&a.1.id)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         let mut merged: Vec<(f32, Payload)> = concatenated
             .iter()
             .group_by(|(_, payload)| {
@@ -506,15 +510,13 @@ impl Semantic {
                 id
             })
             .into_iter()
-            .map(
-                |(id, group)| {
-                    let group_vec: Vec<_> = group.collect();
+            .map(|(id, group)| {
+                let group_vec: Vec<_> = group.collect();
 
-                    let sum: f32 = group_vec.iter().map(|(score, _payload)| score).sum();
-                    let payload = group_vec.into_iter().map(|(score, payload)| payload).next();
-                    (sum, payload.cloned().unwrap())
-                },
-            )
+                let sum: f32 = group_vec.iter().map(|(score, _payload)| score).sum();
+                let payload = group_vec.into_iter().map(|(score, payload)| payload).next();
+                (sum, payload.cloned().unwrap())
+            })
             .collect();
         merged.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
         merged.into_iter().map(|(_, payload)| payload).collect()
@@ -560,9 +562,9 @@ impl Semantic {
                     .collect::<Vec<_>>()
             })?;
         let results_lexical = Self::rank_lexical(results_lexical, &query);
-        
+
         let merged_results = Self::merge_rrf(results_lexical, dedup_results);
-        
+
         Ok(merged_results
             .iter()
             .take(limit.try_into().unwrap())
