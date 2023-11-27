@@ -1,9 +1,6 @@
 use std::{borrow::Cow, collections::HashMap, env, path::Path, sync::Arc};
 
-use crate::{
-    query::{parser::SemanticQuery},
-    Configuration,
-};
+use crate::{query::parser::SemanticQuery, Configuration};
 
 use anyhow::bail;
 use qdrant_client::{
@@ -505,15 +502,16 @@ impl Semantic {
         });
         let mut merged: Vec<(f32, Payload)> = concatenated
             .iter()
-            .group_by(|(_, payload)| {
-                payload.id.clone()
-            })
+            .group_by(|(_, payload)| payload.id.clone())
             .into_iter()
             .map(|(_id, group)| {
                 let group_vec: Vec<_> = group.collect();
 
                 let sum: f32 = group_vec.iter().map(|(score, _payload)| score).sum();
-                let payload = group_vec.into_iter().map(|(_score, payload)| payload).next();
+                let payload = group_vec
+                    .into_iter()
+                    .map(|(_score, payload)| payload)
+                    .next();
                 (sum, payload.cloned().unwrap())
             })
             .collect();
