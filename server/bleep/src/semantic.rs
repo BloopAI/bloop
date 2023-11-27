@@ -324,6 +324,7 @@ impl Semantic {
         Ok(())
     }
 
+    // Search Qdrant snippets (payload)
     pub async fn search_lexical<'a>(
         &self,
         parsed_query: &SemanticQuery<'a>,
@@ -337,7 +338,7 @@ impl Semantic {
             must: build_conditions(parsed_query),
             ..Default::default()
         });
-        //dbg!{"{}", filter.clone()};
+        
         let response = self
             .qdrant
             .search_points(&SearchPoints {
@@ -450,6 +451,9 @@ impl Semantic {
         Ok(responses.into_iter().flat_map(|r| r.result).collect())
     }
 
+    // Rank Qdrant lexical results by counts of word matches
+    // Multiple word hits count more
+    // Score is 10 * (# of query words matched) + (total number of hits)
     fn rank_lexical(payloads: Vec<Payload>, query: &str) -> Vec<Payload> {
         let keywords: Vec<&str> = query.split_whitespace().collect();
         let counts: Vec<(Vec<usize>, Payload)> = payloads
@@ -477,6 +481,7 @@ impl Semantic {
         scores.into_iter().map(|(_, payload)| payload).collect()
     }
 
+    // Join semantic and lexical results using reciprocal rank fusion (rrf)
     fn merge_rrf(payloads_lexical: Vec<Payload>, payloads_semantic: Vec<Payload>) -> Vec<Payload> {
         let k = 60;
         let lexical_scores: Vec<(f32, Payload)> = payloads_lexical
@@ -555,12 +560,9 @@ impl Semantic {
                     .collect::<Vec<_>>()
             })?;
         let results_lexical = Self::rank_lexical(results_lexical, &query);
-        //dbg!("Lexical {}", results_lexical.clone().iter().map(|p| p.clone().id.unwrap()).collect::<Vec<String>>());
-        //dbg!("Semantic {}", dedup_results.clone().iter().map(|p| p.clone().id.unwrap()).collect::<Vec<String>>());
-
+        
         let merged_results = Self::merge_rrf(results_lexical, dedup_results);
-        //dbg!("Merged {}", merged_results.clone().iter().map(|p| p.clone().id.unwrap()).collect::<Vec<String>>());
-
+        
         Ok(merged_results
             .iter()
             .take(limit.try_into().unwrap())
@@ -729,6 +731,7 @@ fn make_kv_text_filter(key: &str, value: &str) -> FieldCondition {
     }
 }
 
+// add a filter that matches any of the keywords in the query
 fn build_conditions_lexical(
     parsed_query: &SemanticQuery<'_>,
 ) -> Vec<qdrant_client::qdrant::Condition> {
