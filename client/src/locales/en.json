@@ -443,5 +443,16 @@
 	"New project": "New project",
 	"Black": "Black",
 	"This project is empty": "This project is empty",
-	"Start by adding your first repository or documentation library.": "Start by adding your first repository or documentation library."
+	"Start by adding your first repository or documentation library.": "Start by adding your first repository or documentation library.",
+	"Search projects or commands...": "Search projects or commands...",
+	"Manage context": "Manage context",
+	"Private repositories": "Private repositories",
+	"Public repositories": "Public repositories",
+	"Local repositories": "Local repositories",
+	"Add library documentation": "Add library documentation",
+	"Manage": "Manage",
+	"Recent projects": "Recent projects",
+	"Open": "Open",
+	"Start indexing": "Start indexing",
+	"Add to project": "Add to project"
 }

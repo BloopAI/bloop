@@ -1,6 +1,6 @@
 import React, { PropsWithChildren } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { MODAL_SIDEBAR_APPEAR_ANIMATION } from '../../../consts/animations';
+import { MODAL_APPEAR_ANIMATION } from '../../../consts/animations';
 
 type Props = {
   isVisible: boolean;
@@ -56,7 +56,7 @@ const SeparateOnboardingStep = ({
             animate={backdropVisible}
             exit={backdropHidden}
             onClick={onClose}
-            transition={MODAL_SIDEBAR_APPEAR_ANIMATION}
+            transition={MODAL_APPEAR_ANIMATION}
           />
         )}
       </AnimatePresence>
@@ -73,7 +73,7 @@ const SeparateOnboardingStep = ({
             exit={initialModalStyles}
             role="dialog"
             aria-modal="true"
-            transition={MODAL_SIDEBAR_APPEAR_ANIMATION}
+            transition={MODAL_APPEAR_ANIMATION}
           >
             {noWrapper ? (
               children

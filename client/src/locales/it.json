@@ -425,5 +425,13 @@
 	"New project": "Nuovo progetto",
 	"Black": "Nera",
 	"This project is empty": "Questo progetto è vuoto",
-	"Start by adding your first repository or documentation library.": "Inizia aggiungendo il tuo primo repository o libreria di documentazione."
+	"Start by adding your first repository or documentation library.": "Inizia aggiungendo il tuo primo repository o libreria di documentazione.",
+	"Search projects or commands...": "Cerca progetti o comandi ...",
+	"Private repositories": "Repository privati",
+	"Public repositories": "Repository pubblici",
+	"Local repositories": "Repository locali",
+	"Add library documentation": "Aggiungi la documentazione della libreria",
+	"Manage": "Maneggio",
+	"Start indexing": "Inizia l'indicizzazione",
+	"Add to project": "Aggiungi al progetto"
 }

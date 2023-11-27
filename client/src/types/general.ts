@@ -78,6 +78,7 @@ export type RepoUi = RepoType & {
   shortName: string;
   folderName: string;
   alreadySynced?: boolean;
+  isSyncing?: boolean;
 };
 
 export type CodeStudioShortType = {
@@ -458,4 +459,43 @@ export type StudioContextDoc = {
   absolute_url: string;
   ranges: string[];
   hidden: boolean;
+};
+
+export type CommandBarItemType = {
+  Icon: (props: {
+    raw?: boolean | undefined;
+    sizeClassName?: string | undefined;
+    className?: string | undefined;
+  }) => JSX.Element;
+  label: string;
+  shortcut?: string[];
+  id: string;
+  parent?: CommandBarStepType;
+  footerHint: string;
+  footerBtns: {
+    label: string;
+    shortcut?: string[];
+    action?: () => void | Promise<void>;
+  }[];
+  iconContainerClassName?: string;
+};
+
+export type CommandBarSectionType = {
+  label: string;
+  items: CommandBarItemType[];
+  itemsOffset: number;
+};
+
+export type CommandBarStepType = {
+  id: string;
+  label: string;
+  parent?: CommandBarStepType;
+};
+
+export type CommandBarActiveStepType = {
+  sections: CommandBarSectionType[];
+  parents: string[];
+  inputPlaceholder?: string;
+  inputSubmitHandler?: () => void;
+  onBack: () => void;
 };

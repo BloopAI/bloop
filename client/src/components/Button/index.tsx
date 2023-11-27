@@ -88,7 +88,7 @@ const sizeMap = {
     square: 'h-8 w-10 justify-center p-0 rounded-6',
   },
   large: {
-    default: 'h-9 px-3 gap-2 body-base rounded-6',
+    default: 'h-9 px-3 gap-2 body-base-b rounded-6',
     square: 'h-9 w-9 justify-center p-0 rounded-6',
   },
 };
@@ -124,7 +124,7 @@ const Button = forwardRef<
           variantStylesMap[variant]
         } ${onlyIcon ? sizeMap[size].square : sizeMap[size].default} ${
           className || ''
-        } select-none`,
+        } select-none transition-all duration-150 ease-in-out`,
       [variant, className, size, onlyIcon],
     );
     return (onlyIcon && !rest.disabled) || title ? (

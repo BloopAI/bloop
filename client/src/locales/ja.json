@@ -439,5 +439,13 @@
 	"New project": "新しいプロジェクト",
 	"Black": "黒",
 	"This project is empty": "このプロジェクトは空です",
-	"Start by adding your first repository or documentation library.": "最初のリポジトリまたはドキュメントライブラリを追加することから始めます。"
+	"Start by adding your first repository or documentation library.": "最初のリポジトリまたはドキュメントライブラリを追加することから始めます。",
+	"Search projects or commands...": "プロジェクトまたはコマンドを検索...",
+	"Manage context": "コンテキストを管理します",
+	"Public repositories": "公開リポジトリ",
+	"Local repositories": "ローカルリポジトリ",
+	"Add library documentation": "ライブラリのドキュメントを追加します",
+	"Manage": "管理",
+	"Start indexing": "インデックス作成を開始します",
+	"Add to project": "プロジェクトに追加します"
 }

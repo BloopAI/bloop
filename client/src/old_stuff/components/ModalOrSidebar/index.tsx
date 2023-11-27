@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import React, { MouseEvent, PropsWithChildren, useCallback } from 'react';
 import {
-  MODAL_SIDEBAR_APPEAR_ANIMATION,
+  MODAL_APPEAR_ANIMATION,
   MODAL_SIDEBAR_CHANGE_ANIMATION,
 } from '../../../consts/animations';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
@@ -106,7 +106,7 @@ const ModalOrSidebar = ({
             animate={backdropVisible}
             exit={backdropHidden}
             onClick={handleClick}
-            transition={MODAL_SIDEBAR_APPEAR_ANIMATION}
+            transition={MODAL_APPEAR_ANIMATION}
           />
         )}
       </AnimatePresence>
@@ -143,7 +143,7 @@ const ModalOrSidebar = ({
             transition={
               isModalSidebarTransition
                 ? MODAL_SIDEBAR_CHANGE_ANIMATION
-                : MODAL_SIDEBAR_APPEAR_ANIMATION
+                : MODAL_APPEAR_ANIMATION
             }
             onAnimationComplete={() => setIsModalSidebarTransition?.(false)}
           >

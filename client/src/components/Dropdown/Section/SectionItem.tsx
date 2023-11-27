@@ -1,6 +1,8 @@
 import { memo, ReactElement, useContext, useMemo } from 'react';
 import { DeviceContext } from '../../../context/deviceContext';
 import { CheckIcon } from '../../../icons';
+import { mapShortcuts } from '../../../utils/keyboardUtils';
+import useShortcuts from '../../../hooks/useShortcuts';
 
 type Props = {
   icon?: ReactElement;
@@ -11,27 +13,7 @@ type Props = {
 };
 
 const SectionItem = ({ icon, label, shortcut, onClick, isSelected }: Props) => {
-  const { os } = useContext(DeviceContext);
-  const shortcutKeys = useMemo(() => {
-    return shortcut
-      ?.map((k) => {
-        switch (k) {
-          case 'option':
-            return os.type === 'Darwin' ? '⌥' : 'Alt';
-          case 'entr':
-            return '↵';
-          case 'cmd':
-            return os.type === 'Darwin' ? '⌘' : 'Ctrl';
-          case 'bksp':
-            return '⌫';
-          case 'shift':
-            return '⇧';
-          default:
-            return k;
-        }
-      })
-      .join(' ');
-  }, [os, shortcut]);
+  const shortcutKeys = useShortcuts(shortcut);
   return (
     <button
       onClick={onClick}
@@ -40,7 +22,7 @@ const SectionItem = ({ icon, label, shortcut, onClick, isSelected }: Props) => {
     >
       {icon}
       <p className="flex-1 body-s text-label-title ellisis">{label}</p>
-      <p className="body-mini text-label-muted">{shortcutKeys}</p>
+      <p className="body-mini text-label-muted">{shortcutKeys?.join(' ')}</p>
       {isSelected && (
         <CheckIcon
           sizeClassName="w-4 h-4"

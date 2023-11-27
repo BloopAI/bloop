@@ -5,6 +5,7 @@ import ReportBugModal from './components/ReportBugModal';
 import Onboarding from './Onboarding';
 import Header from './components/Header';
 import Project from './Project';
+import CommandBar from './CommandBar';
 
 const App = () => {
   return (
@@ -13,6 +14,7 @@ const App = () => {
         <ReportBugModal />
         <Onboarding />
         <Header />
+        <CommandBar />
         <Project />
       </PersonalQuotaContextProvider>
     </AnalyticsContextProvider>

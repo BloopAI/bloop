@@ -15,7 +15,7 @@ const Project = ({}: Props) => {
             <ShapesIcon sizeClassName="w-5 h-5" />
           </div>
           <div className="flex flex-col gap-2 items-center max-w-[15.875rem] text-center">
-            <p className="body-base text-label-title">
+            <p className="body-base-b text-label-title">
               <Trans>This project is empty</Trans>
             </p>
             <p className="body-s text-label-base">

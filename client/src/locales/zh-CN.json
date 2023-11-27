@@ -448,5 +448,13 @@
 	"New project": "新项目",
 	"Black": "黑色的",
 	"This project is empty": "这个项目是空的",
-	"Start by adding your first repository or documentation library.": "首先添加您的第一个存储库或文档库。"
+	"Start by adding your first repository or documentation library.": "首先添加您的第一个存储库或文档库。",
+	"Search projects or commands...": "搜索项目或命令...",
+	"Private repositories": "私人存储库",
+	"Public repositories": "公共存储库",
+	"Local repositories": "本地存储库",
+	"Add library documentation": "添加库文档",
+	"Manage": "管理",
+	"Start indexing": "开始索引",
+	"Add to project": "添加到项目"
 }
