@@ -711,6 +711,14 @@ h5, .h5 {
   line-height: 116.667%;
 }
 
+.body-base {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 500;
+  font-size: 0.937rem;
+  line-height: 133.333%;
+}
+
 .callout {
   font-family: 'Inter', sans-serif;
   font-style: normal;

@@ -441,5 +441,7 @@
 	"Projects": "Projects",
 	"Project settings": "Project settings",
 	"New project": "New project",
-	"Black": "Black"
+	"Black": "Black",
+	"This project is empty": "This project is empty",
+	"Start by adding your first repository or documentation library.": "Start by adding your first repository or documentation library."
 }

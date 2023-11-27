@@ -1,6 +1,6 @@
 import { memo, useContext, useEffect, useState } from 'react';
 import { intervalToDuration } from 'date-fns';
-import { PersonalQuotaContext } from '../../context/personalQuotaContext';
+import { PersonalQuotaContext } from '../../../context/personalQuotaContext';
 
 type Props = {};
 

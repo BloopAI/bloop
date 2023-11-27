@@ -6,14 +6,14 @@ import React, {
   useState,
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { UIContext } from '../../../context/uiContext';
-import Modal from '../../Modal';
-import Button from '../../Button';
-import { CloseSign } from '../../../icons';
-import LiteLoaderContainer from '../../Loaders/LiteLoader';
-import { getSubscriptionLink } from '../../../services/api';
-import { DeviceContext } from '../../../context/deviceContext';
-import { PersonalQuotaContext } from '../../../context/personalQuotaContext';
+import { UIContext } from '../../../../context/uiContext';
+import Modal from '../../../../components/Modal';
+import Button from '../../../../components/Button';
+import { CloseSign } from '../../../../icons';
+import LiteLoaderContainer from '../../../../components/Loaders/LiteLoader';
+import { getSubscriptionLink } from '../../../../services/api';
+import { DeviceContext } from '../../../../context/deviceContext';
+import { PersonalQuotaContext } from '../../../../context/personalQuotaContext';
 
 type Props = {};
 

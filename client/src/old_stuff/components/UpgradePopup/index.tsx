@@ -1,14 +1,14 @@
 import React, { useCallback, useContext, useEffect, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import Modal from '../Modal';
-import Button from '../Button';
-import { CloseSign } from '../../icons';
-import { DeviceContext } from '../../context/deviceContext';
-import { UIContext } from '../../context/uiContext';
-import { getSubscriptionLink } from '../../services/api';
-import { PersonalQuotaContext } from '../../context/personalQuotaContext';
-import useAnalytics from '../../hooks/useAnalytics';
-import { polling } from '../../utils/requestUtils';
+import Modal from '../../../components/Modal';
+import Button from '../../../components/Button';
+import { CloseSign } from '../../../icons';
+import { DeviceContext } from '../../../context/deviceContext';
+import { UIContext } from '../../../context/uiContext';
+import { getSubscriptionLink } from '../../../services/api';
+import { PersonalQuotaContext } from '../../../context/personalQuotaContext';
+import useAnalytics from '../../../hooks/useAnalytics';
+import { polling } from '../../../utils/requestUtils';
 import Countdown from './Countdown';
 import ConversationSvg from './ConversationSvg';
 

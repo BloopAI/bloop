@@ -12,9 +12,9 @@ import { useComponentWillMount } from '../hooks/useComponentWillMount';
 import useKeyboardNavigation from '../hooks/useKeyboardNavigation';
 import { AnalyticsContextProvider } from '../context/providers/AnalyticsContextProvider';
 import { PersonalQuotaContextProvider } from '../context/providers/PersonalQuotaContextProvider';
-import UpgradePopup from '../components/UpgradePopup';
-import WaitingUpgradePopup from '../components/UpgradePopup/WaitingUpgradePopup';
-import CloudFeaturePopup from '../components/CloudFeaturePopup';
+import UpgradePopup from './components/UpgradePopup';
+import WaitingUpgradePopup from './components/UpgradePopup/WaitingUpgradePopup';
+import CloudFeaturePopup from './components/CloudFeaturePopup';
 import {
   NavigationItem,
   RepoProvider,

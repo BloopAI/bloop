@@ -1,10 +1,10 @@
 import React, { useContext } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import Modal from '../Modal';
-import Button from '../Button';
-import { CloseSign } from '../../icons';
-import { DeviceContext } from '../../context/deviceContext';
-import { UIContext } from '../../context/uiContext';
+import Modal from '../../../components/Modal';
+import Button from '../../../components/Button';
+import { CloseSign } from '../../../icons';
+import { DeviceContext } from '../../../context/deviceContext';
+import { UIContext } from '../../../context/uiContext';
 import BranchesSvg from './BranchesSvg';
 
 const CloudFeaturePopup = () => {

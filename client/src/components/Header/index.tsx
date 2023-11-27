@@ -37,7 +37,7 @@ const Header = ({ isSkeleton }: Props) => {
         </Dropdown>
       </div>
       <div className="flex pl-2 pr-4 items-center gap-2 h-full">
-        <Button variant="tertiary" size="tiny">
+        <Button variant="tertiary" size="mini">
           <KLetterIcon
             sizeClassName="w-3.5 h-3.5"
             className="-translate-y-px"

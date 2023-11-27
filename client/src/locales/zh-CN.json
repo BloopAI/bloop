@@ -446,5 +446,7 @@
 	"Projects": "项目",
 	"Project settings": "项目设置",
 	"New project": "新项目",
-	"Black": "黑色的"
+	"Black": "黑色的",
+	"This project is empty": "这个项目是空的",
+	"Start by adding your first repository or documentation library.": "首先添加您的第一个存储库或文档库。"
 }

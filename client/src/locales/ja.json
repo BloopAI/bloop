@@ -437,5 +437,7 @@
 	"Projects": "プロジェクト",
 	"Project settings": "プロジェクト設定",
 	"New project": "新しいプロジェクト",
-	"Black": "黒"
+	"Black": "黒",
+	"This project is empty": "このプロジェクトは空です",
+	"Start by adding your first repository or documentation library.": "最初のリポジトリまたはドキュメントライブラリを追加することから始めます。"
 }

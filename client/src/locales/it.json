@@ -423,5 +423,7 @@
 	"Projects": "Progetti",
 	"Project settings": "Impostazioni del progetto",
 	"New project": "Nuovo progetto",
-	"Black": "Nera"
+	"Black": "Nera",
+	"This project is empty": "Questo progetto è vuoto",
+	"Start by adding your first repository or documentation library.": "Inizia aggiungendo il tuo primo repository o libreria di documentazione."
 }
