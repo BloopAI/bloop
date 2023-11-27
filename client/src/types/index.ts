@@ -52,4 +52,4 @@ export interface Repository {
   source: RepoSource;
 }
 
-export type Theme = 'system' | 'default' | 'default-light';
+export type Theme = 'system' | 'dark' | 'light' | 'black';

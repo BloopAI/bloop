@@ -80,35 +80,151 @@
 
 @layer base {
   body {
-    --default-dark-bg-base: 24, 26, 31; /* #181A1F */
-    --default-dark-bg-base-hover: 38, 39, 46; /* #26272E */
-    --default-dark-bg-shade: 31, 31, 42; /* #1F1F2A */
-    --default-dark-bg-shade-hover: 37, 37, 52; /* #252534 */
-    --default-dark-bg-sub: 11, 11, 15; /* #0B0B0F */
-    --default-dark-bg-border: 41, 43, 48; /* #292B30 */
-    --default-dark-bg-border-hover: 60, 63, 72; /* #3C3F48 */
-    --default-dark-bg-border-selected: 94, 135, 203; /* #5E87CB */
-    --default-dark-bg-main: 91, 110, 221;
-    --default-dark-bg-main-hover: 114, 133, 238;
-    --default-dark-bg-danger: 199, 54, 62; /* #C7363E */
-    --default-dark-bg-danger-hover: 215, 66, 74;
-    --default-dark-bg-success: 21, 128, 61;
-    --default-dark-bg-success-hover: 33, 197, 94;
-    --default-dark-label-control: 255, 255, 255;
-    --default-dark-label-faint: 57, 57, 57;
-    --default-dark-label-muted: 111, 117, 123; /* #6F757B */
-    --default-dark-label-base: 166, 176, 187; /* #A6B0BB */
-    --default-dark-label-title: 249, 251, 254; /* #F9FBFE */
-    --default-dark-label-link: 104, 141, 222;
-    --default-dark-chat-bg-base: 37, 38, 56;
-    --default-dark-chat-bg-base-hover: 43, 44, 66; /* #2B2C42 */
-    --default-dark-chat-bg-shade: 31, 32, 49;
-    --default-dark-chat-bg-sub: 21, 22, 32;
-    --default-dark-chat-bg-border: 57, 58, 74;
-    --default-dark-chat-bg-border-hover: 71, 72, 98;
-    --default-dark-chat-bg-divider: 45, 45, 58;
+    --default-black-bg-sub: 11, 11, 15; /* #0B0B0F */
+    --default-black-bg-sub-hover: 16, 16, 22; /* #101016 */
+    --default-black-bg-base: 24, 26, 31; /* #181A1F */
+    --default-black-bg-base-hover: 38, 39, 46; /* #26272E */
+    --default-black-bg-selected: 94, 135, 203; /* #5E87CB 12% */
+    --default-black-bg-shade: 31, 31, 42; /* #1F1F2A */
+    --default-black-bg-shade-hover: 37, 37, 52; /* #252534 */
+    --default-black-bg-border: 41, 43, 48; /* #292B30 */
+    --default-black-bg-border-hover: 60, 63, 72; /* #3C3F48 */
+    --default-black-bg-border-selected: 94, 135, 203; /* #5E87CB */
+    --default-black-bg-divider: 29, 30, 34; /* #1D1E22 */
+    --default-black-bg-contrast: 240, 243, 248; /* #F0F3F8 */
+    --default-black-bg-contrast-hover: 222, 227, 234; /* #DEE3EA */
 
-    --default-dark-bg-highlight: 253, 201, 0;
+    --default-black-label-title: 249, 251, 254; /* #F9FBFE */
+    --default-black-label-base: 166, 176, 187; /* #A6B0BB */
+    --default-black-label-muted: 111, 117, 123; /* #6F757B */
+    --default-black-label-faint: 62, 64, 70; /* #3E4046 */
+    --default-black-label-link: 70, 128, 224; /* #4680E0 */
+    --default-black-label-contrast: 11, 11, 15; /* #0B0B0F */
+    --default-black-label-control: 254, 254, 255; /* #FEFEFF */
+
+    --default-black-sub-surface: 11, 11, 15; /* #0B0B0F, 75% */
+    --default-black-shade-surface: 31, 31, 42; /* #1F1F2A, 75% */
+    --default-black-base-surface: 24, 26, 31; /* #181A1F, 75% */
+
+    --default-black-brand-default: 91, 110, 221; /* #5B6EDD */
+    --default-black-brand-default-hover: 99, 121, 249; /* #6379F9 */
+    --default-black-brand-default-subtitle: 39, 45, 80; /* #272D50 */
+    --default-black-brand-studio: 199, 54, 115; /* #C73673 */
+    --default-black-brand-studio-hover: 240, 54, 132; /* #F03684 */
+    --default-black-brand-studio-subtle: 68, 25, 43; /* #44192B */
+
+    --default-black-green: 112, 161, 102; /* #70A166 */
+    --default-black-green-subtle: 28, 44, 28; /* #1C2C1C */
+    --default-black-green-subtle-hover: 35, 56, 35; /* #233823 */
+    --default-black-red: 197, 92, 87; /* #C55C57 */
+    --default-black-red-subtle: 51, 26, 26; /* #331A1A */
+    --default-black-red-subtle-hover: 68, 34, 34; /* #442222 */
+    --default-black-yellow: 234, 184, 92; /* #EAB85C */
+    --default-black-yellow-subtle: 45, 29, 8; /* #2D1D08 */
+    --default-black-yellow-subtle-hover: 65, 42, 12; /* #412A0C */
+    --default-black-blue: 65, 111, 229; /* #416FE5 */
+    --default-black-blue-subtle: 23, 35, 57; /* #172339 */
+    --default-black-blue-subtle-hover: 29, 44, 71; /* #1D2C47 */
+
+    --default-black-line-select: 25, 50, 82; /* #193252 */
+
+
+    --default-dark-bg-sub: 17, 19, 28; /* #11131C */
+    --default-dark-bg-sub-hover: 21, 24, 35; /* #151823 */
+    --default-dark-bg-base: 18, 24, 38; /* #121826 */
+    --default-dark-bg-base-hover: 26, 33, 49; /* #1A2131 */
+    --default-dark-bg-selected: 94, 135, 203; /* #5E87CB 12% */
+    --default-dark-bg-shade: 28, 31, 45; /* #1C1F2D */
+    --default-dark-bg-shade-hover: 34, 38, 55; /* #222637 */
+    --default-dark-bg-border: 37, 46, 60; /* #252E3C */
+    --default-dark-bg-border-hover: 46, 56, 73; /* #2E3849 */
+    --default-dark-bg-border-selected: 94, 135, 203; /* #5E87CB */
+    --default-dark-bg-divider: 25, 32, 44; /* #19202C */
+    --default-dark-bg-contrast: 240, 243, 248; /* #F0F3F8 */
+    --default-dark-bg-contrast-hover: 229, 233, 239; /* #E5E9EF */
+
+    --default-dark-label-title: 240, 243, 248; /* #F0F3F8 */
+    --default-dark-label-base: 157, 163, 174; /* #9DA3AE */
+    --default-dark-label-muted: 108, 114, 127; /* #6C727F */
+    --default-dark-label-faint: 57, 65, 80; /* #394150 */
+    --default-dark-label-link: 81, 118, 181; /* #5176B5 */
+    --default-dark-label-contrast: 4, 7, 17; /* #040711 */
+    --default-dark-label-control: 254, 254, 255; /* #FEFEFF */
+
+    --default-dark-sub-surface: 17, 19, 28; /* #11131C, 75% */
+    --default-dark-shade-surface: 28, 31, 45; /* #1C1F2D, 75% */
+    --default-dark-base-surface: 18, 24, 38; /* #121826, 75% */
+
+    --default-dark-brand-default: 91, 110, 221; /* #5B6EDD */
+    --default-dark-brand-default-hover: 99, 121, 249; /* #6379F9 */
+    --default-dark-brand-default-subtitle: 39, 45, 80; /* #272D50 */
+    --default-dark-brand-studio: 199, 54, 115; /* #C73673 */
+    --default-dark-brand-studio-hover: 240, 54, 132; /* #F03684 */
+    --default-dark-brand-studio-subtle: 68, 25, 43; /* #44192B */
+
+    --default-dark-green: 112, 161, 102; /* #70A166 */
+    --default-dark-green-subtle: 28, 44, 28; /* #1C2C1C */
+    --default-dark-green-subtle-hover: 35, 56, 35; /* #233823 */
+    --default-dark-red: 197, 92, 87; /* #C55C57 */
+    --default-dark-red-subtle: 51, 26, 26; /* #331A1A */
+    --default-dark-red-subtle-hover: 68, 34, 34; /* #442222 */
+    --default-dark-yellow: 234, 184, 92; /* #EAB85C */
+    --default-dark-yellow-subtle: 45, 29, 8; /* #2D1D08 */
+    --default-dark-yellow-subtle-hover: 65, 42, 12; /* #412A0C */
+    --default-dark-blue: 65, 111, 229; /* #416FE5 */
+    --default-dark-blue-subtle: 23, 35, 57; /* #172339 */
+    --default-dark-blue-subtle-hover: 29, 44, 71; /* #1D2C47 */
+
+    --default-dark-line-select: 25, 50, 82; /* #193252 */
+
+
+    --default-light-bg-sub: 250, 250, 250; /* #FAFAFA */
+    --default-light-bg-sub-hover: 241, 241, 242; /* #F1F1F2 */
+    --default-light-bg-base: 255, 255, 255; /* #FFFFFF */
+    --default-light-bg-base-hover: 234, 237, 243; /* #EAEDF3 */
+    --default-light-bg-selected: 94, 149, 241; /* #5E95F1 12% */
+    --default-light-bg-shade: 241, 243, 248; /* #F1F3F8 */
+    --default-light-bg-shade-hover: 231, 234, 242; /* #E7EAF2 */
+    --default-light-bg-border: 216, 220, 226; /* #D8DCE2 */
+    --default-light-bg-border-hover: 186, 190, 197; /* #BABEC5 */
+    --default-light-bg-border-selected: 94, 149, 241; /* #5E95F1 */
+    --default-light-bg-divider: 234, 236, 241; /* #EAECF1 */
+    --default-light-bg-contrast: 39, 39, 41; /* #272729 */
+    --default-light-bg-contrast-hover: 25, 25, 28; /* #19191C */
+
+    --default-light-label-title: 4, 7, 17; /* #040711 */
+    --default-light-label-base: 56, 64, 77; /* #38404D */
+    --default-light-label-muted: 108, 114, 127; /* #6C727F */
+    --default-light-label-faint: 157, 163, 174; /* #9DA3AE */
+    --default-light-label-link: 70, 128, 224; /* #4680E0 */
+    --default-light-label-contrast: 255, 255, 255; /* #FFFFFF */
+    --default-light-label-control: 255, 255, 255; /* #FFFFFF */
+
+    --default-light-sub-surface: 250, 250, 250; /* #FAFAFA, 75% */
+    --default-light-shade-surface: 247, 248, 251; /* #F7F8FB, 75% */
+    --default-light-base-surface: 255, 255, 255; /* #FFFFFF, 75% */
+
+    --default-light-brand-default: 91, 110, 221; /* #5B6EDD */
+    --default-light-brand-default-hover: 74, 93, 204; /* #4A5DCC */
+    --default-light-brand-default-subtitle: 224, 229, 252; /* #E0E5FC */
+    --default-light-brand-studio: 199, 54, 115; /* #C73673 */
+    --default-light-brand-studio-hover: 181, 41, 100; /* #B52964 */
+    --default-light-brand-studio-subtle: 255, 207, 227; /* #FFCFE3 */
+
+    --default-light-green: 120, 194, 106; /* #78C26A */
+    --default-light-green-subtle: 226, 245, 221; /* #E2F5DD */
+    --default-light-green-subtle-hover: 216, 236, 210; /* #D8ECD2 */
+    --default-light-red: 221, 79, 72; /* #DD4F48 */
+    --default-light-red-subtle: 248, 224, 220; /* #F8E0DC */
+    --default-light-red-subtle-hover: 238, 194, 186; /* #EEC2BA */
+    --default-light-yellow: 237, 171, 50; /* #EDAB32 */
+    --default-light-yellow-subtle: 246, 237, 208; /* #F6EDD0 */
+    --default-light-yellow-subtle-hover: 240, 231, 199; /* #F0E7C7 */
+    --default-light-blue: 49, 104, 246; /* #3168F6 */
+    --default-light-blue-subtle: 224, 234, 246; /* #E0EAF6 */
+    --default-light-blue-subtle-hover: 221, 233, 247; /* #DDE9F7 */
+
+    --default-light-line-select: 190, 218, 247; /* #BEDAF7 */
 
     --default-dark-shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.16);
     --default-dark-shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.16);
@@ -119,34 +235,6 @@
 
     --default-dark-onboarding-chats-img: url("../public/chatsImage-dark.png");
 
-    --default-light-bg-base: 243, 243, 243;
-    --default-light-bg-base-hover: 236, 236, 236;
-    --default-light-bg-shade: 249, 249, 249;
-    --default-light-bg-sub: 255, 255, 255;
-    --default-light-bg-border: 230, 230, 230;
-    --default-light-bg-border-hover: 211, 211, 211;
-    --default-light-bg-main: 93, 117, 255;
-    --default-light-bg-main-hover: 69, 89, 205;
-    --default-light-bg-danger: 215, 66, 74;
-    --default-light-bg-danger-hover: 199, 54, 62;
-    --default-light-bg-success: 21, 128, 61;
-    --default-light-bg-success-hover: 33, 197, 94;
-    --default-light-label-control: 255, 255, 255;
-    --default-light-label-faint: 173, 173, 173;
-    --default-light-label-muted: 98, 98, 98;
-    --default-light-label-base: 57, 57, 57;
-    --default-light-label-title: 21, 21, 21;
-    --default-light-label-link: 78, 128, 238;
-    --default-light-chat-bg-base: 226, 227, 243;
-    --default-light-chat-bg-base-hover: 217, 218, 251;
-    --default-light-chat-bg-shade: 248, 248, 255;
-    --default-light-chat-bg-sub: 237, 237, 250;
-    --default-light-chat-bg-border: 195, 197, 225;
-    --default-light-chat-bg-border-hover: 184, 187, 225;
-    --default-light-chat-bg-divider: 216, 217, 234;
-
-    --default-light-bg-highlight: 253, 201, 0;
-
     --default-light-shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.08);
     --default-light-shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.08);
     --default-light-shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.28);
@@ -156,75 +244,171 @@
 
     --default-light-onboarding-chats-img: url("../public/chatsImage-light.png");
   }
-    [data-theme="default"], body:not([data-theme]) {
+  [data-theme="dark"], body:not([data-theme]) {
+    --bg-sub: var(--default-dark-bg-sub);
+    --bg-sub-hover: var(--default-dark-bg-sub-hover);
+    --bg-base: var(--default-dark-bg-base);
+    --bg-base-hover: var(--default-dark-bg-base-hover);
+    --bg-selected: var(--default-dark-bg-selected);
+    --bg-shade: var(--default-dark-bg-shade);
+    --bg-shade-hover: var(--default-dark-bg-shade-hover);
+    --bg-border: var(--default-dark-bg-border);
+    --bg-border-hover: var(--default-dark-bg-border-hover);
+    --bg-border-selected: var(--default-dark-bg-border-selected);
+    --bg-divider: var(--default-dark-bg-divider);
+    --bg-contrast: var(--default-dark-bg-contrast);
+    --bg-contrast-hover: var(--default-dark-bg-contrast-hover);
+
+    --label-title: var(--default-dark-label-title);
+    --label-base: var(--default-dark-label-base);
+    --label-muted: var(--default-dark-label-muted);
+    --label-faint: var(--default-dark-label-faint);
+    --label-link: var(--default-dark-label-link);
+    --label-contrast: var(--default-dark-label-contrast);
+    --label-control: var(--default-dark-label-control);
+
+    --sub-surface: var(--default-dark-sub-surface);
+    --shade-surface: var(--default-dark-shade-surface);
+    --base-surface: var(--default-dark-base-surface);
+
+    --brand-default: var(--default-dark-brand-default);
+    --brand-default-hover: var(--default-dark-brand-default-hover);
+    --brand-default-subtitle: var(--default-dark-brand-default-subtitle);
+    --brand-studio: var(--default-dark-brand-studio);
+    --brand-studio-hover: var(--default-dark-brand-studio-hover);
+    --brand-studio-subtle: var(--default-dark-brand-studio-subtle);
+
+    --green: var(--default-dark-green);
+    --green-subtle: var(--default-dark-green-subtle);
+    --green-subtle-hover: var(--default-dark-green-subtle-hover);
+    --red: var(--default-dark-red);
+    --red-subtle: var(--default-dark-red-subtle);
+    --red-subtle-hover: var(--default-dark-red-subtle-hover);
+    --yellow: var(--default-dark-yellow);
+    --yellow-subtle: var(--default-dark-yellow-subtle);
+    --yellow-subtle-hover: var(--default-dark-yellow-subtle-hover);
+    --blue: var(--default-dark-blue);
+    --blue-subtle: var(--default-dark-blue-subtle);
+    --blue-subtle-hover: var(--default-dark-blue-subtle-hover);
+
+    --line-select: var(--default-dark-line-select);
+
+    --shadow-rings-blue: var(--default-dark-shadow-rings-blue);
+    --shadow-rings-gray: var(--default-dark-shadow-rings-gray);
+    --shadow-float: var(--default-dark-shadow-float);
+    --shadow-high: var(--default-dark-shadow-high);
+    --shadow-medium: var(--default-dark-shadow-medium);
+    --shadow-low: var(--default-dark-shadow-low);
+
+    --onboarding-chats-img: var(--default-dark-onboarding-chats-img);
+  }
+  [data-theme="black"] {
+    --bg-sub: var(--default-black-bg-sub);
+    --bg-sub-hover: var(--default-black-bg-sub-hover);
+    --bg-base: var(--default-black-bg-base);
+    --bg-base-hover: var(--default-black-bg-base-hover);
+    --bg-selected: var(--default-black-bg-selected);
+    --bg-shade: var(--default-black-bg-shade);
+    --bg-shade-hover: var(--default-black-bg-shade-hover);
+    --bg-border: var(--default-black-bg-border);
+    --bg-border-hover: var(--default-black-bg-border-hover);
+    --bg-border-selected: var(--default-black-bg-border-selected);
+    --bg-divider: var(--default-black-bg-divider);
+    --bg-contrast: var(--default-black-bg-contrast);
+    --bg-contrast-hover: var(--default-black-bg-contrast-hover);
+
+    --label-title: var(--default-black-label-title);
+    --label-base: var(--default-black-label-base);
+    --label-muted: var(--default-black-label-muted);
+    --label-faint: var(--default-black-label-faint);
+    --label-link: var(--default-black-label-link);
+    --label-contrast: var(--default-black-label-contrast);
+    --label-control: var(--default-black-label-control);
+
+    --sub-surface: var(--default-black-sub-surface);
+    --shade-surface: var(--default-black-shade-surface);
+    --base-surface: var(--default-black-base-surface);
+
+    --brand-default: var(--default-black-brand-default);
+    --brand-default-hover: var(--default-black-brand-default-hover);
+    --brand-default-subtitle: var(--default-black-brand-default-subtitle);
+    --brand-studio: var(--default-black-brand-studio);
+    --brand-studio-hover: var(--default-black-brand-studio-hover);
+    --brand-studio-subtle: var(--default-black-brand-studio-subtle);
+
+    --green: var(--default-black-green);
+    --green-subtle: var(--default-black-green-subtle);
+    --green-subtle-hover: var(--default-black-green-subtle-hover);
+    --red: var(--default-black-red);
+    --red-subtle: var(--default-black-red-subtle);
+    --red-subtle-hover: var(--default-black-red-subtle-hover);
+    --yellow: var(--default-black-yellow);
+    --yellow-subtle: var(--default-black-yellow-subtle);
+    --yellow-subtle-hover: var(--default-black-yellow-subtle-hover);
+    --blue: var(--default-black-blue);
+    --blue-subtle: var(--default-black-blue-subtle);
+    --blue-subtle-hover: var(--default-black-blue-subtle-hover);
+
+    --line-select: var(--default-black-line-select);
+
+    --shadow-rings-blue: var(--default-dark-shadow-rings-blue);
+    --shadow-rings-gray: var(--default-dark-shadow-rings-gray);
+    --shadow-float: var(--default-dark-shadow-float);
+    --shadow-high: var(--default-dark-shadow-high);
+    --shadow-medium: var(--default-dark-shadow-medium);
+    --shadow-low: var(--default-dark-shadow-low);
+
+    --onboarding-chats-img: var(--default-dark-onboarding-chats-img);
+  }
+  @media (prefers-color-scheme: dark) {
+    [data-theme="system"] {
+      --bg-sub: var(--default-dark-bg-sub);
+      --bg-sub-hover: var(--default-dark-bg-sub-hover);
       --bg-base: var(--default-dark-bg-base);
       --bg-base-hover: var(--default-dark-bg-base-hover);
+      --bg-selected: var(--default-dark-bg-selected);
       --bg-shade: var(--default-dark-bg-shade);
       --bg-shade-hover: var(--default-dark-bg-shade-hover);
-      --bg-sub: var(--default-dark-bg-sub);
       --bg-border: var(--default-dark-bg-border);
       --bg-border-hover: var(--default-dark-bg-border-hover);
       --bg-border-selected: var(--default-dark-bg-border-selected);
-      --bg-main: var(--default-dark-bg-main);
-      --bg-main-hover: var(--default-dark-bg-main-hover);
-      --bg-danger: var(--default-dark-bg-danger);
-      --bg-danger-hover: var(--default-dark-bg-danger-hover);
-      --bg-success: var(--default-dark-bg-success);
-      --bg-success-hover: var(--default-dark-bg-success-hover);
-      --label-control: var(--default-dark-label-control);
-      --label-faint: var(--default-dark-label-faint);
-      --label-muted: var(--default-dark-label-muted);
-      --label-base: var(--default-dark-label-base);
+      --bg-divider: var(--default-dark-bg-divider);
+      --bg-contrast: var(--default-dark-bg-contrast);
+      --bg-contrast-hover: var(--default-dark-bg-contrast-hover);
+
       --label-title: var(--default-dark-label-title);
-      --label-link: var(--default-dark-label-link);
-      --chat-bg-base: var(--default-dark-chat-bg-base);
-      --chat-bg-base-hover: var(--default-dark-chat-bg-base-hover);
-      --chat-bg-shade: var(--default-dark-chat-bg-shade);
-      --chat-bg-sub: var(--default-dark-chat-bg-sub);
-      --chat-bg-border: var(--default-dark-chat-bg-border);
-      --chat-bg-border-hover: var(--default-dark-chat-bg-border-hover);
-      --chat-bg-divider: var(--default-dark-chat-bg-divider);
-
-      --bg-highlight: var(--default-dark-bg-highlight);
-
-      --shadow-rings-blue: var(--default-dark-shadow-rings-blue);
-      --shadow-rings-gray: var(--default-dark-shadow-rings-gray);
-      --shadow-float: var(--default-dark-shadow-float);
-      --shadow-high: var(--default-dark-shadow-high);
-      --shadow-medium: var(--default-dark-shadow-medium);
-      --shadow-low: var(--default-dark-shadow-low);
-
-      --onboarding-chats-img: var(--default-dark-onboarding-chats-img);
-    }
-  @media (prefers-color-scheme: dark) {
-    [data-theme="system"] {
-      --bg-base: var(--default-dark-bg-base);
-      --bg-base-hover: var(--default-dark-bg-base-hover);
-      --bg-shade: var(--default-dark-bg-shade);
-      --bg-sub: var(--default-dark-bg-sub);
-      --bg-border: var(--default-dark-bg-border);
-      --bg-border-hover: var(--default-dark-bg-border-hover);
-      --bg-main: var(--default-dark-bg-main);
-      --bg-main-hover: var(--default-dark-bg-main-hover);
-      --bg-danger: var(--default-dark-bg-danger);
-      --bg-danger-hover: var(--default-dark-bg-danger-hover);
-      --bg-success: var(--default-dark-bg-success);
-      --bg-success-hover: var(--default-dark-bg-success-hover);
-      --label-control: var(--default-dark-label-control);
-      --label-faint: var(--default-dark-label-faint);
-      --label-muted: var(--default-dark-label-muted);
       --label-base: var(--default-dark-label-base);
-      --label-title: var(--default-dark-label-title);
+      --label-muted: var(--default-dark-label-muted);
+      --label-faint: var(--default-dark-label-faint);
       --label-link: var(--default-dark-label-link);
-      --chat-bg-base: var(--default-dark-chat-bg-base);
-      --chat-bg-base-hover: var(--default-dark-chat-bg-base-hover);
-      --chat-bg-shade: var(--default-dark-chat-bg-shade);
-      --chat-bg-sub: var(--default-dark-chat-bg-sub);
-      --chat-bg-border: var(--default-dark-chat-bg-border);
-      --chat-bg-border-hover: var(--default-dark-chat-bg-border-hover);
-      --chat-bg-divider: var(--default-dark-chat-bg-divider);
+      --label-contrast: var(--default-dark-label-contrast);
+      --label-control: var(--default-dark-label-control);
 
-      --bg-highlight: var(--default-dark-bg-highlight);
+      --sub-surface: var(--default-dark-sub-surface);
+      --shade-surface: var(--default-dark-shade-surface);
+      --base-surface: var(--default-dark-base-surface);
+
+      --brand-default: var(--default-dark-brand-default);
+      --brand-default-hover: var(--default-dark-brand-default-hover);
+      --brand-default-subtitle: var(--default-dark-brand-default-subtitle);
+      --brand-studio: var(--default-dark-brand-studio);
+      --brand-studio-hover: var(--default-dark-brand-studio-hover);
+      --brand-studio-subtle: var(--default-dark-brand-studio-subtle);
+
+      --green: var(--default-dark-green);
+      --green-subtle: var(--default-dark-green-subtle);
+      --green-subtle-hover: var(--default-dark-green-subtle-hover);
+      --red: var(--default-dark-red);
+      --red-subtle: var(--default-dark-red-subtle);
+      --red-subtle-hover: var(--default-dark-red-subtle-hover);
+      --yellow: var(--default-dark-yellow);
+      --yellow-subtle: var(--default-dark-yellow-subtle);
+      --yellow-subtle-hover: var(--default-dark-yellow-subtle-hover);
+      --blue: var(--default-dark-blue);
+      --blue-subtle: var(--default-dark-blue-subtle);
+      --blue-subtle-hover: var(--default-dark-blue-subtle-hover);
+
+      --line-select: var(--default-dark-line-select);
 
       --shadow-rings-blue: var(--default-dark-shadow-rings-blue);
       --shadow-rings-gray: var(--default-dark-shadow-rings-gray);
@@ -236,36 +420,54 @@
       --onboarding-chats-img: var(--default-dark-onboarding-chats-img);
     }
   }
-    [data-theme="default-light"] {
+    [data-theme="light"] {
+      --bg-sub: var(--default-light-bg-sub);
+      --bg-sub-hover: var(--default-light-bg-sub-hover);
       --bg-base: var(--default-light-bg-base);
       --bg-base-hover: var(--default-light-bg-base-hover);
+      --bg-selected: var(--default-light-bg-selected);
       --bg-shade: var(--default-light-bg-shade);
       --bg-shade-hover: var(--default-light-bg-shade-hover);
-      --bg-sub: var(--default-light-bg-sub);
       --bg-border: var(--default-light-bg-border);
       --bg-border-hover: var(--default-light-bg-border-hover);
       --bg-border-selected: var(--default-light-bg-border-selected);
-      --bg-main: var(--default-light-bg-main);
-      --bg-main-hover: var(--default-light-bg-main-hover);
-      --bg-danger: var(--default-light-bg-danger);
-      --bg-danger-hover: var(--default-light-bg-danger-hover);
-      --bg-success: var(--default-light-bg-success);
-      --bg-success-hover: var(--default-light-bg-success-hover);
-      --label-control: var(--default-light-label-control);
-      --label-faint: var(--default-light-label-faint);
-      --label-muted: var(--default-light-label-muted);
-      --label-base: var(--default-light-label-base);
-      --label-title: var(--default-light-label-title);
-      --label-link: var(--default-light-label-link);
-      --chat-bg-base: var(--default-light-chat-bg-base);
-      --chat-bg-base-hover: var(--default-light-chat-bg-base-hover);
-      --chat-bg-shade: var(--default-light-chat-bg-shade);
-      --chat-bg-sub: var(--default-light-chat-bg-sub);
-      --chat-bg-border: var(--default-light-chat-bg-border);
-      --chat-bg-border-hover: var(--default-light-chat-bg-border-hover);
-      --chat-bg-divider: var(--default-light-chat-bg-divider);
+      --bg-divider: var(--default-light-bg-divider);
+      --bg-contrast: var(--default-light-bg-contrast);
+      --bg-contrast-hover: var(--default-light-bg-contrast-hover);
 
-      --bg-highlight: var(--default-light-bg-highlight);
+      --label-title: var(--default-light-label-title);
+      --label-base: var(--default-light-label-base);
+      --label-muted: var(--default-light-label-muted);
+      --label-faint: var(--default-light-label-faint);
+      --label-link: var(--default-light-label-link);
+      --label-contrast: var(--default-light-label-contrast);
+      --label-control: var(--default-light-label-control);
+
+      --sub-surface: var(--default-light-sub-surface);
+      --shade-surface: var(--default-light-shade-surface);
+      --base-surface: var(--default-light-base-surface);
+
+      --brand-default: var(--default-light-brand-default);
+      --brand-default-hover: var(--default-light-brand-default-hover);
+      --brand-default-subtitle: var(--default-light-brand-default-subtitle);
+      --brand-studio: var(--default-light-brand-studio);
+      --brand-studio-hover: var(--default-light-brand-studio-hover);
+      --brand-studio-subtle: var(--default-light-brand-studio-subtle);
+
+      --green: var(--default-light-green);
+      --green-subtle: var(--default-light-green-subtle);
+      --green-subtle-hover: var(--default-light-green-subtle-hover);
+      --red: var(--default-light-red);
+      --red-subtle: var(--default-light-red-subtle);
+      --red-subtle-hover: var(--default-light-red-subtle-hover);
+      --yellow: var(--default-light-yellow);
+      --yellow-subtle: var(--default-light-yellow-subtle);
+      --yellow-subtle-hover: var(--default-light-yellow-subtle-hover);
+      --blue: var(--default-light-blue);
+      --blue-subtle: var(--default-light-blue-subtle);
+      --blue-subtle-hover: var(--default-light-blue-subtle-hover);
+
+      --line-select: var(--default-light-line-select);
 
       --shadow-rings-blue: var(--default-light-shadow-rings-blue);
       --shadow-rings-gray: var(--default-light-shadow-rings-gray);
@@ -278,33 +480,53 @@
     }
   @media (prefers-color-scheme: light) {
     [data-theme="system"] {
+      --bg-sub: var(--default-light-bg-sub);
+      --bg-sub-hover: var(--default-light-bg-sub-hover);
       --bg-base: var(--default-light-bg-base);
       --bg-base-hover: var(--default-light-bg-base-hover);
+      --bg-selected: var(--default-light-bg-selected);
       --bg-shade: var(--default-light-bg-shade);
-      --bg-sub: var(--default-light-bg-sub);
+      --bg-shade-hover: var(--default-light-bg-shade-hover);
       --bg-border: var(--default-light-bg-border);
       --bg-border-hover: var(--default-light-bg-border-hover);
-      --bg-main: var(--default-light-bg-main);
-      --bg-main-hover: var(--default-light-bg-main-hover);
-      --bg-danger: var(--default-light-bg-danger);
-      --bg-danger-hover: var(--default-light-bg-danger-hover);
-      --bg-success: var(--default-light-bg-success);
-      --bg-success-hover: var(--default-light-bg-success-hover);
-      --label-control: var(--default-light-label-control);
-      --label-faint: var(--default-light-label-faint);
-      --label-muted: var(--default-light-label-muted);
-      --label-base: var(--default-light-label-base);
-      --label-title: var(--default-light-label-title);
-      --label-link: var(--default-light-label-link);
-      --chat-bg-base: var(--default-light-chat-bg-base);
-      --chat-bg-base-hover: var(--default-light-chat-bg-base-hover);
-      --chat-bg-shade: var(--default-light-chat-bg-shade);
-      --chat-bg-sub: var(--default-light-chat-bg-sub);
-      --chat-bg-border: var(--default-light-chat-bg-border);
-      --chat-bg-border-hover: var(--default-light-chat-bg-border-hover);
-      --chat-bg-divider: var(--default-light-chat-bg-divider);
+      --bg-border-selected: var(--default-light-bg-border-selected);
+      --bg-divider: var(--default-light-bg-divider);
+      --bg-contrast: var(--default-light-bg-contrast);
+      --bg-contrast-hover: var(--default-light-bg-contrast-hover);
 
-      --bg-highlight: var(--default-light-bg-highlight);
+      --label-title: var(--default-light-label-title);
+      --label-base: var(--default-light-label-base);
+      --label-muted: var(--default-light-label-muted);
+      --label-faint: var(--default-light-label-faint);
+      --label-link: var(--default-light-label-link);
+      --label-contrast: var(--default-light-label-contrast);
+      --label-control: var(--default-light-label-control);
+
+      --sub-surface: var(--default-light-sub-surface);
+      --shade-surface: var(--default-light-shade-surface);
+      --base-surface: var(--default-light-base-surface);
+
+      --brand-default: var(--default-light-brand-default);
+      --brand-default-hover: var(--default-light-brand-default-hover);
+      --brand-default-subtitle: var(--default-light-brand-default-subtitle);
+      --brand-studio: var(--default-light-brand-studio);
+      --brand-studio-hover: var(--default-light-brand-studio-hover);
+      --brand-studio-subtle: var(--default-light-brand-studio-subtle);
+
+      --green: var(--default-light-green);
+      --green-subtle: var(--default-light-green-subtle);
+      --green-subtle-hover: var(--default-light-green-subtle-hover);
+      --red: var(--default-light-red);
+      --red-subtle: var(--default-light-red-subtle);
+      --red-subtle-hover: var(--default-light-red-subtle-hover);
+      --yellow: var(--default-light-yellow);
+      --yellow-subtle: var(--default-light-yellow-subtle);
+      --yellow-subtle-hover: var(--default-light-yellow-subtle-hover);
+      --blue: var(--default-light-blue);
+      --blue-subtle: var(--default-light-blue-subtle);
+      --blue-subtle-hover: var(--default-light-blue-subtle-hover);
+
+      --line-select: var(--default-light-line-select);
 
       --shadow-rings-blue: var(--default-light-shadow-rings-blue);
       --shadow-rings-gray: var(--default-light-shadow-rings-gray);

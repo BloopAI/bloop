@@ -18,23 +18,33 @@ const Index = ({}: Props) => {
   );
 
   useEffect(() => {
-    savePlainToStorage(THEME, theme);
-    document.body.dataset.theme = theme;
+    if (!['dark', 'light', 'black', 'system'].includes(theme)) {
+      setTheme('system');
+    } else {
+      savePlainToStorage(THEME, theme);
+      document.body.dataset.theme = theme;
+    }
   }, [theme]);
 
   return (
     <div className="w-full flex p-0.5 gap-0.5 rounded-5 bg-bg-base">
       <Tab
         label={t('Dark')}
-        value="default"
+        value="dark"
         setTheme={setTheme}
-        isActive={theme === 'default'}
+        isActive={theme === 'dark'}
       />
       <Tab
         label={t('Light')}
-        value="default-light"
+        value="light"
         setTheme={setTheme}
-        isActive={theme === 'default-light'}
+        isActive={theme === 'light'}
+      />
+      <Tab
+        label={t('Black')}
+        value="black"
+        setTheme={setTheme}
+        isActive={theme === 'black'}
       />
       <Tab
         label={t('System')}
