@@ -1,7 +1,7 @@
 use std::{borrow::Cow, collections::HashMap, env, path::Path, sync::Arc};
 
 use crate::{
-    query::{parser::SemanticQuery, ranking},
+    query::{parser::SemanticQuery},
     Configuration,
 };
 
@@ -210,7 +210,7 @@ impl Semantic {
 
                 debug!(time, created = result, "collection created");
                 assert!(result);
-                let PointsOperationResponse { result, time } =
+                let PointsOperationResponse { result, time: _ } =
                     create_lexical_index(&config.collection_name, &qdrant)
                         .await
                         .unwrap();
@@ -308,7 +308,7 @@ impl Semantic {
 
         assert!(result);
 
-        let PointsOperationResponse { result, time } =
+        let PointsOperationResponse { result, time: _ } =
             create_lexical_index(&self.config.collection_name, &self.qdrant)
                 .await
                 .unwrap();
@@ -333,7 +333,7 @@ impl Semantic {
         offset: u64,
         threshold: f32,
     ) -> anyhow::Result<Vec<ScoredPoint>> {
-        let filter = Some(Filter {
+        let hybrid_filter = Some(Filter {
             should: build_conditions_lexical(parsed_query),
             must: build_conditions(parsed_query),
             ..Default::default()
@@ -350,7 +350,7 @@ impl Semantic {
                 with_payload: Some(WithPayloadSelector {
                     selector_options: Some(with_payload_selector::SelectorOptions::Enable(true)),
                 }),
-                filter: filter,
+                filter: hybrid_filter,
                 with_vectors: Some(WithVectorsSelector {
                     selector_options: Some(with_vectors_selector::SelectorOptions::Enable(true)),
                 }),
@@ -506,15 +506,14 @@ impl Semantic {
         let mut merged: Vec<(f32, Payload)> = concatenated
             .iter()
             .group_by(|(_, payload)| {
-                let id = payload.id.clone();
-                id
+                payload.id.clone()
             })
             .into_iter()
-            .map(|(id, group)| {
+            .map(|(_id, group)| {
                 let group_vec: Vec<_> = group.collect();
 
                 let sum: f32 = group_vec.iter().map(|(score, _payload)| score).sum();
-                let payload = group_vec.into_iter().map(|(score, payload)| payload).next();
+                let payload = group_vec.into_iter().map(|(_score, payload)| payload).next();
                 (sum, payload.cloned().unwrap())
             })
             .collect();
@@ -741,8 +740,8 @@ fn build_conditions_lexical(
         panic!();
     };
     let conditions = query
-        .split(" ")
-        .map(|s| make_kv_text_filter("snippet", s.as_ref()))
+        .split(' ')
+        .map(|s| make_kv_text_filter("snippet", s))
         .map(Into::into)
         .collect::<Vec<FieldCondition>>();
     conditions
