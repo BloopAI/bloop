@@ -37,3 +37,4 @@ export const ANSWER_SPEED_KEY = 'answer_speed_key';
 export const HIDE_TUTORIALS_KEY = 'hide_tutorials';
 export const ACCESS_TOKEN_KEY = 'access_token';
 export const REFRESH_TOKEN_KEY = 'refresh_token';
+export const PROJECT_KEY = 'project';

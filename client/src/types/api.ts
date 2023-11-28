@@ -384,3 +384,9 @@ export type DocSectionType = {
 export type GeneratedCodeDiff = {
   chunks: DiffChunkType[];
 };
+
+export type ProjectShortType = {
+  id: string;
+  name: string;
+  modified_at: null | string;
+};

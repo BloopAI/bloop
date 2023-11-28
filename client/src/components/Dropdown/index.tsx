@@ -7,7 +7,6 @@ import React, {
   useState,
 } from 'react';
 import Tippy, { TippyProps } from '@tippyjs/react';
-import { useTranslation } from 'react-i18next';
 import { useArrowKeyNavigation } from '../../hooks/useArrowNavigationHook';
 import { useOnClickOutside } from '../../hooks/useOnClickOutsideHook';
 
@@ -35,7 +34,7 @@ const Dropdown = ({
   const contextMenuRef = useArrowKeyNavigation({ selectors: 'button' });
   const buttonRef = useRef(null);
 
-  const handleClose = useCallback((e: MouseEvent) => {
+  const handleClose = useCallback((e: React.MouseEvent | MouseEvent) => {
     e.stopPropagation();
     setIsVisible(false);
   }, []);
@@ -58,6 +57,7 @@ const Dropdown = ({
        rounded-md border border-bg-border bg-bg-shade shadow-high ${
          sizesMap[size]
        } flex flex-col gap-1 select-none`}
+        onClick={handleClose}
       >
         {dropdownItems}
       </div>

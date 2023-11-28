@@ -6,16 +6,19 @@ import Onboarding from './Onboarding';
 import Header from './components/Header';
 import Project from './Project';
 import CommandBar from './CommandBar';
+import ProjectContextProvider from './context/providers/ProjectContextProvider';
 
 const App = () => {
   return (
     <AnalyticsContextProvider>
       <PersonalQuotaContextProvider>
-        <ReportBugModal />
-        <Onboarding />
-        <Header />
-        <CommandBar />
-        <Project />
+        <ProjectContextProvider>
+          <ReportBugModal />
+          <Onboarding />
+          <Header />
+          <CommandBar />
+          <Project />
+        </ProjectContextProvider>
       </PersonalQuotaContextProvider>
     </AnalyticsContextProvider>
   );

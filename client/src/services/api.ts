@@ -11,6 +11,7 @@ import {
   HistoryConversationTurn,
   HoverablesResponse,
   NLSearchResponse,
+  ProjectShortType,
   SearchResponse,
   StudioTemplateType,
   SuggestionsResponse,
@@ -439,3 +440,12 @@ export const getDocSections = (
   http(`/docs/${id}/fetch`, {
     params: { relative_url: url },
   }).then((r) => r.data);
+
+export const getAllProjects = (): Promise<ProjectShortType[]> =>
+  http('/projects').then((r) => r.data);
+export const getProject = (id: string): Promise<ProjectShortType> =>
+  http(`/projects/${id}`).then((r) => r.data);
+export const createProject = (name: string): Promise<string> =>
+  http.post(`/projects`, { name }).then((r) => r.data);
+export const updateProject = (id: string, data: Partial<ProjectShortType>) =>
+  http.put(`/projects/${id}`, data).then((r) => r.data);

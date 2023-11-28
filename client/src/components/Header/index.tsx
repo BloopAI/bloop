@@ -4,6 +4,7 @@ import { DeviceContext } from '../../context/deviceContext';
 import Button from '../Button';
 import Dropdown from '../Dropdown';
 import { EnvContext } from '../../context/envContext';
+import { ProjectContext } from '../../context/projectContext';
 import UserDropdown from './UserDropdown';
 import ProjectsDropdown from './ProjectsDropdown';
 
@@ -14,6 +15,7 @@ type Props = {
 const Header = ({ isSkeleton }: Props) => {
   const { os } = useContext(DeviceContext);
   const { envConfig } = useContext(EnvContext);
+  const { project } = useContext(ProjectContext.Current);
 
   return (
     <div
@@ -31,7 +33,9 @@ const Header = ({ isSkeleton }: Props) => {
           dropdownPlacement="bottom-end"
         >
           <div className="flex w-72 px-4 items-center text-left h-10 gap-4 border-r border-bg-border hover:bg-bg-base-hover">
-            <p className="flex-1 body-s">Default project</p>
+            <p className="flex-1 body-s">
+              {project?.name || 'Default project'}
+            </p>
             <ChevronDownIcon raw sizeClassName="w-3.5 h-3.5" />
           </div>
         </Dropdown>
