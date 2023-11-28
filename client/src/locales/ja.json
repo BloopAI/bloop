@@ -456,5 +456,8 @@
 	"Indexed": "インデックス付き",
 	"Indexed GitHub repositories": "インデックス付きGitHubリポジトリ",
 	"Add public repository": "パブリックリポジトリを追加します",
-	"Paste a link to any public repository hosted on GitHub": "GitHubでホストされている公開リポジトリへのリンクを貼り付けます"
+	"Paste a link to any public repository hosted on GitHub": "GitHubでホストされている公開リポジトリへのリンクを貼り付けます",
+	"Indexed local repositories": "インデックス付きローカルリポジトリ",
+	"Add local repository": "ローカルリポジトリを追加します",
+	"Select a folder containing a git repository": "GITリポジトリを含むフォルダーを選択します"
 }

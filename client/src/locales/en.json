@@ -465,5 +465,8 @@
 	"Add any public repository hosted on GitHub": "Add any public repository hosted on GitHub",
 	"Indexed GitHub repositories": "Indexed GitHub repositories",
 	"Add public repository": "Add public repository",
-	"Paste a link to any public repository hosted on GitHub": "Paste a link to any public repository hosted on GitHub"
+	"Paste a link to any public repository hosted on GitHub": "Paste a link to any public repository hosted on GitHub",
+	"Indexed local repositories": "Indexed local repositories",
+	"Add local repository": "Add local repository",
+	"Select a folder containing a git repository": "Select a folder containing a git repository"
 }

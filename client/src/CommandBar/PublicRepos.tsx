@@ -26,7 +26,6 @@ type Props = {};
 const PublicRepos = ({}: Props) => {
   const { t } = useTranslation();
   const [isAddMode, setIsAddMode] = useState(false);
-  const [isVerifying, setVerifying] = useState(false);
   const { setChosenStep, setFocusedItem } = useContext(
     CommandBarContext.Handlers,
   );
@@ -88,6 +87,9 @@ const PublicRepos = ({}: Props) => {
           componentProps: { repo: { ...r, shortName: r.ref.split('/').pop() } },
           key: r.ref,
         }));
+      if (!mapped.length) {
+        enterAddMode();
+      }
       setSections([
         addItem,
         {

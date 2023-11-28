@@ -35,7 +35,7 @@ export const getContextItems = (t: TFunction<'translation', undefined>) => {
     {
       label: t('Public repositories'),
       Icon: GlobeIcon,
-      id: PUBLIC_REPOS,
+      id: CommandBarStepEnum.PUBLIC_REPOS,
       key: 'public',
       parent: { id: INITIAL, label: '' },
       shortcut: ['cmd', 'shift', 'P'],
@@ -45,7 +45,7 @@ export const getContextItems = (t: TFunction<'translation', undefined>) => {
     {
       label: t('Local repositories'),
       Icon: HardDriveIcon,
-      id: LOCAL_REPOS,
+      id: CommandBarStepEnum.LOCAL_REPOS,
       key: 'local',
       parent: { id: INITIAL, label: '' },
       shortcut: ['cmd', 'shift', 'O'],
@@ -55,7 +55,7 @@ export const getContextItems = (t: TFunction<'translation', undefined>) => {
     {
       label: t('Documentation'),
       Icon: MagazineIcon,
-      id: DOCUMENTATION,
+      id: CommandBarStepEnum.DOCS,
       key: 'docs',
       parent: { id: INITIAL, label: '' },
       shortcut: ['cmd', 'D'],

@@ -516,5 +516,7 @@ export enum CommandBarStepEnum {
   INITIAL = 'initial',
   PRIVATE_REPOS = 'private_repos',
   PUBLIC_REPOS = 'public_repos',
+  LOCAL_REPOS = 'local_repos',
+  DOCS = 'docs',
   REPO_SETTINGS = 'repo_settings',
 }

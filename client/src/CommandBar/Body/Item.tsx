@@ -71,20 +71,16 @@ const CommandBarItem = ({
 
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
-      if (isFocused) {
-        const shortAction = footerBtns.find((b) =>
-          checkEventKeys(e, b.shortcut),
-        );
-        if (
-          (shortAction && !shortAction.action) ||
-          checkEventKeys(e, shortcut)
-        ) {
-          handleClick();
-          return;
-        }
-        if (shortAction?.action) {
-          shortAction.action();
-        }
+      const shortAction = footerBtns.find((b) => checkEventKeys(e, b.shortcut));
+      if (
+        (isFocused && shortAction && !shortAction.action) ||
+        checkEventKeys(e, shortcut)
+      ) {
+        handleClick();
+        return;
+      }
+      if (isFocused && shortAction?.action) {
+        shortAction.action();
       }
     },
     [isFocused, shortcut, footerBtns, handleClick],

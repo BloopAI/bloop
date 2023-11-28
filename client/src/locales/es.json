@@ -459,5 +459,8 @@
 	"In this project": "En este proyecto",
 	"Indexed GitHub repositories": "Repositorios indexados de Github",
 	"Add public repository": "Agregar repositorio público",
-	"Paste a link to any public repository hosted on GitHub": "Pegar un enlace a cualquier repositorio público alojado en Github"
+	"Paste a link to any public repository hosted on GitHub": "Pegar un enlace a cualquier repositorio público alojado en Github",
+	"Indexed local repositories": "Repositorios locales indexados",
+	"Add local repository": "Agregar repositorio local",
+	"Select a folder containing a git repository": "Seleccione una carpeta que contenga un repositorio Git"
 }
