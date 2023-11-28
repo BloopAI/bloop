@@ -454,5 +454,12 @@
 	"Recent projects": "Recent projects",
 	"Open": "Open",
 	"Start indexing": "Start indexing",
-	"Add to project": "Add to project"
+	"Add to project": "Add to project",
+	"Stop indexing": "Stop indexing",
+	"Last indexed": "Last indexed",
+	"Indexing started at": "Indexing started at",
+	"Index repository": "Index repository",
+	"Filter by": "Filter by",
+	"Indexed": "Indexed",
+	"In this project": "In this project"
 }

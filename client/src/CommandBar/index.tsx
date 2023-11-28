@@ -1,20 +1,17 @@
-import { memo, useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Modal from '../components/Modal';
 import useKeyboardNavigation from '../hooks/useKeyboardNavigation';
 import {
   CommandBarActiveStepType,
   CommandBarItemType,
+  CommandBarStepEnum,
   CommandBarStepType,
 } from '../types/general';
-import Header from './Header';
-import Body from './Body';
-import Footer from './Footer';
-import {
-  getActiveStepContent,
-  getContextItems,
-  getProjectItems,
-} from './items';
+import CommandBarContextProvider from '../context/providers/CommandBarContextProvider';
+import { getContextItems, getProjectItems } from './items';
+import Initial from './Initial';
+import PrivateRepos from './PrivateRepos';
 
 type Props = {};
 
@@ -24,6 +21,12 @@ const CommandBar = ({}: Props) => {
   const [focusedItem, setFocusedItem] = useState<CommandBarItemType | null>(
     null,
   );
+  const [chosenStep, setChosenStep] = useState<{
+    id: CommandBarStepEnum;
+    data?: Record<string, any>;
+  }>({
+    id: CommandBarStepEnum.INITIAL,
+  });
   const [activeStepShort, setActiveStepShort] = useState<CommandBarStepType>({
     id: 'initial',
     label: '',
@@ -66,19 +69,11 @@ const CommandBar = ({}: Props) => {
         e.stopPropagation();
         e.preventDefault();
         setIsVisible(true);
-      } else if (e.key === 'Escape' && isVisible) {
-        e.stopPropagation();
-        e.preventDefault();
-        handleBack();
       }
     },
     [isVisible],
   );
   useKeyboardNavigation(handleKeyEvent);
-
-  useEffect(() => {
-    getActiveStepContent(t, activeStepShort).then(setActiveStepFull);
-  }, [activeStepShort, t]);
 
   return (
     <Modal
@@ -86,16 +81,17 @@ const CommandBar = ({}: Props) => {
       onClose={handleClose}
       containerClassName={'max-h-[28.875rem] w-full max-w-[40rem]'}
     >
-      <Header activeStep={activeStepShort} handleBack={handleBack} />
-      <Body
-        setFocusedItem={setFocusedItem}
-        sections={activeStepFull.sections}
-        setActiveStep={setActiveStepShort}
-      />
-      <Footer
-        btns={focusedItem?.footerBtns}
-        hintText={focusedItem?.footerHint}
-      />
+      <CommandBarContextProvider
+        setChosenStep={setChosenStep}
+        isVisible={isVisible}
+        setIsVisible={setIsVisible}
+      >
+        {chosenStep.id === CommandBarStepEnum.INITIAL ? (
+          <Initial />
+        ) : chosenStep.id === CommandBarStepEnum.PRIVATE_REPOS ? (
+          <PrivateRepos />
+        ) : null}
+      </CommandBarContextProvider>
     </Modal>
   );
 };

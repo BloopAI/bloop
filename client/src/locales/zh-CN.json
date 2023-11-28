@@ -456,5 +456,11 @@
 	"Add library documentation": "添加库文档",
 	"Manage": "管理",
 	"Start indexing": "开始索引",
-	"Add to project": "添加到项目"
+	"Add to project": "添加到项目",
+	"Stop indexing": "停止索引",
+	"Last indexed": "最后索引",
+	"Indexing started at": "索引开始",
+	"Index repository": "索引存储库",
+	"Filter by": "过滤",
+	"Indexed": "索引"
 }

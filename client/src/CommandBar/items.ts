@@ -12,7 +12,11 @@ import {
   PRIVATE_REPOS,
   PUBLIC_REPOS,
 } from '../consts/commandBar';
-import { CommandBarActiveStepType, CommandBarStepType } from '../types/general';
+import {
+  CommandBarActiveStepType,
+  CommandBarStepEnum,
+  CommandBarStepType,
+} from '../types/general';
 import { getRepos, syncRepo } from '../services/api';
 import { mapGitHubRepos } from '../utils/mappers';
 
@@ -21,8 +25,8 @@ export const getContextItems = (t: TFunction<'translation', undefined>) => {
     {
       label: t('Private repositories'),
       Icon: RepositoryIcon,
-      onClick: () => {},
-      id: PRIVATE_REPOS,
+      id: CommandBarStepEnum.PRIVATE_REPOS,
+      key: 'private',
       parent: { id: INITIAL, label: '' },
       shortcut: ['cmd', 'P'],
       footerHint: t('Any repository from your private GitHub account'),
@@ -32,6 +36,7 @@ export const getContextItems = (t: TFunction<'translation', undefined>) => {
       label: t('Public repositories'),
       Icon: GlobeIcon,
       id: PUBLIC_REPOS,
+      key: 'public',
       parent: { id: INITIAL, label: '' },
       shortcut: ['cmd', 'shift', 'P'],
       footerHint: t('Any public repository hosted on GitHub'),
@@ -41,6 +46,7 @@ export const getContextItems = (t: TFunction<'translation', undefined>) => {
       label: t('Local repositories'),
       Icon: HardDriveIcon,
       id: LOCAL_REPOS,
+      key: 'local',
       parent: { id: INITIAL, label: '' },
       shortcut: ['cmd', 'shift', 'O'],
       footerHint: t('Add a repository from your local machine'),
@@ -50,6 +56,7 @@ export const getContextItems = (t: TFunction<'translation', undefined>) => {
       label: t('Documentation'),
       Icon: MagazineIcon,
       id: DOCUMENTATION,
+      key: 'docs',
       parent: { id: INITIAL, label: '' },
       shortcut: ['cmd', 'D'],
       footerHint: t('Add library documentation'),
@@ -64,8 +71,8 @@ export const getProjectItems = (t: TFunction<'translation', undefined>) => {
       label: 'Default project',
       Icon: MagazineIcon,
       id: 'default_project',
+      key: 'default',
       parent: { id: INITIAL, label: '' },
-      onClick: () => {},
       shortcut: ['cmd', '1'],
       footerHint: 'Open Default project',
       footerBtns: [{ label: t('Manage'), shortcut: ['entr'] }],

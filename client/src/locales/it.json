@@ -433,5 +433,11 @@
 	"Add library documentation": "Aggiungi la documentazione della libreria",
 	"Manage": "Maneggio",
 	"Start indexing": "Inizia l'indicizzazione",
-	"Add to project": "Aggiungi al progetto"
+	"Add to project": "Aggiungi al progetto",
+	"Stop indexing": "Smettere di indicizzare",
+	"Last indexed": "Ultimo indicizzato",
+	"Indexing started at": "L'indicizzazione è iniziata a",
+	"Index repository": "Repository indice",
+	"Filter by": "Filtro di",
+	"Indexed": "Indicizzata"
 }

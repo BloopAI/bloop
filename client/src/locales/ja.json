@@ -447,5 +447,11 @@
 	"Add library documentation": "ライブラリのドキュメントを追加します",
 	"Manage": "管理",
 	"Start indexing": "インデックス作成を開始します",
-	"Add to project": "プロジェクトに追加します"
+	"Add to project": "プロジェクトに追加します",
+	"Stop indexing": "インデックス作成を停止します",
+	"Last indexed": "最後のインデックス",
+	"Indexing started at": "インデックス作成が始まりました",
+	"Index repository": "インデックスリポジトリ",
+	"Filter by": "ろ過します",
+	"Indexed": "インデックス付き"
 }

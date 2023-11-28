@@ -450,5 +450,11 @@
 	"Add library documentation": "Agregar documentación de la biblioteca",
 	"Recent projects": "Proyectos recientes",
 	"Start indexing": "Comenzar a indexación",
-	"Add to project": "Agregar al proyecto"
+	"Add to project": "Agregar al proyecto",
+	"Stop indexing": "Dejar de indexación",
+	"Last indexed": "Último indexado",
+	"Indexing started at": "La indexación comenzó en",
+	"Index repository": "Repositorio de índices",
+	"Filter by": "Filtrado por",
+	"In this project": "En este proyecto"
 }

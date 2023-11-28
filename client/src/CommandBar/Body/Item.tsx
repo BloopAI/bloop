@@ -1,23 +1,29 @@
 import {
   Dispatch,
   memo,
+  ReactElement,
   SetStateAction,
   useCallback,
+  useContext,
   useEffect,
   useRef,
 } from 'react';
-import { CommandBarItemType, CommandBarStepType } from '../../types/general';
+import {
+  CommandBarItemGeneralType,
+  CommandBarStepEnum,
+} from '../../types/general';
 import useShortcuts from '../../hooks/useShortcuts';
 import useKeyboardNavigation from '../../hooks/useKeyboardNavigation';
 import { checkEventKeys } from '../../utils/keyboardUtils';
+import { CommandBarContext } from '../../context/commandBarContext';
 
-type Props = CommandBarItemType & {
+type Props = CommandBarItemGeneralType & {
   isFocused?: boolean;
-  setFocusedItem: Dispatch<SetStateAction<CommandBarItemType | null>>;
   i: number;
   isFirst?: boolean;
   setFocusedIndex: Dispatch<SetStateAction<number>>;
-  setActiveStep: Dispatch<SetStateAction<CommandBarStepType>>;
+  customRightElement?: ReactElement;
+  onClick?: () => void;
 };
 
 const CommandBarItem = ({
@@ -25,55 +31,60 @@ const CommandBarItem = ({
   Icon,
   label,
   shortcut,
-  setFocusedItem,
   i,
   setFocusedIndex,
-  setActiveStep,
   id,
-  parent,
   footerBtns,
   isFirst,
   iconContainerClassName,
-  ...rest
+  footerHint,
+  customRightElement,
+  onClick,
 }: Props) => {
   const ref = useRef<HTMLButtonElement>(null);
   const shortcutKeys = useShortcuts(shortcut);
+  const { setFocusedItem, setChosenStep } = useContext(
+    CommandBarContext.Handlers,
+  );
 
   useEffect(() => {
     if (isFocused) {
       setFocusedItem({
-        ...rest,
-        Icon,
-        label,
-        shortcut,
+        footerHint,
         footerBtns,
-        id,
-        iconContainerClassName,
       });
       ref.current?.scrollIntoView({ block: 'nearest' });
     }
-  }, [isFocused]);
+  }, [isFocused, footerBtns, footerHint]);
 
   const handleMouseOver = useCallback(() => {
     setFocusedIndex(i);
   }, [i, setFocusedIndex]);
 
   const handleClick = useCallback(() => {
-    setActiveStep({ id, label, parent });
-  }, [id, label, parent]);
+    if (onClick) {
+      onClick();
+    } else {
+      setChosenStep({ id: id as CommandBarStepEnum });
+    }
+  }, [id, onClick]);
 
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
-      const shortAction = footerBtns.find((b) => checkEventKeys(e, b.shortcut));
-      if (
-        (isFocused && shortAction && !shortAction.action) ||
-        checkEventKeys(e, shortcut)
-      ) {
-        handleClick();
-        return;
-      }
-      if (isFocused && shortAction?.action) {
-        shortAction.action();
+      if (isFocused) {
+        const shortAction = footerBtns.find((b) =>
+          checkEventKeys(e, b.shortcut),
+        );
+        if (
+          (shortAction && !shortAction.action) ||
+          checkEventKeys(e, shortcut)
+        ) {
+          handleClick();
+          return;
+        }
+        if (shortAction?.action) {
+          shortAction.action();
+        }
       }
     },
     [isFocused, shortcut, footerBtns, handleClick],
@@ -110,6 +121,7 @@ const CommandBarItem = ({
           ))}
         </div>
       )}
+      {customRightElement}
     </button>
   );
 };

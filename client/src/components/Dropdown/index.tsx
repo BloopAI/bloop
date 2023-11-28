@@ -3,6 +3,7 @@ import React, {
   PropsWithChildren,
   ReactElement,
   useCallback,
+  useRef,
   useState,
 } from 'react';
 import Tippy, { TippyProps } from '@tippyjs/react';
@@ -30,15 +31,15 @@ const Dropdown = ({
   size = 'medium',
   dropdownItems,
 }: PropsWithChildren<Props>) => {
-  const { t } = useTranslation();
   const [isVisible, setIsVisible] = useState(false);
   const contextMenuRef = useArrowKeyNavigation({ selectors: 'button' });
+  const buttonRef = useRef(null);
 
   const handleClose = useCallback((e: MouseEvent) => {
     e.stopPropagation();
     setIsVisible(false);
   }, []);
-  useOnClickOutside(contextMenuRef, handleClose);
+  useOnClickOutside(contextMenuRef, handleClose, buttonRef);
 
   const handleToggle = useCallback(() => {
     setIsVisible((prev) => !prev);
@@ -48,6 +49,7 @@ const Dropdown = ({
     return (
       <div
         id="dropdown"
+        ref={appendTo !== 'parent' ? contextMenuRef : null}
         className={`${isVisible ? '' : 'scale-0 opacity-0'} ${
           dropdownPlacement?.endsWith('-end')
             ? 'origin-top-right'
@@ -63,7 +65,7 @@ const Dropdown = ({
   }, [dropdownItems, isVisible, dropdownPlacement]);
 
   return (
-    <div ref={contextMenuRef}>
+    <div ref={appendTo === 'parent' ? contextMenuRef : null}>
       <Tippy
         visible={isVisible}
         placement={dropdownPlacement}
@@ -72,7 +74,7 @@ const Dropdown = ({
         render={renderContent}
       >
         <span>
-          <button onClick={handleToggle} className="flex">
+          <button onClick={handleToggle} className="flex" ref={buttonRef}>
             {children}
           </button>
         </span>

@@ -1,41 +1,57 @@
-import { ChangeEvent, memo, useCallback, useMemo, useState } from 'react';
+import {
+  ChangeEvent,
+  memo,
+  ReactElement,
+  useCallback,
+  useContext,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
-import { CommandBarStepType } from '../../types/general';
 import Tooltip from '../../components/Tooltip';
+import useKeyboardNavigation from '../../hooks/useKeyboardNavigation';
+import { CommandBarContext } from '../../context/commandBarContext';
 import ChipItem from './ChipItem';
 
 type Props = {
-  activeStep: CommandBarStepType;
-  handleBack: () => void;
+  handleBack?: () => void;
+  breadcrumbs?: string[];
+  customRightComponent?: ReactElement;
 };
 
-const CommandBarHeader = ({ activeStep, handleBack }: Props) => {
+const CommandBarHeader = ({
+  handleBack,
+  breadcrumbs,
+  customRightComponent,
+}: Props) => {
   const { t } = useTranslation();
   const [value, setValue] = useState('');
+  const { isVisible, setIsVisible } = useContext(CommandBarContext.General);
 
   const handleChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     setValue(e.target.value);
   }, []);
 
-  const breadcrumbs = useMemo(() => {
-    const parentLabels: string[] = [activeStep.label];
-    let current: CommandBarStepType | undefined = activeStep.parent;
-
-    while (current) {
-      if (current.label) {
-        parentLabels.unshift(current.label);
+  const handleKeyEvent = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isVisible) {
+        e.stopPropagation();
+        e.preventDefault();
+        if (handleBack) {
+          handleBack();
+        } else {
+          setIsVisible(false);
+        }
       }
-      current = current.parent;
-    }
-
-    return parentLabels;
-  }, [activeStep]);
+    },
+    [isVisible, setIsVisible, handleBack],
+  );
+  useKeyboardNavigation(handleKeyEvent);
 
   return (
     <div className="w-full flex flex-col p-4 items-start gap-4 border-b border-bg-border">
-      <div className="flex gap-1 items-center w-full select-none">
-        {activeStep.parent ? (
-          <>
+      <div className="flex gap-1 items-center justify-between w-full select-none">
+        <div className="flex gap-1 items-center">
+          {!!handleBack && (
             <Tooltip text={t('Back')} placement={'top'}>
               <button
                 className="w-5 flex gap-1 items-center justify-center rounded border border-bg-border code-mini text-label-base ellipsis"
@@ -44,13 +60,10 @@ const CommandBarHeader = ({ activeStep, handleBack }: Props) => {
                 ←
               </button>
             </Tooltip>
-            {breadcrumbs.map((b) => (
-              <ChipItem key={b} text={b} />
-            ))}
-          </>
-        ) : (
-          <ChipItem text="Default project" />
-        )}
+          )}
+          {breadcrumbs?.map((b) => <ChipItem key={b} text={b} />)}
+        </div>
+        {customRightComponent}
       </div>
       <input
         value={value}

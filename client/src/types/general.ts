@@ -1,4 +1,4 @@
-import React, { ReactElement } from 'react';
+import React, { MemoExoticComponent, ReactElement } from 'react';
 import { DocShortType, SearchStepType } from './api';
 import { RepoSource } from './index';
 
@@ -461,7 +461,13 @@ export type StudioContextDoc = {
   hidden: boolean;
 };
 
-export type CommandBarItemType = {
+export type CommandBarItemCustomType = {
+  key: string;
+  Component: MemoExoticComponent<any>;
+  componentProps: Record<string, any>;
+};
+
+export type CommandBarItemGeneralType = {
   Icon: (props: {
     raw?: boolean | undefined;
     sizeClassName?: string | undefined;
@@ -470,6 +476,7 @@ export type CommandBarItemType = {
   label: string;
   shortcut?: string[];
   id: string;
+  key: string;
   parent?: CommandBarStepType;
   footerHint: string;
   footerBtns: {
@@ -479,6 +486,10 @@ export type CommandBarItemType = {
   }[];
   iconContainerClassName?: string;
 };
+
+export type CommandBarItemType =
+  | CommandBarItemCustomType
+  | CommandBarItemGeneralType;
 
 export type CommandBarSectionType = {
   label: string;
@@ -499,3 +510,9 @@ export type CommandBarActiveStepType = {
   inputSubmitHandler?: () => void;
   onBack: () => void;
 };
+
+export enum CommandBarStepEnum {
+  INITIAL = 'initial',
+  PRIVATE_REPOS = 'private_repos',
+  REPO_SETTINGS = 'REPO_SETTINGS',
+}

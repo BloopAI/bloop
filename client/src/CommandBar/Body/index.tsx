@@ -8,12 +8,10 @@ import useKeyboardNavigation from '../../hooks/useKeyboardNavigation';
 import Section from './Section';
 
 type Props = {
-  setFocusedItem: Dispatch<SetStateAction<CommandBarItemType | null>>;
   sections: CommandBarSectionType[];
-  setActiveStep: Dispatch<SetStateAction<CommandBarStepType>>;
 };
 
-const CommandBarBody = ({ setFocusedItem, sections, setActiveStep }: Props) => {
+const CommandBarBody = ({ sections }: Props) => {
   const [focusedIndex, setFocusedIndex] = useState(0);
 
   const handleKeyEvent = useCallback(
@@ -48,11 +46,9 @@ const CommandBarBody = ({ setFocusedItem, sections, setActiveStep }: Props) => {
           key={s.label}
           title={s.label}
           items={s.items}
-          setFocusedItem={setFocusedItem}
           focusedIndex={focusedIndex}
           setFocusedIndex={setFocusedIndex}
           offset={s.itemsOffset}
-          setActiveStep={setActiveStep}
         />
       ))}
     </div>
