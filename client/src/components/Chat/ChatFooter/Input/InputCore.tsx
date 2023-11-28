@@ -121,18 +121,23 @@ const InputCore = ({
             return false;
           }
           const parts = state.toJSON().doc.content[0]?.content;
+          // trying to submit with no text
+          if (!parts) {
+            return false;
+          }
           onSubmit?.({
-            parsed: parts.map((s: InputEditorContent) =>
-              s.type === 'mention'
-                ? {
-                    type:
-                      s.attrs.type === 'lang'
-                        ? ParsedQueryTypeEnum.LANG
-                        : ParsedQueryTypeEnum.PATH,
-                    text: s.attrs.id,
-                  }
-                : { type: ParsedQueryTypeEnum.TEXT, text: s.text },
-            ),
+            parsed:
+              parts?.map((s: InputEditorContent) =>
+                s.type === 'mention'
+                  ? {
+                      type:
+                        s.attrs.type === 'lang'
+                          ? ParsedQueryTypeEnum.LANG
+                          : ParsedQueryTypeEnum.PATH,
+                      text: s.attrs.id,
+                    }
+                  : { type: ParsedQueryTypeEnum.TEXT, text: s.text },
+              ) || [],
             plain: parts
               ?.map((s: InputEditorContent) =>
                 s.type === 'mention' ? `${s.attrs.type}:${s.attrs.id}` : s.text,
@@ -190,7 +195,7 @@ const InputCore = ({
   }, [state]);
 
   return (
-    <div className="w-full py-4 leading-[24px] bg-transparent rounded-lg outline-none focus:outline-0 resize-none flex-grow-0 flex flex-col justify-center">
+    <div className="w-full py-4 leading-[24px] overflow-auto bg-transparent rounded-lg outline-none focus:outline-0 resize-none flex-grow-0 flex flex-col justify-center">
       <ProseMirror
         mount={mount}
         state={state}

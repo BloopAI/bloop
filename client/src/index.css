@@ -1511,6 +1511,18 @@ h5, .h5 {
 .ProseMirror {
   max-height: 40vh;
   overflow: auto;
+  white-space: pre-wrap;
+}
+
+.ProseMirror pre code {
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.ProseMirror pre {
+  font-family: inherit;
+  font-size: inherit;
 }
 
 .ProseMirror:focus {
