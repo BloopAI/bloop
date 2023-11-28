@@ -72,6 +72,7 @@ const Dropdown = ({
         interactive
         appendTo={appendTo}
         render={renderContent}
+        disabled={!isVisible}
       >
         <span>
           <button onClick={handleToggle} className="flex" ref={buttonRef}>

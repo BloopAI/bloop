@@ -16,12 +16,14 @@ type Props = {
   handleBack?: () => void;
   breadcrumbs?: string[];
   customRightComponent?: ReactElement;
+  customSubmitHandler?: (value: string) => void;
 };
 
 const CommandBarHeader = ({
   handleBack,
   breadcrumbs,
   customRightComponent,
+  customSubmitHandler,
 }: Props) => {
   const { t } = useTranslation();
   const [value, setValue] = useState('');
@@ -33,17 +35,24 @@ const CommandBarHeader = ({
 
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isVisible) {
-        e.stopPropagation();
-        e.preventDefault();
-        if (handleBack) {
-          handleBack();
-        } else {
-          setIsVisible(false);
+      if (isVisible) {
+        if (e.key === 'Escape') {
+          e.stopPropagation();
+          e.preventDefault();
+          if (handleBack) {
+            handleBack();
+          } else {
+            setIsVisible(false);
+          }
+        } else if (e.key === 'Enter' && customSubmitHandler) {
+          e.stopPropagation();
+          e.preventDefault();
+          customSubmitHandler(value);
+          setValue('');
         }
       }
     },
-    [isVisible, setIsVisible, handleBack],
+    [isVisible, setIsVisible, handleBack, customSubmitHandler, value],
   );
   useKeyboardNavigation(handleKeyEvent);
 

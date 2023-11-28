@@ -453,5 +453,8 @@
 	"Indexing started at": "インデックス作成が始まりました",
 	"Index repository": "インデックスリポジトリ",
 	"Filter by": "ろ過します",
-	"Indexed": "インデックス付き"
+	"Indexed": "インデックス付き",
+	"Indexed GitHub repositories": "インデックス付きGitHubリポジトリ",
+	"Add public repository": "パブリックリポジトリを追加します",
+	"Paste a link to any public repository hosted on GitHub": "GitHubでホストされている公開リポジトリへのリンクを貼り付けます"
 }

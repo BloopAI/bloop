@@ -439,5 +439,8 @@
 	"Indexing started at": "L'indicizzazione è iniziata a",
 	"Index repository": "Repository indice",
 	"Filter by": "Filtro di",
-	"Indexed": "Indicizzata"
+	"Indexed": "Indicizzata",
+	"Add any public repository hosted on GitHub": "Aggiungi qualsiasi repository pubblico ospitato su GitHub",
+	"Add public repository": "Aggiungi repository pubblico",
+	"Paste a link to any public repository hosted on GitHub": "Incolla un collegamento a qualsiasi repository pubblico ospitato su GitHub"
 }

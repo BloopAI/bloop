@@ -4,7 +4,9 @@ import {
   SetStateAction,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -31,16 +33,15 @@ const RepoItem = ({ repo, isFirst, setFocusedIndex, isFocused, i }: Props) => {
   const { locale } = useContext(LocaleContext);
   const [status, setStatus] = useState(repo.sync_status);
   const [lastIndexed, setLastIndexed] = useState(repo.last_index);
-  const [indexingStartedAt, setIndexingStartedAt] = useState(0);
+  const [indexingStartedAt, setIndexingStartedAt] = useState(Date.now());
   const { apiUrl } = useContext(DeviceContext);
+  const eventSourceRef = useRef<EventSource | null>(null);
 
-  const onRepoSync = useCallback(async () => {
-    setIndexingStartedAt(Date.now());
-    await syncRepo(repo.ref);
-    const eventSource = new EventSource(
+  const startEventSource = useCallback(() => {
+    eventSourceRef.current = new EventSource(
       `${apiUrl.replace('https:', '')}/repos/status`,
     );
-    eventSource.onmessage = (ev) => {
+    eventSourceRef.current.onmessage = (ev) => {
       try {
         const data = JSON.parse(ev.data);
         console.log(data, repo.ref);
@@ -48,7 +49,8 @@ const RepoItem = ({ repo, isFirst, setFocusedIndex, isFocused, i }: Props) => {
           setStatus(data.ev?.status_change);
           if (data.ev?.status_change === SyncStatus.Done) {
             setLastIndexed(new Date().toISOString());
-            eventSource.close();
+            eventSourceRef.current?.close();
+            eventSourceRef.current = null;
           }
         }
         // if (
@@ -61,12 +63,38 @@ const RepoItem = ({ repo, isFirst, setFocusedIndex, isFocused, i }: Props) => {
         //   }));
         // }
       } catch {
-        eventSource.close();
+        eventSourceRef.current?.close();
+        eventSourceRef.current = null;
       }
     };
-    eventSource.onerror = () => {
-      eventSource.close();
+    eventSourceRef.current.onerror = () => {
+      eventSourceRef.current?.close();
+      eventSourceRef.current = null;
     };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      eventSourceRef.current?.close();
+      eventSourceRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (
+      [SyncStatus.Indexing, SyncStatus.Syncing, SyncStatus.Queued].includes(
+        status,
+      ) &&
+      !eventSourceRef.current
+    ) {
+      startEventSource();
+    }
+  }, [status]);
+
+  const onRepoSync = useCallback(async () => {
+    setIndexingStartedAt(Date.now());
+    await syncRepo(repo.ref);
+    startEventSource();
   }, [repo.ref]);
 
   const handleAddToProject = useCallback(() => {

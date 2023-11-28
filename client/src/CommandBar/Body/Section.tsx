@@ -4,7 +4,7 @@ import SectionDivider from './SectionDivider';
 import Item from './Item';
 
 type Props = {
-  title: string;
+  title?: string;
   items: CommandBarItemType[];
   focusedIndex: number;
   setFocusedIndex: Dispatch<SetStateAction<number>>;
@@ -20,7 +20,7 @@ const CommandBarBodySection = ({
 }: Props) => {
   return (
     <div className="flex flex-col">
-      <SectionDivider text={title} />
+      {!!title && <SectionDivider text={title} />}
       {items.map(({ key, ...Rest }, i) =>
         'Component' in Rest ? (
           <Rest.Component

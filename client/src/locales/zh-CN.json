@@ -462,5 +462,8 @@
 	"Indexing started at": "索引开始",
 	"Index repository": "索引存储库",
 	"Filter by": "过滤",
-	"Indexed": "索引"
+	"Indexed": "索引",
+	"Indexed GitHub repositories": "索引的GitHub存储库",
+	"Add public repository": "添加公共存储库",
+	"Paste a link to any public repository hosted on GitHub": "将链接粘贴到GitHub上托管的任何公共存储库"
 }

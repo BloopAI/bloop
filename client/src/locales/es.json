@@ -456,5 +456,8 @@
 	"Indexing started at": "La indexación comenzó en",
 	"Index repository": "Repositorio de índices",
 	"Filter by": "Filtrado por",
-	"In this project": "En este proyecto"
+	"In this project": "En este proyecto",
+	"Indexed GitHub repositories": "Repositorios indexados de Github",
+	"Add public repository": "Agregar repositorio público",
+	"Paste a link to any public repository hosted on GitHub": "Pegar un enlace a cualquier repositorio público alojado en Github"
 }

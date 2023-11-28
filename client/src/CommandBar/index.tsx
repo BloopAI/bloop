@@ -12,6 +12,7 @@ import CommandBarContextProvider from '../context/providers/CommandBarContextPro
 import { getContextItems, getProjectItems } from './items';
 import Initial from './Initial';
 import PrivateRepos from './PrivateRepos';
+import PublicRepos from './PublicRepos';
 
 type Props = {};
 
@@ -90,6 +91,8 @@ const CommandBar = ({}: Props) => {
           <Initial />
         ) : chosenStep.id === CommandBarStepEnum.PRIVATE_REPOS ? (
           <PrivateRepos />
+        ) : chosenStep.id === CommandBarStepEnum.PUBLIC_REPOS ? (
+          <PublicRepos />
         ) : null}
       </CommandBarContextProvider>
     </Modal>

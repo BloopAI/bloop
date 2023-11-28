@@ -485,6 +485,7 @@ export type CommandBarItemGeneralType = {
     action?: () => void | Promise<void>;
   }[];
   iconContainerClassName?: string;
+  onClick?: () => void;
 };
 
 export type CommandBarItemType =
@@ -492,7 +493,7 @@ export type CommandBarItemType =
   | CommandBarItemGeneralType;
 
 export type CommandBarSectionType = {
-  label: string;
+  label?: string;
   items: CommandBarItemType[];
   itemsOffset: number;
 };
@@ -514,5 +515,6 @@ export type CommandBarActiveStepType = {
 export enum CommandBarStepEnum {
   INITIAL = 'initial',
   PRIVATE_REPOS = 'private_repos',
-  REPO_SETTINGS = 'REPO_SETTINGS',
+  PUBLIC_REPOS = 'public_repos',
+  REPO_SETTINGS = 'repo_settings',
 }

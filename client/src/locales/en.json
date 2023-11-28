@@ -461,5 +461,9 @@
 	"Index repository": "Index repository",
 	"Filter by": "Filter by",
 	"Indexed": "Indexed",
-	"In this project": "In this project"
+	"In this project": "In this project",
+	"Add any public repository hosted on GitHub": "Add any public repository hosted on GitHub",
+	"Indexed GitHub repositories": "Indexed GitHub repositories",
+	"Add public repository": "Add public repository",
+	"Paste a link to any public repository hosted on GitHub": "Paste a link to any public repository hosted on GitHub"
 }
