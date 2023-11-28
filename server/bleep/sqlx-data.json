@@ -1,5 +1,29 @@
 {
   "db": "SQLite",
+  "00ed95c6ae97970d4412af1d3f724dc9bd84c5f1fdb0ce8f4b8abefa9d86eded": {
+    "describe": {
+      "columns": [
+        {
+          "name": "name",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "modified_at",
+          "ordinal": 1,
+          "type_info": "Datetime"
+        }
+      ],
+      "nullable": [
+        true,
+        true
+      ],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "SELECT name, (\n            SELECT ss.modified_at\n            FROM studio_snapshots ss\n            JOIN studios s ON s.project_id = $1 AND ss.studio_id = s.id\n            ORDER BY ss.modified_at DESC\n            LIMIT 1\n        ) AS modified_at\n        FROM projects\n        WHERE id = $1 AND user_id = $2\n        LIMIT 1"
+  },
   "069c6404909c217e0b27e974480cce3f592a0d43ece6dec17fbcee37ce7a6ffa": {
     "describe": {
       "columns": [
@@ -793,30 +817,6 @@
       }
     },
     "query": "UPDATE studio_snapshots SET modified_at = ? WHERE id = ?"
-  },
-  "91015fa610163b6e9cf6c6e2b9f1e4519539bd5b651c96155dda6d9f0363a166": {
-    "describe": {
-      "columns": [
-        {
-          "name": "name",
-          "ordinal": 0,
-          "type_info": "Text"
-        },
-        {
-          "name": "modified_at",
-          "ordinal": 1,
-          "type_info": "Datetime"
-        }
-      ],
-      "nullable": [
-        true,
-        true
-      ],
-      "parameters": {
-        "Right": 2
-      }
-    },
-    "query": "SELECT name, (\n            SELECT ss.modified_at\n            FROM studio_snapshots ss\n            JOIN studios s ON s.project_id = $1 AND ss.studio_id = s.id\n            ORDER BY ss.modified_at DESC\n            LIMIT 1\n        ) AS modified_at\n        FROM projects\n        WHERE id = $1 AND user_id = $2"
   },
   "9146d9c8a7f17cc65c017cb364d1a853a9163b5ece336c0a6ef4e28e8df56a6b": {
     "describe": {
