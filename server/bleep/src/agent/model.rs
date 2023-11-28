@@ -32,11 +32,11 @@ pub const GPT_3_5_TURBO_FINETUNED: AnswerModel = AnswerModel {
 };
 
 pub const GPT_4: AnswerModel = AnswerModel {
-    tokenizer: "gpt-4-0613",
-    model_name: "gpt-4-0613",
-    answer_headroom: 1024,
-    prompt_headroom: 2500,
-    history_headroom: 2048,
+    tokenizer: "gpt-4-1106-preview",
+    model_name: "gpt-4-1106-preview",
+    answer_headroom: 1024 + 120000 - 16000,
+    prompt_headroom: 2500+ 120000 - 16000,
+    history_headroom: 2048+ 120000 - 16000,
     system_prompt: prompts::answer_article_prompt,
 };
 
