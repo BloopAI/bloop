@@ -143,7 +143,7 @@ const LocalRepos = ({}: Props) => {
         .filter((r) => r.provider === RepoProvider.Local)
         .map((r) => ({
           Component: RepoItem,
-          componentProps: { repo: { ...r, shortName: r.name } },
+          componentProps: { repo: { ...r, shortName: r.name }, refetchRepos },
           key: r.ref,
         }));
       if (!mapped.length) {

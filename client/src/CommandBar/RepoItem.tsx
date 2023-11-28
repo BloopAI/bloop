@@ -12,7 +12,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
 import { CommandBarStepEnum, RepoUi, SyncStatus } from '../types/general';
-import { cancelSync, syncRepo } from '../services/api';
+import { cancelSync, deleteRepo, syncRepo } from '../services/api';
 import { RepositoryIcon } from '../icons';
 import { DeviceContext } from '../context/deviceContext';
 import LiteLoaderContainer from '../components/Loaders/LiteLoader';
@@ -26,9 +26,17 @@ type Props = {
   isFocused: boolean;
   setFocusedIndex: Dispatch<SetStateAction<number>>;
   isFirst: boolean;
+  refetchRepos: () => void;
 };
 
-const RepoItem = ({ repo, isFirst, setFocusedIndex, isFocused, i }: Props) => {
+const RepoItem = ({
+  repo,
+  isFirst,
+  setFocusedIndex,
+  isFocused,
+  i,
+  refetchRepos,
+}: Props) => {
   const { t } = useTranslation();
   const { locale } = useContext(LocaleContext);
   const [status, setStatus] = useState(repo.sync_status);
@@ -36,6 +44,11 @@ const RepoItem = ({ repo, isFirst, setFocusedIndex, isFocused, i }: Props) => {
   const [indexingStartedAt, setIndexingStartedAt] = useState(Date.now());
   const { apiUrl } = useContext(DeviceContext);
   const eventSourceRef = useRef<EventSource | null>(null);
+
+  useEffect(() => {
+    setStatus(repo.sync_status);
+    setLastIndexed(repo.last_index);
+  }, [repo.sync_status, repo.last_index]);
 
   const startEventSource = useCallback(() => {
     eventSourceRef.current = new EventSource(
@@ -113,6 +126,11 @@ const RepoItem = ({ repo, isFirst, setFocusedIndex, isFocused, i }: Props) => {
     ].includes(status);
   }, [status]);
 
+  const onRepoRemove = useCallback(async () => {
+    await deleteRepo(repo.ref);
+    refetchRepos();
+  }, [repo.ref]);
+
   return (
     <Item
       key={repo.ref}
@@ -143,6 +161,11 @@ const RepoItem = ({ repo, isFirst, setFocusedIndex, isFocused, i }: Props) => {
       footerBtns={
         status === SyncStatus.Done
           ? [
+              {
+                label: t('Remove'),
+                shortcut: ['cmd', 'bksp'],
+                action: onRepoRemove,
+              },
               {
                 label: t('Re-sync'),
                 shortcut: ['cmd', 'R'],

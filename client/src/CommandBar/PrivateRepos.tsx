@@ -42,7 +42,7 @@ const PrivateReposStep = ({}: Props) => {
     const mapped = mapGitHubRepos(data.list).map((o) => ({
       items: o.items.map((r) => ({
         Component: RepoItem,
-        componentProps: { repo: r },
+        componentProps: { repo: r, refetchRepos },
         key: r.ref,
       })),
       itemsOffset: o.offset,

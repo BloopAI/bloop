@@ -84,7 +84,10 @@ const PublicRepos = ({}: Props) => {
         .filter((r) => r.provider !== RepoProvider.Local)
         .map((r) => ({
           Component: RepoItem,
-          componentProps: { repo: { ...r, shortName: r.ref.split('/').pop() } },
+          componentProps: {
+            repo: { ...r, shortName: r.ref.split('/').pop() },
+            refetchRepos,
+          },
           key: r.ref,
         }));
       if (!mapped.length) {
