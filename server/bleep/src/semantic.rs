@@ -9,7 +9,7 @@ use qdrant_client::{
         point_id::PointIdOptions, r#match::MatchValue, vectors::VectorsOptions,
         with_payload_selector, with_vectors_selector, CollectionOperationResponse, FieldCondition,
         FieldType, Filter, Match, PointId, PointsOperationResponse, RetrievedPoint, ScoredPoint,
-        SearchPoints, Value, Vectors, WithPayloadSelector, WithVectorsSelector,
+        SearchParams, SearchPoints, Value, Vectors, WithPayloadSelector, WithVectorsSelector,
     },
 };
 
@@ -379,6 +379,10 @@ impl Semantic {
                 }),
                 with_vectors: Some(WithVectorsSelector {
                     selector_options: Some(with_vectors_selector::SelectorOptions::Enable(true)),
+                }),
+                params: Some(SearchParams {
+                    indexed_only: Some(true),
+                    ..Default::default()
                 }),
                 ..Default::default()
             })

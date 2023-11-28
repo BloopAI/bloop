@@ -57,7 +57,7 @@ async fn wait_for_qdrant() -> anyhow::Result<()> {
     let qdrant =
         QdrantClient::new(Some(QdrantClientConfig::from_url("http://127.0.0.1:6334"))).unwrap();
 
-    for _ in 0..35 {
+    for _ in 0..60 {
         if qdrant.health_check().await.is_ok() {
             return Ok(());
         }
