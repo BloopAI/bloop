@@ -468,5 +468,8 @@
 	"Paste a link to any public repository hosted on GitHub": "Paste a link to any public repository hosted on GitHub",
 	"Indexed local repositories": "Indexed local repositories",
 	"Add local repository": "Add local repository",
-	"Select a folder containing a git repository": "Select a folder containing a git repository"
+	"Select a folder containing a git repository": "Select a folder containing a git repository",
+	"Add any library documentation": "Add any library documentation",
+	"Paste a link to any documentation web page": "Paste a link to any documentation web page",
+	"Indexed documentation web pages": "Indexed documentation web pages"
 }

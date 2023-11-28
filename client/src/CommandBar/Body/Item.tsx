@@ -76,10 +76,14 @@ const CommandBarItem = ({
         (isFocused && shortAction && !shortAction.action) ||
         checkEventKeys(e, shortcut)
       ) {
+        e.preventDefault();
+        e.stopPropagation();
         handleClick();
         return;
       }
       if (isFocused && shortAction?.action) {
+        e.preventDefault();
+        e.stopPropagation();
         shortAction.action();
       }
     },

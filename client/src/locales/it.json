@@ -445,5 +445,6 @@
 	"Paste a link to any public repository hosted on GitHub": "Incolla un collegamento a qualsiasi repository pubblico ospitato su GitHub",
 	"Indexed local repositories": "Repository locali indicizzati",
 	"Add local repository": "Aggiungi repository locale",
-	"Select a folder containing a git repository": "Seleziona una cartella contenente un repository Git"
+	"Select a folder containing a git repository": "Seleziona una cartella contenente un repository Git",
+	"Indexed documentation web pages": "Pagine Web di documentazione indicizzata"
 }

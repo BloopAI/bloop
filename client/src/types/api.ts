@@ -357,6 +357,7 @@ export type DocShortType = {
   name: string;
   url: string;
   favicon: string;
+  index_status: string;
 };
 
 export type DocPageType = {

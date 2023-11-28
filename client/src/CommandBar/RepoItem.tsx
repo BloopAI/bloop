@@ -44,7 +44,6 @@ const RepoItem = ({ repo, isFirst, setFocusedIndex, isFocused, i }: Props) => {
     eventSourceRef.current.onmessage = (ev) => {
       try {
         const data = JSON.parse(ev.data);
-        console.log(data, repo.ref);
         if (data.ev?.status_change && data.ref === repo.ref) {
           setStatus(data.ev?.status_change);
           if (data.ev?.status_change === SyncStatus.Done) {

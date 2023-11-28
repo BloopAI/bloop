@@ -37,6 +37,9 @@ export const checkEventKeys = (e: KeyboardEvent, shortcut?: string[]) => {
   if (e.key === 'Enter' && keys.includes('entr')) {
     return true;
   }
+  if (e.key === 'Backspace' && keys.includes('bksp')) {
+    return true;
+  }
   if (e.key === 'Escape' && keys.includes('esc')) {
     return true;
   }

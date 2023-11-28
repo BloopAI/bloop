@@ -459,5 +459,6 @@
 	"Paste a link to any public repository hosted on GitHub": "GitHubでホストされている公開リポジトリへのリンクを貼り付けます",
 	"Indexed local repositories": "インデックス付きローカルリポジトリ",
 	"Add local repository": "ローカルリポジトリを追加します",
-	"Select a folder containing a git repository": "GITリポジトリを含むフォルダーを選択します"
+	"Select a folder containing a git repository": "GITリポジトリを含むフォルダーを選択します",
+	"Paste a link to any documentation web page": "ドキュメントWebページへのリンクを貼り付けます"
 }
