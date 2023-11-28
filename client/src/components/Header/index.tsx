@@ -1,11 +1,11 @@
-import React, { memo, useContext, useEffect } from 'react';
+import React, { memo, useContext } from 'react';
 import { ChevronDownIcon, KLetterIcon, PersonIcon } from '../../icons';
 import { DeviceContext } from '../../context/deviceContext';
 import Button from '../Button';
 import Dropdown from '../Dropdown';
 import { EnvContext } from '../../context/envContext';
 import UserDropdown from './UserDropdown';
-import ProjectsDropdown from './ProjetcsDropdown';
+import ProjectsDropdown from './ProjectsDropdown';
 
 type Props = {
   isSkeleton?: boolean;
