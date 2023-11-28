@@ -75,17 +75,19 @@ pub async fn create(
 
 #[derive(serde::Serialize)]
 pub struct Get {
+    id: i64,
     name: String,
+    modified_at: Option<NaiveDateTime>,
 }
 
 pub async fn get(
     app: Extension<Application>,
     user: Extension<User>,
     Path(id): Path<i64>,
-) -> webserver::Result<Json<Vec<Get>>> {
+) -> webserver::Result<Json<Get>> {
     let user_id = user.username().ok_or_else(super::no_user_id)?.to_string();
 
-    let projects = sqlx::query! {
+    sqlx::query! {
         "SELECT name, (
             SELECT ss.modified_at
             FROM studio_snapshots ss
@@ -94,19 +96,20 @@ pub async fn get(
             LIMIT 1
         ) AS modified_at
         FROM projects
-        WHERE id = $1 AND user_id = $2",
+        WHERE id = $1 AND user_id = $2
+        LIMIT 1",
         id,
         user_id,
     }
-    .fetch_all(&*app.sql)
-    .await?
-    .into_iter()
+    .fetch_one(&*app.sql)
+    .await
+    .map_err(Error::not_found)
     .map(|row| Get {
+        id,
         name: row.name.unwrap_or_else(default_name),
+        modified_at: row.modified_at,
     })
-    .collect();
-
-    Ok(Json(projects))
+    .map(Json)
 }
 
 #[derive(serde::Deserialize)]
