@@ -57,7 +57,7 @@ pub struct Create {
 pub async fn create(
     app: Extension<Application>,
     user: Extension<User>,
-    Query(params): Query<Create>,
+    Json(params): Json<Create>,
 ) -> webserver::Result<String> {
     let user_id = user.username().ok_or_else(super::no_user_id)?.to_string();
 
