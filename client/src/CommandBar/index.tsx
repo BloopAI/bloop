@@ -3,6 +3,7 @@ import Modal from '../components/Modal';
 import useKeyboardNavigation from '../hooks/useKeyboardNavigation';
 import { CommandBarStepEnum } from '../types/general';
 import { CommandBarContext } from '../context/commandBarContext';
+import { isFocusInInput } from '../utils/domUtils';
 import Initial from './steps/Initial';
 import PrivateRepos from './steps/PrivateRepos';
 import PublicRepos from './steps/PublicRepos';
@@ -25,7 +26,7 @@ const CommandBar = ({}: Props) => {
 
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
-      if (e.key === 'k') {
+      if (e.key === 'k' && !isFocusInInput()) {
         e.stopPropagation();
         e.preventDefault();
         setIsVisible(true);

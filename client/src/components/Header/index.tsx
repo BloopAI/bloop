@@ -36,7 +36,7 @@ const Header = ({ isSkeleton }: Props) => {
         )}
         <Dropdown
           dropdownItems={<ProjectsDropdown />}
-          dropdownPlacement="bottom-end"
+          dropdownPlacement="bottom-start"
         >
           <div className="flex w-72 px-4 items-center text-left h-10 gap-4 border-r border-bg-border hover:bg-bg-base-hover">
             <p className="flex-1 body-s">
