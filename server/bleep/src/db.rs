@@ -2,7 +2,7 @@ use std::{path::Path, sync::Arc};
 
 use anyhow::{Context, Result};
 use sqlx::SqlitePool;
-use tracing::{debug, warn};
+use tracing::{debug, error};
 
 use crate::Configuration;
 
@@ -22,7 +22,7 @@ pub async fn initialize(config: &Configuration) -> Result<SqlitePool> {
             Ok(pool)
         }
         Err(e) => {
-            warn!(?e, "error while migrating, recreating database...");
+            error!(?e, "error while migrating, recreating database...");
 
             reset(&data_dir)?;
             debug!("reset complete");
