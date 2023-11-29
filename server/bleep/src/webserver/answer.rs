@@ -2,7 +2,7 @@ use std::{panic::AssertUnwindSafe, time::Duration};
 
 use anyhow::{anyhow, Context, Result};
 use axum::{
-    extract::Query,
+    extract::{Query, Path},
     response::{
         sse::{self, Sse},
         IntoResponse,
@@ -14,7 +14,7 @@ use reqwest::StatusCode;
 use serde_json::json;
 use tracing::{debug, error, info, warn};
 
-use self::conversations::ConversationId;
+use super::conversation::ConversationId;
 
 use super::middleware::User;
 use crate::{
@@ -27,10 +27,8 @@ use crate::{
     db::QueryLog,
     query::parser::{self, Literal},
     repo::RepoRef,
-    Application,
+    Application, webserver::conversation,
 };
-
-pub mod conversations;
 
 const TIMEOUT_SECS: u64 = 60;
 
@@ -70,8 +68,6 @@ pub struct Answer {
     pub project: String,
     #[serde(default = "default_model")]
     pub model: agent::model::AnswerModel,
-    #[serde(default = "default_thread_id")]
-    pub thread_id: uuid::Uuid,
     /// Optional id of the parent of the exchange to overwrite
     /// If this UUID is nil, then overwrite the first exchange in the thread
     pub parent_exchange_id: Option<uuid::Uuid>,
@@ -89,6 +85,7 @@ pub(super) async fn answer(
     Query(params): Query<Answer>,
     Extension(app): Extension<Application>,
     Extension(user): Extension<User>,
+    Path((project_id, conversation_id)): Path<(i64, i64)>,
 ) -> super::Result<impl IntoResponse> {
     info!(?params.q, "handling /answer query");
     let query_id = uuid::Uuid::new_v4();
@@ -98,10 +95,11 @@ pub(super) async fn answer(
             .username()
             .ok_or_else(|| super::Error::user("didn't have user ID"))?
             .to_string(),
-        thread_id: params.thread_id,
+        project_id,
+        conversation_id,
     };
 
-    let mut exchanges = conversations::load(&app.sql, &conversation_id)
+    let mut exchanges = conversation::load(&app.sql, &conversation_id)
         .await?
         .unwrap_or_default();
 
@@ -206,11 +204,15 @@ async fn try_execute_agent(
 > {
     QueryLog::new(&app.sql).insert(&params.q).await?;
 
+    let username = user
+        .username()
+        .ok_or_else(|| super::Error::user("didn't have user ID"))?;
+
     let llm_gateway = user
         .llm_gateway(&app)
         .await?
         .temperature(0.0)
-        .session_reference_id(conversation_id.to_string());
+        .session_reference_id(format!("{username}::{}", conversation_id.thread_id));
 
     // confirm client compatibility with answer-api
     match llm_gateway

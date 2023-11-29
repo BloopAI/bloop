@@ -20,19 +20,14 @@ pub type Conversation = (Project, Vec<Exchange>);
 
 #[derive(Hash, PartialEq, Eq, Clone)]
 pub struct ConversationId {
-    pub thread_id: uuid::Uuid,
+    pub conversation_id: i64,
+    pub project_id: i64,
     pub user_id: String,
-}
-
-impl fmt::Display for ConversationId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}::{}", self.user_id, self.thread_id)
-    }
 }
 
 #[derive(serde::Serialize)]
 pub struct ConversationPreview {
-    pub thread_id: String,
+    pub id: i64,
     pub created_at: i64,
     pub title: String,
 }
@@ -46,6 +41,7 @@ pub(in crate::webserver) async fn list(
     Extension(user): Extension<User>,
     Query(query): Query<List>,
     State(app): State<Application>,
+    Path(project_id): Path<i64>,
 ) -> webserver::Result<impl IntoResponse> {
     let db = app.sql.as_ref();
     let user_id = user
@@ -56,10 +52,11 @@ pub(in crate::webserver) async fn list(
         let repo_ref = repo_ref.to_string();
         sqlx::query_as! {
             ConversationPreview,
-            "SELECT thread_id, created_at, title \
-             FROM conversations \
-             WHERE user_id = ? AND repo_ref = ? \
-             ORDER BY created_at DESC",
+            "SELECT c.id as 'id!', c.created_at, c.title \
+            FROM conversations c \
+            JOIN projects p ON p.id = c.project_id AND p.user_id = ? \
+            WHERE c.repo_ref = ? \
+            ORDER BY c.created_at DESC",
             user_id,
             repo_ref,
         }
@@ -68,10 +65,10 @@ pub(in crate::webserver) async fn list(
     } else {
         sqlx::query_as! {
             ConversationPreview,
-            "SELECT thread_id, created_at, title \
-             FROM conversations \
-             WHERE user_id = ? \
-             ORDER BY created_at DESC",
+            "SELECT c.id as 'id!', c.created_at, c.title \
+            FROM conversations c \
+            JOIN projects p ON p.id = c.project_id AND p.user_id = ?
+            ORDER BY c.created_at DESC",
             user_id,
         }
         .fetch_all(db)
@@ -82,15 +79,10 @@ pub(in crate::webserver) async fn list(
     Ok(Json(conversations))
 }
 
-#[derive(serde::Deserialize)]
-pub(in crate::webserver) struct Delete {
-    thread_id: String,
-}
-
 pub(in crate::webserver) async fn delete(
-    Query(params): Query<Delete>,
     Extension(user): Extension<User>,
     State(app): State<Application>,
+    Path((project_id, conversation_id)): Path<(i64, i64)>,
 ) -> webserver::Result<()> {
     let db = app.sql.as_ref();
     let user_id = user
@@ -98,9 +90,15 @@ pub(in crate::webserver) async fn delete(
         .ok_or_else(|| Error::user("missing user ID"))?;
 
     let result = sqlx::query! {
-        "DELETE FROM conversations WHERE user_id = ? AND thread_id = ?",
+        "DELETE FROM conversations
+        WHERE id = $1 AND project_id = $2 AND EXISTS (
+            SELECT p.id
+            FROM projects p
+            WHERE p.id = $2 AND p.user_id = $3
+        )",
+        conversation_id,
+        project_id,
         user_id,
-        params.thread_id,
     }
     .execute(db)
     .await
@@ -113,8 +111,8 @@ pub(in crate::webserver) async fn delete(
     Ok(())
 }
 
-pub(in crate::webserver) async fn thread(
-    Path(thread_id): Path<uuid::Uuid>,
+pub(in crate::webserver) async fn get(
+    Path((project_id, conversation_id)): Path<(i64, i64)>,
     Extension(user): Extension<User>,
     State(app): State<Application>,
 ) -> webserver::Result<impl IntoResponse> {
@@ -123,7 +121,7 @@ pub(in crate::webserver) async fn thread(
         .ok_or_else(|| Error::user("missing user ID"))?
         .to_owned();
 
-    let exchanges = load(&app.sql, &ConversationId { thread_id, user_id })
+    let exchanges = load(&app.sql, &ConversationId { conversation_id, project_id, user_id })
         .await?
         .ok_or_else(|| Error::new(ErrorKind::NotFound, "thread was not found"))?;
 
@@ -136,11 +134,11 @@ pub(in crate::webserver) async fn thread(
 }
 
 pub async fn store(db: &SqlDb, id: ConversationId, conversation: Conversation) -> Result<()> {
-    info!("writing conversation {}-{}", id.user_id, id.thread_id);
+    info!("writing conversation {}-{}", id.user_id, id.conversation_id);
     let mut transaction = db.begin().await?;
 
     // Delete the old conversation for simplicity. This also deletes all its messages.
-    let (user_id, thread_id) = (id.user_id.clone(), id.thread_id.to_string());
+    let (user_id, thread_id) = (id.user_id.clone(), id.conversation_id.to_string());
     sqlx::query! {
         "DELETE FROM conversations \
             WHERE user_id = ? AND thread_id = ?",
@@ -179,7 +177,7 @@ pub async fn store(db: &SqlDb, id: ConversationId, conversation: Conversation) -
 }
 
 pub async fn load(db: &SqlDb, id: &ConversationId) -> Result<Option<Vec<Exchange>>> {
-    let (user_id, thread_id) = (id.user_id.clone(), id.thread_id.to_string());
+    let (user_id, thread_id) = (id.user_id.clone(), id.conversation_id.to_string());
 
     let row = sqlx::query! {
         "SELECT repo_ref, exchanges FROM conversations \

@@ -14,7 +14,7 @@ use uuid::Uuid;
 #[derive(Debug, Clone)]
 pub struct QueryEvent {
     pub query_id: Uuid,
-    pub thread_id: Uuid,
+    pub conversation_id: i64,
     pub data: EventData,
 }
 
@@ -236,7 +236,7 @@ impl RudderHub {
                 properties: Some(json!({
                     "device_id": self.device_id(),
                     "query_id": event.query_id,
-                    "thread_id": event.thread_id,
+                    "conversation_id": event.conversation_id,
                     "data": event.data,
                     "package_metadata": options.package_metadata,
                 })),

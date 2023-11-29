@@ -18,6 +18,7 @@ pub mod answer;
 mod autocomplete;
 mod commits;
 mod config;
+pub mod conversation;
 mod docs;
 mod file;
 mod github;
@@ -86,22 +87,22 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         .route("/search/code", get(search::semantic_code))
         .route("/search/path", get(search::fuzzy_path))
         .route("/file", get(file::handle))
-        .route("/answer", get(answer::answer))
-        .route("/answer/explain", get(answer::explain))
-        .route(
-            "/answer/conversations",
-            get(answer::conversations::list).delete(answer::conversations::delete),
-        )
-        .route(
-            "/answer/conversations/:thread_id",
-            get(answer::conversations::thread),
-        )
-        .route("/answer/vote", post(answer::vote))
         .route("/projects", get(project::list).post(project::create))
         .route(
             "/projects/:project_id",
             get(project::get).put(project::update),
         )
+        .route(
+            "/projects/:project_id/conversations",
+            get(conversation::list).delete(conversation::delete),
+        )
+        .route(
+            "/projects/:project_id/conversations/:conversation_id",
+            get(conversation::get),
+        )
+        .route("/projects/:project_id/conversations/:conversation_id/answer/vote", post(answer::vote))
+        .route("/projects/:project_id/conversations/:conversation_id/answer", get(answer::answer))
+        .route("/projects/:project_id/conversations/:conversation_id/answer/explain", get(answer::explain))
         .route("/projects/:project_id/studios", post(studio::create))
         .route("/projects/:project_id/studios", get(studio::list))
         .route(
