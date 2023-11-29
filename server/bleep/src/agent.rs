@@ -14,7 +14,7 @@ use crate::{
     repo::RepoRef,
     semantic,
     webserver::{
-        answer::conversations::{self, ConversationId},
+        conversation::{self, ConversationId},
         middleware::User,
     },
     Application,
@@ -479,7 +479,7 @@ impl Agent {
         async move {
             let result = match conversation_id {
                 Ok(conversation_id) => {
-                    conversations::store(&sql, conversation_id, conversation).await
+                    conversation::store(&sql, conversation_id, conversation).await
                 }
                 Err(e) => Err(e),
             };
