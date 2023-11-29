@@ -58,6 +58,7 @@ pub struct Agent {
     pub query_id: uuid::Uuid,
 
     pub model: model::AnswerModel,
+    pub agent_model: model::AnswerModel,
 
     /// Indicate whether the request was answered.
     ///
@@ -220,7 +221,7 @@ impl Agent {
         ))];
         history.extend(self.history()?);
 
-        let trimmed_history = trim_history(history.clone(), self.model)?;
+        let trimmed_history = trim_history(history.clone(), self.agent_model)?;
 
         let raw_response = self
             .llm_gateway

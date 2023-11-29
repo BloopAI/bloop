@@ -31,12 +31,21 @@ pub const GPT_3_5_TURBO_FINETUNED: AnswerModel = AnswerModel {
     system_prompt: prompts::answer_article_prompt_finetuned,
 };
 
-pub const GPT_4: AnswerModel = AnswerModel {
+pub const GPT_4_TURBO_24K: AnswerModel = AnswerModel {
     tokenizer: "gpt-4-1106-preview",
     model_name: "gpt-4-1106-preview",
     answer_headroom: 1024 + 120000 - 16000,
-    prompt_headroom: 2500+ 120000 - 16000,
-    history_headroom: 2048+ 120000 - 16000,
+    prompt_headroom: 2500 + 120000 - 16000,
+    history_headroom: 2048 + 120000 - 16000,
+    system_prompt: prompts::answer_article_prompt,
+};
+
+pub const GPT_4: AnswerModel = AnswerModel {
+    tokenizer: "gpt-4-0613",
+    model_name: "gpt-4-0613",
+    answer_headroom: 1024,
+    prompt_headroom: 2500,
+    history_headroom: 2048,
     system_prompt: prompts::answer_article_prompt,
 };
 
@@ -46,7 +55,9 @@ impl FromStr for AnswerModel {
         #[allow(clippy::wildcard_in_or_patterns)]
         match s {
             "gpt-4" => Ok(GPT_4),
+            "gpt-4-turbo-24k" => Ok(GPT_4_TURBO_24K),
             "gpt-3.5-turbo-finetuned" | _ => Ok(GPT_3_5_TURBO_FINETUNED),
+            
         }
     }
 }
