@@ -1,4 +1,5 @@
 import {
+  ChangeEvent,
   memo,
   useCallback,
   useContext,
@@ -29,6 +30,11 @@ const PublicRepos = ({}: Props) => {
   const { setChosenStep, setFocusedItem } = useContext(
     CommandBarContext.Handlers,
   );
+  const [inputValue, setInputValue] = useState('');
+
+  const handleInputChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+    setInputValue(e.target.value);
+  }, []);
 
   const enterAddMode = useCallback(() => {
     setFocusedItem({
@@ -146,14 +152,41 @@ const PublicRepos = ({}: Props) => {
       });
   }, []);
 
+  const sectionsToShow = useMemo(() => {
+    if (!inputValue) {
+      return sections;
+    }
+    const newSections: CommandBarSectionType[] = [];
+    sections.forEach((s) => {
+      const newItems = s.items.filter((i) =>
+        ('label' in i ? i.label : i.componentProps.repo.shortName)
+          .toLowerCase()
+          .startsWith(inputValue.toLowerCase()),
+      );
+      if (newItems.length) {
+        newSections.push({ ...s, items: newItems });
+      }
+    });
+    return newSections;
+  }, [inputValue, sections]);
+
   return (
     <div className="w-full flex flex-col max-h-[28.875rem] max-w-[40rem] overflow-auto">
       <Header
         breadcrumbs={breadcrumbs}
+        placeholder={
+          isAddMode
+            ? t('Repository URL...')
+            : t('Search public repositories...')
+        }
         handleBack={handleBack}
+        value={inputValue}
+        onChange={handleInputChange}
         customSubmitHandler={isAddMode ? handleAddSubmit : undefined}
       />
-      {isAddMode ? null : <Body sections={sections} />}
+      {isAddMode || !sectionsToShow.length ? null : (
+        <Body sections={sectionsToShow} />
+      )}
       <Footer />
     </div>
   );

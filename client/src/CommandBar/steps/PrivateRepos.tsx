@@ -1,4 +1,5 @@
 import {
+  ChangeEvent,
   memo,
   useCallback,
   useContext,
@@ -12,6 +13,7 @@ import {
   CommandBarItemCustomType,
   CommandBarSectionType,
   CommandBarStepEnum,
+  RepoProvider,
   SyncStatus,
 } from '../../types/general';
 import { getRepos } from '../../services/api';
@@ -36,10 +38,17 @@ const PrivateReposStep = ({}: Props) => {
   );
   const { setChosenStep } = useContext(CommandBarContext.Handlers);
   const [filter, setFilter] = useState('All');
+  const [inputValue, setInputValue] = useState('');
+
+  const handleInputChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+    setInputValue(e.target.value);
+  }, []);
 
   const refetchRepos = useCallback(async () => {
     const data = await getRepos();
-    const mapped = mapGitHubRepos(data.list).map((o) => ({
+    const mapped = mapGitHubRepos(
+      data.list.filter((r) => r.provider !== RepoProvider.Local),
+    ).map((o) => ({
       items: o.items.map((r) => ({
         Component: RepoItem,
         componentProps: { repo: r, refetchRepos },
@@ -52,7 +61,7 @@ const PrivateReposStep = ({}: Props) => {
   }, []);
 
   useEffect(() => {
-    if (filter === 'All') {
+    if (filter === 'All' && !inputValue) {
       setSectionsToShow(sections);
       return;
     }
@@ -60,14 +69,29 @@ const PrivateReposStep = ({}: Props) => {
     sections.forEach((s) => {
       const items = (s.items as CommandBarItemCustomType[]).filter((item) => {
         if (filter === 'Indexing') {
-          return [
-            SyncStatus.Syncing,
-            SyncStatus.Indexing,
-            SyncStatus.Queued,
-          ].includes(item.componentProps.repo.sync_status);
+          return (
+            [
+              SyncStatus.Syncing,
+              SyncStatus.Indexing,
+              SyncStatus.Queued,
+            ].includes(item.componentProps.repo.sync_status) &&
+            item.componentProps.repo.shortName
+              .toLowerCase()
+              .startsWith(inputValue.toLowerCase())
+          );
         }
         if (filter === 'Indexed') {
-          return item.componentProps.repo.sync_status === SyncStatus.Done;
+          return (
+            item.componentProps.repo.sync_status === SyncStatus.Done &&
+            item.componentProps.repo.shortName
+              .toLowerCase()
+              .startsWith(inputValue.toLowerCase())
+          );
+        }
+        if (filter === 'All') {
+          return item.componentProps.repo.shortName
+            .toLowerCase()
+            .startsWith(inputValue.toLowerCase());
         }
         return false;
       });
@@ -84,7 +108,7 @@ const PrivateReposStep = ({}: Props) => {
       }
     });
     setSectionsToShow(newSectionsToShow);
-  }, [sections, filter]);
+  }, [sections, filter, inputValue]);
 
   useEffect(() => {
     refetchRepos();
@@ -133,6 +157,9 @@ const PrivateReposStep = ({}: Props) => {
       <Header
         breadcrumbs={breadcrumbs}
         handleBack={handleBack}
+        value={inputValue}
+        onChange={handleInputChange}
+        placeholder={t('Search private repos...')}
         customRightComponent={
           <Dropdown
             dropdownItems={filterDropdownItems}
@@ -145,7 +172,7 @@ const PrivateReposStep = ({}: Props) => {
           </Dropdown>
         }
       />
-      <Body sections={sectionsToShow} />
+      {!!sectionsToShow.length && <Body sections={sectionsToShow} />}
       <Footer />
     </div>
   );

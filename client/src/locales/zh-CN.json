@@ -472,5 +472,10 @@
 	"Paste a link to any documentation web page": "将链接粘贴到任何文档网页",
 	"Switch to": "切换到",
 	"Manage project": "管理项目",
-	"Provide a short, concise title for your project": "为您的项目提供简短，简洁的标题"
+	"Provide a short, concise title for your project": "为您的项目提供简短，简洁的标题",
+	"Search docs...": "搜索文档...",
+	"Search local repos...": "搜索本地存储库...",
+	"Search private repos...": "搜索私人存储库...",
+	"Search public repositories...": "搜索公共存储库...",
+	"Repository URL...": "存储库URL ..."
 }

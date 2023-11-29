@@ -1,4 +1,12 @@
-import { memo, useCallback, useContext, useEffect, useMemo } from 'react';
+import {
+  ChangeEvent,
+  memo,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import Header from '../Header';
 import Footer from '../Footer';
@@ -11,12 +19,17 @@ type Props = {};
 
 const CreateProject = ({}: Props) => {
   const { t } = useTranslation();
+  const [inputValue, setInputValue] = useState('');
   const { setChosenStep, setFocusedItem } = useContext(
     CommandBarContext.Handlers,
   );
   const { setCurrentProjectId } = useContext(ProjectContext.Current);
   const { refreshAllProjects } = useContext(ProjectContext.All);
   const { setIsVisible } = useContext(CommandBarContext.General);
+
+  const handleInputChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+    setInputValue(e.target.value);
+  }, []);
 
   useEffect(() => {
     setFocusedItem({
@@ -41,6 +54,7 @@ const CreateProject = ({}: Props) => {
 
   const submitHandler = useCallback(
     async (value: string) => {
+      setInputValue('');
       const newId = await createProject(value);
       switchProject(newId);
     },
@@ -53,6 +67,9 @@ const CreateProject = ({}: Props) => {
         breadcrumbs={breadcrumbs}
         handleBack={handleBack}
         customSubmitHandler={submitHandler}
+        placeholder={t('Untitled project')}
+        value={inputValue}
+        onChange={handleInputChange}
       />
       <Footer />
     </div>

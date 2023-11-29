@@ -1,4 +1,5 @@
 import {
+  ChangeEvent,
   memo,
   useCallback,
   useContext,
@@ -28,6 +29,11 @@ const Documentation = ({}: Props) => {
   const { setChosenStep, setFocusedItem } = useContext(
     CommandBarContext.Handlers,
   );
+  const [inputValue, setInputValue] = useState('');
+
+  const handleInputChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+    setInputValue(e.target.value);
+  }, []);
 
   const enterAddMode = useCallback(() => {
     setFocusedItem({
@@ -113,6 +119,7 @@ const Documentation = ({}: Props) => {
         key: addedDoc,
       });
     }
+    console.log(mapped);
     setSections([
       addItem,
       {
@@ -133,6 +140,7 @@ const Documentation = ({}: Props) => {
     setFocusedItem({
       footerHint: t('Verifying access...'),
     });
+    setInputValue('');
     verifyDocsUrl(inputValue.trim())
       .then(() => {
         setIsAddMode(false);
@@ -147,14 +155,37 @@ const Documentation = ({}: Props) => {
       });
   }, []);
 
+  const sectionsToShow = useMemo(() => {
+    if (!inputValue) {
+      return sections;
+    }
+    const newSections: CommandBarSectionType[] = [];
+    sections.forEach((s) => {
+      const newItems = s.items.filter((i) =>
+        ('label' in i ? i.label : i.componentProps.doc.name)
+          .toLowerCase()
+          .startsWith(inputValue.toLowerCase()),
+      );
+      if (newItems.length) {
+        newSections.push({ ...s, items: newItems });
+      }
+    });
+    return newSections;
+  }, [inputValue, sections]);
+
   return (
     <div className="w-full flex flex-col max-h-[28.875rem] max-w-[40rem] overflow-auto">
       <Header
         breadcrumbs={breadcrumbs}
         handleBack={handleBack}
         customSubmitHandler={isAddMode ? handleAddSubmit : undefined}
+        placeholder={
+          isAddMode ? t('Documentation URL...') : t('Search docs...')
+        }
+        onChange={handleInputChange}
+        value={inputValue}
       />
-      {isAddMode ? null : <Body sections={sections} />}
+      {isAddMode ? null : <Body sections={sectionsToShow} />}
       <Footer />
     </div>
   );

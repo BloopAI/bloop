@@ -466,5 +466,10 @@
 	"Add any library documentation": "Agregue cualquier documentación de la biblioteca",
 	"Switch to": "Cambiar a",
 	"Manage project": "Administrar proyecto",
-	"Provide a short, concise title for your project": "Proporcione un título corto y conciso para su proyecto"
+	"Provide a short, concise title for your project": "Proporcione un título corto y conciso para su proyecto",
+	"Documentation URL...": "URL de documentación ...",
+	"Search local repos...": "Buscar repos locales ...",
+	"Search private repos...": "Buscar reposes privados ...",
+	"Search public repositories...": "Buscar repositorios públicos ...",
+	"Repository URL...": "URL de repositorio ..."
 }

@@ -475,5 +475,11 @@
 	"Switch to": "Switch to",
 	"Manage project": "Manage project",
 	"Create project": "Create project",
-	"Provide a short, concise title for your project": "Provide a short, concise title for your project"
+	"Provide a short, concise title for your project": "Provide a short, concise title for your project",
+	"Search docs...": "Search docs...",
+	"Documentation URL...": "Documentation URL...",
+	"Search local repos...": "Search local repos...",
+	"Search private repos...": "Search private repos...",
+	"Search public repositories...": "Search public repositories...",
+	"Repository URL...": "Repository URL..."
 }

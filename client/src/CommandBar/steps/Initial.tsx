@@ -1,4 +1,11 @@
-import { memo, useCallback, useContext, useMemo } from 'react';
+import {
+  ChangeEvent,
+  memo,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ProjectContext } from '../../context/projectContext';
 import { MagazineIcon } from '../../icons';
@@ -7,6 +14,10 @@ import Header from '../Header';
 import Body from '../Body';
 import Footer from '../Footer';
 import { getContextItems } from '../items';
+import {
+  CommandBarItemGeneralType,
+  CommandBarSectionType,
+} from '../../types/general';
 
 type Props = {};
 
@@ -15,6 +26,11 @@ const InitialCommandBar = ({}: Props) => {
   const { setIsVisible } = useContext(CommandBarContext.General);
   const { projects } = useContext(ProjectContext.All);
   const { setCurrentProjectId, project } = useContext(ProjectContext.Current);
+  const [inputValue, setInputValue] = useState('');
+
+  const handleInputChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+    setInputValue(e.target.value);
+  }, []);
 
   const switchProject = useCallback((id: string) => {
     setCurrentProjectId(id);
@@ -22,8 +38,8 @@ const InitialCommandBar = ({}: Props) => {
   }, []);
 
   const initialSections = useMemo(() => {
-    const contextItems = getContextItems(t);
-    const projectItems = projects.map((p, i) => ({
+    const contextItems: CommandBarItemGeneralType[] = getContextItems(t);
+    const projectItems: CommandBarItemGeneralType[] = projects.map((p, i) => ({
       label: p.name,
       Icon: MagazineIcon,
       id: `project-${p.id}`,
@@ -55,10 +71,30 @@ const InitialCommandBar = ({}: Props) => {
     ];
   }, [t, projects, project]);
 
+  const sectionsToShow = useMemo(() => {
+    if (!inputValue) {
+      return initialSections;
+    }
+    const newSections: CommandBarSectionType[] = [];
+    initialSections.forEach((s) => {
+      const newItems = s.items.filter((i) =>
+        i.label.toLowerCase().startsWith(inputValue.toLowerCase()),
+      );
+      if (newItems.length) {
+        newSections.push({ ...s, items: newItems });
+      }
+    });
+    return newSections;
+  }, [inputValue, initialSections]);
+
   return (
     <div className="w-full flex flex-col max-h-[28.875rem] max-w-[40rem] overflow-auto">
-      <Header breadcrumbs={['Default project']} />
-      <Body sections={initialSections} />
+      <Header
+        breadcrumbs={[project?.name || 'Default project']}
+        value={inputValue}
+        onChange={handleInputChange}
+      />
+      {!!sectionsToShow.length && <Body sections={sectionsToShow} />}
       <Footer />
     </div>
   );

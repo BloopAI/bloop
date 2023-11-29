@@ -449,5 +449,10 @@
 	"Indexed documentation web pages": "Pagine Web di documentazione indicizzata",
 	"Switch to": "Passa a",
 	"Manage project": "Gestisci il progetto",
-	"Create project": "Crea progetto"
+	"Create project": "Crea progetto",
+	"Documentation URL...": "Documentazione URL ...",
+	"Search local repos...": "Cerca repos locali ...",
+	"Search private repos...": "Cerca repos privati ...",
+	"Search public repositories...": "Cerca repository pubblici ...",
+	"Repository URL...": "URL del repository ..."
 }

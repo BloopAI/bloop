@@ -463,5 +463,10 @@
 	"Paste a link to any documentation web page": "ドキュメントWebページへのリンクを貼り付けます",
 	"Switch to": "切り替える",
 	"Manage project": "プロジェクトを管理します",
-	"Provide a short, concise title for your project": "プロジェクトに短い簡潔なタイトルを提供します"
+	"Provide a short, concise title for your project": "プロジェクトに短い簡潔なタイトルを提供します",
+	"Documentation URL...": "ドキュメントURL ...",
+	"Search local repos...": "ローカルレポスを検索します...",
+	"Search private repos...": "プライベートレポを検索...",
+	"Search public repositories...": "パブリックリポジトリを検索...",
+	"Repository URL...": "リポジトリURL ..."
 }

@@ -17,6 +17,9 @@ type Props = {
   breadcrumbs?: string[];
   customRightComponent?: ReactElement;
   customSubmitHandler?: (value: string) => void;
+  onChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  placeholder?: string;
+  value: string;
 };
 
 const CommandBarHeader = ({
@@ -24,13 +27,21 @@ const CommandBarHeader = ({
   breadcrumbs,
   customRightComponent,
   customSubmitHandler,
+  onChange,
+  value,
+  placeholder,
 }: Props) => {
   const { t } = useTranslation();
-  const [value, setValue] = useState('');
   const { isVisible, setIsVisible } = useContext(CommandBarContext.General);
+  const [isComposing, setIsComposing] = useState(false);
 
-  const handleChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-    setValue(e.target.value);
+  const onCompositionStart = useCallback(() => {
+    setIsComposing(true);
+  }, []);
+
+  const onCompositionEnd = useCallback(() => {
+    // this event comes before keydown and sets state faster causing unintentional submit
+    setTimeout(() => setIsComposing(false), 10);
   }, []);
 
   const handleKeyEvent = useCallback(
@@ -44,15 +55,21 @@ const CommandBarHeader = ({
           } else {
             setIsVisible(false);
           }
-        } else if (e.key === 'Enter' && customSubmitHandler) {
+        } else if (e.key === 'Enter' && customSubmitHandler && !isComposing) {
           e.stopPropagation();
           e.preventDefault();
           customSubmitHandler(value);
-          setValue('');
         }
       }
     },
-    [isVisible, setIsVisible, handleBack, customSubmitHandler, value],
+    [
+      isVisible,
+      setIsVisible,
+      handleBack,
+      customSubmitHandler,
+      value,
+      isComposing,
+    ],
   );
   useKeyboardNavigation(handleKeyEvent);
 
@@ -76,13 +93,15 @@ const CommandBarHeader = ({
       </div>
       <input
         value={value}
-        onChange={handleChange}
-        placeholder={t('Search projects or commands...')}
+        onChange={onChange}
+        placeholder={placeholder || t('Search projects or commands...')}
         type="search"
         autoComplete="off"
         autoCorrect="off"
         className="w-full bg-transparent outline-none focus:outline-0 body-base placeholder:text-label-muted"
         autoFocus
+        onCompositionStart={onCompositionStart}
+        onCompositionEnd={onCompositionEnd}
       />
     </div>
   );
