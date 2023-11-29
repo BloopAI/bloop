@@ -469,5 +469,8 @@
 	"Indexed local repositories": "索引本地存储库",
 	"Add local repository": "添加本地存储库",
 	"Select a folder containing a git repository": "选择一个包含git存储库的文件夹",
-	"Paste a link to any documentation web page": "将链接粘贴到任何文档网页"
+	"Paste a link to any documentation web page": "将链接粘贴到任何文档网页",
+	"Switch to": "切换到",
+	"Manage project": "管理项目",
+	"Provide a short, concise title for your project": "为您的项目提供简短，简洁的标题"
 }

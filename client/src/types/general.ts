@@ -505,11 +505,8 @@ export type CommandBarStepType = {
 };
 
 export type CommandBarActiveStepType = {
-  sections: CommandBarSectionType[];
-  parents: string[];
-  inputPlaceholder?: string;
-  inputSubmitHandler?: () => void;
-  onBack: () => void;
+  id: CommandBarStepEnum;
+  data?: Record<string, any>;
 };
 
 export enum CommandBarStepEnum {
@@ -519,4 +516,5 @@ export enum CommandBarStepEnum {
   LOCAL_REPOS = 'local_repos',
   DOCS = 'docs',
   REPO_SETTINGS = 'repo_settings',
+  CREATE_PROJECT = 'create_project',
 }

@@ -1,25 +1,21 @@
-import { memo, useCallback, useState } from 'react';
+import { memo, useCallback, useContext } from 'react';
 import Modal from '../components/Modal';
 import useKeyboardNavigation from '../hooks/useKeyboardNavigation';
 import { CommandBarStepEnum } from '../types/general';
-import CommandBarContextProvider from '../context/providers/CommandBarContextProvider';
-import Initial from './Initial';
-import PrivateRepos from './PrivateRepos';
-import PublicRepos from './PublicRepos';
-import LocalRepos from './LocalRepos';
-import Documentation from './Documentation';
+import { CommandBarContext } from '../context/commandBarContext';
+import Initial from './steps/Initial';
+import PrivateRepos from './steps/PrivateRepos';
+import PublicRepos from './steps/PublicRepos';
+import LocalRepos from './steps/LocalRepos';
+import Documentation from './steps/Documentation';
+import CreateProject from './steps/CreateProject';
 
 type Props = {};
 
 const CommandBar = ({}: Props) => {
-  const [isVisible, setIsVisible] = useState(false);
-  const [chosenStep, setChosenStep] = useState<{
-    id: CommandBarStepEnum;
-    data?: Record<string, any>;
-  }>({
-    id: CommandBarStepEnum.INITIAL,
-  });
-
+  const { chosenStep } = useContext(CommandBarContext.CurrentStep);
+  const { isVisible, setIsVisible } = useContext(CommandBarContext.General);
+  const { setChosenStep } = useContext(CommandBarContext.Handlers);
   const handleClose = useCallback(() => {
     setIsVisible(false);
     setChosenStep({
@@ -45,23 +41,19 @@ const CommandBar = ({}: Props) => {
       onClose={handleClose}
       containerClassName={'max-h-[28.875rem] w-full max-w-[40rem]'}
     >
-      <CommandBarContextProvider
-        setChosenStep={setChosenStep}
-        isVisible={isVisible}
-        setIsVisible={setIsVisible}
-      >
-        {chosenStep.id === CommandBarStepEnum.INITIAL ? (
-          <Initial />
-        ) : chosenStep.id === CommandBarStepEnum.PRIVATE_REPOS ? (
-          <PrivateRepos />
-        ) : chosenStep.id === CommandBarStepEnum.PUBLIC_REPOS ? (
-          <PublicRepos />
-        ) : chosenStep.id === CommandBarStepEnum.LOCAL_REPOS ? (
-          <LocalRepos />
-        ) : chosenStep.id === CommandBarStepEnum.DOCS ? (
-          <Documentation />
-        ) : null}
-      </CommandBarContextProvider>
+      {chosenStep.id === CommandBarStepEnum.INITIAL ? (
+        <Initial />
+      ) : chosenStep.id === CommandBarStepEnum.PRIVATE_REPOS ? (
+        <PrivateRepos />
+      ) : chosenStep.id === CommandBarStepEnum.PUBLIC_REPOS ? (
+        <PublicRepos />
+      ) : chosenStep.id === CommandBarStepEnum.LOCAL_REPOS ? (
+        <LocalRepos />
+      ) : chosenStep.id === CommandBarStepEnum.DOCS ? (
+        <Documentation />
+      ) : chosenStep.id === CommandBarStepEnum.CREATE_PROJECT ? (
+        <CreateProject />
+      ) : null}
     </Modal>
   );
 };

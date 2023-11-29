@@ -34,6 +34,12 @@ export const checkEventKeys = (e: KeyboardEvent, shortcut?: string[]) => {
   ) {
     return false;
   }
+  if (
+    (keys.includes('option') && !e.altKey) ||
+    (!keys.includes('option') && e.altKey)
+  ) {
+    return false;
+  }
   if (e.key === 'Enter' && keys.includes('entr')) {
     return true;
   }

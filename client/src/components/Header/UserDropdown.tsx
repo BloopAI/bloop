@@ -1,6 +1,5 @@
 import React, { memo } from 'react';
 import { useTranslation } from 'react-i18next';
-import SectionLabel from '../Dropdown/Section/SectionLabel';
 import SectionItem from '../Dropdown/Section/SectionItem';
 import {
   BugIcon,
@@ -9,7 +8,6 @@ import {
   DoorOutIcon,
   WalletIcon,
 } from '../../icons';
-import ThemeToggle from './ThemeToggle';
 
 type Props = {};
 
@@ -18,10 +16,6 @@ const UserDropdown = ({}: Props) => {
 
   return (
     <div className="">
-      <div className="flex flex-col p-1 items-start">
-        <SectionLabel text={t('Theme')} />
-        <ThemeToggle />
-      </div>
       <div className="flex flex-col p-1 items-start border-y border-bg-border">
         <SectionItem
           icon={<CogIcon raw sizeClassName="w-4 h-4" />}

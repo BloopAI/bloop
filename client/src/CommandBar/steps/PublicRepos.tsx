@@ -12,14 +12,14 @@ import {
   CommandBarSectionType,
   CommandBarStepEnum,
   RepoProvider,
-} from '../types/general';
-import { CommandBarContext } from '../context/commandBarContext';
-import { getIndexedRepos, syncRepo } from '../services/api';
-import { PlusSignIcon } from '../icons';
-import Header from './Header';
-import Body from './Body';
-import Footer from './Footer';
-import RepoItem from './RepoItem';
+} from '../../types/general';
+import { CommandBarContext } from '../../context/commandBarContext';
+import { getIndexedRepos, syncRepo } from '../../services/api';
+import { PlusSignIcon } from '../../icons';
+import Header from '../Header';
+import Body from '../Body';
+import Footer from '../Footer';
+import RepoItem from './items/RepoItem';
 
 type Props = {};
 

@@ -471,5 +471,9 @@
 	"Select a folder containing a git repository": "Select a folder containing a git repository",
 	"Add any library documentation": "Add any library documentation",
 	"Paste a link to any documentation web page": "Paste a link to any documentation web page",
-	"Indexed documentation web pages": "Indexed documentation web pages"
+	"Indexed documentation web pages": "Indexed documentation web pages",
+	"Switch to": "Switch to",
+	"Manage project": "Manage project",
+	"Create project": "Create project",
+	"Provide a short, concise title for your project": "Provide a short, concise title for your project"
 }

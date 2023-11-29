@@ -7,24 +7,24 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CommandBarContext } from '../context/commandBarContext';
+import { CommandBarContext } from '../../context/commandBarContext';
 import {
   CommandBarItemCustomType,
   CommandBarSectionType,
   CommandBarStepEnum,
   SyncStatus,
-} from '../types/general';
-import { getRepos } from '../services/api';
-import { mapGitHubRepos } from '../utils/mappers';
-import Dropdown from '../components/Dropdown';
-import Button from '../components/Button';
-import ChevronDown from '../icons/ChevronDown';
-import SectionLabel from '../components/Dropdown/Section/SectionLabel';
-import SectionItem from '../components/Dropdown/Section/SectionItem';
-import Header from './Header';
-import Body from './Body';
-import Footer from './Footer';
-import RepoItem from './RepoItem';
+} from '../../types/general';
+import { getRepos } from '../../services/api';
+import { mapGitHubRepos } from '../../utils/mappers';
+import Dropdown from '../../components/Dropdown';
+import Button from '../../components/Button';
+import ChevronDown from '../../icons/ChevronDown';
+import SectionLabel from '../../components/Dropdown/Section/SectionLabel';
+import SectionItem from '../../components/Dropdown/Section/SectionItem';
+import Header from '../Header';
+import Body from '../Body';
+import Footer from '../Footer';
+import RepoItem from './items/RepoItem';
 
 type Props = {};
 

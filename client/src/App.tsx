@@ -7,6 +7,7 @@ import Header from './components/Header';
 import Project from './Project';
 import CommandBar from './CommandBar';
 import ProjectContextProvider from './context/providers/ProjectContextProvider';
+import CommandBarContextProvider from './context/providers/CommandBarContextProvider';
 
 const App = () => {
   return (
@@ -15,9 +16,11 @@ const App = () => {
         <ProjectContextProvider>
           <ReportBugModal />
           <Onboarding />
-          <Header />
-          <CommandBar />
-          <Project />
+          <CommandBarContextProvider>
+            <Header />
+            <CommandBar />
+            <Project />
+          </CommandBarContextProvider>
         </ProjectContextProvider>
       </PersonalQuotaContextProvider>
     </AnalyticsContextProvider>

@@ -11,14 +11,14 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
-import { CommandBarStepEnum, RepoUi, SyncStatus } from '../types/general';
-import { cancelSync, deleteRepo, syncRepo } from '../services/api';
-import { RepositoryIcon } from '../icons';
-import { DeviceContext } from '../context/deviceContext';
-import LiteLoaderContainer from '../components/Loaders/LiteLoader';
-import { getDateFnsLocale } from '../utils';
-import { LocaleContext } from '../context/localeContext';
-import Item from './Body/Item';
+import { CommandBarStepEnum, RepoUi, SyncStatus } from '../../../types/general';
+import { cancelSync, deleteRepo, syncRepo } from '../../../services/api';
+import { RepositoryIcon } from '../../../icons';
+import { DeviceContext } from '../../../context/deviceContext';
+import LiteLoaderContainer from '../../../components/Loaders/LiteLoader';
+import { getDateFnsLocale } from '../../../utils';
+import { LocaleContext } from '../../../context/localeContext';
+import Item from '../../Body/Item';
 
 type Props = {
   repo: RepoUi;

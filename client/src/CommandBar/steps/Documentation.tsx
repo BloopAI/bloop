@@ -7,15 +7,15 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CommandBarSectionType, CommandBarStepEnum } from '../types/general';
-import { CommandBarContext } from '../context/commandBarContext';
-import { getIndexedDocs, verifyDocsUrl } from '../services/api';
-import { PlusSignIcon } from '../icons';
-import { DocShortType } from '../types/api';
-import Header from './Header';
-import Body from './Body';
-import Footer from './Footer';
-import DocItem from './DocItem';
+import { CommandBarSectionType, CommandBarStepEnum } from '../../types/general';
+import { CommandBarContext } from '../../context/commandBarContext';
+import { getIndexedDocs, verifyDocsUrl } from '../../services/api';
+import { PlusSignIcon } from '../../icons';
+import { DocShortType } from '../../types/api';
+import Header from '../Header';
+import Body from '../Body';
+import Footer from '../Footer';
+import DocItem from './items/DocItem';
 
 type Props = {};
 

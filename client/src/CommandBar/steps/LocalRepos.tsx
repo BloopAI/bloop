@@ -7,20 +7,20 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CommandBarContext } from '../context/commandBarContext';
-import { PlusSignIcon } from '../icons';
+import { CommandBarContext } from '../../context/commandBarContext';
+import { PlusSignIcon } from '../../icons';
 import {
   CommandBarSectionType,
   CommandBarStepEnum,
   RepoProvider,
-} from '../types/general';
-import { getIndexedRepos, scanLocalRepos, syncRepo } from '../services/api';
-import { DeviceContext } from '../context/deviceContext';
-import { splitPath } from '../utils';
-import Footer from './Footer';
-import Body from './Body';
-import Header from './Header';
-import RepoItem from './RepoItem';
+} from '../../types/general';
+import { getIndexedRepos, scanLocalRepos, syncRepo } from '../../services/api';
+import { DeviceContext } from '../../context/deviceContext';
+import { splitPath } from '../../utils';
+import Footer from '../Footer';
+import Body from '../Body';
+import Header from '../Header';
+import RepoItem from './items/RepoItem';
 
 type Props = {};
 

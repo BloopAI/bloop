@@ -1,35 +1,23 @@
-import {
-  Dispatch,
-  memo,
-  PropsWithChildren,
-  SetStateAction,
-  useMemo,
-  useState,
-} from 'react';
+import { memo, PropsWithChildren, useMemo, useState } from 'react';
 import { CommandBarContext } from '../commandBarContext';
-import { CommandBarStepEnum } from '../../types/general';
+import {
+  CommandBarActiveStepType,
+  CommandBarStepEnum,
+} from '../../types/general';
 
-type Props = {
-  setChosenStep: Dispatch<
-    SetStateAction<{
-      id: CommandBarStepEnum;
-      data?: Record<string, any>;
-    }>
-  >;
-  isVisible: boolean;
-  setIsVisible: Dispatch<SetStateAction<boolean>>;
-};
+type Props = {};
 
-const CommandBarContextProvider = ({
-  children,
-  setChosenStep,
-  isVisible,
-  setIsVisible,
-}: PropsWithChildren<Props>) => {
+const CommandBarContextProvider = ({ children }: PropsWithChildren<Props>) => {
   const [focusedItem, setFocusedItem] = useState<{
     footerHint?: string;
     footerBtns?: { label: string; shortcut?: string[] }[];
   } | null>(null);
+  const [isVisible, setIsVisible] = useState(false);
+  const [chosenStep, setChosenStep] = useState<CommandBarActiveStepType>({
+    id: CommandBarStepEnum.INITIAL,
+  });
+
+  const currentStepContextValue = useMemo(() => ({ chosenStep }), [chosenStep]);
 
   const footerValuesContextValue = useMemo(() => {
     return {
@@ -54,11 +42,13 @@ const CommandBarContextProvider = ({
   return (
     <CommandBarContext.Handlers.Provider value={handlersContextValue}>
       <CommandBarContext.General.Provider value={generalContextValue}>
-        <CommandBarContext.FooterValues.Provider
-          value={footerValuesContextValue}
-        >
-          {children}
-        </CommandBarContext.FooterValues.Provider>
+        <CommandBarContext.CurrentStep.Provider value={currentStepContextValue}>
+          <CommandBarContext.FooterValues.Provider
+            value={footerValuesContextValue}
+          >
+            {children}
+          </CommandBarContext.FooterValues.Provider>
+        </CommandBarContext.CurrentStep.Provider>
       </CommandBarContext.General.Provider>
     </CommandBarContext.Handlers.Provider>
   );

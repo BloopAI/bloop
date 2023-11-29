@@ -1,10 +1,11 @@
-import React, { memo, useContext } from 'react';
+import React, { memo, useCallback, useContext } from 'react';
 import { ChevronDownIcon, KLetterIcon, PersonIcon } from '../../icons';
 import { DeviceContext } from '../../context/deviceContext';
 import Button from '../Button';
 import Dropdown from '../Dropdown';
 import { EnvContext } from '../../context/envContext';
 import { ProjectContext } from '../../context/projectContext';
+import { CommandBarContext } from '../../context/commandBarContext';
 import UserDropdown from './UserDropdown';
 import ProjectsDropdown from './ProjectsDropdown';
 
@@ -16,6 +17,11 @@ const Header = ({ isSkeleton }: Props) => {
   const { os } = useContext(DeviceContext);
   const { envConfig } = useContext(EnvContext);
   const { project } = useContext(ProjectContext.Current);
+  const { setIsVisible } = useContext(CommandBarContext.General);
+
+  const openCommandBar = useCallback(() => {
+    setIsVisible(true);
+  }, []);
 
   return (
     <div
@@ -41,7 +47,7 @@ const Header = ({ isSkeleton }: Props) => {
         </Dropdown>
       </div>
       <div className="flex pl-2 pr-4 items-center gap-2 h-full">
-        <Button variant="tertiary" size="mini">
+        <Button variant="tertiary" size="mini" onClick={openCommandBar}>
           <KLetterIcon
             sizeClassName="w-3.5 h-3.5"
             className="-translate-y-px"

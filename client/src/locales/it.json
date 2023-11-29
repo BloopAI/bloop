@@ -446,5 +446,8 @@
 	"Indexed local repositories": "Repository locali indicizzati",
 	"Add local repository": "Aggiungi repository locale",
 	"Select a folder containing a git repository": "Seleziona una cartella contenente un repository Git",
-	"Indexed documentation web pages": "Pagine Web di documentazione indicizzata"
+	"Indexed documentation web pages": "Pagine Web di documentazione indicizzata",
+	"Switch to": "Passa a",
+	"Manage project": "Gestisci il progetto",
+	"Create project": "Crea progetto"
 }

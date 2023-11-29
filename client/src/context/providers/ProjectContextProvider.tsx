@@ -1,4 +1,11 @@
-import { memo, PropsWithChildren, useEffect, useMemo, useState } from 'react';
+import {
+  memo,
+  PropsWithChildren,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { ProjectContext } from '../projectContext';
 import {
   getPlainFromStorage,
@@ -24,8 +31,12 @@ const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
     }
   }, [currentProjectId]);
 
-  useEffect(() => {
+  const refreshAllProjects = useCallback(() => {
     getAllProjects().then(setProjects);
+  }, []);
+
+  useEffect(() => {
+    refreshAllProjects();
   }, []);
 
   const currentValue = useMemo(
@@ -39,8 +50,9 @@ const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
   const allValue = useMemo(
     () => ({
       projects,
+      refreshAllProjects,
     }),
-    [projects],
+    [projects, refreshAllProjects],
   );
 
   return (

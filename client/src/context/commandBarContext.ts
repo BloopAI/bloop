@@ -1,5 +1,5 @@
 import { createContext, Dispatch, SetStateAction } from 'react';
-import { CommandBarStepEnum } from '../types/general';
+import { CommandBarActiveStepType, CommandBarStepEnum } from '../types/general';
 
 type FooterValuesContext = {
   focusedItem: {
@@ -45,5 +45,10 @@ export const CommandBarContext = {
   General: createContext<GeneralContextType>({
     isVisible: false,
     setIsVisible: () => {},
+  }),
+  CurrentStep: createContext<{ chosenStep: CommandBarActiveStepType }>({
+    chosenStep: {
+      id: CommandBarStepEnum.INITIAL,
+    },
   }),
 };

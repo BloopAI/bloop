@@ -9,7 +9,11 @@ export const ProjectContext = {
     project: null,
     setCurrentProjectId: (id: string) => {},
   }),
-  All: createContext<{ projects: ProjectShortType[] }>({
+  All: createContext<{
+    projects: ProjectShortType[];
+    refreshAllProjects: () => void;
+  }>({
     projects: [],
+    refreshAllProjects: () => {},
   }),
 };

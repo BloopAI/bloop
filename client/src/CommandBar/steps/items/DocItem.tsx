@@ -11,14 +11,14 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
-import { RepositoryIcon } from '../icons';
-import { DeviceContext } from '../context/deviceContext';
-import LiteLoaderContainer from '../components/Loaders/LiteLoader';
-import { getDateFnsLocale } from '../utils';
-import { LocaleContext } from '../context/localeContext';
-import { DocShortType } from '../types/api';
-import { deleteDocProvider, getIndexedDocs } from '../services/api';
-import Item from './Body/Item';
+import { RepositoryIcon } from '../../../icons';
+import { DeviceContext } from '../../../context/deviceContext';
+import LiteLoaderContainer from '../../../components/Loaders/LiteLoader';
+import { getDateFnsLocale } from '../../../utils';
+import { LocaleContext } from '../../../context/localeContext';
+import { DocShortType } from '../../../types/api';
+import { deleteDocProvider, getIndexedDocs } from '../../../services/api';
+import Item from '../../Body/Item';
 
 type Props = {
   doc: DocShortType;

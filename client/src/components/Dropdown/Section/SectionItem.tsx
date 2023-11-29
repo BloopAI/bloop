@@ -1,8 +1,9 @@
-import { memo, ReactElement, useContext, useMemo } from 'react';
-import { DeviceContext } from '../../../context/deviceContext';
+import { memo, ReactElement, useCallback } from 'react';
 import { CheckIcon } from '../../../icons';
-import { mapShortcuts } from '../../../utils/keyboardUtils';
+import { checkEventKeys } from '../../../utils/keyboardUtils';
 import useShortcuts from '../../../hooks/useShortcuts';
+import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
+import { isFocusInInput } from '../../../utils/domUtils';
 
 type Props = {
   icon?: ReactElement;
@@ -14,6 +15,22 @@ type Props = {
 
 const SectionItem = ({ icon, label, shortcut, onClick, isSelected }: Props) => {
   const shortcutKeys = useShortcuts(shortcut);
+
+  const handleKeyEvent = useCallback(
+    (e: KeyboardEvent) => {
+      if (!isFocusInInput()) {
+        if (checkEventKeys(e, shortcut)) {
+          e.preventDefault();
+          e.stopPropagation();
+          onClick();
+          return;
+        }
+      }
+    },
+    [shortcut],
+  );
+  useKeyboardNavigation(handleKeyEvent);
+
   return (
     <button
       onClick={onClick}

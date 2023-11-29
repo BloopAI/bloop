@@ -463,5 +463,8 @@
 	"Indexed local repositories": "Repositorios locales indexados",
 	"Add local repository": "Agregar repositorio local",
 	"Select a folder containing a git repository": "Seleccione una carpeta que contenga un repositorio Git",
-	"Add any library documentation": "Agregue cualquier documentación de la biblioteca"
+	"Add any library documentation": "Agregue cualquier documentación de la biblioteca",
+	"Switch to": "Cambiar a",
+	"Manage project": "Administrar proyecto",
+	"Provide a short, concise title for your project": "Proporcione un título corto y conciso para su proyecto"
 }
