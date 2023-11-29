@@ -454,5 +454,8 @@
 	"Search local repos...": "Cerca repos locali ...",
 	"Search private repos...": "Cerca repos privati ...",
 	"Search public repositories...": "Cerca repository pubblici ...",
-	"Repository URL...": "URL del repository ..."
+	"Repository URL...": "URL del repository ...",
+	"Create new project": "Crea nuovo progetto",
+	"Open account settings": "Apri le impostazioni dell'account",
+	"View bloop app documentation on our website": "Visualizza la documentazione dell'app Bloop sul nostro sito Web"
 }

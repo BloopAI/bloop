@@ -80,7 +80,7 @@ const LocalRepos = ({}: Props) => {
       itemsOffset: 0,
       items: [
         {
-          label: 'Add local repository',
+          label: t('Add local repository'),
           Icon: PlusSignIcon,
           footerHint: t('Add a repository from your local machine'),
           footerBtns: [

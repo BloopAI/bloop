@@ -49,7 +49,7 @@ const PublicRepos = ({}: Props) => {
       itemsOffset: 0,
       items: [
         {
-          label: 'Add public repository',
+          label: t('Add public repository'),
           Icon: PlusSignIcon,
           footerHint: t('Add any public repository hosted on GitHub'),
           footerBtns: [

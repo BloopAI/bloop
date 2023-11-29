@@ -45,7 +45,12 @@ const Desktop = ({ closeOnboarding }: Props) => {
 
   return (
     <div className="fixed top-0 bottom-0 left-0 right-0 z-100 bg-bg-sub select-none">
-      {os.type === 'Darwin' && <NavBar isSkeleton />}
+      {os.type === 'Darwin' && (
+        <div
+          className="absolute top-0 left-0 right-0 h-14 bg-transparent"
+          data-tauri-drag-region
+        />
+      )}
       <img
         src="/light.png"
         alt=""

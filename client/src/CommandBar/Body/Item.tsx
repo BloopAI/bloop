@@ -23,7 +23,6 @@ type Props = CommandBarItemGeneralType & {
   isFirst?: boolean;
   setFocusedIndex: Dispatch<SetStateAction<number>>;
   customRightElement?: ReactElement;
-  onClick?: () => void;
 };
 
 const CommandBarItem = ({

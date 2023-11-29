@@ -1,12 +1,15 @@
-import React, { memo, PropsWithChildren } from 'react';
+import React, { memo, PropsWithChildren, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { MODAL_APPEAR_ANIMATION } from '../../consts/animations';
+import { isFocusInInput } from '../../utils/domUtils';
+import useKeyboardNavigation from '../../hooks/useKeyboardNavigation';
 
 type Props = {
   isVisible: boolean;
   noBg?: boolean;
   onClose?: () => void;
   containerClassName?: string;
+  customKeyHandler?: boolean;
 };
 
 const backdropHidden = {
@@ -37,7 +40,17 @@ const Modal = ({
   isVisible,
   noBg,
   containerClassName,
+  customKeyHandler,
 }: PropsWithChildren<Props>) => {
+  const handleKeyEvent = useCallback((e: KeyboardEvent) => {
+    if (!isFocusInInput() && e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      onClose?.();
+    }
+  }, []);
+  useKeyboardNavigation(handleKeyEvent, customKeyHandler || !isVisible);
+
   return (
     <>
       <AnimatePresence>

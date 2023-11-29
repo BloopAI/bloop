@@ -477,5 +477,9 @@
 	"Search local repos...": "搜索本地存储库...",
 	"Search private repos...": "搜索私人存储库...",
 	"Search public repositories...": "搜索公共存储库...",
-	"Repository URL...": "存储库URL ..."
+	"Repository URL...": "存储库URL ...",
+	"Use dark theme": "使用深色主题",
+	"Toggle system theme": "切换系统主题",
+	"Account settings": "帐号设定",
+	"Open subscription settings": "打开订阅设置"
 }

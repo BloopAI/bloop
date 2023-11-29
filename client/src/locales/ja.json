@@ -468,5 +468,11 @@
 	"Search local repos...": "ローカルレポスを検索します...",
 	"Search private repos...": "プライベートレポを検索...",
 	"Search public repositories...": "パブリックリポジトリを検索...",
-	"Repository URL...": "リポジトリURL ..."
+	"Repository URL...": "リポジトリURL ...",
+	"Toggle light theme": "ライトテーマを切り替えます",
+	"Toggle system theme": "システムテーマを切り替えます",
+	"Commands": "コマンド",
+	"Open subscription settings": "サブスクリプション設定を開きます",
+	"View bloop app documentation on our website": "WebサイトでBloopアプリのドキュメントを表示します",
+	"Account settings": "アカウント設定"
 }

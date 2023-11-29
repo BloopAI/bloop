@@ -481,5 +481,17 @@
 	"Search local repos...": "Search local repos...",
 	"Search private repos...": "Search private repos...",
 	"Search public repositories...": "Search public repositories...",
-	"Repository URL...": "Repository URL..."
+	"Repository URL...": "Repository URL...",
+	"Use system theme": "Use system theme",
+	"Toggle light theme": "Toggle light theme",
+	"Use light theme": "Use light theme",
+	"Toggle dark theme": "Toggle dark theme",
+	"Create new project": "Create new project",
+	"Use dark theme": "Use dark theme",
+	"Toggle system theme": "Toggle system theme",
+	"Account settings": "Account settings",
+	"Open account settings": "Open account settings",
+	"Open subscription settings": "Open subscription settings",
+	"View bloop app documentation on our website": "View bloop app documentation on our website",
+	"Commands": "Commands"
 }

@@ -471,5 +471,11 @@
 	"Search local repos...": "Buscar repos locales ...",
 	"Search private repos...": "Buscar reposes privados ...",
 	"Search public repositories...": "Buscar repositorios públicos ...",
-	"Repository URL...": "URL de repositorio ..."
+	"Repository URL...": "URL de repositorio ...",
+	"Use dark theme": "Usar tema oscuro",
+	"View bloop app documentation on our website": "Ver documentación de la aplicación Bloop en nuestro sitio web",
+	"Open account settings": "Abra la configuración de la cuenta",
+	"Commands": "Comandos",
+	"Account settings": "Configuraciones de la cuenta",
+	"Open subscription settings": "Abrir configuración de suscripción"
 }

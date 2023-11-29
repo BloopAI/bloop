@@ -44,7 +44,7 @@ const variantStylesMap = {
     'disabled:hover:bg-bg-base',
   primary:
     'text-label-contrast border border-bg-contrast bg-bg-contrast shadow-low ' +
-    'hover:bg-bg-contrast-hover border-bg-contrast-hover ' +
+    'hover:bg-bg-contrast-hover hover:border-bg-contrast-hover ' +
     'disabled:bg-bg-base disabled:border-none disabled:text-label-faint disabled:shadow-none ' +
     'disabled:hover:bg-bg-base',
   secondary:
@@ -77,19 +77,19 @@ const variantStylesMap = {
 const sizeMap = {
   mini: {
     default: 'h-6 px-1.5 gap-1 body-mini rounded',
-    square: 'h-6 w-6 justify-center p-0 rounded',
+    square: 'h-6 w-6 rounded',
   },
   small: {
     default: 'h-7 px-2 gap-1 body-mini rounded',
-    square: 'h-7 w-8 justify-center p-0 rounded',
+    square: 'h-7 w-8 rounded',
   },
   medium: {
     default: 'h-8 px-2.5 gap-1.5 body-s rounded-6',
-    square: 'h-8 w-10 justify-center p-0 rounded-6',
+    square: 'h-8 w-10 rounded-6',
   },
   large: {
     default: 'h-9 px-3 gap-2 body-base-b rounded-6',
-    square: 'h-9 w-9 justify-center p-0 rounded-6',
+    square: 'h-9 w-9 rounded-6',
   },
 };
 
@@ -120,7 +120,7 @@ const Button = forwardRef<
   ) => {
     const buttonClassName = useMemo(
       () =>
-        `py-0 focus:outline-none outline-none outline-0 flex items-center flex-grow-0 flex-shrink-0 ${
+        `py-0 focus:outline-none outline-none outline-0 flex items-center justify-center flex-grow-0 flex-shrink-0 ${
           variantStylesMap[variant]
         } ${onlyIcon ? sizeMap[size].square : sizeMap[size].default} ${
           className || ''

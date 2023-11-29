@@ -1,5 +1,5 @@
 export { default as ArrowDown } from './ArrowDown';
-export { default as ArrowLeft } from './ArrowLeft';
+export { default as ArrowLeftIcon } from './ArrowLeft';
 export { default as ArrowPushBottom } from './ArrowPushBottom';
 export { default as ArrowPushLeft } from './ArrowPushLeft';
 export { default as ArrowPushRight } from './ArrowPushRight';
@@ -142,3 +142,7 @@ export { default as DoorOutIcon } from './DoorOut';
 export { default as ShapesIcon } from './Shapes';
 export { default as PlusSignIcon } from './PlusSign';
 export { default as CheckIcon } from './Check';
+export { default as MacintoshIcon } from './Macintosh';
+export { default as ThemeLightIcon } from './ThemeLight';
+export { default as ThemeDarkIcon } from './ThemeDark';
+export { default as ThemeBlackIcon } from './ThemeBlack';

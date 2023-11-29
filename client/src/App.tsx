@@ -8,19 +8,22 @@ import Project from './Project';
 import CommandBar from './CommandBar';
 import ProjectContextProvider from './context/providers/ProjectContextProvider';
 import CommandBarContextProvider from './context/providers/CommandBarContextProvider';
+import { UIContextProvider } from './context/providers/UIContextProvider';
 
 const App = () => {
   return (
     <AnalyticsContextProvider>
       <PersonalQuotaContextProvider>
         <ProjectContextProvider>
-          <ReportBugModal />
-          <Onboarding />
-          <CommandBarContextProvider>
-            <Header />
-            <CommandBar />
-            <Project />
-          </CommandBarContextProvider>
+          <UIContextProvider>
+            <ReportBugModal />
+            <Onboarding />
+            <CommandBarContextProvider>
+              <Header />
+              <CommandBar />
+              <Project />
+            </CommandBarContextProvider>
+          </UIContextProvider>
         </ProjectContextProvider>
       </PersonalQuotaContextProvider>
     </AnalyticsContextProvider>

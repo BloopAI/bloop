@@ -19,7 +19,7 @@ const backdropFilterInvisible = {
 export enum SettingSections {
   GENERAL,
   PREFERENCES,
-  // REPOSITORIES,
+  SUBSCRIPTION,
 }
 
 const Settings = () => {
