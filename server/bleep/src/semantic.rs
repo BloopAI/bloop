@@ -213,7 +213,7 @@ impl Semantic {
                         .unwrap();
 
                 debug!("lexical index created");
-                debug!("{}", result.unwrap().status);
+                debug!("{:?}", result);
             }
             Ok(true) => {
                 debug!("collection already exists");
@@ -311,7 +311,7 @@ impl Semantic {
                 .unwrap();
 
         debug!("lexical index created");
-        debug!("{}", result.unwrap().status);
+        debug!("{:?}", result);
 
         Ok(())
     }
@@ -344,13 +344,9 @@ impl Semantic {
                 collection_name: self.config.collection_name.to_string(),
                 offset: Some(offset),
                 score_threshold: Some(threshold),
-                with_payload: Some(WithPayloadSelector {
-                    selector_options: Some(with_payload_selector::SelectorOptions::Enable(true)),
-                }),
+                with_payload: Some(true.into()),
                 filter: hybrid_filter,
-                with_vectors: Some(WithVectorsSelector {
-                    selector_options: Some(with_vectors_selector::SelectorOptions::Enable(true)),
-                }),
+                with_vectors: Some(true.into()),
                 ..Default::default()
             })
             .await?;
@@ -453,7 +449,7 @@ impl Semantic {
     // Score is 10 * (# of query words matched) + (total number of hits)
     fn rank_lexical(payloads: Vec<Payload>, query: &str) -> Vec<Payload> {
         let keywords: Vec<&str> = query.split_whitespace().collect();
-        let counts: Vec<(Vec<usize>, Payload)> = payloads
+        let counts = payloads
             .iter()
             .map(|p| {
                 (
@@ -463,10 +459,8 @@ impl Semantic {
                         .collect::<Vec<usize>>(),
                     p.clone(),
                 )
-            })
-            .collect();
+            });
         let mut scores: Vec<(f32, Payload)> = counts
-            .iter()
             .map(|(count, payload)| {
                 let score: f32 = (count.iter().sum::<usize>()
                     + 10 * count.iter().filter(|&&c| c != 0).count())
@@ -478,22 +472,21 @@ impl Semantic {
         scores.into_iter().map(|(_, payload)| payload).collect()
     }
 
-    // Join semantic and lexical results using reciprocal rank fusion (rrf)
+    // Join semantic and lexical results using Reciprocal Rank Fusion (RRF)
+    // For item i present in j rankings (rank_i,j) score_i = sum_j (1/ (rank_i,j + k))
+    // k controls how much weight to give to lower ranks and is set to 60 which is 
+    // the default value in multiple implementations and in http://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf
     fn merge_rrf(payloads_lexical: Vec<Payload>, payloads_semantic: Vec<Payload>) -> Vec<Payload> {
         let k = 60;
-        let lexical_scores: Vec<(f32, Payload)> = payloads_lexical
-            .iter()
+        let lexical_scores = payloads_lexical
+            .into_iter()
             .enumerate()
-            .map(|(rank, payload)| (1.0 / ((rank + 1 + k) as f32), payload.clone()))
-            .collect();
-        let payload_scores: Vec<(f32, Payload)> = payloads_semantic
-            .iter()
+            .map(|(rank, payload)| (1.0 / ((rank + 1 + k) as f32), payload.clone()));
+        let payload_scores = payloads_semantic
+            .into_iter()
             .enumerate()
-            .map(|(rank, payload)| (1.0 / ((rank + 1 + k) as f32), payload.clone()))
-            .collect();
-        let mut concatenated: Vec<(f32, Payload)> = Vec::new();
-        concatenated.extend(lexical_scores);
-        concatenated.extend(payload_scores);
+            .map(|(rank, payload)| (1.0 / ((rank + 1 + k) as f32), payload.clone()));
+        let mut concatenated: Vec<(f32, Payload)> = lexical_scores.chain(payload_scores).collect();
         // group by requires pre-sorting
         concatenated.sort_by(|a, b| {
             b.1.id
@@ -735,7 +728,8 @@ fn build_conditions_lexical(
     parsed_query: &SemanticQuery<'_>,
 ) -> Vec<qdrant_client::qdrant::Condition> {
     let Some(query) = parsed_query.target() else {
-        panic!();
+        debug!("empty query for lexical search");
+        return Vec::new();
     };
     let conditions = query
         .split(' ')
