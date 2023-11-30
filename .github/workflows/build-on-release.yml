@@ -9,7 +9,7 @@ jobs:
     with:
       repository: bloop
       tag: ${{ github.event.release.tag_name }}
-      runner: docker
+      runner: ubuntu-latest
     secrets:
       awsRegion: ${{ secrets.AWS_REGION }}
       awsAccountID: ${{ secrets.AWS_ACCOUNT_ID }}

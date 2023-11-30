@@ -17,34 +17,46 @@ env:
 
 jobs:
   clippy-test:
-    runs-on: nixos
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          lfs: true
 
-      - name: Create LFS file list
-        run: git lfs ls-files --long | cut -d ' ' -f1 | sort > .lfs-assets-id
-
-      - name: LFS Cache
-        uses: actions/cache@v3
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
         with:
-          path: .git/lfs/objects
-          key: ${{ runner.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}
-          restore-keys: |
-            ${{ runner.os }}-lfs-
+          toolchain: 1.73.0
+          components: rustfmt, clippy
 
-      - name: Git LFS Pull
-        run: git lfs install && git lfs pull
+      - name: Install Tauri deps
+        run: | 
+              sudo apt update && \
+              sudo apt install libwebkit2gtk-4.0-dev \
+                build-essential \
+                curl \
+                wget \
+                file \
+                libssl-dev \
+                libgtk-3-dev \
+                libayatana-appindicator3-dev \
+                librsvg2-dev
 
-      - name: Load PATH changes
-        run: direnv allow && direnv exec . sh -c 'echo $PATH' > "$GITHUB_PATH"
-
-      - name: Load other environment changes
-        run: direnv export gha >> "$GITHUB_ENV"        
-
-      - uses: Swatinem/rust-cache@v2
+      # https://github.com/actions/cache/blob/main/examples.md#rust---cargo
+      - name: Set up cargo cache
+        uses: actions/cache@v3
+        continue-on-error: false
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/            
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
 
       - name: Rustfmt
         run: cargo --locked fmt -p bloop -- --check
@@ -54,6 +66,3 @@ jobs:
 
       - name: Tests
         run: cargo --locked test -p bloop --release
-
-      - name: Sccache stats
-        run: sccache --show-stats

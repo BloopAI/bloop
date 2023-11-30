@@ -10,7 +10,11 @@ import {
   WrenchAndScrewdriver,
 } from '../../../../icons';
 import { DeviceContext } from '../../../../context/deviceContext';
-import { ChatLoadingStep, ChatMessageAuthor } from '../../../../types/general';
+import {
+  ChatLoadingStep,
+  ChatMessageAuthor,
+  ParsedQueryType,
+} from '../../../../types/general';
 import { ChatContext } from '../../../../context/chatContext';
 import Button from '../../../Button';
 import { LocaleContext } from '../../../../context/localeContext';
@@ -24,10 +28,12 @@ import {
 } from '../../../../services/storage';
 import MessageFeedback from './MessageFeedback';
 import FileChip from './FileChip';
+import UserParsedQuery from './UserParsedQuery';
 
 type Props = {
   author: ChatMessageAuthor;
   message?: string;
+  parsedQuery?: ParsedQueryType[];
   error?: string;
   threadId: string;
   queryId: string;
@@ -36,7 +42,6 @@ type Props = {
   responseTimestamp: string | null;
   isHistory?: boolean;
   showInlineFeedback: boolean;
-  scrollToBottom?: () => void;
   isLoading?: boolean;
   loadingSteps?: ChatLoadingStep[];
   i: number;
@@ -53,7 +58,6 @@ const ConversationMessage = ({
   threadId,
   queryId,
   repoRef,
-  scrollToBottom,
   isLoading,
   loadingSteps,
   i,
@@ -61,6 +65,7 @@ const ConversationMessage = ({
   onMessageEdit,
   responseTimestamp,
   singleFileExplanation,
+  parsedQuery,
 }: Props) => {
   const { t } = useTranslation();
   const [isLoadingStepsShown, setLoadingStepsShown] = useState(
@@ -172,7 +177,7 @@ const ConversationMessage = ({
                 )}
               </div>
             </div>
-            {message && (
+            {!!message && (
               <div className="body-s text-label-title code-studio-md padding-start w-full break-word overflow-auto">
                 {author === ChatMessageAuthor.Server ? (
                   <MarkdownWithCode
@@ -184,7 +189,10 @@ const ConversationMessage = ({
                   />
                 ) : (
                   <>
-                    <div className="pl-8">{message}</div>
+                    <UserParsedQuery
+                      textQuery={message}
+                      parsedQuery={parsedQuery}
+                    />
                     {!isHistory && !!queryId && (
                       <div className="absolute bottom-1 right-1 opacity-0 group-summary-hover:opacity-100 transition-opacity">
                         <Button
@@ -210,7 +218,6 @@ const ConversationMessage = ({
             queryId={queryId}
             repoRef={repoRef}
             error={!!error}
-            scrollToBottom={scrollToBottom}
           />
         </>
       ) : error ? (

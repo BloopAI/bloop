@@ -152,12 +152,15 @@ impl Agent {
         // Select as many recent chunks as possible
         let mut recent_chunks = Vec::new();
         for chunk in code_chunks.iter().rev() {
-            let snippet = chunk
-                .snippet
-                .lines()
-                .enumerate()
-                .map(|(i, line)| format!("{} {line}\n", i + chunk.start_line + 1))
-                .collect::<String>();
+            let snippet =
+                chunk
+                    .snippet
+                    .lines()
+                    .enumerate()
+                    .fold(String::new(), |mut acc, (i, line)| {
+                        acc += &format!("{} {line}\n", i + chunk.start_line + 1, line = line);
+                        acc
+                    });
 
             let formatted_snippet = format!("### {} ###\n{snippet}\n\n", chunk.path);
 
@@ -178,8 +181,8 @@ impl Agent {
         let mut recent_chunks_by_alias: HashMap<_, _> =
             recent_chunks
                 .into_iter()
-                .fold(HashMap::new(), |mut map, item| {
-                    map.entry(item.0.alias).or_insert_with(Vec::new).push(item);
+                .fold(HashMap::<_, Vec<_>>::new(), |mut map, item| {
+                    map.entry(item.0.alias).or_default().push(item);
                     map
                 });
 

@@ -135,7 +135,7 @@ impl GitWalker {
                         FileType::Other
                     };
 
-                    let branches = acc.entry((file, kind, oid)).or_insert_with(BTreeSet::new);
+                    let branches: &mut BTreeSet<String> = acc.entry((file, kind, oid)).or_default();
                     if is_head {
                         branches.insert("HEAD".to_string());
                     }

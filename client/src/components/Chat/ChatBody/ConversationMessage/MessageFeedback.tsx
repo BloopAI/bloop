@@ -11,7 +11,6 @@ import DownvoteBtn from '../../FeedbackBtns/Downvote';
 type Props = {
   showInlineFeedback: boolean;
   isHistory?: boolean;
-  scrollToBottom?: () => void;
   threadId: string;
   queryId: string;
   repoRef: string;
@@ -21,7 +20,6 @@ type Props = {
 const MessageFeedback = ({
   showInlineFeedback,
   isHistory,
-  scrollToBottom,
   threadId,
   queryId,
   repoRef,
@@ -42,7 +40,6 @@ const MessageFeedback = ({
       if (!isUpvote) {
         setTimeout(() => {
           setShowCommentInput(true);
-          setTimeout(() => scrollToBottom?.(), 10);
         }, 500); // to play animation
       }
       if (isUpvote) {
@@ -54,7 +51,6 @@ const MessageFeedback = ({
 
   const handleSubmit = useCallback(() => {
     setIsSubmitted(true);
-    setTimeout(() => scrollToBottom?.(), 150);
     return upvoteAnswer(threadId, queryId, repoRef, {
       type: 'negative',
       feedback: comment,

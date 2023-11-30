@@ -11,6 +11,7 @@ import React, {
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import throttle from 'lodash.throttle';
+import ScrollToBottom from 'react-scroll-to-bottom';
 import {
   DiffHunkType,
   StudioConversationMessage,
@@ -38,7 +39,6 @@ import {
 } from '../../../../services/api';
 import useKeyboardNavigation from '../../../../hooks/useKeyboardNavigation';
 import { DeviceContext } from '../../../../context/deviceContext';
-import useScrollToBottom from '../../../../hooks/useScrollToBottom';
 import { StudioContext } from '../../../../context/studioContext';
 import { PersonalQuotaContext } from '../../../../context/personalQuotaContext';
 import { UIContext } from '../../../../context/uiContext';
@@ -122,8 +122,6 @@ const Conversation = ({
 
   const [isLoading, setIsLoading] = useState(false);
   const { apiUrl } = useContext(DeviceContext);
-  const { messagesRef, handleScroll, scrollToBottom } =
-    useScrollToBottom(conversation);
 
   useEffect(() => {
     const mappedConv = mapConversation(messages);
@@ -496,11 +494,7 @@ const Conversation = ({
 
   return (
     <div className="px-7 flex flex-col overflow-auto h-full">
-      <div
-        className="fade-bottom overflow-auto"
-        ref={messagesRef}
-        onScroll={handleScroll}
-      >
+      <ScrollToBottom className="fade-bottom overflow-auto">
         <div className="flex flex-col gap-3 py-8 px-1">
           {conversation.map((m, i) => (
             <ConversationInput
@@ -561,7 +555,6 @@ const Conversation = ({
                 author={inputAuthor}
                 message={inputValue}
                 onMessageChange={onMessageChange}
-                scrollToBottom={scrollToBottom}
                 inputRef={inputRef}
                 setLeftPanel={setLeftPanel}
                 isTokenLimitExceeded={isTokenLimitExceeded}
@@ -569,7 +562,7 @@ const Conversation = ({
               />
             )}
         </div>
-      </div>
+      </ScrollToBottom>
       <div className="px-1 flex flex-col gap-8 pb-8 mt-auto">
         <hr className="border-bg-border" />
         {isPreviewing ? (

@@ -63,7 +63,13 @@ impl<'a> Workload<'a> {
             hash.update(
                 self.file_filter
                     .is_allowed(&self.relative_path)
-                    .map(|_| &b"__filter_override"[..])
+                    .map(|include| {
+                        if include {
+                            &b"__filter_override_include"[..]
+                        } else {
+                            &b"__filter_override_exclude"[..]
+                        }
+                    })
                     .unwrap_or(&b"__no_filter_override"[..]),
             );
             hash.finalize().to_hex().to_string()
@@ -243,6 +249,7 @@ impl Indexer<File> {
         repo_ref: &RepoRef,
         query_str: &str,
         branch: Option<&str>,
+        langs: impl Iterator<Item = &str>,
         limit: usize,
     ) -> impl Iterator<Item = FileDocument> + '_ {
         // lifted from query::compiler
@@ -263,6 +270,14 @@ impl Indexer<File> {
                     .collect::<Vec<_>>()
             })
             .map(BooleanQuery::intersection);
+        let langs_query = BooleanQuery::union(
+            langs
+                .map(|l| Term::from_field_bytes(self.source.lang, l.as_bytes()))
+                .map(|t| TermQuery::new(t, IndexRecordOption::Basic))
+                .map(Box::new)
+                .map(|q| q as Box<dyn Query>)
+                .collect::<Vec<_>>(),
+        );
         let mut hits = trigrams(query_str)
             .flat_map(|s| case_permutations(s.as_str()))
             .map(|token| Term::from_field_text(self.source.relative_path, token.as_str()))
@@ -273,6 +288,7 @@ impl Indexer<File> {
                         repo_ref_term.clone(),
                         IndexRecordOption::Basic,
                     )),
+                    Box::new(langs_query.clone()),
                 ];
 
                 if let Some(b) = branch_term.as_ref() {

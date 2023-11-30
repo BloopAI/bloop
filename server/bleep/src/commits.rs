@@ -106,9 +106,10 @@ impl<'a> Iterator for CommitIterator<'a> {
                 stats.modified_file_paths.insert(location.to_string());
 
                 match &change.event {
-                    gix::object::tree::diff::change::Event::Addition { entry_mode, id }
-                        if matches!(entry_mode, EntryMode::Blob) =>
-                    {
+                    gix::object::tree::diff::change::Event::Addition {
+                        entry_mode: EntryMode::Blob,
+                        id,
+                    } => {
                         stats.num_file_insertions += 1;
                         add_diff(
                             &location,
@@ -118,9 +119,10 @@ impl<'a> Iterator for CommitIterator<'a> {
                             &mut stats,
                         );
                     }
-                    gix::object::tree::diff::change::Event::Deletion { entry_mode, id }
-                        if matches!(entry_mode, EntryMode::Blob) =>
-                    {
+                    gix::object::tree::diff::change::Event::Deletion {
+                        entry_mode: EntryMode::Blob,
+                        id,
+                    } => {
                         stats.num_file_deletions += 1;
                         add_diff(
                             &location,
@@ -133,9 +135,9 @@ impl<'a> Iterator for CommitIterator<'a> {
                     gix::object::tree::diff::change::Event::Rewrite {
                         source_id,
                         id,
-                        entry_mode,
+                        entry_mode: EntryMode::Blob,
                         ..
-                    } if matches!(entry_mode, EntryMode::Blob) => {
+                    } => {
                         let platform = Platform::from_ids(source_id, id).unwrap();
                         let old = platform.old.data.as_bstr().to_str_lossy();
                         let new = platform.new.data.as_bstr().to_str_lossy();

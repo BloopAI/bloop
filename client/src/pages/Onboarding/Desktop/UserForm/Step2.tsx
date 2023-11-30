@@ -24,7 +24,8 @@ const UserFormStep2 = ({ onContinue }: Props) => {
   const { isGithubConnected, setGithubConnected } = useContext(
     UIContext.GitHubConnected,
   );
-  const { envConfig, openLink, setEnvConfig } = useContext(DeviceContext);
+  const { envConfig, openLink, setEnvConfig, invokeTauriCommand } =
+    useContext(DeviceContext);
   const [isTimedOut, setIsTimedOut] = useState(false);
   const [isBtnClicked, setBtnClicked] = useState(false);
   const [loginUrl, setLoginUrl] = useState('');
@@ -84,6 +85,7 @@ const UserFormStep2 = ({ onContinue }: Props) => {
         () =>
           checkGHAuth().then((d) => {
             if (!!d.user_login) {
+              invokeTauriCommand('show_main_window');
               onContinue();
             }
           }),

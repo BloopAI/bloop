@@ -61,7 +61,7 @@ jobs:
     with:
       repository: bloop
       tag: ${{ needs.build_tag.outputs.tag }}
-      runner: docker
+      runner: ubuntu-latest
     secrets:
       awsRegion: ${{ secrets.AWS_REGION }}
       awsAccountID: ${{ secrets.AWS_ACCOUNT_ID }}

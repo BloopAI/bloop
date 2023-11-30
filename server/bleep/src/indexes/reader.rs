@@ -64,6 +64,7 @@ pub struct FileDocument {
     pub lang: Option<String>,
     pub branches: String,
     pub indexed: bool,
+    pub is_dir: bool,
 }
 
 pub struct RepoDocument {
@@ -104,7 +105,7 @@ impl DocumentRead for ContentReader {
             .literal(schema.relative_path, |q| q.path.clone())
             .literal(schema.repo_name, |q| q.repo.clone())
             .literal(schema.branches, |q| q.branch.clone())
-            .byte_string(schema.lang, |q| q.lang.as_ref())
+            .byte_string(schema.lang, |q| q.lang.as_ref().map(AsRef::as_ref))
             .literal(schema.symbols, |q| {
                 q.target.as_ref().and_then(Target::symbol).cloned()
             })
@@ -195,7 +196,7 @@ impl DocumentRead for FileReader {
             .literal(schema.relative_path, |q| q.path.clone())
             .literal(schema.repo_name, |q| q.repo.clone())
             .literal(schema.branches, |q| q.branch.clone())
-            .byte_string(schema.lang, |q| q.lang.as_ref())
+            .byte_string(schema.lang, |q| q.lang.as_ref().map(AsRef::as_ref))
             .compile(queries, tantivy_index)
     }
 
@@ -206,6 +207,7 @@ impl DocumentRead for FileReader {
         let lang = read_lang_field(&doc, schema.lang);
         let branches = read_text_field(&doc, schema.branches);
         let indexed = read_bool_field(&doc, schema.indexed);
+        let is_dir = read_bool_field(&doc, schema.is_directory);
 
         FileDocument {
             relative_path,
@@ -214,6 +216,7 @@ impl DocumentRead for FileReader {
             lang,
             branches,
             indexed,
+            is_dir,
         }
     }
 }
@@ -325,7 +328,7 @@ impl DocumentRead for OpenReader {
                 }
                 _ => None,
             })
-            .byte_string(schema.lang, |q| q.lang.as_ref())
+            .byte_string(schema.lang, |q| q.lang.as_ref().map(AsRef::as_ref))
             .compile(queries, tantivy_index)
     }
 

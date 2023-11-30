@@ -104,7 +104,7 @@ impl File {
         let raw_repo_name = builder.add_bytes_field("raw_repo_name", FAST);
         let raw_relative_path = builder.add_bytes_field("raw_relative_path", FAST);
 
-        let is_directory = builder.add_bool_field("is_directory", FAST);
+        let is_directory = builder.add_bool_field("is_directory", FAST | STORED);
         let indexed = builder.add_bool_field("indexed", STORED);
 
         Self {
