@@ -25,13 +25,13 @@ impl Agent {
         // not sure if this is what we want here, or use the project coupled with the agent.
         //
         // let repos = self.paths().map(|r| r.repo.to_string()).collect::<Vec<_>>();
-        let repos = self.project.clone();
+        let repos = todo!();// self.project.clone();
 
         let mut results = self
             .semantic_search(SemanticSearchParams {
                 query: Literal::from(&query.to_string()),
                 paths: vec![],
-                project: repos.clone(),
+                project: repos,
                 limit: CODE_SEARCH_LIMIT,
                 offset: 0,
                 threshold: 0.3,
@@ -91,7 +91,8 @@ impl Agent {
         chunks.sort_by(|a, b| a.alias.cmp(&b.alias).then(a.start_line.cmp(&b.start_line)));
 
         for chunk in chunks.iter().filter(|c| !c.is_empty()) {
-            self.exchanges
+            self.conversation
+                .exchanges
                 .last_mut()
                 .unwrap()
                 .code_chunks

@@ -96,6 +96,60 @@
     },
     "query": "SELECT context, messages FROM studio_snapshots WHERE id = ?"
   },
+  "08e9cd261503f6d2d286d60b97036cae69d58b12c96897f341f4e5eb3dc68dc9": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id!",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 1,
+          "type_info": "Int64"
+        },
+        {
+          "name": "title",
+          "ordinal": 2,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        true,
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "SELECT c.id as 'id!', c.created_at, c.title FROM conversations c JOIN projects p ON p.id = c.project_id AND p.user_id = ? WHERE p.id = ?\n        ORDER BY c.created_at DESC"
+  },
+  "0b7aa6a8c243ac8ca79f52a5ef370ccce954b3635ce5e70a6e80732472a916f2": {
+    "describe": {
+      "columns": [
+        {
+          "name": "exchanges",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "thread_id",
+          "ordinal": 1,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 3
+      }
+    },
+    "query": "SELECT c.exchanges, c.thread_id\n            FROM conversations c\n            JOIN projects p ON p.id = c.project_id AND p.user_id = ?\n            WHERE c.project_id = ? AND c.id = ?"
+  },
   "0fda94d4963a3991ff65079f63ba876030ecaeb1bb8fee3d6e729939a73ad4ea": {
     "describe": {
       "columns": [
@@ -132,15 +186,23 @@
     },
     "query": "SELECT context FROM studio_snapshots WHERE id = ?"
   },
-  "13d9aec6f721a649ab89c29c770ae5aa9f1bf34a0e30f6e608b697772774568e": {
+  "1e8cdc6e2b23d18be0a15b2b79cb7f834d78ad942b29b448be57c0fdfab81d40": {
     "describe": {
-      "columns": [],
-      "nullable": [],
+      "columns": [
+        {
+          "name": "project_id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        }
+      ],
+      "nullable": [
+        true
+      ],
       "parameters": {
-        "Right": 5
+        "Right": 2
       }
     },
-    "query": "INSERT INTO conversations (user_id, thread_id, repo_ref, title, exchanges, created_at) VALUES (?, ?, ?, ?, ?, strftime('%s', 'now'))"
+    "query": "DELETE FROM conversations\n            WHERE thread_id = ? AND EXISTS (\n                SELECT p.id\n                FROM projects p\n                WHERE p.id = project_id AND p.user_id = ?\n            )\n            RETURNING project_id"
   },
   "26065ed9dd0dfa42b8b943726d85425d0b45b2cafcceb9887ea626040bef9264": {
     "describe": {
@@ -276,16 +338,6 @@
     },
     "query": "DELETE FROM docs WHERE id = ? RETURNING id"
   },
-  "392b563bb3af6711817fe99335d053691750426762dcde7b0381dc9f69cd804e": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Right": 2
-      }
-    },
-    "query": "DELETE FROM conversations WHERE user_id = ? AND thread_id = ?"
-  },
   "454d7dfb50480aae5ad9c8372262d55a302e214e1c7ceb8d62b53832f75bd85b": {
     "describe": {
       "columns": [],
@@ -397,6 +449,30 @@
       }
     },
     "query": "INSERT INTO templates (name, content, user_id) VALUES (?, ?, ?)"
+  },
+  "5261d3dfd64c97c87d86c9bae61bf51775174086518a4a0493b4b77da3b8cd6a": {
+    "describe": {
+      "columns": [
+        {
+          "name": "title",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "exchanges",
+          "ordinal": 1,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "SELECT c.title, c.exchanges\n        FROM conversations c\n        JOIN projects p ON p.id = c.project_id AND p.user_id = ?\n        WHERE thread_id = ?"
   },
   "548957b8a631f8a6388907ca13690348ae429ffe8528dd413f03ed236b4f7fb9": {
     "describe": {
@@ -612,36 +688,6 @@
     },
     "query": "DELETE FROM studio_snapshots\n        WHERE id IN (\n            SELECT ss.id\n            FROM studio_snapshots ss\n            JOIN studios s ON s.id = ss.studio_id\n            JOIN projects p ON p.id = s.project_id\n            WHERE ss.id = ? AND ss.studio_id = ? AND s.project_id = ? AND p.user_id = ?\n        )\n        RETURNING id"
   },
-  "6e3bfe277ca4506bc389597db418b311c4faabf5af132f81699997e4d766e40d": {
-    "describe": {
-      "columns": [
-        {
-          "name": "title",
-          "ordinal": 0,
-          "type_info": "Text"
-        },
-        {
-          "name": "repo_ref",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "exchanges",
-          "ordinal": 2,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Right": 2
-      }
-    },
-    "query": "SELECT title, repo_ref, exchanges\n        FROM conversations\n        WHERE user_id = ? AND thread_id = ?"
-  },
   "6e842ac5eb4b5be53dff501a24b6b91c0557d6a7119480441a60c8e99de7daf1": {
     "describe": {
       "columns": [
@@ -790,35 +836,15 @@
     },
     "query": "INSERT INTO studios (project_id, name) VALUES (?, ?) RETURNING id"
   },
-  "859c04508d79d73671f404304f28a45b11c104fe356fc75a7720b1d56577548f": {
+  "834600ffd689d32c250771a3118d24fa93e71a6690b14703fe0b7feda05d53b6": {
     "describe": {
-      "columns": [
-        {
-          "name": "id!",
-          "ordinal": 0,
-          "type_info": "Int64"
-        },
-        {
-          "name": "created_at",
-          "ordinal": 1,
-          "type_info": "Int64"
-        },
-        {
-          "name": "title",
-          "ordinal": 2,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        true,
-        false,
-        false
-      ],
+      "columns": [],
+      "nullable": [],
       "parameters": {
-        "Right": 1
+        "Right": 4
       }
     },
-    "query": "SELECT c.id as 'id!', c.created_at, c.title FROM conversations c JOIN projects p ON p.id = c.project_id AND p.user_id = ?\n            ORDER BY c.created_at DESC"
+    "query": "INSERT INTO conversations (\n                thread_id, title, exchanges, project_id, created_at\n            )\n            VALUES (?, ?, ?, ?, strftime('%s', 'now'))"
   },
   "881aa78dfa3cd1bc3aa7a6edb8281aec5a972c1f53607d25c4e1f6d03cd3faef": {
     "describe": {
@@ -1074,36 +1100,6 @@
     },
     "query": "UPDATE studio_snapshots SET messages = ? WHERE id = ?"
   },
-  "dc1277e6cfacd86b149e82c65b6565805c9ebbfd2f9b01ae384a1261fd1d5723": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id!",
-          "ordinal": 0,
-          "type_info": "Int64"
-        },
-        {
-          "name": "created_at",
-          "ordinal": 1,
-          "type_info": "Int64"
-        },
-        {
-          "name": "title",
-          "ordinal": 2,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        true,
-        false,
-        false
-      ],
-      "parameters": {
-        "Right": 2
-      }
-    },
-    "query": "SELECT c.id as 'id!', c.created_at, c.title FROM conversations c JOIN projects p ON p.id = c.project_id AND p.user_id = ? WHERE c.repo_ref = ? ORDER BY c.created_at DESC"
-  },
   "dcb7f9427283203bce10fe7d618057ef3eab5f6af2277e7a1ac8ba050609894d": {
     "describe": {
       "columns": [
@@ -1175,30 +1171,6 @@
       }
     },
     "query": "\n            SELECT id, name, url, description, favicon, modified_at, index_status\n            FROM docs \n            WHERE name LIKE $1 OR description LIKE $1 OR url LIKE $1\n            LIMIT ?\n            "
-  },
-  "e444f39d4fc9219873c7a8565a13e65e4646658631b785431cb64ca0cc5d6ab9": {
-    "describe": {
-      "columns": [
-        {
-          "name": "repo_ref",
-          "ordinal": 0,
-          "type_info": "Text"
-        },
-        {
-          "name": "exchanges",
-          "ordinal": 1,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false
-      ],
-      "parameters": {
-        "Right": 2
-      }
-    },
-    "query": "SELECT repo_ref, exchanges FROM conversations WHERE user_id = ? AND thread_id = ?"
   },
   "ebdb202965998c4e29727dca19a60c82b2a4574530858e29bf6584c8b6e1f32b": {
     "describe": {
