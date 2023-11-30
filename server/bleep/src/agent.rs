@@ -503,7 +503,7 @@ fn trim_history(
                 } => {
                     if role == "assistant" && content != HIDDEN {
                         *content = HIDDEN.into();
-                        tm.content = HIDDEN.into();
+                        tm.content = Some(HIDDEN.into());
                         true
                     } else {
                         false
@@ -515,7 +515,7 @@ fn trim_history(
                     ref mut content,
                 } if content != HIDDEN => {
                     *content = HIDDEN.into();
-                    tm.content = HIDDEN.into();
+                    tm.content = Some(HIDDEN.into());
                     true
                 }
                 _ => false,

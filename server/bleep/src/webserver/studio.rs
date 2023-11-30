@@ -512,8 +512,9 @@ async fn token_counts(
     let empty_context = generate_llm_context(app.clone(), &[], &[]).await?;
     let empty_system_message = tiktoken_rs::ChatCompletionRequestMessage {
         role: "system".to_owned(),
-        content: prompts::studio_article_prompt(&empty_context),
+        content: Some(prompts::studio_article_prompt(&empty_context)),
         name: None,
+        function_call: None,
     };
 
     let baseline =
@@ -523,13 +524,15 @@ async fn token_counts(
     let tiktoken_messages = messages.iter().cloned().map(|message| match message {
         Message::User(content) => tiktoken_rs::ChatCompletionRequestMessage {
             role: "user".to_owned(),
-            content,
+            content: Some(content),
             name: None,
+            function_call: None,
         },
         Message::Assistant(content) => tiktoken_rs::ChatCompletionRequestMessage {
             role: "assistant".to_owned(),
-            content,
+            content: Some(content),
             name: None,
+            function_call: None,
         },
     });
 
