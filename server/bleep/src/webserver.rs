@@ -100,9 +100,9 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
             "/projects/:project_id/conversations/:conversation_id",
             get(conversation::get),
         )
-        .route("/projects/:project_id/conversations/:conversation_id/answer/vote", post(answer::vote))
-        .route("/projects/:project_id/conversations/:conversation_id/answer", get(answer::answer))
-        .route("/projects/:project_id/conversations/:conversation_id/answer/explain", get(answer::explain))
+        .route("/projects/:project_id/answer/vote", post(answer::vote))
+        .route("/projects/:project_id/answer", get(answer::answer))
+        .route("/projects/:project_id/answer/explain", get(answer::explain))
         .route("/projects/:project_id/studios", post(studio::create))
         .route("/projects/:project_id/studios", get(studio::list))
         .route(
