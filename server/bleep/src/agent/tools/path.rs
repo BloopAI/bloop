@@ -40,7 +40,7 @@ impl Agent {
                 .semantic_search(SemanticSearchParams {
                     query: query.into(),
                     paths: vec![],
-                    project: self.project.clone(),
+                    project: todo!(),// self.project.clone(),
                     limit: 30,
                     offset: 0,
                     threshold: 0.0,

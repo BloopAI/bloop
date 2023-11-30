@@ -1437,7 +1437,7 @@ pub struct Import {
     pub studio_id: Option<i64>,
 }
 
-/// Returns a new studio UUID, or the `?studio_id=...` query param if present.
+/// Returns a new studio ID, or the `?studio_id=...` query param if present.
 #[allow(clippy::single_range_in_vec_init)]
 pub async fn import(
     app: Extension<Application>,
@@ -1452,9 +1452,10 @@ pub async fn import(
     let thread_id = params.thread_id.to_string();
 
     let conversation = sqlx::query! {
-        "SELECT title, repo_ref, exchanges
-        FROM conversations
-        WHERE user_id = ? AND thread_id = ?",
+        "SELECT c.title, c.exchanges
+        FROM conversations c
+        JOIN projects p ON p.id = c.project_id AND p.user_id = ?
+        WHERE thread_id = ?",
         user_id,
         thread_id,
     }
@@ -1462,7 +1463,6 @@ pub async fn import(
     .await?
     .ok_or_else(|| Error::not_found("conversation not found"))?;
 
-    let repo_ref = conversation.repo_ref;
     let exchanges = serde_json::from_str::<Vec<Exchange>>(&conversation.exchanges)
         .context("couldn't deserialize exchange list")?;
 
@@ -1486,7 +1486,7 @@ pub async fn import(
 
     let imported_context = canonicalize_context(exchanges.iter().flat_map(|e| {
         e.code_chunks.iter().map(|c| ContextFile {
-            repo: repo_ref.parse().unwrap(),
+            repo: c.repo_path.repo.clone(),
             path: c.repo_path.path.clone(),
             hidden: false,
             branch: e.query.branch().next().map(Cow::into_owned),

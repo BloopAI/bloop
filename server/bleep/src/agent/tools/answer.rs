@@ -207,7 +207,8 @@ impl Agent {
     fn utter_history(&self) -> impl Iterator<Item = llm_gateway::api::Message> + '_ {
         const ANSWER_MAX_HISTORY_SIZE: usize = 5;
 
-        self.exchanges
+        self.conversation
+            .exchanges
             .iter()
             .rev()
             .take(ANSWER_MAX_HISTORY_SIZE)
@@ -234,7 +235,8 @@ impl Agent {
     }
 
     fn code_chunks(&self) -> impl Iterator<Item = CodeChunk> + '_ {
-        self.exchanges
+        self.conversation
+            .exchanges
             .iter()
             .flat_map(|e| e.code_chunks.iter().cloned())
     }
