@@ -85,7 +85,7 @@ fn default_thread_id() -> uuid::Uuid {
 }
 
 fn default_model() -> agent::model::AnswerModel {
-    agent::model::GPT_3_5_TURBO_FINETUNED
+    agent::model::GPT_4_TURBO_24K
 }
 
 fn default_agent_model() -> agent::model::AnswerModel {
