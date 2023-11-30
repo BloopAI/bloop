@@ -6,8 +6,8 @@ use qdrant_client::{
     qdrant::payload_index_params::IndexParams,
     qdrant::{
         vectors_config, CollectionOperationResponse, CreateCollection, Distance, FieldType,
-        PayloadIndexParams, PointsOperationResponse, TextIndexParams, VectorParams, VectorsConfig,
-        TokenizerType
+        PayloadIndexParams, PointsOperationResponse, TextIndexParams, TokenizerType, VectorParams,
+        VectorsConfig,
     },
 };
 
@@ -86,7 +86,7 @@ pub(super) async fn create_lexical_index(
             FieldType::Text,
             Some(&PayloadIndexParams {
                 index_params: Some(IndexParams::TextIndexParams(TextIndexParams {
-                    tokenizer: TokenizerType::Word.into(), 
+                    tokenizer: TokenizerType::Word.into(),
                     lowercase: Some(true),
                     min_token_len: Some(2),
                     max_token_len: Some(20),

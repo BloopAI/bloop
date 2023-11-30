@@ -449,17 +449,15 @@ impl Semantic {
     // Score is 10 * (# of query words matched) + (total number of hits)
     fn rank_lexical(payloads: Vec<Payload>, query: &str) -> Vec<Payload> {
         let keywords: Vec<&str> = query.split_whitespace().collect();
-        let counts = payloads
-            .iter()
-            .map(|p| {
-                (
-                    keywords
-                        .iter()
-                        .map(|&k| p.text.matches(k).count())
-                        .collect::<Vec<usize>>(),
-                    p.clone(),
-                )
-            });
+        let counts = payloads.iter().map(|p| {
+            (
+                keywords
+                    .iter()
+                    .map(|&k| p.text.matches(k).count())
+                    .collect::<Vec<usize>>(),
+                p.clone(),
+            )
+        });
         let mut scores: Vec<(f32, Payload)> = counts
             .map(|(count, payload)| {
                 let score: f32 = (count.iter().sum::<usize>()
@@ -474,7 +472,7 @@ impl Semantic {
 
     // Join semantic and lexical results using Reciprocal Rank Fusion (RRF)
     // For item i present in j rankings (rank_i,j) score_i = sum_j (1/ (rank_i,j + k))
-    // k controls how much weight to give to lower ranks and is set to 60 which is 
+    // k controls how much weight to give to lower ranks and is set to 60 which is
     // the default value in multiple implementations and in http://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf
     fn merge_rrf(payloads_lexical: Vec<Payload>, payloads_semantic: Vec<Payload>) -> Vec<Payload> {
         let k = 60;
