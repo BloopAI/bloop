@@ -14,7 +14,7 @@ use crate::{
     repo::RepoRef,
     semantic::{self, SemanticSearchParams},
     webserver::{
-        conversation::{self, ConversationId},
+        conversation::{self, ConversationId, Conversation},
         middleware::User,
     },
     Application,
@@ -69,13 +69,11 @@ impl Project {
 
 pub struct Agent {
     pub app: Application,
-    pub project: Project,
-    pub exchanges: Vec<Exchange>,
+    pub conversation: Conversation,
     pub exchange_tx: Sender<Exchange>,
 
     pub llm_gateway: llm_gateway::Client,
     pub user: User,
-    pub thread_id: uuid::Uuid,
     pub query_id: uuid::Uuid,
 
     pub answer_model: model::LLMModel,
@@ -165,22 +163,22 @@ impl Agent {
     pub fn track_query(&self, data: EventData) {
         let event = QueryEvent {
             query_id: self.query_id,
-            thread_id: self.thread_id,
+            thread_id: self.conversation.thread_id,
             data,
         };
         self.app.track_query(&self.user, &event);
     }
 
     fn last_exchange(&self) -> &Exchange {
-        self.exchanges.last().expect("exchange list was empty")
+        self.conversation.exchanges.last().expect("exchange list was empty")
     }
 
     fn last_exchange_mut(&mut self) -> &mut Exchange {
-        self.exchanges.last_mut().expect("exchange list was empty")
+        self.conversation.exchanges.last_mut().expect("exchange list was empty")
     }
 
     fn paths(&self) -> impl Iterator<Item = &RepoPath> {
-        self.exchanges.iter().flat_map(|e| e.paths.iter())
+        self.conversation.exchanges.iter().flat_map(|e| e.paths.iter())
     }
 
     fn get_path_alias(&mut self, repo_path: &RepoPath) -> usize {
@@ -197,14 +195,14 @@ impl Agent {
     }
 
     pub async fn step(&mut self, action: Action) -> Result<Option<Action>> {
-        info!(?action, %self.thread_id, "executing next action");
+        info!(?action, %self.conversation.thread_id, "executing next action");
 
         match &action {
             Action::Query(s) => {
                 self.track_query(EventData::input_stage("query").with_payload("q", s));
 
                 // Always make a code search for the user query on the first exchange
-                if self.exchanges.len() == 1 {
+                if self.conversation.exchanges.len() == 1 {
                     let keywords = {
                         let keys = remove_stopwords(s);
                         if keys.is_empty() {
@@ -292,6 +290,7 @@ impl Agent {
         const FUNCTION_CALL_INSTRUCTION: &str = "Call a function. Do not answer";
 
         let history = self
+            .conversation
             .exchanges
             .iter()
             .rev()
@@ -418,7 +417,7 @@ impl Agent {
             ..self.last_exchange().query.clone()
         };
 
-        debug!(?query, %self.thread_id, "executing semantic query");
+        debug!(?query, %self.conversation.thread_id, "executing semantic query");
         self.app.semantic.search(&query, semantic_params).await
     }
 
@@ -428,7 +427,7 @@ impl Agent {
     ) -> Result<Option<ContentDocument>> {
         let branch = self.last_exchange().query.first_branch();
 
-        debug!(%repo, path, ?branch, %self.thread_id, "executing file search");
+        debug!(%repo, path, ?branch, %self.conversation.thread_id, "executing file search");
         self.app
             .indexes
             .file
@@ -444,11 +443,11 @@ impl Agent {
         let branch = self.last_exchange().query.first_branch();
         let langs = self.last_exchange().query.langs.iter().map(Deref::deref);
 
-        debug!(?self.project, query, ?branch, %self.thread_id, "executing fuzzy search");
+        debug!(?query, ?branch, %self.conversation.thread_id, "executing fuzzy search");
         self.app
             .indexes
             .file
-            .fuzzy_path_match(self.project.clone(), branch.as_deref(), query, langs, 50)
+            .fuzzy_path_match(todo!(), branch.as_deref(), query, langs, 50)
             .await
     }
 
@@ -458,21 +457,18 @@ impl Agent {
     // NB: This isn't an `async fn` so as to not capture a lifetime.
     fn store(&mut self) -> impl Future<Output = ()> {
         let sql = Arc::clone(&self.app.sql);
-        let conversation = (self.project.clone(), self.exchanges.clone());
-        let conversation_id = self
+
+        let user_id = self
             .user
             .username()
             .context("didn't have user ID")
-            .map(|user_id| ConversationId {
-                thread_id: self.thread_id,
-                user_id: user_id.to_owned(),
-            });
+            .map(str::to_owned);
+
+        let conversation = self.conversation.clone();
 
         async move {
-            let result = match conversation_id {
-                Ok(conversation_id) => {
-                    conversation::store(&sql, conversation_id, conversation).await
-                }
+            let result = match user_id {
+                Ok(user_id) => conversation.store(&sql, &user_id).await,
                 Err(e) => Err(e),
             };
 
@@ -527,7 +523,7 @@ fn trim_history(
     Ok(history)
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Action {
     /// A user-provided query.
