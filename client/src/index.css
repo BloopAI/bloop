@@ -271,7 +271,7 @@
     --default-dark-shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.16);
     --default-dark-shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.16);
     --default-dark-shadow-float: 0px 4px 32px 0px rgba(0, 0, 0, 0.35);
-    --default-dark-shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
+    --default-dark-shadow-high: 0px 8px 24px 0px rgba(0, 0, 0, 0.08);
     --default-dark-shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
     --default-dark-shadow-low: 0px 1px 2px 0px rgba(0, 0, 0, 0.35);
 
@@ -280,7 +280,7 @@
     --default-light-shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.08);
     --default-light-shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.08);
     --default-light-shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.28);
-    --default-light-shadow-high: 0px 3px 12px 0px rgba(0, 0, 0, 0.09);
+    --default-light-shadow-high: 0px 8px 24px 0px rgba(0, 0, 0, 0.08);
     --default-light-shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
     --default-light-shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
 
@@ -673,6 +673,24 @@ h5, .h5 {
   cursor: default;
 }
 
+.headline-b {
+  font-family: 'Inter', sans-serif;
+  font-size: 1.625rem;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 123.077%;
+  letter-spacing: -0.26px;
+}
+
+.title-s {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.9375rem;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 133%;
+  letter-spacing: -0.15px;
+}
+
 .subhead-l {
   font-family: 'Inter', sans-serif;
   font-style: normal;
@@ -735,7 +753,7 @@ h5, .h5 {
   line-height: 123.077%;
 }
 
-.body-s-strong {
+.body-s-b {
   font-family: 'Inter', sans-serif;
   font-style: normal;
   font-weight: 500;
@@ -747,9 +765,25 @@ h5, .h5 {
 .body-mini {
   font-family: 'Inter', sans-serif;
   font-style: normal;
+  font-weight: 400;
+  font-size: 0.75rem;
+  line-height: 116.667%;
+}
+
+.body-mini-b {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
   font-weight: 500;
   font-size: 0.75rem;
   line-height: 116.667%;
+}
+
+.body-tiny {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  font-size: 0.625rem;
+  line-height: 120%;
 }
 
 .body-base-b {

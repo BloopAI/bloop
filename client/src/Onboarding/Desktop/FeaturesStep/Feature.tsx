@@ -13,7 +13,7 @@ const Feature = ({ icon, description, title }: Props) => {
         {icon}
         {title}
       </div>
-      <div className="pl-8 body-s text-label-base">{description}</div>
+      <div className="pl-8 body-s-b text-label-base">{description}</div>
     </div>
   );
 };

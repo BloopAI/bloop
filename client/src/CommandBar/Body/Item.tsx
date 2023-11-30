@@ -45,6 +45,7 @@ const CommandBarItem = ({
   const { setFocusedItem, setChosenStep } = useContext(
     CommandBarContext.Handlers,
   );
+  const { setIsVisible } = useContext(CommandBarContext.General);
 
   useEffect(() => {
     if (isFocused) {
@@ -106,14 +107,14 @@ const CommandBarItem = ({
       >
         <Icon sizeClassName="w-3.5 h-3.5" />
       </div>
-      <p className="flex-1 body-s">{label}</p>
+      <p className="flex-1 body-s-b">{label}</p>
       {!!shortcutKeys && (
         <div className="flex items-center gap-1">
           {shortcutKeys.map((k) => (
             <div
               key={k}
               className={`w-5 h-5 px-1 flex-shrink-0 flex items-center justify-center rounded 
-              border border-bg-border bg-bg-base shadow-low body-mini text-label-base`}
+              border border-bg-border bg-bg-base shadow-low body-mini-b text-label-base`}
             >
               {k}
             </div>

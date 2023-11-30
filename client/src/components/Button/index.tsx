@@ -76,15 +76,15 @@ const variantStylesMap = {
 
 const sizeMap = {
   mini: {
-    default: 'h-6 px-1.5 gap-1 body-mini rounded',
+    default: 'h-6 px-1.5 gap-1 body-mini-b rounded',
     square: 'h-6 w-6 rounded',
   },
   small: {
-    default: 'h-7 px-2 gap-1 body-mini rounded',
+    default: 'h-7 px-2 gap-1 body-mini-b rounded',
     square: 'h-7 w-8 rounded',
   },
   medium: {
-    default: 'h-8 px-2.5 gap-1.5 body-s rounded-6',
+    default: 'h-8 px-2.5 gap-1.5 body-s-b rounded-6',
     square: 'h-8 w-10 rounded-6',
   },
   large: {

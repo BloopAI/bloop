@@ -40,7 +40,7 @@ const ReportBugModal = ({
   const [isSubmitted, setSubmitted] = useState(false);
   const [serverLog, setServerLog] = useState('');
   const [serverCrashedMessage, setServerCrashedMessage] = useState('');
-  const { isBugReportModalOpen, setBugReportModalOpen, activeTab } = useContext(
+  const { isBugReportModalOpen, setBugReportModalOpen } = useContext(
     UIContext.BugReport,
   );
   const { listen, os, release, invokeTauriCommand } = useContext(DeviceContext);
@@ -128,13 +128,13 @@ const ReportBugModal = ({
     setBugReportModalOpen(false);
     setServerCrashedMessage('');
     handleSubmit?.();
-  }, [serverCrashedMessage, activeTab]);
+  }, [serverCrashedMessage]);
 
   return (
     <Modal
       isVisible={isBugReportModalOpen || !!forceShow}
       onClose={() => setBugReportModalOpen(false)}
-      // containerClassName="max-w-md2 max-h-[80vh]"
+      containerClassName="max-w-md2 max-h-[80vh]"
     >
       <div className="p-6 flex flex-col gap-8 relative bg-bg-shade overflow-auto">
         {!isSubmitted ? (
@@ -144,7 +144,7 @@ const ReportBugModal = ({
                 <h4 className="text-label-title">
                   <Trans>bloop crashed unexpectedly</Trans>
                 </h4>
-                <p className="body-s text-label-base text-center">
+                <p className="body-s-b text-label-base text-center">
                   <Trans>
                     By submitting this crash report you agree to send it to
                     bloop for investigation.
@@ -157,14 +157,13 @@ const ReportBugModal = ({
                   onChange={onChange}
                   name="text"
                   multiline
-                  variant="filled"
                   placeholder={t`Provide any steps necessary to reproduce the problem...`}
                 />
                 <div className="flex flex-col overflow-auto">
-                  <p className="body-s text-label-title mb-1">
+                  <p className="body-s-b text-label-title mb-1">
                     <Trans>Problem details and System configuration</Trans>
                   </p>
-                  <p className="body-s text-label-base border border-bg-border p-2.5 rounded-4 overflow-auto">
+                  <p className="body-s-b text-label-base border border-bg-border p-2.5 rounded-4 overflow-auto">
                     {serverCrashedMessage}
                     <br />
                     <br />
@@ -190,7 +189,7 @@ const ReportBugModal = ({
                 <h4>
                   <Trans>Report a bug</Trans>
                 </h4>
-                <p className="body-s text-label-base text-center">
+                <p className="body-s-b text-label-base text-center">
                   <Trans>
                     We want to make this the best experience for you. If you
                     encountered a bug, please submit this bug report to us. Our
@@ -203,7 +202,6 @@ const ReportBugModal = ({
                   value={form.name}
                   onChange={onChange}
                   name="name"
-                  variant="filled"
                   placeholder={t`Full name`}
                 />
                 <TextInput
@@ -219,7 +217,6 @@ const ReportBugModal = ({
                   }}
                   error={form.emailError}
                   name="email"
-                  variant="filled"
                   placeholder={t`Email address`}
                 />
                 <TextInput
@@ -227,7 +224,6 @@ const ReportBugModal = ({
                   onChange={onChange}
                   name="text"
                   multiline
-                  variant="filled"
                   placeholder={t`Describe the bug to help us reproduce it...`}
                 />
               </form>
@@ -242,7 +238,7 @@ const ReportBugModal = ({
               <h4>
                 <Trans>Thank you!</Trans>
               </h4>
-              <p className="body-s text-label-base text-center">
+              <p className="body-s-b text-label-base text-center">
                 <Trans>
                   We’ll investigate and reach out back soon if necessary.
                 </Trans>

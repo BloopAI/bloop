@@ -38,8 +38,8 @@ const SectionItem = ({ icon, label, shortcut, onClick, isSelected }: Props) => {
         hover:text-label-title hover:bg-bg-shade-hover`}
     >
       {icon}
-      <p className="flex-1 body-s text-label-title ellisis">{label}</p>
-      <p className="body-mini text-label-muted">{shortcutKeys?.join(' ')}</p>
+      <p className="flex-1 body-s-b text-label-title ellisis">{label}</p>
+      <p className="body-mini-b text-label-muted">{shortcutKeys?.join(' ')}</p>
       {isSelected && (
         <CheckIcon
           sizeClassName="w-4 h-4"

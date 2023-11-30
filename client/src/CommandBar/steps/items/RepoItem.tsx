@@ -195,9 +195,9 @@ const RepoItem = ({
       }
       customRightElement={
         isIndexing ? (
-          <p className="body-mini text-label-link">{t('Indexing...')}</p>
+          <p className="body-mini-b text-label-link">{t('Indexing...')}</p>
         ) : status === SyncStatus.Done ? (
-          <p className="body-mini text-label-base">
+          <p className="body-mini-b text-label-base">
             {t('Last indexed')}{' '}
             {format(new Date(lastIndexed), 'MMM, dd yyyy', {
               ...(getDateFnsLocale(locale) || {}),

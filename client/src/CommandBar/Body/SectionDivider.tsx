@@ -6,7 +6,7 @@ type Props = {
 
 const SectionDivider = ({ text }: Props) => {
   return (
-    <div className="flex items-center gap-1 px-2 py-1 body-mini text-label-muted">
+    <div className="flex items-center gap-1 px-2 py-1 body-mini-b text-label-muted">
       {text}
     </div>
   );

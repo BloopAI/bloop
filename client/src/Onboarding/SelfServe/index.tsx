@@ -35,7 +35,7 @@ const SelfServe = () => {
               <div className="bg-bg-base border border-bg-border rounded-lg shadow-high p-6 flex flex-col flex-1 gap-8 w-full max-w-md2 relative max-h-[calc(100vh-12rem)]">
                 <div>
                   <h4 className="text-center select-none text-label-title">{t`Sign In`}</h4>
-                  <p className={`body-s text-label-base mt-3 text-center`}>
+                  <p className={`body-s-b text-label-base mt-3 text-center`}>
                     {t`Use GitHub to sign in to your account`}
                   </p>
                 </div>

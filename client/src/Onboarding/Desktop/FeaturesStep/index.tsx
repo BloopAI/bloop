@@ -24,7 +24,7 @@ const FeaturesStep = ({ handleNext }: Props) => {
         <h4 className="text-center select-none text-label-title">
           {t('Welcome to bloop')}
         </h4>
-        <p className={`body-s text-label-base mt-3 text-center`}>
+        <p className={`body-s-b text-label-base mt-3 text-center`}>
           {t('Unlock the value of your existing code, using AI')}
         </p>
       </div>

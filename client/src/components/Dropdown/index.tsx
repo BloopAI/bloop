@@ -19,7 +19,7 @@ type Props = {
 };
 
 const sizesMap = {
-  small: 'w-44',
+  small: 'w-52',
   medium: 'w-72',
   large: 'w-100',
 };
@@ -100,9 +100,13 @@ const Dropdown = ({
         render={renderContent}
       >
         <span>
-          <button onClick={handleToggle} className="flex" ref={buttonRef}>
+          <a
+            onClick={handleToggle}
+            className="flex cursor-pointer"
+            ref={buttonRef}
+          >
             {children}
-          </button>
+          </a>
         </span>
       </Tippy>
     </div>

@@ -185,7 +185,7 @@ const DocItem = ({
       }
       customRightElement={
         isIndexing ? (
-          <p className="body-mini text-label-link">{t('Indexing...')}</p>
+          <p className="body-mini-b text-label-link">{t('Indexing...')}</p>
         ) : undefined
       }
     />

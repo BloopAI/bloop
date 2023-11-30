@@ -1,26 +1,39 @@
 import React, { memo, useCallback, useContext } from 'react';
-import { ChevronDownIcon, KLetterIcon, PersonIcon } from '../../icons';
+import { Trans, useTranslation } from 'react-i18next';
+import {
+  ArrowLeftIcon,
+  ChevronDownIcon,
+  KLetterIcon,
+  PersonIcon,
+} from '../../icons';
 import { DeviceContext } from '../../context/deviceContext';
 import Button from '../Button';
 import Dropdown from '../Dropdown';
 import { EnvContext } from '../../context/envContext';
 import { ProjectContext } from '../../context/projectContext';
 import { CommandBarContext } from '../../context/commandBarContext';
+import { UIContext } from '../../context/uiContext';
 import UserDropdown from './UserDropdown';
 import ProjectsDropdown from './ProjectsDropdown';
 
 type Props = {
-  isSkeleton?: boolean;
+  isSettings?: boolean;
 };
 
-const Header = ({ isSkeleton }: Props) => {
+const Header = ({ isSettings }: Props) => {
+  const { t } = useTranslation();
   const { os } = useContext(DeviceContext);
   const { envConfig } = useContext(EnvContext);
   const { project } = useContext(ProjectContext.Current);
   const { setIsVisible } = useContext(CommandBarContext.General);
+  const { setSettingsOpen } = useContext(UIContext.Settings);
 
   const openCommandBar = useCallback(() => {
     setIsVisible(true);
+  }, []);
+
+  const closeSettings = useCallback(() => {
+    setSettingsOpen(false);
   }, []);
 
   return (
@@ -34,17 +47,34 @@ const Header = ({ isSkeleton }: Props) => {
         ) : (
           ''
         )}
-        <Dropdown
-          dropdownItems={<ProjectsDropdown />}
-          dropdownPlacement="bottom-start"
-        >
-          <div className="flex w-72 px-4 items-center text-left h-10 gap-4 border-r border-bg-border hover:bg-bg-base-hover">
-            <p className="flex-1 body-s">
-              {project?.name || 'Default project'}
+        {isSettings ? (
+          <div className="flex items-center gap-2">
+            <Button
+              onlyIcon
+              title={t('Back')}
+              onClick={closeSettings}
+              variant="tertiary"
+              size="small"
+            >
+              <ArrowLeftIcon />
+            </Button>
+            <p className="body-mini-b text-label-title">
+              <Trans>Account settings</Trans>
             </p>
-            <ChevronDownIcon raw sizeClassName="w-3.5 h-3.5" />
           </div>
-        </Dropdown>
+        ) : (
+          <Dropdown
+            dropdownItems={<ProjectsDropdown />}
+            dropdownPlacement="bottom-start"
+          >
+            <div className="flex w-72 px-4 items-center text-left h-10 gap-4 border-r border-bg-border hover:bg-bg-base-hover">
+              <p className="flex-1 body-s-b">
+                {project?.name || 'Default project'}
+              </p>
+              <ChevronDownIcon raw sizeClassName="w-3.5 h-3.5" />
+            </div>
+          </Dropdown>
+        )}
       </div>
       <div className="flex pl-2 pr-4 items-center gap-2 h-full">
         <Button variant="tertiary" size="mini" onClick={openCommandBar}>
@@ -52,7 +82,7 @@ const Header = ({ isSkeleton }: Props) => {
             sizeClassName="w-3.5 h-3.5"
             className="-translate-y-px"
           />
-          Commands
+          <Trans>Commands</Trans>
         </Button>
         <Dropdown
           dropdownItems={<UserDropdown />}

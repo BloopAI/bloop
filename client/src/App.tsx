@@ -9,6 +9,7 @@ import CommandBar from './CommandBar';
 import ProjectContextProvider from './context/providers/ProjectContextProvider';
 import CommandBarContextProvider from './context/providers/CommandBarContextProvider';
 import { UIContextProvider } from './context/providers/UIContextProvider';
+import Settings from './Settings';
 
 const App = () => {
   return (
@@ -19,6 +20,7 @@ const App = () => {
             <ReportBugModal />
             <Onboarding />
             <CommandBarContextProvider>
+              <Settings />
               <Header />
               <CommandBar />
               <Project />

@@ -9,7 +9,7 @@ type Props = {
 const HintButton = ({ label, shortcut }: Props) => {
   const shortcutKeys = useShortcuts(shortcut);
   return (
-    <div className="inline-flex pl-2 py-1 pr-1 items-center gap-1 rounded-6 bg-bg-base body-mini text-label-muted text-center">
+    <div className="inline-flex pl-2 py-1 pr-1 items-center gap-1 rounded-6 bg-bg-base body-mini-b text-label-muted text-center">
       {label}
       {shortcutKeys?.map((k) => (
         <div

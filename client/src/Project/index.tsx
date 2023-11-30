@@ -18,7 +18,7 @@ const Project = ({}: Props) => {
             <p className="body-base-b text-label-title">
               <Trans>This project is empty</Trans>
             </p>
-            <p className="body-s text-label-base">
+            <p className="body-s-b text-label-base">
               <Trans>
                 Start by adding your first repository or documentation library.
               </Trans>
