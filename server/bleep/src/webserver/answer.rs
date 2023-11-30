@@ -220,7 +220,7 @@ async fn try_execute_agent(
         agent_model,
         ..
     } = params.clone();
-    
+
     let llm_gateway = user
         .llm_gateway(&app)
         .await?
@@ -257,7 +257,6 @@ async fn try_execute_agent(
         }
     };
 
-    
     let stream = async_stream::try_stream! {
         let (exchange_tx, exchange_rx) = tokio::sync::mpsc::channel(10);
 

@@ -57,7 +57,6 @@ impl FromStr for AnswerModel {
             "gpt-4" => Ok(GPT_4),
             "gpt-4-turbo-24k" => Ok(GPT_4_TURBO_24K),
             "gpt-3.5-turbo-finetuned" | _ => Ok(GPT_3_5_TURBO_FINETUNED),
-            
         }
     }
 }
