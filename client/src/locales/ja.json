@@ -503,5 +503,9 @@
 	"Unlimited code studio requests": "無制限のコードスタジオリクエスト",
 	"Index multiple branches": "複数のブランチをインデックスします",
 	"All payments, invoices and billing information are managed in Stripe.": "すべての支払い、請求書、請求情報は、ストライプで管理されます。",
-	"Downgrade": "ダウングレード"
+	"Downgrade": "ダウングレード",
+	"$20 / billed monthly": "毎月20ドル /請求されます",
+	"We've redirected you to Stripe to complete your transaction. <2>Launch manually</2> if it didn't work.": "トランザクションを完了するために、ストライプにリダイレクトしました。 <2>手動で起動</2>機能しなかった場合。",
+	"Try again": "もう一度やり直してください",
+	"Re-check payment status": "支払いステータスを再確認します"
 }

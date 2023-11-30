@@ -15,10 +15,10 @@ import { CommandBarStepEnum, RepoUi, SyncStatus } from '../../../types/general';
 import { cancelSync, deleteRepo, syncRepo } from '../../../services/api';
 import { RepositoryIcon } from '../../../icons';
 import { DeviceContext } from '../../../context/deviceContext';
-import LiteLoaderContainer from '../../../components/Loaders/LiteLoader';
 import { getDateFnsLocale } from '../../../utils';
 import { LocaleContext } from '../../../context/localeContext';
 import Item from '../../Body/Item';
+import SpinLoaderContainer from '../../../components/Loaders/SpinnerLoader';
 
 type Props = {
   repo: RepoUi;
@@ -138,7 +138,7 @@ const RepoItem = ({
       isFocused={isFocused}
       i={i}
       isFirst={isFirst}
-      Icon={isIndexing ? LiteLoaderContainer : RepositoryIcon}
+      Icon={isIndexing ? SpinLoaderContainer : RepositoryIcon}
       label={repo.shortName}
       id={CommandBarStepEnum.REPO_SETTINGS}
       footerHint={

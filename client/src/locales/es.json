@@ -513,5 +513,10 @@
 	"Unlimited code studio requests": "Solicitudes de estudio de código ilimitadas",
 	"Index multiple branches": "Indexar múltiples ramas",
 	"All payments, invoices and billing information are managed in Stripe.": "Todos los pagos, facturas e información de facturación se administran en Stripe.",
-	"Downgrade": "Degradar"
+	"Downgrade": "Degradar",
+	"Upgrade to Personal plan": "Actualizar al plan personal",
+	"We've redirected you to Stripe to complete your transaction. <2>Launch manually</2> if it didn't work.": "Te hemos redirigido a rayar para completar su transacción. <2> Iniciar manualmente </2> si no funcionó.",
+	"Try again": "Intentar otra vez",
+	"Re-check payment status": "Vuelva a verificar el estado de pago",
+	"$20 / billed monthly": "$ 20 / facturado mensualmente"
 }

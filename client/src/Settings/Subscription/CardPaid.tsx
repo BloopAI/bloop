@@ -20,44 +20,18 @@ import Confetti from './Confetti';
 
 type Props = {
   isActive: boolean;
+  onUpgrade: () => void;
+  hasUpgraded: boolean;
+  isFetchingLink: boolean;
 };
 
-const CardPaid = ({ isActive }: Props) => {
+const CardPaid = ({
+  isActive,
+  hasUpgraded,
+  onUpgrade,
+  isFetchingLink,
+}: Props) => {
   const { t } = useTranslation();
-  const { refetchQuota } = useContext(PersonalQuotaContext.Handlers);
-  const { openLink } = useContext(DeviceContext);
-  const { setBugReportModalOpen } = useContext(UIContext.BugReport);
-  const [isFetchingLink, setIsFetchingLink] = useState(false);
-  const [isLinkRequested, setIsLinkRequested] = useState(false);
-  const intervalId = useRef(0);
-  const [hasUpgraded, setHasUpgraded] = useState(false);
-
-  const handleUpgrade = useCallback(() => {
-    setIsFetchingLink(true);
-    getSubscriptionLink()
-      .then((resp) => {
-        if (resp.url) {
-          setIsLinkRequested(true);
-          openLink(resp.url);
-          clearInterval(intervalId.current);
-          intervalId.current = polling(() => refetchQuota(), 2000);
-          setTimeout(() => clearInterval(intervalId.current), 10 * 60 * 1000);
-        } else {
-          setBugReportModalOpen(true);
-        }
-      })
-      .catch(() => {
-        setBugReportModalOpen(true);
-      })
-      .finally(() => setIsFetchingLink(false));
-  }, [openLink]);
-
-  useEffect(() => {
-    if (!hasUpgraded && isActive && isLinkRequested) {
-      clearInterval(intervalId.current);
-      setHasUpgraded(true);
-    }
-  }, [isActive, hasUpgraded, isLinkRequested]);
 
   return (
     <div className="flex flex-col gap-8 p-5 flex-1 overflow-hidden rounded-2xl border border-bg-border bg-bg-base shadow-high relative">
@@ -87,7 +61,7 @@ const CardPaid = ({ isActive }: Props) => {
           <Badge text={t(`Currently active`)} type="green-subtle" />
         </div>
       ) : (
-        <Button onClick={handleUpgrade}>
+        <Button onClick={onUpgrade}>
           {isFetchingLink ? (
             <LiteLoaderContainer sizeClassName="w-4 h-4" />
           ) : (

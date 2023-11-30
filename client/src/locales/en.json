@@ -514,5 +514,11 @@
 	"Unlimited code studio requests": "Unlimited code studio requests",
 	"Index multiple branches": "Index multiple branches",
 	"All payments, invoices and billing information are managed in Stripe.": "All payments, invoices and billing information are managed in Stripe.",
-	"Downgrade": "Downgrade"
+	"Downgrade": "Downgrade",
+	"Upgrade to Personal plan": "Upgrade to Personal plan",
+	"$20 / billed monthly": "$20 / billed monthly",
+	"We've redirected you to Stripe to complete your transaction.<1>Launch manually</1> if it didn't work.": "We've redirected you to Stripe to complete your transaction.<1>Launch manually</1> if it didn't work.",
+	"Re-check payment status": "Re-check payment status",
+	"We've redirected you to Stripe to complete your transaction. <2>Launch manually</2> if it didn't work.": "We've redirected you to Stripe to complete your transaction. <2>Launch manually</2> if it didn't work.",
+	"Try again": "Try again"
 }
