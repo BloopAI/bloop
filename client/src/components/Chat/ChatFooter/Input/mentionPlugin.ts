@@ -8,6 +8,8 @@ export function getRegexp(mentionTrigger: string, allowSpace?: boolean) {
     : new RegExp('(^|\\s)' + mentionTrigger + '([\\w-\\+]*)$');
 }
 
+const insertAfterSelect = String.fromCharCode(160);
+
 export function getMatch(
   $position: ResolvedPos,
   opts: {
@@ -27,10 +29,14 @@ export function getMatch(
   // if match found, return match with useful information.
   if (match) {
     // adjust match.index to remove the matched extra space
-    match.index = match[0].startsWith(' ') ? match.index! + 1 : match.index;
-    match[0] = match[0].startsWith(' ')
-      ? match[0].substring(1, match[0].length)
-      : match[0];
+    match.index =
+      match[0].startsWith(' ') || match[0].startsWith(insertAfterSelect)
+        ? (match.index || 0) + 1
+        : match.index;
+    match[0] =
+      match[0].startsWith(' ') || match[0].startsWith(insertAfterSelect)
+        ? match[0].substring(1, match[0].length)
+        : match[0];
 
     // The absolute position of the match in the document
     const from = $position.start() + match.index!;
@@ -241,7 +247,7 @@ export function getMentionsPlugin(opts: Partial<Options>) {
       ...item,
     };
     const node = view.state.schema.nodes[state.type].create(attrs);
-    const spaceNode = view.state.schema.text(String.fromCharCode(160));
+    const spaceNode = view.state.schema.text(insertAfterSelect);
 
     const tr = view.state.tr.replaceWith(state.range.from, state.range.to, [
       node,
