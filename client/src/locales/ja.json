@@ -507,5 +507,6 @@
 	"$20 / billed monthly": "毎月20ドル /請求されます",
 	"We've redirected you to Stripe to complete your transaction. <2>Launch manually</2> if it didn't work.": "トランザクションを完了するために、ストライプにリダイレクトしました。 <2>手動で起動</2>機能しなかった場合。",
 	"Try again": "もう一度やり直してください",
-	"Re-check payment status": "支払いステータスを再確認します"
+	"Re-check payment status": "支払いステータスを再確認します",
+	"Indexed documentation web pages": "インデックス付きドキュメントWebページ"
 }

@@ -146,3 +146,4 @@ export { default as MacintoshIcon } from './Macintosh';
 export { default as ThemeLightIcon } from './ThemeLight';
 export { default as ThemeDarkIcon } from './ThemeDark';
 export { default as ThemeBlackIcon } from './ThemeBlack';
+export { default as LinkChainIcon } from './LinkChain';

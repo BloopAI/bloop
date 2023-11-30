@@ -9,15 +9,15 @@ import React, {
 import { Trans, useTranslation } from 'react-i18next';
 import TextInput from '../../../components/TextInput';
 import { EMAIL_REGEX } from '../../../consts/validations';
-import Dropdown from '../../../components/Dropdown/Normal';
 import { themesMap } from '../../../consts/general';
-import { MenuItemType } from '../../../types/general';
-import { Theme } from '../../../types';
-import { previewTheme } from '../../../utils';
 import Button from '../../../components/Button';
 import { UIContext } from '../../../context/uiContext';
 import { Form } from '../../index';
 import { DeviceContext } from '../../../context/deviceContext';
+import Dropdown from '../../../components/Dropdown';
+import ThemeDropdown from '../../../Settings/Preferences/ThemeDropdown';
+import { themeIconsMap } from '../../../Settings/Preferences';
+import { ChevronDownIcon } from '../../../icons';
 
 type Props = {
   form: Form;
@@ -27,7 +27,7 @@ type Props = {
 
 const UserFormStep1 = ({ form, setForm, onContinue }: Props) => {
   const { t } = useTranslation();
-  const { theme, setTheme } = useContext(UIContext.Theme);
+  const { theme } = useContext(UIContext.Theme);
   const { openLink } = useContext(DeviceContext);
   const [showErrors, setShowErrors] = useState(false);
 
@@ -112,24 +112,16 @@ const UserFormStep1 = ({ form, setForm, onContinue }: Props) => {
       />
       <div className="flex flex-col w-full">
         <Dropdown
-          btnHint={
-            <span className="text-label-title">
-              <Trans>Select color theme:</Trans>
-            </span>
-          }
-          btnClassName="w-full border-transparent"
-          items={Object.entries(themesMap).map(([key, name]) => ({
-            type: MenuItemType.DEFAULT,
-            text: t(name),
-            onClick: () => setTheme(key as Theme),
-            onMouseOver: () => previewTheme(key),
-          }))}
-          onClose={() => previewTheme(theme)}
-          selected={{
-            type: MenuItemType.DEFAULT,
-            text: t(themesMap[theme]),
-          }}
-        />
+          dropdownItems={<ThemeDropdown />}
+          size="small"
+          dropdownPlacement="bottom-end"
+        >
+          <Button variant="secondary">
+            {themeIconsMap[theme]}
+            <Trans>{themesMap[theme]}</Trans>
+            <ChevronDownIcon sizeClassName="w-4 h-4" />
+          </Button>
+        </Dropdown>
       </div>
       <Button onClick={handleSubmit}>
         <Trans>Continue</Trans>

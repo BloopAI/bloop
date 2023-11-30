@@ -9,9 +9,9 @@ import {
   useRef,
   useState,
 } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
-import { RepositoryIcon } from '../../../icons';
+import { LinkChainIcon, RepositoryIcon } from '../../../icons';
 import { DeviceContext } from '../../../context/deviceContext';
 import { getDateFnsLocale } from '../../../utils';
 import { LocaleContext } from '../../../context/localeContext';
@@ -19,6 +19,7 @@ import { DocShortType } from '../../../types/api';
 import { deleteDocProvider, getIndexedDocs } from '../../../services/api';
 import Item from '../../Body/Item';
 import SpinLoaderContainer from '../../../components/Loaders/SpinnerLoader';
+import Button from '../../../components/Button';
 
 type Props = {
   doc: DocShortType;
@@ -46,7 +47,7 @@ const DocItem = ({
   const [isIndexingFinished, setIsIndexingFinished] = useState(
     !!doc.id && doc.index_status === 'done',
   );
-  const { apiUrl } = useContext(DeviceContext);
+  const { apiUrl, openLink } = useContext(DeviceContext);
   const eventSourceRef = useRef<EventSource | null>(null);
 
   const refetchDoc = useCallback(() => {
@@ -138,17 +139,29 @@ const DocItem = ({
       isFirst={isFirst}
       Icon={isIndexing ? SpinLoaderContainer : RepositoryIcon}
       label={docToShow.name}
-      id={'doc_seettings'}
+      id={'doc_settings'}
       footerHint={
-        isIndexing
-          ? t('Indexing started at') +
-            ' ' +
-            format(indexingStartedAt, 'MMM, dd yyyy', {
-              ...(getDateFnsLocale(locale) || {}),
-            })
-          : isIndexingFinished
-          ? `Open ${docToShow.name}`
-          : t('Index repository')
+        isIndexing ? (
+          t('Indexing started at') +
+          ' ' +
+          format(indexingStartedAt, 'MMM, dd yyyy', {
+            ...(getDateFnsLocale(locale) || {}),
+          })
+        ) : isIndexingFinished ? (
+          <span className="flex gap-1 items-center">
+            {t(`Indexed`)}
+            <Button
+              variant="ghost"
+              size="small"
+              onClick={() => openLink(docToShow.url)}
+            >
+              <LinkChainIcon sizeClassName="w-3.5 h-3.5" />
+              <Trans>Open</Trans>
+            </Button>
+          </span>
+        ) : (
+          t('Index repository')
+        )
       }
       onClick={isIndexing ? handleCancelSync : handleAddToProject}
       iconContainerClassName={

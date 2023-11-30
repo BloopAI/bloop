@@ -489,7 +489,7 @@
 	"Toggle system theme": "Tema del sistema de palanca",
 	"Private repositories": "Repositorios privados",
 	"Use light theme": "Use el tema de la luz",
-	"Open": "Abierto",
+	"Open": "Abrir",
 	"Toggle light theme": "Tema de luz de al revés",
 	"Manage": "Administrar",
 	"Toggle dark theme": "Tema oscuro de al revés",
@@ -518,5 +518,6 @@
 	"We've redirected you to Stripe to complete your transaction. <2>Launch manually</2> if it didn't work.": "Te hemos redirigido a rayar para completar su transacción. <2> Iniciar manualmente </2> si no funcionó.",
 	"Try again": "Intentar otra vez",
 	"Re-check payment status": "Vuelva a verificar el estado de pago",
-	"$20 / billed monthly": "$ 20 / facturado mensualmente"
+	"$20 / billed monthly": "$ 20 / facturado mensualmente",
+	"Indexed documentation web pages": "Páginas web de documentación indexadas"
 }

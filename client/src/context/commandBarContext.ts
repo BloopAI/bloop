@@ -1,24 +1,22 @@
 import { createContext, Dispatch, SetStateAction } from 'react';
-import { CommandBarActiveStepType, CommandBarStepEnum } from '../types/general';
+import {
+  CommandBarActiveStepType,
+  CommandBarItemGeneralType,
+  CommandBarStepEnum,
+} from '../types/general';
 
 type FooterValuesContext = {
   focusedItem: {
-    footerHint?: string;
-    footerBtns?: {
-      label: string;
-      shortcut?: string[];
-    }[];
+    footerHint?: CommandBarItemGeneralType['footerHint'];
+    footerBtns?: CommandBarItemGeneralType['footerBtns'];
   } | null;
 };
 
 type HandlersContext = {
   setFocusedItem: Dispatch<
     SetStateAction<{
-      footerHint?: string;
-      footerBtns?: {
-        label: string;
-        shortcut?: string[];
-      }[];
+      footerHint?: CommandBarItemGeneralType['footerHint'];
+      footerBtns?: CommandBarItemGeneralType['footerBtns'];
     } | null>
   >;
   setChosenStep: Dispatch<

@@ -484,5 +484,6 @@
 	"Re-check payment status": "Righemigono lo stato di pagamento",
 	"We've redirected you to Stripe to complete your transaction. <2>Launch manually</2> if it didn't work.": "Ti abbiamo reindirizzato a Stripe per completare la tua transazione. <2> Avvia manualmente </2> se non ha funzionato.",
 	"Try again": "Riprova",
-	"$20 / billed monthly": "$ 20 / fatturati mensilmente"
+	"$20 / billed monthly": "$ 20 / fatturati mensilmente",
+	"Paste a link to any documentation web page": "Incolla un link a qualsiasi pagina Web di documentazione"
 }

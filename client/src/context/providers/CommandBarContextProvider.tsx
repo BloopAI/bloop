@@ -2,6 +2,7 @@ import { memo, PropsWithChildren, useMemo, useState } from 'react';
 import { CommandBarContext } from '../commandBarContext';
 import {
   CommandBarActiveStepType,
+  CommandBarItemGeneralType,
   CommandBarStepEnum,
 } from '../../types/general';
 
@@ -9,8 +10,8 @@ type Props = {};
 
 const CommandBarContextProvider = ({ children }: PropsWithChildren<Props>) => {
   const [focusedItem, setFocusedItem] = useState<{
-    footerHint?: string;
-    footerBtns?: { label: string; shortcut?: string[] }[];
+    footerHint?: CommandBarItemGeneralType['footerHint'];
+    footerBtns?: CommandBarItemGeneralType['footerBtns'];
   } | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [chosenStep, setChosenStep] = useState<CommandBarActiveStepType>({
