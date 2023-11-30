@@ -494,6 +494,7 @@ export type CommandBarItemType =
 
 export type CommandBarSectionType = {
   label?: string;
+  key: string;
   items: CommandBarItemType[];
   itemsOffset: number;
 };
@@ -517,4 +518,10 @@ export enum CommandBarStepEnum {
   DOCS = 'docs',
   REPO_SETTINGS = 'repo_settings',
   CREATE_PROJECT = 'create_project',
+}
+
+export enum SettingSections {
+  GENERAL,
+  PREFERENCES,
+  SUBSCRIPTION,
 }

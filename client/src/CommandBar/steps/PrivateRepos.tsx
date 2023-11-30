@@ -56,6 +56,7 @@ const PrivateReposStep = ({}: Props) => {
       })),
       itemsOffset: o.offset,
       label: o.org,
+      key: o.org,
     }));
     setSections(mapped);
   }, []);

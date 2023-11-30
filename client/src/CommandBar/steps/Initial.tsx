@@ -13,8 +13,11 @@ import {
   CogIcon,
   DocumentsIcon,
   DoorOutIcon,
+  GlobeIcon,
+  HardDriveIcon,
   MacintoshIcon,
   MagazineIcon,
+  RepositoryIcon,
   ThemeBlackIcon,
   ThemeDarkIcon,
   ThemeLightIcon,
@@ -24,26 +27,26 @@ import { CommandBarContext } from '../../context/commandBarContext';
 import Header from '../Header';
 import Body from '../Body';
 import Footer from '../Footer';
-import { getContextItems } from '../items';
 import {
   CommandBarItemGeneralType,
   CommandBarSectionType,
   CommandBarStepEnum,
+  SettingSections,
 } from '../../types/general';
 import { UIContext } from '../../context/uiContext';
 import { Theme } from '../../types';
-import { SettingSections } from '../../old_stuff/components/Settings';
 import { DeviceContext } from '../../context/deviceContext';
 import { useSignOut } from '../../hooks/useSignOut';
+import { useGlobalShortcuts } from '../../hooks/useGlobalShortcuts';
 
 type Props = {};
 
 const InitialCommandBar = ({}: Props) => {
   const { t } = useTranslation();
-  const { setIsVisible } = useContext(CommandBarContext.General);
+  const { setIsVisible } = useContext(CommandBarContext.Handlers);
   const { projects } = useContext(ProjectContext.All);
   const { setCurrentProjectId, project } = useContext(ProjectContext.Current);
-  const { theme, setTheme } = useContext(UIContext.Theme);
+  const { theme } = useContext(UIContext.Theme);
   const { setBugReportModalOpen } = useContext(UIContext.BugReport);
   const { openLink } = useContext(DeviceContext);
   const { setSettingsOpen, setSettingsSection } = useContext(
@@ -51,6 +54,7 @@ const InitialCommandBar = ({}: Props) => {
   );
   const [inputValue, setInputValue] = useState('');
   const handleSignOut = useSignOut();
+  const globalShortcuts = useGlobalShortcuts();
 
   const handleInputChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
@@ -84,7 +88,44 @@ const InitialCommandBar = ({}: Props) => {
   }, []);
 
   const initialSections = useMemo(() => {
-    const contextItems: CommandBarItemGeneralType[] = getContextItems(t);
+    const contextItems: CommandBarItemGeneralType[] = [
+      {
+        label: t('Private repositories'),
+        Icon: RepositoryIcon,
+        id: CommandBarStepEnum.PRIVATE_REPOS,
+        key: 'private',
+        shortcut: globalShortcuts.openPrivateRepos.shortcut,
+        footerHint: t('Any repository from your private GitHub account'),
+        footerBtns: [{ label: t('Manage'), shortcut: ['entr'] }],
+      },
+      {
+        label: t('Public repositories'),
+        Icon: GlobeIcon,
+        id: CommandBarStepEnum.PUBLIC_REPOS,
+        key: 'public',
+        shortcut: globalShortcuts.openPublicRepos.shortcut,
+        footerHint: t('Any public repository hosted on GitHub'),
+        footerBtns: [{ label: t('Manage'), shortcut: ['entr'] }],
+      },
+      {
+        label: t('Local repositories'),
+        Icon: HardDriveIcon,
+        id: CommandBarStepEnum.LOCAL_REPOS,
+        key: 'local',
+        shortcut: globalShortcuts.openLocalRepos.shortcut,
+        footerHint: t('Add a repository from your local machine'),
+        footerBtns: [{ label: t('Manage'), shortcut: ['entr'] }],
+      },
+      {
+        label: t('Documentation'),
+        Icon: MagazineIcon,
+        id: CommandBarStepEnum.DOCS,
+        key: 'docs',
+        shortcut: globalShortcuts.openAddDocs.shortcut,
+        footerHint: t('Add library documentation'),
+        footerBtns: [{ label: t('Manage'), shortcut: ['entr'] }],
+      },
+    ];
     const projectItems: CommandBarItemGeneralType[] = projects
       .map(
         (p, i): CommandBarItemGeneralType => ({
@@ -127,26 +168,42 @@ const InitialCommandBar = ({}: Props) => {
     const themeOptions = (
       ['light', 'dark', 'black', 'system'] as Theme[]
     ).filter((t) => t !== theme);
-    const themeIconsMap = {
-      light: ThemeLightIcon,
-      dark: ThemeDarkIcon,
-      black: ThemeBlackIcon,
-      system: MacintoshIcon,
+    const themeMap = {
+      light: {
+        icon: ThemeLightIcon,
+        shortcut: globalShortcuts.toggleLightTheme.shortcut,
+        action: globalShortcuts.toggleLightTheme.action,
+      },
+      dark: {
+        icon: ThemeDarkIcon,
+        shortcut: globalShortcuts.toggleDarkTheme.shortcut,
+        action: globalShortcuts.toggleDarkTheme.action,
+      },
+      black: {
+        icon: ThemeBlackIcon,
+        shortcut: globalShortcuts.toggleBlackTheme.shortcut,
+        action: globalShortcuts.toggleBlackTheme.action,
+      },
+      system: {
+        icon: MacintoshIcon,
+        shortcut: globalShortcuts.toggleSystemTheme.shortcut,
+        action: globalShortcuts.toggleSystemTheme.action,
+      },
     };
     const themeItems: CommandBarItemGeneralType[] = themeOptions.map(
-      (theme, i) => ({
+      (theme) => ({
         label: t(`Toggle ${theme} theme`),
-        Icon: themeIconsMap[theme],
+        Icon: themeMap[theme].icon,
         id: `${theme}-theme`,
         key: `${theme}-theme`,
-        onClick: () => setTheme(theme),
-        shortcut: ['option', (i + 1).toString()],
+        onClick: themeMap[theme].action,
+        shortcut: themeMap[theme].shortcut,
         footerHint: t(`Use ${theme} theme`),
         footerBtns: [
           {
             label: t('Select'),
             shortcut: ['entr'],
-            action: () => setTheme(theme),
+            action: themeMap[theme].action,
           },
         ],
       }),
@@ -235,19 +292,26 @@ const InitialCommandBar = ({}: Props) => {
     ];
     const commandsItems = [...themeItems, ...otherCommands];
     return [
-      { items: contextItems, itemsOffset: 0, label: t('Manage context') },
+      {
+        items: contextItems,
+        itemsOffset: 0,
+        label: t('Manage context'),
+        key: 'context-items',
+      },
       {
         items: projectItems,
         itemsOffset: contextItems.length,
         label: t('Recent projects'),
+        key: 'recent-projects',
       },
       {
         items: commandsItems,
         itemsOffset: contextItems.length + projectItems.length,
         label: t('Commands'),
+        key: 'general-commands',
       },
     ];
-  }, [t, projects, project, theme]);
+  }, [t, projects, project, theme, globalShortcuts]);
 
   const sectionsToShow = useMemo(() => {
     if (!inputValue) {

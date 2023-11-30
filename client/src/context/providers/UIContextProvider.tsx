@@ -21,7 +21,7 @@ import {
 } from '../../services/storage';
 import { Theme } from '../../types';
 import { EnvContext } from '../envContext';
-import { SettingSections } from '../../old_stuff/components/Settings';
+import { SettingSections } from '../../types/general';
 
 type Props = {};
 

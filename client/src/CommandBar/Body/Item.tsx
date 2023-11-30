@@ -42,10 +42,9 @@ const CommandBarItem = ({
 }: Props) => {
   const ref = useRef<HTMLButtonElement>(null);
   const shortcutKeys = useShortcuts(shortcut);
-  const { setFocusedItem, setChosenStep } = useContext(
+  const { setFocusedItem, setChosenStep, setIsVisible } = useContext(
     CommandBarContext.Handlers,
   );
-  const { setIsVisible } = useContext(CommandBarContext.General);
 
   useEffect(() => {
     if (isFocused) {

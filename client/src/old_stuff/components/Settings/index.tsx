@@ -16,12 +16,6 @@ const backdropFilterInvisible = {
     'background-color 150ms linear 0s, visibility 0s linear 200ms, backdrop-filter 150ms linear 0ms',
 };
 
-export enum SettingSections {
-  GENERAL,
-  PREFERENCES,
-  SUBSCRIPTION,
-}
-
 const Settings = () => {
   const { t } = useTranslation();
   const { isSettingsOpen, setSettingsOpen } = useContext(UIContext.Settings);

@@ -78,6 +78,7 @@ const LocalRepos = ({}: Props) => {
   const addItem = useMemo(() => {
     return {
       itemsOffset: 0,
+      key: 'add',
       items: [
         {
           label: t('Add local repository'),
@@ -123,6 +124,7 @@ const LocalRepos = ({}: Props) => {
         addItem,
         {
           itemsOffset: 1,
+          key: 'indexed-repos',
           label: t('Indexed local repositories'),
           items: mapped,
         },

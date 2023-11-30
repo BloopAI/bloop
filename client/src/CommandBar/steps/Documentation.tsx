@@ -46,6 +46,7 @@ const Documentation = ({}: Props) => {
   const addItem = useMemo(() => {
     return {
       itemsOffset: 0,
+      key: 'add-docs',
       items: [
         {
           label: 'Add documentation',
@@ -124,6 +125,7 @@ const Documentation = ({}: Props) => {
       addItem,
       {
         itemsOffset: 1,
+        key: 'indexed-docs',
         label: t('Indexed documentation web pages'),
         items: mapped,
       },

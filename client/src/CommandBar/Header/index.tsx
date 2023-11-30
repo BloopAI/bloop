@@ -32,7 +32,8 @@ const CommandBarHeader = ({
   placeholder,
 }: Props) => {
   const { t } = useTranslation();
-  const { isVisible, setIsVisible } = useContext(CommandBarContext.General);
+  const { isVisible } = useContext(CommandBarContext.General);
+  const { setIsVisible } = useContext(CommandBarContext.Handlers);
   const [isComposing, setIsComposing] = useState(false);
 
   const onCompositionStart = useCallback(() => {

@@ -13,8 +13,9 @@ const ProjectsDropdown = ({}: Props) => {
   const { t } = useTranslation();
   const { project, setCurrentProjectId } = useContext(ProjectContext.Current);
   const { projects } = useContext(ProjectContext.All);
-  const { setIsVisible } = useContext(CommandBarContext.General);
-  const { setChosenStep } = useContext(CommandBarContext.Handlers);
+  const { setChosenStep, setIsVisible } = useContext(
+    CommandBarContext.Handlers,
+  );
 
   const createNewProject = useCallback(() => {
     setChosenStep({ id: CommandBarStepEnum.CREATE_PROJECT });

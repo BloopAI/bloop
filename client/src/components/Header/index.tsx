@@ -25,7 +25,7 @@ const Header = ({ isSettings }: Props) => {
   const { os } = useContext(DeviceContext);
   const { envConfig } = useContext(EnvContext);
   const { project } = useContext(ProjectContext.Current);
-  const { setIsVisible } = useContext(CommandBarContext.General);
+  const { setIsVisible } = useContext(CommandBarContext.Handlers);
   const { setSettingsOpen } = useContext(UIContext.Settings);
 
   const openCommandBar = useCallback(() => {

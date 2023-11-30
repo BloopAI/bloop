@@ -65,7 +65,6 @@ const UserFormStep1 = ({ form, setForm, onContinue }: Props) => {
         value={form.firstName}
         name="firstName"
         placeholder={t('First name')}
-        variant="filled"
         onChange={(e) =>
           setForm((prev) => ({ ...prev, firstName: e.target.value }))
         }
@@ -80,7 +79,6 @@ const UserFormStep1 = ({ form, setForm, onContinue }: Props) => {
         value={form.lastName}
         name="lastName"
         placeholder={t('Last name')}
-        variant="filled"
         onChange={(e) =>
           setForm((prev) => ({ ...prev, lastName: e.target.value }))
         }
@@ -90,7 +88,6 @@ const UserFormStep1 = ({ form, setForm, onContinue }: Props) => {
       />
       <TextInput
         value={form.email}
-        variant="filled"
         onChange={(e) =>
           setForm((prev) => ({
             ...prev,

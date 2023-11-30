@@ -1,9 +1,5 @@
-import { Dispatch, memo, SetStateAction, useCallback, useState } from 'react';
-import {
-  CommandBarItemType,
-  CommandBarSectionType,
-  CommandBarStepType,
-} from '../../types/general';
+import { memo, useCallback, useState } from 'react';
+import { CommandBarSectionType } from '../../types/general';
 import useKeyboardNavigation from '../../hooks/useKeyboardNavigation';
 import Section from './Section';
 
@@ -43,7 +39,7 @@ const CommandBarBody = ({ sections }: Props) => {
     <div className="flex flex-col gap-1 flex-1 w-full p-2 overflow-auto">
       {sections.map((s) => (
         <Section
-          key={s.label}
+          key={s.key}
           title={s.label}
           items={s.items}
           focusedIndex={focusedIndex}

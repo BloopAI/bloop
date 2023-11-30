@@ -27,11 +27,11 @@ type HandlersContext = {
       data?: Record<string, any>;
     }>
   >;
+  setIsVisible: Dispatch<SetStateAction<boolean>>;
 };
 
 type GeneralContextType = {
   isVisible: boolean;
-  setIsVisible: Dispatch<SetStateAction<boolean>>;
 };
 
 export const CommandBarContext = {
@@ -41,10 +41,10 @@ export const CommandBarContext = {
   Handlers: createContext<HandlersContext>({
     setChosenStep: () => {},
     setFocusedItem: () => {},
+    setIsVisible: () => {},
   }),
   General: createContext<GeneralContextType>({
     isVisible: false,
-    setIsVisible: () => {},
   }),
   CurrentStep: createContext<{ chosenStep: CommandBarActiveStepType }>({
     chosenStep: {

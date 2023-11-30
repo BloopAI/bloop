@@ -14,11 +14,11 @@ import {
   DoorOutIcon,
   WalletIcon,
 } from '../../icons';
-import { SettingSections } from '../../old_stuff/components/Settings';
 import { UIContext } from '../../context/uiContext';
 import { DeviceContext } from '../../context/deviceContext';
 import { useSignOut } from '../../hooks/useSignOut';
 import { getDiscordLink } from '../../services/api';
+import { SettingSections } from '../../types/general';
 
 type Props = {};
 

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { UIContext } from '../context/uiContext';
 import Header from '../components/Header';
 import useKeyboardNavigation from '../hooks/useKeyboardNavigation';
-import { SettingSections } from '../old_stuff/components/Settings';
+import { SettingSections } from '../types/general';
 import SectionsNav from './SectionsNav';
 import General from './General';
 import Preferences from './Preferences';

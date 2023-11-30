@@ -1,7 +1,6 @@
 import React, { memo, useEffect, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
-import NavBar from '../../components/Header';
 import { githubLogin } from '../../services/api';
 import Button from '../../components/Button';
 import { GitHubLogo } from '../../icons';
@@ -25,7 +24,6 @@ const SelfServe = () => {
 
   return (
     <div className="text-label-title">
-      <NavBar isSkeleton />
       <div
         className={`flex justify-center items-start mt-8 w-screen overflow-auto relative h-[calc(100vh-4rem)]`}
       >

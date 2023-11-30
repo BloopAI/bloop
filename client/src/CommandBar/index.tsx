@@ -4,6 +4,8 @@ import useKeyboardNavigation from '../hooks/useKeyboardNavigation';
 import { CommandBarStepEnum } from '../types/general';
 import { CommandBarContext } from '../context/commandBarContext';
 import { isFocusInInput } from '../utils/domUtils';
+import { useGlobalShortcuts } from '../hooks/useGlobalShortcuts';
+import { checkEventKeys } from '../utils/keyboardUtils';
 import Initial from './steps/Initial';
 import PrivateRepos from './steps/PrivateRepos';
 import PublicRepos from './steps/PublicRepos';
@@ -15,8 +17,12 @@ type Props = {};
 
 const CommandBar = ({}: Props) => {
   const { chosenStep } = useContext(CommandBarContext.CurrentStep);
-  const { isVisible, setIsVisible } = useContext(CommandBarContext.General);
-  const { setChosenStep } = useContext(CommandBarContext.Handlers);
+  const { isVisible } = useContext(CommandBarContext.General);
+  const { setChosenStep, setIsVisible } = useContext(
+    CommandBarContext.Handlers,
+  );
+  const globalShortcuts = useGlobalShortcuts();
+
   const handleClose = useCallback(() => {
     setIsVisible(false);
     setChosenStep({
@@ -31,8 +37,15 @@ const CommandBar = ({}: Props) => {
         e.preventDefault();
         setIsVisible(true);
       }
+      Object.values(globalShortcuts).forEach((s) => {
+        if (checkEventKeys(e, s.shortcut)) {
+          e.stopPropagation();
+          e.preventDefault();
+          s.action();
+        }
+      });
     },
-    [isVisible],
+    [isVisible, globalShortcuts],
   );
   useKeyboardNavigation(handleKeyEvent);
 

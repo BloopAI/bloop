@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { CogIcon } from '../../icons';
-import { SettingSections } from '../../old_stuff/components/Settings';
+import { SettingSections } from '../../types/general';
 import SectionButton from './SectionButton';
 
 type Props = {};

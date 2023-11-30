@@ -20,12 +20,11 @@ type Props = {};
 const CreateProject = ({}: Props) => {
   const { t } = useTranslation();
   const [inputValue, setInputValue] = useState('');
-  const { setChosenStep, setFocusedItem } = useContext(
+  const { setChosenStep, setFocusedItem, setIsVisible } = useContext(
     CommandBarContext.Handlers,
   );
   const { setCurrentProjectId } = useContext(ProjectContext.Current);
   const { refreshAllProjects } = useContext(ProjectContext.All);
-  const { setIsVisible } = useContext(CommandBarContext.General);
 
   const handleInputChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);

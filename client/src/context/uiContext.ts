@@ -1,6 +1,6 @@
 import { createContext } from 'react';
 import { Theme } from '../types';
-import { SettingSections } from '../old_stuff/components/Settings';
+import { SettingSections } from '../types/general';
 
 export const UIContext = {
   Settings: createContext({

@@ -29,15 +29,15 @@ const CommandBarContextProvider = ({ children }: PropsWithChildren<Props>) => {
     return {
       setFocusedItem,
       setChosenStep,
+      setIsVisible,
     };
-  }, [setChosenStep]);
+  }, []);
 
   const generalContextValue = useMemo(() => {
     return {
       isVisible,
-      setIsVisible,
     };
-  }, [isVisible, setIsVisible]);
+  }, [isVisible]);
 
   return (
     <CommandBarContext.Handlers.Provider value={handlersContextValue}>

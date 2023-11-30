@@ -47,6 +47,7 @@ const PublicRepos = ({}: Props) => {
   const addItem = useMemo(() => {
     return {
       itemsOffset: 0,
+      key: 'add',
       items: [
         {
           label: t('Add public repository'),
@@ -102,6 +103,7 @@ const PublicRepos = ({}: Props) => {
       setSections([
         addItem,
         {
+          key: 'indexed',
           itemsOffset: 1,
           label: t('Indexed GitHub repositories'),
           items: mapped,

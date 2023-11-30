@@ -1,6 +1,6 @@
 import React, { memo, useCallback, useContext } from 'react';
-import { SettingSections } from '../../old_stuff/components/Settings';
 import { UIContext } from '../../context/uiContext';
+import { SettingSections } from '../../types/general';
 
 type Props = {
   type: SettingSections;
