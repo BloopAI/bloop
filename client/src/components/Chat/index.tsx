@@ -95,7 +95,9 @@ const Chat = () => {
             }`
           : ''
       }&model=${
-        preferredAnswerSpeed === 'normal' ? 'gpt-4-turbo-24k' : 'gpt-3.5-turbo-finetuned'
+        preferredAnswerSpeed === 'normal'
+          ? 'gpt-4-turbo-24k'
+          : 'gpt-3.5-turbo-finetuned'
       }`;
       console.log(url);
       const eventSource = new EventSource(url);
