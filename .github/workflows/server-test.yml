@@ -24,19 +24,25 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create LFS file list
-        run: git lfs ls-files --long | cut -d ' ' -f1 | sort > .lfs-assets-id
-
-      - name: LFS Cache
-        uses: takost/cache@2001ca4114dbc44888c30c0ec3550fecf724b8d9
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
         with:
-          path: .git/lfs/objects
-          key: ${{ runner.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}
-          restore-keys: |
-            ${{ runner.os }}-lfs-
+          toolchain: 1.73.0
+          components: rustfmt, clippy
 
-      - name: Git LFS Pull
-        run: git lfs install && git lfs pull
+      # https://github.com/actions/cache/blob/main/examples.md#rust---cargo
+      - name: Set up cargo cache
+        uses: actions/cache@v3
+        continue-on-error: false
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/            
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
 
       - name: Rustfmt
         run: cargo --locked fmt -p bleep -- --check
@@ -45,7 +51,4 @@ jobs:
         run: cargo --locked clippy -p bleep --features=ee-pro,ee-cloud
 
       - name: Tests
-        run: cargo --locked test -p bleep --release
-
-      - name: Sccache stats
-        run: sccache --show-stats
+        run: cargo --locked test -p bleep --release --features=ee-pro,ee-cloud

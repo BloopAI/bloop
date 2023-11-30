@@ -38,12 +38,6 @@ jobs:
       - name: Git LFS Pull
         run: git lfs install && git lfs pull
 
-      - name: Load PATH changes
-        run: direnv allow && direnv exec . sh -c 'echo $PATH' > "$GITHUB_PATH"
-
-      - name: Load other environment changes
-        run: direnv export gha >> "$GITHUB_ENV"        
-
       - name: Rustfmt
         run: cargo --locked fmt -p bloop -- --check
 
