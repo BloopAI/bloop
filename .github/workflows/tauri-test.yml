@@ -17,7 +17,7 @@ env:
 
 jobs:
   clippy-test:
-    runs-on: nixos
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
