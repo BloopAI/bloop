@@ -29,14 +29,14 @@ pub async fn execute(
 
     let data = results
         .into_iter()
-        .fold(HashMap::new(), |mut acc, payload| {
+        .fold(HashMap::<_, Vec<_>>::new(), |mut acc, payload| {
             acc.entry((
                 payload.relative_path.to_string(),
                 payload.repo_name.to_string(),
                 payload.repo_ref.to_string(),
                 Some(payload.lang.to_string()),
             ))
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(Snippet {
                 data: payload.text.to_string(),
                 line_range: payload.start_line as usize..payload.end_line as usize,

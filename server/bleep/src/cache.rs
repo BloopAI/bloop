@@ -554,7 +554,7 @@ impl<'a> ChunkCache<'a> {
                 if existing.get().value != branches_hash {
                     self.update
                         .entry((payload.branches, branches_hash.clone()))
-                        .or_insert_with(Vec::new)
+                        .or_default()
                         .get_mut()
                         .push(existing.key().to_owned());
                 }

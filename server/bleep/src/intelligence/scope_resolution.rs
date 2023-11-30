@@ -571,14 +571,15 @@ fn scope_res_generic(
         .unwrap();
     let mut scope_graph = ScopeGraph::new(root_node.range().into(), lang_id);
 
-    let capture_map = captures.fold(HashMap::new(), |mut map, (match_, capture_idx)| {
-        let capture = match_.captures[capture_idx];
-        let range: TextRange = capture.node.range().into();
-        map.entry(capture.index)
-            .or_insert_with(Vec::new)
-            .push(range);
-        map
-    });
+    let capture_map = captures.fold(
+        HashMap::<_, Vec<_>>::new(),
+        |mut map, (match_, capture_idx)| {
+            let capture = match_.captures[capture_idx];
+            let range: TextRange = capture.node.range().into();
+            map.entry(capture.index).or_default().push(range);
+            map
+        },
+    );
 
     // insert scopes first
     if let Some(ranges) = local_scope_capture_index.and_then(|idx| capture_map.get(&idx)) {

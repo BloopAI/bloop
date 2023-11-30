@@ -51,7 +51,7 @@ pub(super) async fn handle<'a>(
 
 fn split_by_lines<'a>(text: &'a str, indices: &[u32], params: &Params) -> Result<&'a str, Error> {
     let char_start = match params.line_start {
-        Some(line_start) if line_start == 1 => 0,
+        Some(1) => 0,
         Some(line_start) if line_start > 1 => {
             (indices
                 .get(line_start as usize - 2)
