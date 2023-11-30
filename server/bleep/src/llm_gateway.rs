@@ -160,8 +160,9 @@ impl From<&api::Message> for tiktoken_rs::ChatCompletionRequestMessage {
             api::Message::PlainText { role, content } => {
                 tiktoken_rs::ChatCompletionRequestMessage {
                     role: role.clone(),
-                    content: content.clone(),
+                    content: Some(content.clone()),
                     name: None,
+                    function_call: None,
                 }
             }
             api::Message::FunctionReturn {
@@ -170,8 +171,9 @@ impl From<&api::Message> for tiktoken_rs::ChatCompletionRequestMessage {
                 content,
             } => tiktoken_rs::ChatCompletionRequestMessage {
                 role: role.clone(),
-                content: content.clone(),
+                content: Some(content.clone()),
                 name: Some(name.clone()),
+                function_call: None,
             },
             api::Message::FunctionCall {
                 role,
@@ -179,8 +181,15 @@ impl From<&api::Message> for tiktoken_rs::ChatCompletionRequestMessage {
                 content: _,
             } => tiktoken_rs::ChatCompletionRequestMessage {
                 role: role.clone(),
-                content: serde_json::to_string(&function_call).unwrap(),
+                content: None,
                 name: None,
+                function_call: Some(tiktoken_rs::FunctionCall {
+                    name: function_call
+                        .name
+                        .clone()
+                        .expect("FunctionCall has no name"),
+                    arguments: function_call.arguments.clone(),
+                }),
             },
         }
     }
