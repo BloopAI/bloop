@@ -4,7 +4,7 @@ import remarkMath from 'remark-math';
 import rehypeMathJax from 'rehype-mathjax';
 import sanitizeHtml from 'sanitize-html';
 import Convert from 'ansi-to-html';
-import Code from '../CodeBlock/Code';
+import Code from '../../old_stuff/components/CodeBlock/Code';
 import { IpynbCellType } from '../../types/general';
 import { escapeHtml } from '../../utils';
 

@@ -1,12 +1,15 @@
 import React, { Dispatch, SetStateAction, useContext, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { BloopLogo } from '../../../icons';
+import { BloopLogo, ChevronDownIcon } from '../../../icons';
 import Button from '../../../components/Button';
 import { Form } from '../../index';
-import LanguageSelector from '../../../components/LanguageSelector';
 import { EnvContext } from '../../../context/envContext';
-import Step1 from './Step1';
+import LanguageDropdown from '../../../Settings/Preferences/LanguageDropdown';
+import { localesMap } from '../../../consts/general';
+import Dropdown from '../../../components/Dropdown';
+import { LocaleContext } from '../../../context/localeContext';
 import Step2 from './Step2';
+import Step1 from './Step1';
 
 type Props = {
   form: Form;
@@ -18,6 +21,7 @@ const UserForm = ({ form, setForm, onContinue }: Props) => {
   useTranslation();
   const { envConfig } = useContext(EnvContext);
   const [step, setStep] = useState(0);
+  const { locale } = useContext(LocaleContext);
 
   return (
     <>
@@ -30,7 +34,17 @@ const UserForm = ({ form, setForm, onContinue }: Props) => {
               <Trans>Back</Trans>
             </Button>
           )}
-          <LanguageSelector />
+          <Dropdown
+            dropdownItems={<LanguageDropdown />}
+            size="small"
+            dropdownPlacement="bottom-end"
+          >
+            <Button variant="secondary">
+              <span>{localesMap[locale].icon}</span>
+              {localesMap[locale].name}
+              <ChevronDownIcon sizeClassName="w-4 h-4" />
+            </Button>
+          </Dropdown>
         </div>
         <div className="flex flex-col gap-3 text-center relative">
           <div className="w-11 h-11 absolute left-1/2 -top-16 transform -translate-x-1/2">
