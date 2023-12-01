@@ -526,5 +526,11 @@
 	"Project title": "Project title",
 	"Delete project": "Delete project",
 	"Default project": "Default project",
-	"Remove from project": "Remove from project"
+	"Remove from project": "Remove from project",
+	"No file selected": "No file selected",
+	"Select a file or open a new tab to display it here.": "Select a file or open a new tab to display it here.",
+	"Press <2>K</2> on your keyboard to open the Command bar.": "Press <2>K</2> on your keyboard to open the Command bar.",
+	"Toggle black theme": "Toggle black theme",
+	"Use black theme": "Use black theme",
+	"This file was not indexed by bloop. The reason for this might be that the file is to big or is in our list of excluded file types.": "This file was not indexed by bloop. The reason for this might be that the file is to big or is in our list of excluded file types."
 }

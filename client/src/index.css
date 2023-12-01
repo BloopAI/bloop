@@ -276,6 +276,7 @@
     --default-dark-shadow-low: 0px 1px 2px 0px rgba(0, 0, 0, 0.35);
 
     --default-dark-onboarding-chats-img: url("../public/chatsImage-dark.png");
+    --default-dark-bloop-head-img: url("../public/bloopHeadMascot.png");
 
     --default-light-shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.08);
     --default-light-shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.08);
@@ -285,6 +286,7 @@
     --default-light-shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
 
     --default-light-onboarding-chats-img: url("../public/chatsImage-light.png");
+    --default-light-bloop-head-img: url("../public/bloopHeadMascotLight.png");
   }
   [data-theme="dark"], body:not([data-theme]) {
     --bg-sub: var(--default-dark-bg-sub);
@@ -343,6 +345,7 @@
     --shadow-low: var(--default-dark-shadow-low);
 
     --onboarding-chats-img: var(--default-dark-onboarding-chats-img);
+    --bloop-head-img: var(--default-dark-bloop-head-img);
   }
   [data-theme="black"] {
     --bg-sub: var(--default-black-bg-sub);
@@ -401,6 +404,7 @@
     --shadow-low: var(--default-dark-shadow-low);
 
     --onboarding-chats-img: var(--default-dark-onboarding-chats-img);
+    --bloop-head-img: var(--default-dark-bloop-head-img);
   }
   @media (prefers-color-scheme: dark) {
     [data-theme="system"] {
@@ -460,6 +464,7 @@
       --shadow-low: var(--default-dark-shadow-low);
 
       --onboarding-chats-img: var(--default-dark-onboarding-chats-img);
+      --bloop-head-img: var(--default-dark-bloop-head-img);
     }
   }
     [data-theme="light"] {
@@ -519,6 +524,7 @@
       --shadow-low: var(--default-light-shadow-low);
 
       --onboarding-chats-img: var(--default-dark-onboarding-chats-img);
+      --bloop-head-img: var(--default-light-bloop-head-img);
     }
   @media (prefers-color-scheme: light) {
     [data-theme="system"] {
@@ -578,6 +584,7 @@
       --shadow-low: var(--default-light-shadow-low);
 
       --onboarding-chats-img: var(--default-dark-onboarding-chats-img);
+      --bloop-head-img: var(--default-light-bloop-head-img);
     }
   }
 }
@@ -829,15 +836,16 @@ h5, .h5 {
 }
 
 .code-s {
-  font-family: Menlo, sans-serif;
+  font-family: "Fira Code", sans-serif;
   font-style: normal;
   font-weight: 400;
-  font-size: 0.75rem;
-  line-height: 150%;
+  font-size: 0.8125rem;
+  line-height: 161%;
+  letter-spacing: -0.13px;
 }
 
 .code-m {
-  font-family: Menlo, sans-serif;
+  font-family: "Fira Code", sans-serif;
   font-style: normal;
   font-weight: 400;
   font-size: 1rem;
@@ -1124,6 +1132,10 @@ h5, .h5 {
 
 .onboarding-chats-img {
   content: var(--onboarding-chats-img);
+}
+
+.bloop-head-img {
+  content: var(--bloop-head-img);
 }
 
 .notransition * {

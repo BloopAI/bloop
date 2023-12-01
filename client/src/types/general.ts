@@ -1,6 +1,5 @@
 import React, { MemoExoticComponent, ReactElement } from 'react';
 import { DocShortType, SearchStepType } from './api';
-import { RepoSource } from './index';
 
 export enum MenuItemType {
   DEFAULT = 'default',
@@ -89,62 +88,11 @@ export type CodeStudioShortType = {
   most_common_ext: string;
 };
 
-export enum FullResultModeEnum {
-  PAGE,
-  SIDEBAR,
-  MODAL,
-}
-
-export enum SearchType {
-  REGEX,
-  NL,
-}
-
-export enum TabType {
-  REPO = 'repo',
-  STUDIO = 'studio',
-  HOME = 'home',
-}
-
-export type RepoTabType = {
-  key: string;
-  name: string;
+export type FileTabType = {
+  path: string;
   repoName: string;
-  repoRef: string;
-  source: RepoSource;
-  branch?: string | null;
-  navigationHistory: NavigationItem[];
-  type: TabType.REPO;
-};
-
-export type HomeTabType = {
   key: string;
-  name: string;
-  type: TabType.HOME;
 };
-
-export type StudioTabType = {
-  key: string;
-  name: string;
-  type: TabType.STUDIO;
-};
-
-export type UITabType = RepoTabType | HomeTabType | StudioTabType;
-
-export type TabHistoryType = {
-  tabKey: string;
-  history: SearchHistoryItem[];
-};
-
-export enum ReposFilter {
-  ALL,
-  LOCAL,
-  GITHUB,
-}
-
-export type SearchHistoryItem =
-  | string
-  | { query: string; searchType: SearchType; timestamp?: string };
 
 export type ConversationMessage = {
   author: 'user' | 'server';
@@ -262,26 +210,6 @@ export type OpenChatHistoryItem = {
   conversation: ChatMessage[];
   threadId: string;
 };
-
-export interface NavigationItem {
-  type:
-    | 'search'
-    | 'repo'
-    | 'full-result'
-    | 'home'
-    | 'conversation-result'
-    | 'article-response';
-  query?: string;
-  repo?: string;
-  path?: string;
-  page?: number;
-  loaded?: boolean;
-  isInitial?: boolean;
-  searchType?: SearchType;
-  pathParams?: Record<string, string>;
-  threadId?: string;
-  recordId?: number;
-}
 
 export type EnvConfig = {
   analytics_data_plane?: string;

@@ -35,7 +35,7 @@ const CardFree = ({ isActive, onManage, isFetchingLink }: Props) => {
           <Badge text={t(`Currently active`)} type="green-subtle" />
         </div>
       ) : (
-        <Button onClick={onManage}>
+        <Button onClick={onManage} variant="secondary">
           {isFetchingLink ? (
             <LiteLoaderContainer sizeClassName="w-4 h-4" />
           ) : (

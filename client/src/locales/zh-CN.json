@@ -517,5 +517,10 @@
 	"$20 / billed monthly": "$ 20 /收费每月",
 	"Delete project": "删除项目",
 	"Default project": "默认项目",
-	"Remove from project": "从项目中删除"
+	"Remove from project": "从项目中删除",
+	"No file selected": "未选择文件",
+	"Select a file or open a new tab to display it here.": "选择一个文件或打开新标签以在此处显示。",
+	"Press <2>K</2> on your keyboard to open the Command bar.": "按<2> k </2>在键盘上打开命令栏。",
+	"Toggle black theme": "切换黑色主题",
+	"This file was not indexed by bloop. The reason for this might be that the file is to big or is in our list of excluded file types.": "Bloop并未索引此文件。 这样做的原因可能是该文件属于大型或在我们排除的文件类型列表中。"
 }

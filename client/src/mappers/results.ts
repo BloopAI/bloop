@@ -1,5 +1,6 @@
 import {
   CodeItem,
+  File,
   FileItem,
   FileResItem,
   RangeLine,
@@ -104,20 +105,6 @@ export const mapRanges = (
     res[item.start.line].push({ start: item.start.byte, end: item.end.byte });
   });
   return res;
-};
-
-export const mapFileResult = (fileItem: FileItem) => {
-  return {
-    language: fileItem.data.lang,
-    repoPath: fileItem.data.repo_ref,
-    relativePath: fileItem.data.relative_path,
-    code: fileItem.data.contents,
-    hoverableRanges: [],
-    repoName: fileItem.data.repo_name,
-    size: fileItem.data.size,
-    loc: fileItem.data.sloc,
-    indexed: fileItem.data.indexed,
-  };
 };
 
 export const mapTokenInfo = (

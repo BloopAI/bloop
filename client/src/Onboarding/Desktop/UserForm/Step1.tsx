@@ -110,7 +110,10 @@ const UserFormStep1 = ({ form, setForm, onContinue }: Props) => {
         name="email"
         placeholder={t('Email address')}
       />
-      <div className="flex flex-col w-full">
+      <div className="flex items-center justify-between w-full">
+        <span className="text-label-title body-s-b">
+          <Trans>Select color theme:</Trans>
+        </span>
         <Dropdown
           dropdownItems={<ThemeDropdown />}
           size="small"

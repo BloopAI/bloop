@@ -511,5 +511,10 @@
 	"Indexed documentation web pages": "インデックス付きドキュメントWebページ",
 	"Project title": "プロジェクト名",
 	"Default project": "デフォルトプロジェクト",
-	"Remove from project": "プロジェクトから取り外します"
+	"Remove from project": "プロジェクトから取り外します",
+	"No file selected": "ファイルが選択されていません",
+	"Select a file or open a new tab to display it here.": "ファイルを選択するか、新しいタブを開いてここに表示します。",
+	"Press <2>K</2> on your keyboard to open the Command bar.": "キーボードで<2> K </2>を押して、コマンドバーを開きます。",
+	"Toggle black theme": "黒いテーマを切り替えます",
+	"This file was not indexed by bloop. The reason for this might be that the file is to big or is in our list of excluded file types.": "このファイルはBloopによってインデックス化されていませんでした。 この理由は、ファイルが大きくなるか、除外されたファイルタイプのリストにあるためかもしれません。"
 }

@@ -522,5 +522,10 @@
 	"Indexed documentation web pages": "Páginas web de documentación indexadas",
 	"Manage your general project settings": "Administre la configuración de su proyecto general",
 	"Default project": "Proyecto predeterminado",
-	"Remove from project": "Eliminar del proyecto"
+	"Remove from project": "Eliminar del proyecto",
+	"No file selected": "Ningún archivo seleccionado",
+	"Select a file or open a new tab to display it here.": "Seleccione un archivo o abra una nueva pestaña para mostrarlo aquí.",
+	"Press <2>K</2> on your keyboard to open the Command bar.": "Presione <2> k </2> en su teclado para abrir la barra de comando.",
+	"Use black theme": "Usar tema negro",
+	"This file was not indexed by bloop. The reason for this might be that the file is to big or is in our list of excluded file types.": "Este archivo no fue indexado por Bloop. La razón de esto podría ser que el archivo es demasiado grande o está en nuestra lista de tipos de archivos excluidos."
 }
