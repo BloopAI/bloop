@@ -69,26 +69,26 @@ pub(super) async fn vote(
 pub struct Answer {
     pub q: String,
     pub repo_ref: RepoRef,
-    #[serde(default = "default_model")]
-    pub model: agent::model::AnswerModel,
+    #[serde(default = "default_answer_model")]
+    pub answer_model: agent::model::LLMModel,
+    #[serde(default = "default_agent_model")]
+    pub agent_model: agent::model::LLMModel,
     #[serde(default = "default_thread_id")]
     pub thread_id: uuid::Uuid,
     /// Optional id of the parent of the exchange to overwrite
     /// If this UUID is nil, then overwrite the first exchange in the thread
     pub parent_exchange_id: Option<uuid::Uuid>,
-    #[serde(default = "default_agent_model")]
-    pub agent_model: agent::model::AnswerModel,
 }
 
 fn default_thread_id() -> uuid::Uuid {
     uuid::Uuid::new_v4()
 }
 
-fn default_model() -> agent::model::AnswerModel {
+fn default_answer_model() -> agent::model::LLMModel {
     agent::model::GPT_4_TURBO_24K
 }
 
-fn default_agent_model() -> agent::model::AnswerModel {
+fn default_agent_model() -> agent::model::LLMModel {
     agent::model::GPT_4
 }
 
@@ -216,7 +216,7 @@ async fn try_execute_agent(
     let Answer {
         thread_id,
         repo_ref,
-        model,
+        answer_model,
         agent_model,
         ..
     } = params.clone();
@@ -270,7 +270,7 @@ async fn try_execute_agent(
             thread_id,
             query_id,
             exchange_state: ExchangeState::Pending,
-            model,
+            answer_model,
             agent_model
         };
 
@@ -400,7 +400,7 @@ pub async fn explain(
         repo_ref: params.repo_ref,
         thread_id: params.thread_id,
         parent_exchange_id: None,
-        model: agent::model::GPT_4,
+        answer_model: agent::model::GPT_4_TURBO_24K,
         agent_model: agent::model::GPT_4,
     };
 

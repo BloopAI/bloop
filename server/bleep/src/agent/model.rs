@@ -2,7 +2,7 @@ use crate::agent::prompts;
 use std::str::FromStr;
 
 #[derive(Debug, Copy, Clone)]
-pub struct AnswerModel {
+pub struct LLMModel {
     /// The name of this model according to tiktoken
     pub tokenizer: &'static str,
 
@@ -22,7 +22,7 @@ pub struct AnswerModel {
     pub system_prompt: fn(&str) -> String,
 }
 
-pub const GPT_3_5_TURBO_FINETUNED: AnswerModel = AnswerModel {
+pub const GPT_3_5_TURBO_FINETUNED: LLMModel = LLMModel {
     tokenizer: "gpt-3.5-turbo-0613",
     model_name: "gpt-3.5-turbo-finetuned",
     answer_headroom: 512,
@@ -31,7 +31,7 @@ pub const GPT_3_5_TURBO_FINETUNED: AnswerModel = AnswerModel {
     system_prompt: prompts::answer_article_prompt_finetuned,
 };
 // to use 24k out of 128k (add 128-24 to the headrooms)
-pub const GPT_4_TURBO_24K: AnswerModel = AnswerModel {
+pub const GPT_4_TURBO_24K: LLMModel = LLMModel {
     tokenizer: "gpt-4-1106-preview",
     model_name: "gpt-4-1106-preview",
     answer_headroom: 1024 + 104000,
@@ -40,7 +40,7 @@ pub const GPT_4_TURBO_24K: AnswerModel = AnswerModel {
     system_prompt: prompts::answer_article_prompt,
 };
 
-pub const GPT_4: AnswerModel = AnswerModel {
+pub const GPT_4: LLMModel = LLMModel {
     tokenizer: "gpt-4-0613",
     model_name: "gpt-4-0613",
     answer_headroom: 1024,
@@ -49,7 +49,7 @@ pub const GPT_4: AnswerModel = AnswerModel {
     system_prompt: prompts::answer_article_prompt,
 };
 
-impl FromStr for AnswerModel {
+impl FromStr for LLMModel {
     type Err = ();
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         #[allow(clippy::wildcard_in_or_patterns)]
@@ -61,13 +61,13 @@ impl FromStr for AnswerModel {
     }
 }
 
-impl<'de> serde::Deserialize<'de> for AnswerModel {
+impl<'de> serde::Deserialize<'de> for LLMModel {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        s.parse::<AnswerModel>()
+        s.parse::<LLMModel>()
             .map_err(|_| serde::de::Error::custom("failed to deserialize"))
     }
 }

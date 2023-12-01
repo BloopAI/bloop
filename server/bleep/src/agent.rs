@@ -57,8 +57,8 @@ pub struct Agent {
     pub thread_id: uuid::Uuid,
     pub query_id: uuid::Uuid,
 
-    pub model: model::AnswerModel,
-    pub agent_model: model::AnswerModel,
+    pub answer_model: model::LLMModel,
+    pub agent_model: model::LLMModel,
 
     /// Indicate whether the request was answered.
     ///
@@ -485,7 +485,7 @@ impl Agent {
 
 fn trim_history(
     mut history: Vec<llm_gateway::api::Message>,
-    model: model::AnswerModel,
+    model: model::LLMModel,
 ) -> Result<Vec<llm_gateway::api::Message>> {
     const HIDDEN: &str = "[HIDDEN]";
 
