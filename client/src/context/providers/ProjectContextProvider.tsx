@@ -13,8 +13,13 @@ import {
   PROJECT_KEY,
   savePlainToStorage,
 } from '../../services/storage';
-import { createProject, getAllProjects, getProject } from '../../services/api';
-import { ProjectShortType } from '../../types/api';
+import {
+  createProject,
+  getAllProjects,
+  getProject,
+  getProjectRepos,
+} from '../../services/api';
+import { ProjectFullType, ProjectShortType } from '../../types/api';
 
 type Props = {};
 
@@ -23,13 +28,24 @@ const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
   const [currentProjectId, setCurrentProjectId] = useState(
     getPlainFromStorage(PROJECT_KEY) || '',
   );
-  const [project, setProject] = useState<ProjectShortType | null>(null);
+  const [project, setProject] = useState<ProjectFullType | null>(null);
   const [projects, setProjects] = useState<ProjectShortType[]>([]);
+
+  const refreshCurrentProjectRepos = useCallback(async () => {
+    getProjectRepos(currentProjectId).then((r) => {
+      setProject((prev) =>
+        prev ? { ...prev, repos: r.map((r) => r.ref) } : null,
+      );
+    });
+  }, [currentProjectId]);
 
   const refreshCurrentProject = useCallback(() => {
     if (currentProjectId) {
       getProject(currentProjectId)
-        .then(setProject)
+        .then((p) => {
+          setProject({ ...p, repos: [] });
+          refreshCurrentProjectRepos();
+        })
         .catch((err) => {
           console.log(err);
           setCurrentProjectId('');
@@ -66,6 +82,7 @@ const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
     () => ({
       project,
       setCurrentProjectId,
+      refreshCurrentProjectRepos,
       refreshCurrentProject,
     }),
     [project],

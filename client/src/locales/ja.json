@@ -510,5 +510,6 @@
 	"Re-check payment status": "支払いステータスを再確認します",
 	"Indexed documentation web pages": "インデックス付きドキュメントWebページ",
 	"Project title": "プロジェクト名",
-	"Default project": "デフォルトプロジェクト"
+	"Default project": "デフォルトプロジェクト",
+	"Remove from project": "プロジェクトから取り外します"
 }

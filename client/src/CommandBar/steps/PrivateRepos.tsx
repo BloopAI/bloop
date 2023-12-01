@@ -26,6 +26,7 @@ import SectionItem from '../../components/Dropdown/Section/SectionItem';
 import Header from '../Header';
 import Body from '../Body';
 import Footer from '../Footer';
+import { ProjectContext } from '../../context/projectContext';
 import RepoItem from './items/RepoItem';
 
 type Props = {};

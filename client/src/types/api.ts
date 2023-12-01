@@ -390,3 +390,7 @@ export type ProjectShortType = {
   name: string;
   modified_at: null | string;
 };
+
+export type ProjectFullType = ProjectShortType & {
+  repos: string[];
+};

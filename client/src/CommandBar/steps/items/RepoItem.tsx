@@ -12,13 +12,20 @@ import {
 import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
 import { CommandBarStepEnum, RepoUi, SyncStatus } from '../../../types/general';
-import { cancelSync, deleteRepo, syncRepo } from '../../../services/api';
+import {
+  addRepoToProject,
+  cancelSync,
+  deleteRepo,
+  removeRepoFromProject,
+  syncRepo,
+} from '../../../services/api';
 import { RepositoryIcon } from '../../../icons';
 import { DeviceContext } from '../../../context/deviceContext';
 import { getDateFnsLocale } from '../../../utils';
 import { LocaleContext } from '../../../context/localeContext';
 import Item from '../../Body/Item';
 import SpinLoaderContainer from '../../../components/Loaders/SpinnerLoader';
+import { ProjectContext } from '../../../context/projectContext';
 
 type Props = {
   repo: RepoUi;
@@ -39,6 +46,9 @@ const RepoItem = ({
 }: Props) => {
   const { t } = useTranslation();
   const { locale } = useContext(LocaleContext);
+  const { project, refreshCurrentProjectRepos } = useContext(
+    ProjectContext.Current,
+  );
   const [status, setStatus] = useState(repo.sync_status);
   const [lastIndexed, setLastIndexed] = useState(repo.last_index);
   const [indexingStartedAt, setIndexingStartedAt] = useState(Date.now());
@@ -109,8 +119,18 @@ const RepoItem = ({
     startEventSource();
   }, [repo.ref]);
 
-  const handleAddToProject = useCallback(() => {
-    console.log(repo);
+  const handleAddToProject = useCallback(async () => {
+    if (project?.id) {
+      await addRepoToProject(project.id, repo.ref);
+      refreshCurrentProjectRepos();
+    }
+  }, [repo]);
+
+  const handleRemoveFromProject = useCallback(async () => {
+    if (project?.id) {
+      await removeRepoFromProject(project.id, repo.ref);
+      refreshCurrentProjectRepos();
+    }
   }, [repo]);
 
   const handleCancelSync = useCallback(() => {
@@ -130,6 +150,10 @@ const RepoItem = ({
     await deleteRepo(repo.ref);
     refetchRepos();
   }, [repo.ref]);
+
+  const isInProject = useMemo(() => {
+    return project?.repos.includes(repo.ref);
+  }, [project, repo.ref]);
 
   return (
     <Item
@@ -153,7 +177,9 @@ const RepoItem = ({
           : t('Index repository')
       }
       iconContainerClassName={
-        status === SyncStatus.Done
+        isInProject
+          ? 'bg-blue-subtle text-blue'
+          : status === SyncStatus.Done
           ? 'bg-bg-contrast text-label-contrast'
           : 'bg-bg-border'
       }
@@ -163,7 +189,7 @@ const RepoItem = ({
           ? [
               {
                 label: t('Remove'),
-                shortcut: ['cmd', 'bksp'],
+                shortcut: ['cmd', 'D'],
                 action: onRepoRemove,
               },
               {
@@ -172,9 +198,13 @@ const RepoItem = ({
                 action: onRepoSync,
               },
               {
-                label: t('Add to project'),
+                label: isInProject
+                  ? t('Remove from project')
+                  : t('Add to project'),
                 shortcut: ['entr'],
-                action: handleAddToProject,
+                action: isInProject
+                  ? handleRemoveFromProject
+                  : handleAddToProject,
               },
             ]
           : isIndexing

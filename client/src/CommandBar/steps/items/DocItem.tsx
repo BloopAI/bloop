@@ -174,7 +174,7 @@ const DocItem = ({
           ? [
               {
                 label: t('Remove'),
-                shortcut: ['cmd', 'bksp'],
+                shortcut: ['cmd', 'D'],
                 action: handleRemove,
               },
               {
