@@ -1,4 +1,4 @@
-use std::{ops::Deref, sync::Arc, time::Duration};
+use std::{ops::Deref, sync::Arc, time::Duration, str::FromStr};
 
 use anyhow::{anyhow, Context, Result};
 use futures::{Future, TryStreamExt};
@@ -450,11 +450,25 @@ impl Agent {
         let branch = self.last_exchange().query.first_branch();
         let langs = self.last_exchange().query.langs.iter().map(Deref::deref);
 
+        let user_id = self.user.username().expect("didn't have user ID");
+
+        let repos = sqlx::query! {
+            "SELECT pr.repo_ref
+            FROM project_repos pr
+            INNER JOIN projects p ON p.id = pr.project_id AND p.user_id = ?",
+            user_id,
+        }
+        .fetch_all(&*self.app.sql)
+        .await
+        .expect("failed to fetch repo associations")
+        .into_iter()
+        .filter_map(|r| RepoRef::from_str(&r.repo_ref).ok());
+
         debug!(?query, ?branch, %self.conversation.thread_id, "executing fuzzy search");
         self.app
             .indexes
             .file
-            .fuzzy_path_match(todo!(), branch.as_deref(), query, langs, 50)
+            .fuzzy_path_match(repos, branch.as_deref(), query, langs, 50)
             .await
     }
 
