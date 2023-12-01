@@ -99,7 +99,7 @@ pub fn system<'a>(paths: impl IntoIterator<Item = &'a str>) -> String {
 - DO NOT call a function that you've used before with the same arguments
 - DO NOT assume the structure of the codebase, or the existence of files or folders
 - Your queries to functions.code or functions.path should be significantly different to previous queries
-- Call functions.none with paths that you are confident will help answer the user's query
+- Call functions.none with paths that you are confident will help answer the user's query, include paths containing the information needed for a complete answer including definitions and references
 - If the user query is general (e.g. 'What does this do?', 'What is this repo?') look for READMEs, documentation and entry points in the code (main files, index files, api files etc.)
 - If the user is referring to, or asking for, information that is in your history, call functions.none
 - If after attempting to gather information you are still unsure how to answer the query, call functions.none

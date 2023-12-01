@@ -27,6 +27,7 @@ const MAX_STEPS: usize = 10;
 pub mod exchange;
 pub mod model;
 pub mod prompts;
+pub mod symbol;
 pub mod transcoder;
 
 /// A collection of modules that each add methods to `Agent`.

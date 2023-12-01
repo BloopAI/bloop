@@ -19,25 +19,25 @@ use serde::{Deserialize, Serialize};
 
 /// The request made to the `local-intel` endpoint.
 #[derive(Debug, Deserialize)]
-pub(super) struct TokenInfoRequest {
+pub struct TokenInfoRequest {
     /// The repo_ref of the file of interest
-    repo_ref: String,
+    pub repo_ref: String,
 
     /// The path to the file of interest, relative to the repo root
-    relative_path: String,
+    pub relative_path: String,
 
     /// Branch name to use for the lookup,
-    branch: Option<String>,
+    pub branch: Option<String>,
 
     /// The byte range to look for
-    start: usize,
-    end: usize,
+    pub start: usize,
+    pub end: usize,
 }
 
 /// The response from the `local-intel` endpoint.
 #[derive(Serialize, Debug)]
-pub(super) struct TokenInfoResponse {
-    data: Vec<FileSymbols>,
+pub struct TokenInfoResponse {
+    pub data: Vec<FileSymbols>,
 }
 
 impl TokenInfoResponse {
@@ -52,6 +52,18 @@ pub(super) async fn handle(
     Query(payload): Query<TokenInfoRequest>,
     Extension(indexes): Extension<Arc<Indexes>>,
 ) -> Result<impl IntoResponse> {
+    let result = inner_handle(payload, indexes).await;
+
+    match result {
+        Ok(response) => Ok(json(response)),
+        Err(err) => Err(err.into()),
+    }
+}
+
+pub async fn inner_handle(
+    payload: TokenInfoRequest,
+    indexes: Arc<Indexes>,
+) -> Result<TokenInfoResponse> {
     let repo_ref = payload.repo_ref.parse::<RepoRef>().map_err(Error::user)?;
 
     let token = Token {
@@ -95,7 +107,7 @@ pub(super) async fn handle(
 
     let data = ctx.token_info();
     if data.is_empty() {
-        search_nav(
+        let response = search_nav(
             Arc::clone(&indexes),
             &repo_ref,
             ctx.active_token_text(),
@@ -104,10 +116,10 @@ pub(super) async fn handle(
             &source_document,
         )
         .await
-        .map(TokenInfoResponse::new)
-        .map(json)
+        .map(TokenInfoResponse::new)?;
+        Ok(response)
     } else {
-        Ok(json(TokenInfoResponse { data }))
+        Ok(TokenInfoResponse { data })
     }
 }
 

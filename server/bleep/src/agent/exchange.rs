@@ -157,6 +157,8 @@ pub struct CodeChunk {
     pub start_line: usize,
     #[serde(rename = "end")]
     pub end_line: usize,
+    pub start_byte: usize,
+    pub end_byte: usize,
 }
 
 impl CodeChunk {

@@ -8,24 +8,47 @@ use serde::{Deserialize, Serialize};
 
 /// The request made to the `hoverable` endpoint.
 #[derive(Debug, Deserialize)]
-pub(super) struct HoverableRequest {
+pub struct HoverableRequest {
     /// The repo_ref of the file of interest
-    repo_ref: String,
+    pub repo_ref: String,
 
     /// The path to the file of interest, relative to the repo root
-    relative_path: String,
+    pub relative_path: String,
 
     /// Branch name to use for the lookup,
-    branch: Option<String>,
+    pub branch: Option<String>,
 }
 
 /// The response from the `hoverable` endpoint.
 #[derive(Serialize)]
-pub(super) struct HoverableResponse {
-    ranges: Vec<TextRange>,
+pub struct HoverableResponse {
+    pub ranges: Vec<TextRange>,
 }
 
 impl super::ApiResponse for HoverableResponse {}
+
+pub async fn inner_handle(
+    payload: HoverableRequest,
+    indexes: Arc<Indexes>,
+) -> Result<HoverableResponse, Error> {
+    let repo_ref = &payload.repo_ref.parse::<RepoRef>().map_err(Error::user)?;
+
+    let document = match indexes
+        .file
+        .by_path(repo_ref, &payload.relative_path, payload.branch.as_deref())
+        .await
+    {
+        Ok(Some(doc)) => doc,
+        Ok(None) => return Err(Error::user("file not found").with_status(StatusCode::NOT_FOUND)),
+        Err(e) => return Err(Error::user(e)),
+    };
+
+    let ranges = document
+        .hoverable_ranges()
+        .ok_or(Error::user("no hoverable ranges for language"))?;
+
+    Ok(HoverableResponse { ranges })
+}
 
 pub(super) async fn handle(
     Query(payload): Query<HoverableRequest>,
