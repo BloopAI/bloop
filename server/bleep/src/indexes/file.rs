@@ -247,7 +247,7 @@ impl Indexer<File> {
     /// If the regex filter fails to build, an empty list is returned.
     pub async fn fuzzy_path_match(
         &self,
-        project: Project,
+        repos: impl Iterator<Item = RepoRef>,
         branch: Option<&str>,
         query_str: &str,
         langs: impl Iterator<Item = &str>,
@@ -269,12 +269,11 @@ impl Indexer<File> {
             })
             .map(BooleanQuery::intersection);
 
-        let project_scope = BooleanQuery::union(
-            project
-                .repos()
+        let repo_scope = BooleanQuery::union(
+            repos
                 .map(|repo| {
                     Box::new(TermQuery::new(
-                        Term::from_field_text(self.source.repo_name, &repo),
+                        Term::from_field_text(self.source.repo_name, &repo.to_string()),
                         IndexRecordOption::Basic,
                     )) as Box<dyn Query>
                 })
@@ -298,7 +297,7 @@ impl Indexer<File> {
             .map(|term| TermQuery::new(term, IndexRecordOption::Basic))
             .flat_map(|query| {
                 let mut q: Vec<Box<dyn Query>> =
-                    vec![Box::new(project_scope.clone()), Box::new(query)];
+                    vec![Box::new(repo_scope.clone()), Box::new(query)];
                 q.extend(branch_scope.clone().map(|q| Box::new(q) as Box<dyn Query>));
                 q.push(Box::new(langs_query.clone()));
 
