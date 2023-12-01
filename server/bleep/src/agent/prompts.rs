@@ -30,6 +30,24 @@ pub fn functions(add_proc: bool) -> serde_json::Value {
                 }
             },
             {
+                "name": "symbol",
+                "description": "Search for more details of a function, struct, claas, method or variable. Call this only when you have seen code with the symbol after calling proc or code, and knowing more about the symbol will help answer user's query.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "symbol": {
+                            "type": "string",
+                            "description": "The name of the symbol (function, struct, claas, method or variable) to look for. Example: 'file_name', 'RankingClass', 'formPayload'..."
+                        },
+                        "path": {
+                            "type": "integer",
+                            "description": "The indices of the path containing the symbol."
+                        }
+                    },
+                    "required": ["symbol"]
+                }
+            },
+            {
                 "name": "none",
                 "description": "Call this to answer the user. Call this only when you have enough information to answer the user's query.",
                 "parameters": {

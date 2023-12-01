@@ -39,6 +39,7 @@ mod tools {
     pub mod code;
     pub mod path;
     pub mod proc;
+    pub mod symbol;
 }
 
 pub enum Error {
@@ -200,6 +201,7 @@ impl Agent {
             }
 
             Action::Path { query } => self.path_search(query).await?,
+            Action::Symbol { symbol , path} => self.symbol_search(symbol, path).await?,
             Action::Code { query } => self.code_search(query).await?,
             Action::Proc { query, paths } => self.process_files(query, paths).await?,
         };
@@ -281,6 +283,10 @@ impl Agent {
 
                 let steps = e.search_steps.iter().flat_map(|s| {
                     let (name, arguments) = match s {
+                        SearchStep::Symbol { symbol, path, .. } => (
+                            "symbol".to_owned(),
+                            format!("{{\n \"symbol\": \"{symbol}\"\n\"path\": \"{path}\"\n}}"),
+                        ),
                         SearchStep::Path { query, .. } => (
                             "path".to_owned(),
                             format!("{{\n \"query\": \"{query}\"\n}}"),
@@ -541,6 +547,10 @@ pub enum Action {
     },
     Code {
         query: String,
+    },
+    Symbol {
+        symbol: String,
+        path: usize
     },
     Proc {
         query: String,
