@@ -48,7 +48,7 @@ impl TokenInfoResponse {
 
 impl super::ApiResponse for TokenInfoResponse {}
 
-pub(super) async fn handle(
+pub async fn handle(
     Query(payload): Query<TokenInfoRequest>,
     Extension(indexes): Extension<Arc<Indexes>>,
 ) -> Result<impl IntoResponse> {

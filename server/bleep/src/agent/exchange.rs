@@ -132,6 +132,11 @@ pub enum SearchStep {
         paths: Vec<String>,
         response: String,
     },
+    Symbol {
+        symbol: String,
+        path: String,
+        response: String,
+    }
 }
 
 impl SearchStep {
@@ -153,6 +158,11 @@ impl SearchStep {
                 paths: paths.clone(),
                 response: "[hidden, compressed]".into(),
             },
+            Self::Symbol { symbol, path,.. } => Self::Symbol {
+                symbol: symbol.clone(),
+                path: path.clone(),
+                response: "[hidden, compressed]".into(),
+            },
         }
     }
 
@@ -161,6 +171,7 @@ impl SearchStep {
             Self::Path { response, .. } => response.clone(),
             Self::Code { response, .. } => response.clone(),
             Self::Proc { response, .. } => response.clone(),
+            Self::Symbol { response, .. } => response.clone(),
         }
     }
 }

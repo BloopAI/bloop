@@ -23,7 +23,7 @@ mod file;
 mod github;
 mod hoverable;
 mod index;
-mod intelligence;
+pub mod intelligence;
 pub mod middleware;
 mod query;
 mod quota;
