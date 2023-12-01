@@ -7,6 +7,8 @@ use chrono::NaiveDateTime;
 
 use super::{middleware::User, Error};
 
+pub mod repo;
+
 fn default_name() -> String {
     "New Project".into()
 }
@@ -135,4 +137,22 @@ pub async fn update(
     .await
     .map(|_id| ())
     .map_err(Error::internal)
+}
+
+pub async fn delete(
+    app: Extension<Application>,
+    user: Extension<User>,
+    Path(id): Path<i64>,
+) -> webserver::Result<()> {
+    let user_id = user.username().ok_or_else(super::no_user_id)?;
+
+    sqlx::query! {
+        "DELETE FROM projects WHERE id = ? AND user_id = ? RETURNING id",
+        id,
+        user_id,
+    }
+    .fetch_optional(&*app.sql)
+    .await?
+    .map(|_id| ())
+    .ok_or_else(|| Error::not_found("could not find project"))
 }
