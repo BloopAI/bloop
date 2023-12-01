@@ -21,7 +21,7 @@ import {
 } from '../../services/storage';
 import { Theme } from '../../types';
 import { EnvContext } from '../envContext';
-import { SettingSections } from '../../types/general';
+import { ProjectSettingSections, SettingSections } from '../../types/general';
 
 type Props = {};
 
@@ -30,6 +30,10 @@ export const UIContextProvider = memo(
     const [isSettingsOpen, setSettingsOpen] = useState(false);
     const [settingsSection, setSettingsSection] = useState(
       SettingSections.GENERAL,
+    );
+    const [isProjectSettingsOpen, setProjectSettingsOpen] = useState(false);
+    const [projectSettingsSection, setProjectSettingsSection] = useState(
+      ProjectSettingSections.GENERAL,
     );
     const [isBugReportModalOpen, setBugReportModalOpen] = useState(false);
     const [onBoardingState, setOnBoardingState] = usePersistentState(
@@ -106,6 +110,16 @@ export const UIContextProvider = memo(
       [isSettingsOpen, settingsSection],
     );
 
+    const projectSettingsContextValue = useMemo(
+      () => ({
+        isProjectSettingsOpen,
+        setProjectSettingsOpen,
+        projectSettingsSection,
+        setProjectSettingsSection,
+      }),
+      [isProjectSettingsOpen, projectSettingsSection],
+    );
+
     const onboardingContextValue = useMemo(
       () => ({
         onBoardingState,
@@ -144,15 +158,17 @@ export const UIContextProvider = memo(
 
     return (
       <UIContext.Settings.Provider value={settingsContextValue}>
-        <UIContext.Onboarding.Provider value={onboardingContextValue}>
-          <UIContext.BugReport.Provider value={bugReportContextValue}>
-            <UIContext.GitHubConnected.Provider value={githubContextValue}>
-              <UIContext.Theme.Provider value={themeContextValue}>
-                {children}
-              </UIContext.Theme.Provider>
-            </UIContext.GitHubConnected.Provider>
-          </UIContext.BugReport.Provider>
-        </UIContext.Onboarding.Provider>
+        <UIContext.ProjectSettings.Provider value={projectSettingsContextValue}>
+          <UIContext.Onboarding.Provider value={onboardingContextValue}>
+            <UIContext.BugReport.Provider value={bugReportContextValue}>
+              <UIContext.GitHubConnected.Provider value={githubContextValue}>
+                <UIContext.Theme.Provider value={themeContextValue}>
+                  {children}
+                </UIContext.Theme.Provider>
+              </UIContext.GitHubConnected.Provider>
+            </UIContext.BugReport.Provider>
+          </UIContext.Onboarding.Provider>
+        </UIContext.ProjectSettings.Provider>
       </UIContext.Settings.Provider>
     );
   },

@@ -10,6 +10,7 @@ import ProjectContextProvider from './context/providers/ProjectContextProvider';
 import CommandBarContextProvider from './context/providers/CommandBarContextProvider';
 import { UIContextProvider } from './context/providers/UIContextProvider';
 import Settings from './Settings';
+import ProjectSettings from './ProjectSettings';
 
 const App = () => {
   return (
@@ -21,6 +22,7 @@ const App = () => {
             <Onboarding />
             <CommandBarContextProvider>
               <Settings />
+              <ProjectSettings />
               <Header />
               <CommandBar />
               <Project />

@@ -6,33 +6,56 @@ import {
   useMemo,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ProjectContext } from '../projectContext';
 import {
   getPlainFromStorage,
   PROJECT_KEY,
   savePlainToStorage,
 } from '../../services/storage';
-import { getAllProjects, getProject } from '../../services/api';
+import { createProject, getAllProjects, getProject } from '../../services/api';
 import { ProjectShortType } from '../../types/api';
 
 type Props = {};
 
 const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
+  const { t } = useTranslation();
   const [currentProjectId, setCurrentProjectId] = useState(
     getPlainFromStorage(PROJECT_KEY) || '',
   );
   const [project, setProject] = useState<ProjectShortType | null>(null);
   const [projects, setProjects] = useState<ProjectShortType[]>([]);
 
-  useEffect(() => {
+  const refreshCurrentProject = useCallback(() => {
     if (currentProjectId) {
-      savePlainToStorage(PROJECT_KEY, currentProjectId);
-      getProject(currentProjectId).then(setProject);
+      getProject(currentProjectId)
+        .then(setProject)
+        .catch((err) => {
+          console.log(err);
+          setCurrentProjectId('');
+        });
     }
   }, [currentProjectId]);
 
+  useEffect(() => {
+    if (currentProjectId) {
+      savePlainToStorage(PROJECT_KEY, currentProjectId);
+      refreshCurrentProject();
+    }
+  }, [currentProjectId, refreshCurrentProject]);
+
   const refreshAllProjects = useCallback(() => {
-    getAllProjects().then(setProjects);
+    getAllProjects().then((p) => {
+      setProjects(p);
+      if (!p.length) {
+        createProject(t('Default project')).then((newId) => {
+          setCurrentProjectId(newId);
+          getAllProjects().then((p) => {
+            setProjects(p);
+          });
+        });
+      }
+    });
   }, []);
 
   useEffect(() => {
@@ -43,6 +66,7 @@ const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
     () => ({
       project,
       setCurrentProjectId,
+      refreshCurrentProject,
     }),
     [project],
   );

@@ -80,7 +80,7 @@ const GeneralSettings = ({}: Props) => {
           name={'email'}
           onChange={onChange}
           label={t('Email address')}
-          validate={() => {
+          onBlur={() => {
             if (!EMAIL_REGEX.test(form.email)) {
               setForm((prev) => ({
                 ...prev,

@@ -525,3 +525,10 @@ export enum SettingSections {
   PREFERENCES,
   SUBSCRIPTION,
 }
+
+export enum ProjectSettingSections {
+  GENERAL,
+  TEMPLATES,
+}
+
+export type SettingsTypesSections = SettingSections | ProjectSettingSections;

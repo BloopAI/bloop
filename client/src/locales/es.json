@@ -519,5 +519,7 @@
 	"Try again": "Intentar otra vez",
 	"Re-check payment status": "Vuelva a verificar el estado de pago",
 	"$20 / billed monthly": "$ 20 / facturado mensualmente",
-	"Indexed documentation web pages": "Páginas web de documentación indexadas"
+	"Indexed documentation web pages": "Páginas web de documentación indexadas",
+	"Manage your general project settings": "Administre la configuración de su proyecto general",
+	"Default project": "Proyecto predeterminado"
 }

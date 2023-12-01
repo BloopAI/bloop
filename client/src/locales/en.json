@@ -520,5 +520,10 @@
 	"We've redirected you to Stripe to complete your transaction.<1>Launch manually</1> if it didn't work.": "We've redirected you to Stripe to complete your transaction.<1>Launch manually</1> if it didn't work.",
 	"Re-check payment status": "Re-check payment status",
 	"We've redirected you to Stripe to complete your transaction. <2>Launch manually</2> if it didn't work.": "We've redirected you to Stripe to complete your transaction. <2>Launch manually</2> if it didn't work.",
-	"Try again": "Try again"
+	"Try again": "Try again",
+	"Project": "Project",
+	"Manage your general project settings": "Manage your general project settings",
+	"Project title": "Project title",
+	"Delete project": "Delete project",
+	"Default project": "Default project"
 }

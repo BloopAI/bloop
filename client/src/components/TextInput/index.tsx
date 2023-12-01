@@ -24,7 +24,7 @@ type Props = {
   type?: HTMLInputTypeAttribute;
   onSubmit?: (e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   onEscape?: () => void;
-  validate?: () => void;
+  onBlur?: () => void;
   autoFocus?: boolean;
   inputClassName?: string;
   forceClear?: boolean;
@@ -81,7 +81,7 @@ const TextInput = forwardRef(function TextInputWithRef(
     disabled,
     type,
     onSubmit,
-    validate,
+    onBlur,
     multiline,
     autoFocus,
     inputClassName,
@@ -143,7 +143,7 @@ const TextInput = forwardRef(function TextInputWithRef(
             name={name}
             disabled={disabled}
             rows={4}
-            onBlur={validate}
+            onBlur={onBlur}
             autoComplete="off"
             spellCheck="false"
             className={`bg-transparent resize-none border-none focus:outline-none w-full 
@@ -162,7 +162,7 @@ const TextInput = forwardRef(function TextInputWithRef(
             type={type}
             disabled={disabled}
             ref={ref || inputRef}
-            onBlur={validate}
+            onBlur={onBlur}
             autoComplete="off"
             spellCheck="false"
             className={`bg-transparent border-none focus:outline-none w-full

@@ -207,7 +207,7 @@ const ReportBugModal = ({
                 <TextInput
                   value={form.email}
                   onChange={onChange}
-                  validate={() => {
+                  onBlur={() => {
                     if (!EMAIL_REGEX.test(form.email)) {
                       setForm((prev) => ({
                         ...prev,

@@ -5,7 +5,11 @@ import SectionItem from '../Dropdown/Section/SectionItem';
 import { CogIcon, PlusSignIcon, ShapesIcon } from '../../icons';
 import { ProjectContext } from '../../context/projectContext';
 import { CommandBarContext } from '../../context/commandBarContext';
-import { CommandBarStepEnum } from '../../types/general';
+import {
+  CommandBarStepEnum,
+  ProjectSettingSections,
+} from '../../types/general';
+import { UIContext } from '../../context/uiContext';
 
 type Props = {};
 
@@ -16,10 +20,18 @@ const ProjectsDropdown = ({}: Props) => {
   const { setChosenStep, setIsVisible } = useContext(
     CommandBarContext.Handlers,
   );
+  const { setProjectSettingsSection, setProjectSettingsOpen } = useContext(
+    UIContext.ProjectSettings,
+  );
 
   const createNewProject = useCallback(() => {
     setChosenStep({ id: CommandBarStepEnum.CREATE_PROJECT });
     setIsVisible(true);
+  }, []);
+
+  const openProjectSettings = useCallback(() => {
+    setProjectSettingsOpen(true);
+    setProjectSettingsSection(ProjectSettingSections.GENERAL);
   }, []);
 
   return (
@@ -38,10 +50,10 @@ const ProjectsDropdown = ({}: Props) => {
       </div>
       <div className="flex flex-col p-1 items-start border-b border-bg-border">
         <SectionItem
-          onClick={() => {}}
+          onClick={openProjectSettings}
           label={t('Project settings')}
           icon={<CogIcon sizeClassName="w-4 h-4" />}
-          shortcut={['option', 'A']}
+          shortcut={['option', 'P']}
         />
       </div>
       <div className="flex flex-col p-1 items-start">

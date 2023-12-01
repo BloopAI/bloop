@@ -757,9 +757,8 @@ h5, .h5 {
   font-family: 'Inter', sans-serif;
   font-style: normal;
   font-weight: 500;
-  font-size: 0.875rem;
-  line-height: 160%;
-  letter-spacing: -0.02em;
+  font-size: 0.8125rem;
+  line-height: 123.077%;
 }
 
 .body-mini {

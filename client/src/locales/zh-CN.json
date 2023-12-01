@@ -514,5 +514,7 @@
 	"Re-check payment status": "重新检查付款状态",
 	"We've redirected you to Stripe to complete your transaction. <2>Launch manually</2> if it didn't work.": "我们将您重定向到条纹以完成您的交易。 <2>如果它不起作用，请启动</2>。",
 	"Try again": "再试一次",
-	"$20 / billed monthly": "$ 20 /收费每月"
+	"$20 / billed monthly": "$ 20 /收费每月",
+	"Delete project": "删除项目",
+	"Default project": "默认项目"
 }

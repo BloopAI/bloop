@@ -449,3 +449,5 @@ export const createProject = (name: string): Promise<string> =>
   http.post(`/projects`, { name }).then((r) => r.data);
 export const updateProject = (id: string, data: Partial<ProjectShortType>) =>
   http.put(`/projects/${id}`, data).then((r) => r.data);
+export const deleteProject = (id: string) =>
+  http.delete(`/projects/${id}`).then((r) => r.data);

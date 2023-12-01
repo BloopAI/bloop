@@ -1,6 +1,6 @@
 import { createContext } from 'react';
 import { Theme } from '../types';
-import { SettingSections } from '../types/general';
+import { ProjectSettingSections, SettingSections } from '../types/general';
 
 export const UIContext = {
   Settings: createContext({
@@ -8,6 +8,12 @@ export const UIContext = {
     setSettingsOpen: (b: boolean) => {},
     settingsSection: SettingSections.GENERAL,
     setSettingsSection: (s: SettingSections) => {},
+  }),
+  ProjectSettings: createContext({
+    isProjectSettingsOpen: false,
+    setProjectSettingsOpen: (b: boolean) => {},
+    projectSettingsSection: ProjectSettingSections.GENERAL,
+    setProjectSettingsSection: (s: ProjectSettingSections) => {},
   }),
   Onboarding: createContext({
     shouldShowWelcome: false,

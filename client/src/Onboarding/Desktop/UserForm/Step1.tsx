@@ -95,7 +95,7 @@ const UserFormStep1 = ({ form, setForm, onContinue }: Props) => {
             emailError: null,
           }))
         }
-        validate={() => {
+        onBlur={() => {
           if (form.email && !EMAIL_REGEX.test(form.email)) {
             setForm((prev) => ({
               ...prev,

@@ -17,16 +17,17 @@ import UserDropdown from './UserDropdown';
 import ProjectsDropdown from './ProjectsDropdown';
 
 type Props = {
-  isSettings?: boolean;
+  type?: 'default' | 'settings' | 'project-settings';
 };
 
-const Header = ({ isSettings }: Props) => {
+const Header = ({ type = 'default' }: Props) => {
   const { t } = useTranslation();
   const { os } = useContext(DeviceContext);
   const { envConfig } = useContext(EnvContext);
   const { project } = useContext(ProjectContext.Current);
   const { setIsVisible } = useContext(CommandBarContext.Handlers);
   const { setSettingsOpen } = useContext(UIContext.Settings);
+  const { setProjectSettingsOpen } = useContext(UIContext.ProjectSettings);
 
   const openCommandBar = useCallback(() => {
     setIsVisible(true);
@@ -34,6 +35,7 @@ const Header = ({ isSettings }: Props) => {
 
   const closeSettings = useCallback(() => {
     setSettingsOpen(false);
+    setProjectSettingsOpen(false);
   }, []);
 
   return (
@@ -47,7 +49,7 @@ const Header = ({ isSettings }: Props) => {
         ) : (
           ''
         )}
-        {isSettings ? (
+        {type === 'settings' ? (
           <div className="flex items-center gap-2">
             <Button
               onlyIcon
@@ -60,6 +62,25 @@ const Header = ({ isSettings }: Props) => {
             </Button>
             <p className="body-mini-b text-label-title">
               <Trans>Account settings</Trans>
+            </p>
+          </div>
+        ) : type === 'project-settings' ? (
+          <div className="flex items-center gap-4">
+            <Button
+              onlyIcon
+              title={t('Back')}
+              onClick={closeSettings}
+              variant="tertiary"
+              size="small"
+            >
+              <ArrowLeftIcon />
+            </Button>
+            <p className="body-mini-b text-label-title">
+              {project?.name || 'Default project'}
+            </p>
+            <p className="body-s-b text-label-muted">›</p>
+            <p className="body-mini-b text-label-title">
+              <Trans>Project settings</Trans>
             </p>
           </div>
         ) : (
