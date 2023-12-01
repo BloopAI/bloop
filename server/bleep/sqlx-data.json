@@ -440,6 +440,24 @@
     },
     "query": "DELETE FROM chunk_cache WHERE chunk_hash = ? AND file_hash = ?"
   },
+  "51613ed54060deefe909ecdf9f88a27a88f2a5b246589cebf67599953b6b13a0": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        }
+      ],
+      "nullable": [
+        true
+      ],
+      "parameters": {
+        "Right": 3
+      }
+    },
+    "query": "DELETE FROM project_repos\n        WHERE project_id = $1 AND repo_ref = $2 AND EXISTS (\n            SELECT id\n            FROM projects\n            WHERE id = $1 AND user_id = $3\n        )\n        RETURNING id"
+  },
   "523e2fd0c4f2c3318e894af3537b1c2e503e0865fcaabc4bdda43960ca0ef45c": {
     "describe": {
       "columns": [],
@@ -639,6 +657,24 @@
       }
     },
     "query": "SELECT messages, context FROM studio_snapshots WHERE id = ?"
+  },
+  "6767e546a8e1db775647021a74ebcb7868ce6b1e3c5b354cb5ee58464a1c3514": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        }
+      ],
+      "nullable": [
+        true
+      ],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "DELETE FROM projects WHERE id = ? AND user_id = ? RETURNING id"
   },
   "69c8b59ce4be3fc6edb58563bf69f55ea5dca4646b0ba05820e5d1b2b07c3c82": {
     "describe": {
@@ -970,6 +1006,16 @@
     },
     "query": "UPDATE studio_snapshots SET context = ? WHERE id = ?"
   },
+  "a72a44c5f6db62bc0ffc92ce0e06cdcdcadfb02ce33399a167bbf216e7a039ce": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "INSERT INTO project_repos (project_id, repo_ref) VALUES ($1, $2)"
+  },
   "a8baec57552045778eb4609e83452c668583bf5a6ff8fec1898523058a061bcb": {
     "describe": {
       "columns": [
@@ -1052,6 +1098,24 @@
     },
     "query": "UPDATE templates SET name = ? WHERE id = ?"
   },
+  "b194d61bd132827ab30dd215cb91c3c3d70db79f576b93f22373ec1d7b4f6489": {
+    "describe": {
+      "columns": [
+        {
+          "name": "repo_ref",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "SELECT repo_ref\n        FROM project_repos\n        WHERE project_id = $1 AND EXISTS (\n            SELECT p.id\n            FROM projects p\n            WHERE p.id = $1 AND p.user_id = $2\n        )"
+  },
   "b3ebaeec21c90aa9ebc59a808e03c661839d0a0eaa86ad2bf4251e895f8e0a03": {
     "describe": {
       "columns": [],
@@ -1061,6 +1125,24 @@
       }
     },
     "query": "INSERT INTO chunk_cache (chunk_hash, file_hash, branches, repo_ref) VALUES (?, ?, ?, ?)"
+  },
+  "c1b0276926023df7e91a219e7720b0f5ade8d1b13de577dce4d78d31075a497b": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "SELECT id FROM projects WHERE id = ? AND user_id = ?"
   },
   "d2b52987aaa4bdc39c04254834c941cad2165eefd02eef46fda413822be91fd0": {
     "describe": {
@@ -1099,6 +1181,24 @@
       }
     },
     "query": "UPDATE studio_snapshots SET messages = ? WHERE id = ?"
+  },
+  "dc6c684b6a31f9a64024b0fcec346517fd9696a4b398151cc3809164c17778db": {
+    "describe": {
+      "columns": [
+        {
+          "name": "repo_ref",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT pr.repo_ref\n            FROM project_repos pr\n            INNER JOIN projects p ON p.id = pr.project_id AND p.user_id = ?"
   },
   "dcb7f9427283203bce10fe7d618057ef3eab5f6af2277e7a1ac8ba050609894d": {
     "describe": {
