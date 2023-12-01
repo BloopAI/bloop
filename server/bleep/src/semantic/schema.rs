@@ -3,8 +3,10 @@
 //!
 use qdrant_client::{
     prelude::QdrantClient,
+    qdrant::payload_index_params::IndexParams,
     qdrant::{
-        vectors_config, CollectionOperationResponse, CreateCollection, Distance, VectorParams,
+        vectors_config, CollectionOperationResponse, CreateCollection, Distance, FieldType,
+        PayloadIndexParams, PointsOperationResponse, TextIndexParams, TokenizerType, VectorParams,
         VectorsConfig,
     },
 };
@@ -70,5 +72,27 @@ pub(super) async fn create_collection(
             }),
             ..Default::default()
         })
+        .await
+}
+
+pub(super) async fn create_lexical_index(
+    name: &str,
+    qdrant: &QdrantClient,
+) -> anyhow::Result<PointsOperationResponse> {
+    qdrant
+        .create_field_index(
+            name.to_string(),
+            "snippet",
+            FieldType::Text,
+            Some(&PayloadIndexParams {
+                index_params: Some(IndexParams::TextIndexParams(TextIndexParams {
+                    tokenizer: TokenizerType::Word.into(),
+                    lowercase: Some(true),
+                    min_token_len: Some(2),
+                    max_token_len: Some(20),
+                })),
+            }),
+            None,
+        )
         .await
 }

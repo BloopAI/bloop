@@ -8,8 +8,8 @@ use qdrant_client::{
     qdrant::{
         point_id::PointIdOptions, r#match::MatchValue, vectors::VectorsOptions,
         with_payload_selector, with_vectors_selector, CollectionOperationResponse, FieldCondition,
-        FieldType, Filter, Match, PointId, RetrievedPoint, ScoredPoint, SearchPoints, Value,
-        Vectors, WithPayloadSelector, WithVectorsSelector,
+        FieldType, Filter, Match, PointId, PointsOperationResponse, RetrievedPoint, ScoredPoint,
+        SearchPoints, Value, Vectors, WithPayloadSelector, WithVectorsSelector,
     },
 };
 
@@ -25,8 +25,10 @@ mod schema;
 
 pub use embedder::Embedder;
 use embedder::LocalEmbedder;
-use schema::{create_collection, EMBEDDING_DIM};
+use schema::{create_collection, create_lexical_index, EMBEDDING_DIM};
 pub use schema::{Embedding, Payload};
+
+use itertools::Itertools;
 
 #[derive(Error, Debug)]
 pub enum SemanticError {
@@ -205,6 +207,13 @@ impl Semantic {
 
                 debug!(time, created = result, "collection created");
                 assert!(result);
+                let PointsOperationResponse { result, time: _ } =
+                    create_lexical_index(&config.collection_name, &qdrant)
+                        .await
+                        .unwrap();
+
+                debug!("lexical index created");
+                debug!("{:?}", result);
             }
             Ok(true) => {
                 debug!("collection already exists");
@@ -296,12 +305,53 @@ impl Semantic {
 
         assert!(result);
 
+        let PointsOperationResponse { result, time: _ } =
+            create_lexical_index(&self.config.collection_name, &self.qdrant)
+                .await
+                .unwrap();
+
+        debug!("lexical index created");
+        debug!("{:?}", result);
+
         Ok(())
     }
 
     pub async fn health_check(&self) -> anyhow::Result<()> {
         self.qdrant.health_check().await?;
         Ok(())
+    }
+
+    // Search Qdrant snippets (payload)
+    pub async fn search_lexical<'a>(
+        &self,
+        parsed_query: &SemanticQuery<'a>,
+        vector: Embedding,
+        limit: u64,
+        offset: u64,
+        threshold: f32,
+    ) -> anyhow::Result<Vec<ScoredPoint>> {
+        let hybrid_filter = Some(Filter {
+            should: build_conditions_lexical(parsed_query),
+            must: build_conditions(parsed_query),
+            ..Default::default()
+        });
+
+        let response = self
+            .qdrant
+            .search_points(&SearchPoints {
+                limit,
+                vector,
+                collection_name: self.config.collection_name.to_string(),
+                offset: Some(offset),
+                score_threshold: Some(threshold),
+                with_payload: Some(true.into()),
+                filter: hybrid_filter,
+                with_vectors: Some(true.into()),
+                ..Default::default()
+            })
+            .await?;
+
+        Ok(response.result)
     }
 
     pub async fn search_with<'a>(
@@ -394,6 +444,72 @@ impl Semantic {
         Ok(responses.into_iter().flat_map(|r| r.result).collect())
     }
 
+    // Rank Qdrant lexical results by counts of word matches
+    // Multiple word hits count more
+    // Score is 10 * (# of query words matched) + (total number of hits)
+    fn rank_lexical(payloads: Vec<Payload>, query: &str) -> Vec<Payload> {
+        let keywords: Vec<&str> = query.split_whitespace().collect();
+        let counts = payloads.iter().map(|p| {
+            (
+                keywords
+                    .iter()
+                    .map(|&k| p.text.matches(k).count())
+                    .collect::<Vec<usize>>(),
+                p.clone(),
+            )
+        });
+        let mut scores: Vec<(f32, Payload)> = counts
+            .map(|(count, payload)| {
+                let score: f32 = (count.iter().sum::<usize>()
+                    + 10 * count.iter().filter(|&&c| c != 0).count())
+                    as f32;
+                (score, payload.clone())
+            })
+            .collect();
+        scores.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
+        scores.into_iter().map(|(_, payload)| payload).collect()
+    }
+
+    // Join semantic and lexical results using Reciprocal Rank Fusion (RRF)
+    // For item i present in j rankings (rank_i,j) score_i = sum_j (1/ (rank_i,j + k))
+    // k controls how much weight to give to lower ranks and is set to 60 which is
+    // the default value in multiple implementations and in http://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf
+    fn merge_rrf(payloads_lexical: Vec<Payload>, payloads_semantic: Vec<Payload>) -> Vec<Payload> {
+        let k = 60;
+        let lexical_scores = payloads_lexical
+            .into_iter()
+            .enumerate()
+            .map(|(rank, payload)| (1.0 / ((rank + 1 + k) as f32), payload.clone()));
+        let payload_scores = payloads_semantic
+            .into_iter()
+            .enumerate()
+            .map(|(rank, payload)| (1.0 / ((rank + 1 + k) as f32), payload.clone()));
+        let mut concatenated: Vec<(f32, Payload)> = lexical_scores.chain(payload_scores).collect();
+        // group by requires pre-sorting
+        concatenated.sort_by(|a, b| {
+            b.1.id
+                .partial_cmp(&a.1.id)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        let mut merged: Vec<(f32, Payload)> = concatenated
+            .iter()
+            .group_by(|(_, payload)| payload.id.clone())
+            .into_iter()
+            .map(|(_id, group)| {
+                let group_vec: Vec<_> = group.collect();
+
+                let sum: f32 = group_vec.iter().map(|(score, _payload)| score).sum();
+                let payload = group_vec
+                    .into_iter()
+                    .map(|(_score, payload)| payload)
+                    .next();
+                (sum, payload.cloned().unwrap())
+            })
+            .collect();
+        merged.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
+        merged.into_iter().map(|(_, payload)| payload).collect()
+    }
+
     pub async fn search<'a>(
         &self,
         parsed_query: &SemanticQuery<'a>,
@@ -424,7 +540,24 @@ impl Semantic {
                     .map(Payload::from_qdrant)
                     .collect::<Vec<_>>()
             })?;
-        Ok(deduplicate_snippets(results, vector, limit))
+        let dedup_results = deduplicate_snippets(results, vector.clone(), limit);
+        let results_lexical = self
+            .search_lexical(parsed_query, vector.clone(), limit, offset, 0.0)
+            .await
+            .map(|raw| {
+                raw.into_iter()
+                    .map(Payload::from_qdrant)
+                    .collect::<Vec<_>>()
+            })?;
+        let results_lexical = Self::rank_lexical(results_lexical, &query);
+
+        let merged_results = Self::merge_rrf(results_lexical, dedup_results);
+
+        Ok(merged_results
+            .iter()
+            .take(limit.try_into().unwrap())
+            .cloned()
+            .collect())
     }
 
     pub async fn batch_search<'a>(
@@ -586,6 +719,29 @@ fn make_kv_text_filter(key: &str, value: &str) -> FieldCondition {
         }),
         ..Default::default()
     }
+}
+
+// add a filter that matches any of the keywords in the query
+fn build_conditions_lexical(
+    parsed_query: &SemanticQuery<'_>,
+) -> Vec<qdrant_client::qdrant::Condition> {
+    let Some(query) = parsed_query.target() else {
+        debug!("empty query for lexical search");
+        return Vec::new();
+    };
+    let conditions = query
+        .split(' ')
+        .map(|s| make_kv_text_filter("snippet", s))
+        .map(Into::into)
+        .collect::<Vec<FieldCondition>>();
+    conditions
+        .iter()
+        .map(|c| qdrant_client::qdrant::Condition {
+            condition_one_of: Some(qdrant_client::qdrant::condition::ConditionOneOf::Field(
+                c.clone(),
+            )),
+        })
+        .collect()
 }
 
 fn build_conditions(query: &SemanticQuery<'_>) -> Vec<qdrant_client::qdrant::Condition> {
