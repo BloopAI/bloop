@@ -32,11 +32,7 @@ impl Conversation {
         }
     }
 
-    pub async fn store(
-        &self,
-        db: &SqlDb,
-        user_id: &str,
-    ) -> Result<()> {
+    pub async fn store(&self, db: &SqlDb, user_id: &str) -> Result<()> {
         let mut transaction = db.begin().await?;
 
         // Delete the old conversation for simplicity. This also deletes all its messages.

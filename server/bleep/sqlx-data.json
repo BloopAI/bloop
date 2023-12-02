@@ -1016,6 +1016,24 @@
     },
     "query": "INSERT INTO project_repos (project_id, repo_ref) VALUES ($1, $2)"
   },
+  "a7d8d84f5c97f5223d048bc3cdef92580195491edb3fc4c1757886a47be880bf": {
+    "describe": {
+      "columns": [
+        {
+          "name": "repo_ref",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "SELECT repo_ref\n            FROM project_repos\n            WHERE project_id = $1 AND EXISTS (\n                SELECT id\n                FROM projects\n                WHERE id = $1 AND user_id = $2\n            )"
+  },
   "a8baec57552045778eb4609e83452c668583bf5a6ff8fec1898523058a061bcb": {
     "describe": {
       "columns": [

@@ -1,4 +1,4 @@
-use std::{ops::Deref, sync::Arc, time::Duration, str::FromStr};
+use std::{ops::Deref, str::FromStr, sync::Arc, time::Duration};
 
 use anyhow::{anyhow, Context, Result};
 use futures::{Future, TryStreamExt};
@@ -14,7 +14,7 @@ use crate::{
     repo::RepoRef,
     semantic,
     webserver::{
-        conversation::{self, ConversationId, Conversation},
+        conversation::{self, Conversation, ConversationId},
         middleware::User,
     },
     Application,
@@ -74,6 +74,7 @@ pub struct Agent {
     pub llm_gateway: llm_gateway::Client,
     pub user: User,
     pub query_id: uuid::Uuid,
+    pub repo_refs: Vec<RepoRef>,
 
     pub model: model::AnswerModel,
 
@@ -92,7 +93,7 @@ pub enum ExchangeState {
 pub struct SemanticSearchParams<'a> {
     pub query: parser::Literal<'a>,
     pub paths: Vec<RepoPath>,
-    pub project: Project,
+    pub repos: Vec<RepoRef>,
     pub limit: u64,
     pub offset: u64,
     pub threshold: f32,
@@ -171,15 +172,24 @@ impl Agent {
     }
 
     fn last_exchange(&self) -> &Exchange {
-        self.conversation.exchanges.last().expect("exchange list was empty")
+        self.conversation
+            .exchanges
+            .last()
+            .expect("exchange list was empty")
     }
 
     fn last_exchange_mut(&mut self) -> &mut Exchange {
-        self.conversation.exchanges.last_mut().expect("exchange list was empty")
+        self.conversation
+            .exchanges
+            .last_mut()
+            .expect("exchange list was empty")
     }
 
     fn paths(&self) -> impl Iterator<Item = &RepoPath> {
-        self.conversation.exchanges.iter().flat_map(|e| e.paths.iter())
+        self.conversation
+            .exchanges
+            .iter()
+            .flat_map(|e| e.paths.iter())
     }
 
     fn get_path_alias(&mut self, repo_path: &RepoPath) -> usize {
@@ -369,7 +379,7 @@ impl Agent {
         SemanticSearchParams {
             query,
             paths,
-            project,
+            repos,
             limit,
             offset,
             threshold,
@@ -413,8 +423,9 @@ impl Agent {
 
         let query = parser::SemanticQuery {
             target: Some(query),
-            repos: project
-                .repos()
+            repos: repos
+                .iter()
+                .map(RepoRef::to_string)
                 .map(|r| parser::Literal::Plain(r.into()))
                 .collect(),
             paths,

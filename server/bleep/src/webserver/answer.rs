@@ -188,12 +188,27 @@ impl AgentExecutor {
     async fn try_execute(&mut self) -> super::Result<SseDynStream<Result<sse::Event>>> {
         QueryLog::new(&self.app.sql).insert(&self.params.q).await?;
 
-        let username = self
-            .user
-            .username()
-            .ok_or_else(super::no_user_id)?;
+        let username = self.user.username().ok_or_else(super::no_user_id)?;
 
-        let llm_gateway = self.user
+        let repo_refs = sqlx::query! {
+            "SELECT repo_ref
+            FROM project_repos
+            WHERE project_id = $1 AND EXISTS (
+                SELECT id
+                FROM projects
+                WHERE id = $1 AND user_id = $2
+            )",
+            self.project_id,
+            username,
+        }
+        .fetch_all(&*self.app.sql)
+        .await?
+        .into_iter()
+        .filter_map(|row| row.repo_ref.parse().ok())
+        .collect();
+
+        let llm_gateway = self
+            .user
             .llm_gateway(&self.app)
             .await?
             .temperature(0.0)
@@ -246,6 +261,7 @@ impl AgentExecutor {
             llm_gateway,
             user: self.user.clone(),
             query_id: self.query_id,
+            repo_refs,
             exchange_state: ExchangeState::Pending,
             model,
         };
@@ -345,7 +361,6 @@ impl AgentExecutor {
         Ok(Sse::new(Box::pin(stream)))
     }
 }
-
 
 #[derive(serde::Deserialize)]
 pub struct Explain {
