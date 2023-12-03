@@ -1,20 +1,13 @@
-import React, { memo, useCallback, useContext } from 'react';
+import React, { memo, useCallback, useContext, useMemo } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import {
-  ArrowLeftIcon,
-  ChevronDownIcon,
-  KLetterIcon,
-  PersonIcon,
-} from '../../icons';
+import { ArrowLeftIcon, ChevronDownIcon } from '../../icons';
 import { DeviceContext } from '../../context/deviceContext';
 import Button from '../Button';
 import Dropdown from '../Dropdown';
-import { EnvContext } from '../../context/envContext';
 import { ProjectContext } from '../../context/projectContext';
-import { CommandBarContext } from '../../context/commandBarContext';
 import { UIContext } from '../../context/uiContext';
-import UserDropdown from './UserDropdown';
 import ProjectsDropdown from './ProjectsDropdown';
+import HeaderRightPart from './HeaderRightPart';
 
 type Props = {
   type?: 'default' | 'settings' | 'project-settings';
@@ -23,15 +16,9 @@ type Props = {
 const Header = ({ type = 'default' }: Props) => {
   const { t } = useTranslation();
   const { os } = useContext(DeviceContext);
-  const { envConfig } = useContext(EnvContext);
   const { project } = useContext(ProjectContext.Current);
-  const { setIsVisible } = useContext(CommandBarContext.Handlers);
   const { setSettingsOpen } = useContext(UIContext.Settings);
   const { setProjectSettingsOpen } = useContext(UIContext.ProjectSettings);
-
-  const openCommandBar = useCallback(() => {
-    setIsVisible(true);
-  }, []);
 
   const closeSettings = useCallback(() => {
     setSettingsOpen(false);
@@ -88,7 +75,7 @@ const Header = ({ type = 'default' }: Props) => {
             dropdownItems={<ProjectsDropdown />}
             dropdownPlacement="bottom-start"
           >
-            <div className="flex w-72 px-4 items-center text-left h-10 gap-4 border-r border-bg-border hover:bg-bg-base-hover">
+            <div className="flex px-4 items-center text-left h-10 gap-4 border-r border-bg-border hover:bg-bg-base-hover">
               <p className="flex-1 body-s-b">
                 {project?.name || 'Default project'}
               </p>
@@ -97,27 +84,7 @@ const Header = ({ type = 'default' }: Props) => {
           </Dropdown>
         )}
       </div>
-      <div className="flex pl-2 pr-4 items-center gap-2 h-full">
-        <Button variant="tertiary" size="mini" onClick={openCommandBar}>
-          <KLetterIcon
-            sizeClassName="w-3.5 h-3.5"
-            className="-translate-y-px"
-          />
-          <Trans>Commands</Trans>
-        </Button>
-        <Dropdown
-          dropdownItems={<UserDropdown />}
-          dropdownPlacement="bottom-end"
-        >
-          {envConfig.github_user?.avatar_url ? (
-            <div className="w-5 h-5 rounded-full overflow-hidden">
-              <img src={envConfig.github_user?.avatar_url} alt="avatar" />
-            </div>
-          ) : (
-            <PersonIcon />
-          )}
-        </Dropdown>
-      </div>
+      <HeaderRightPart />
     </div>
   );
 };

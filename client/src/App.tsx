@@ -3,7 +3,6 @@ import { AnalyticsContextProvider } from './context/providers/AnalyticsContextPr
 import { PersonalQuotaContextProvider } from './context/providers/PersonalQuotaContextProvider';
 import ReportBugModal from './components/ReportBugModal';
 import Onboarding from './Onboarding';
-import Header from './components/Header';
 import Project from './Project';
 import CommandBar from './CommandBar';
 import ProjectContextProvider from './context/providers/ProjectContextProvider';
@@ -26,7 +25,6 @@ const App = () => {
               <ProjectSettings />
               <CommandBar />
               <TabsContextProvider>
-                <Header />
                 <Project />
               </TabsContextProvider>
             </CommandBarContextProvider>

@@ -63,7 +63,7 @@ const FileTab = ({ repoName, path }: Props) => {
             repoName={file.repo_name}
           />
         ) : (
-          <div className="flex flex-1 items-center justify-center">
+          <div className="flex-1 h-full flex flex-col items-center justify-center gap-6">
             <div className="w-15 h-15 flex items-center justify-center rounded-xl border border-bg-divider">
               <EyeCutIcon sizeClassName="w-5 h-5" />
             </div>

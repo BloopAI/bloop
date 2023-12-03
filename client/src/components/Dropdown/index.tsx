@@ -16,6 +16,7 @@ type Props = {
   appendTo?: TippyProps['appendTo'];
   size?: 'small' | 'medium' | 'large';
   dropdownItems: ReactElement;
+  containerClassName?: string;
 };
 
 const sizesMap = {
@@ -48,6 +49,7 @@ const Dropdown = ({
   appendTo = 'parent',
   size = 'medium',
   dropdownItems,
+  containerClassName,
 }: PropsWithChildren<Props>) => {
   const [isVisible, setIsVisible] = useState(false);
   const contextMenuRef = useArrowKeyNavigation({ selectors: 'button' });
@@ -89,7 +91,10 @@ const Dropdown = ({
   );
 
   return (
-    <div ref={appendTo === 'parent' ? contextMenuRef : null}>
+    <div
+      ref={appendTo === 'parent' ? contextMenuRef : null}
+      className={containerClassName}
+    >
       <Tippy
         visible={isVisible}
         placement={dropdownPlacement}

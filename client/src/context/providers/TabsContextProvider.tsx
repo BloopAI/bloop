@@ -38,6 +38,7 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
     () => ({
       closeTab,
       openNewTab,
+      setActiveTab,
     }),
     [closeTab, openNewTab],
   );

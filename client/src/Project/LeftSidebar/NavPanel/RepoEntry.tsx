@@ -6,16 +6,9 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import {
-  ChevronRightFilled,
-  ChevronRightIcon,
-  EyeCut,
-  FolderClosed,
-  FolderIcon,
-} from '../../../icons';
+import { ChevronRightIcon, EyeCutIcon, FolderIcon } from '../../../icons';
 import FileIcon from '../../../components/FileIcon';
 import { DirectoryEntry } from '../../../types/api';
-import LiteLoaderContainer from '../../../components/Loaders/LiteLoader';
 import { TabsContext } from '../../../context/tabsContext';
 
 type Props = {
@@ -104,6 +97,8 @@ const DirEntry = ({
         ) : null}
         {isDirectory ? (
           <FolderIcon sizeClassName="w-4 h-4" />
+        ) : !indexed ? (
+          <EyeCutIcon sizeClassName="w-4 h-4" />
         ) : (
           <FileIcon filename={name} noMargin />
         )}

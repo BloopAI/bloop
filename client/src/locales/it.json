@@ -493,5 +493,8 @@
 	"Select a file or open a new tab to display it here.": "Seleziona un file o apri una nuova scheda per visualizzarlo qui.",
 	"Press <2>K</2> on your keyboard to open the Command bar.": "Premere <2> K </2> sulla tastiera per aprire la barra di comando.",
 	"Use black theme": "Usa il tema nero",
-	"This file was not indexed by bloop. The reason for this might be that the file is to big or is in our list of excluded file types.": "Questo file non è stato indicizzato da Bloop. La ragione di ciò potrebbe essere che il file è troppo grande o è nel nostro elenco di tipi di file esclusi."
+	"This file was not indexed by bloop. The reason for this might be that the file is to big or is in our list of excluded file types.": "Questo file non è stato indicizzato da Bloop. La ragione di ciò potrebbe essere che il file è troppo grande o è nel nostro elenco di tipi di file esclusi.",
+	"Add tab": "Aggiungi scheda",
+	"New Chat": "Nuova chat",
+	"New Code Studio": "Nuovo studio di codice"
 }

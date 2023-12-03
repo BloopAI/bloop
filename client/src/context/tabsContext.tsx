@@ -5,6 +5,7 @@ export const TabsContext = {
   Handlers: createContext({
     openNewTab: (path: string, repoName: string) => {},
     closeTab: (key: string) => {},
+    setActiveTab: (tab: FileTabType) => {},
   }),
   All: createContext<{ tabs: FileTabType[] }>({
     tabs: [],

@@ -9,7 +9,7 @@ import React, {
 } from 'react';
 import { useTranslation, Trans } from 'react-i18next';
 import Modal from '../../components/Modal';
-import { BugIcon, CloseSign } from '../../icons';
+import { BugIcon, CloseSignIcon } from '../../icons';
 import TextInput from '../TextInput';
 import Button from '../Button';
 import { UIContext } from '../../context/uiContext';
@@ -260,7 +260,7 @@ const ReportBugModal = ({
             size="small"
             onClick={resetState}
           >
-            <CloseSign />
+            <CloseSignIcon />
           </Button>
         </div>
       </div>

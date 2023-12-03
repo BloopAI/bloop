@@ -1,5 +1,5 @@
 import { ButtonHTMLAttributes, DetailedHTMLProps } from 'react';
-import { CloseSign } from '../../../icons';
+import { CloseSignIcon } from '../../../icons';
 
 const Button = ({
   className,
@@ -16,7 +16,7 @@ const Button = ({
         className || ''
       } h-5 text-label-title p-0 border-none transition-all duration-300 ease-in-bounce bg-bg-base hover:bg-bg-base-hover rounded-xl`}
     >
-      <CloseSign sizeClassName="w-3.5 h-3.5" />
+      <CloseSignIcon sizeClassName="w-3.5 h-3.5" />
     </button>
   );
 };
