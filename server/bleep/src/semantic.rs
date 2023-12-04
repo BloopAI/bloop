@@ -544,7 +544,7 @@ impl Semantic {
                     .map(Payload::from_qdrant)
                     .collect::<Vec<_>>()
             })?;
-        let dedup_results = deduplicate_snippets(results, vector.clone(), limit);
+
         let results_lexical = self
             .search_lexical(parsed_query, vector.clone(), limit, offset, 0.0)
             .await
@@ -555,9 +555,10 @@ impl Semantic {
             })?;
         let results_lexical = Self::rank_lexical(results_lexical, &query);
 
-        let merged_results = Self::merge_rrf(results_lexical, dedup_results);
+        let merged_results = Self::merge_rrf(results_lexical, results);
+        let dedup_results = deduplicate_snippets(merged_results, vector.clone(), limit);
 
-        Ok(merged_results
+        Ok(dedup_results
             .iter()
             .take(limit.try_into().unwrap())
             .cloned()
