@@ -103,6 +103,14 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
             delete(project::repo::delete),
         )
         .route(
+            "/projects/:project_id/docs",
+            get(project::doc::list).post(project::doc::add),
+        )
+        .route(
+            "/projects/:project_id/docs/:doc_id",
+            delete(project::doc::delete),
+        )
+        .route(
             "/projects/:project_id/conversations",
             get(conversation::list).delete(conversation::delete),
         )

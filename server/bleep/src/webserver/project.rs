@@ -1,13 +1,17 @@
+use std::collections::HashMap;
+
 use crate::{webserver, Application};
 use axum::{
     extract::{Path, Query},
     Extension, Json,
 };
 use chrono::NaiveDateTime;
+use futures::TryStreamExt;
 
-use super::{middleware::User, Error};
+use super::{middleware::User, repos::Repo, Error};
 
 pub mod repo;
+pub mod doc;
 
 fn default_name() -> String {
     "New Project".into()
@@ -18,6 +22,7 @@ pub struct ListItem {
     id: i64,
     name: String,
     modified_at: Option<NaiveDateTime>,
+    most_common_langs: Vec<String>,
 }
 
 pub async fn list(
@@ -39,16 +44,45 @@ pub async fn list(
         user_id,
     }
     .fetch_all(&*app.sql)
+    .await?;
+
+    let most_common_langs = sqlx::query! {
+        "SELECT pr.project_id, pr.repo_ref
+        FROM project_repos pr
+        JOIN projects p ON p.id = pr.project_id AND p.user_id = ?",
+        user_id,
+    }
+    .fetch_all(&*app.sql)
     .await?
     .into_iter()
-    .map(|row| ListItem {
-        id: row.id,
-        name: row.name.unwrap_or_else(default_name),
-        modified_at: row.modified_at,
+    .filter_map(|row| {
+        let repo_ref = row.repo_ref.parse().ok()?;
+        let pool_entry = app.repo_pool.get(&repo_ref)?;
+        let repo = Repo::from((&repo_ref, pool_entry.get()));
+        Some((row.project_id, repo.most_common_lang?))
     })
-    .collect();
+    .fold(
+        HashMap::<_, Vec<_>>::new(),
+        |mut a, (project_id, most_common_lang)| {
+            a.entry(project_id).or_default().push(most_common_lang);
+            a
+        },
+    );
 
-    Ok(Json(projects))
+    let list = projects
+        .into_iter()
+        .map(|row| ListItem {
+            id: row.id,
+            name: row.name.unwrap_or_else(default_name),
+            modified_at: row.modified_at,
+            most_common_langs: most_common_langs
+                .get(&row.id)
+                .map(Vec::clone)
+                .unwrap_or_default(),
+        })
+        .collect();
+
+    Ok(Json(list))
 }
 
 #[derive(serde::Deserialize)]
@@ -80,6 +114,7 @@ pub struct Get {
     id: i64,
     name: String,
     modified_at: Option<NaiveDateTime>,
+    most_common_langs: Vec<String>,
 }
 
 pub async fn get(
@@ -89,7 +124,7 @@ pub async fn get(
 ) -> webserver::Result<Json<Get>> {
     let user_id = user.username().ok_or_else(super::no_user_id)?.to_string();
 
-    sqlx::query! {
+    let row = sqlx::query! {
         "SELECT name, (
             SELECT ss.modified_at
             FROM studio_snapshots ss
@@ -105,13 +140,29 @@ pub async fn get(
     }
     .fetch_one(&*app.sql)
     .await
-    .map_err(Error::not_found)
-    .map(|row| Get {
+    .map_err(Error::not_found)?;
+
+    let most_common_langs = sqlx::query! {
+        "SELECT repo_ref
+        FROM project_repos
+        WHERE project_id = ?",
+        id,
+    }
+    .fetch_all(&*app.sql)
+    .await?
+    .into_iter()
+    .filter_map(|row| row.repo_ref.parse().ok())
+    .filter_map(|repo_ref| app.repo_pool.get(&repo_ref))
+    .map(|entry| Repo::from((entry.key(), entry.get())))
+    .filter_map(|repo| repo.most_common_lang)
+    .collect();
+
+    Ok(Json(Get {
         id,
         name: row.name.unwrap_or_else(default_name),
         modified_at: row.modified_at,
-    })
-    .map(Json)
+        most_common_langs,
+    }))
 }
 
 #[derive(serde::Deserialize)]

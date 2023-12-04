@@ -338,6 +338,48 @@
     },
     "query": "DELETE FROM docs WHERE id = ? RETURNING id"
   },
+  "400b01ce2735d2606363727d3ad2b2e829775ea081d4cc2dc83b19e226061c1e": {
+    "describe": {
+      "columns": [
+        {
+          "name": "repo_ref",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT repo_ref\n        FROM project_repos\n        WHERE project_id = ?"
+  },
+  "4118c5a7a20ea12c56aefd31ce0cb4c81f4bd969380e8bdf6db1cc894fd8be4f": {
+    "describe": {
+      "columns": [
+        {
+          "name": "project_id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "repo_ref",
+          "ordinal": 1,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT pr.project_id, pr.repo_ref\n        FROM project_repos pr\n        JOIN projects p ON p.id = pr.project_id AND p.user_id = ?"
+  },
   "454d7dfb50480aae5ad9c8372262d55a302e214e1c7ceb8d62b53832f75bd85b": {
     "describe": {
       "columns": [],
@@ -724,6 +766,16 @@
     },
     "query": "DELETE FROM studio_snapshots\n        WHERE id IN (\n            SELECT ss.id\n            FROM studio_snapshots ss\n            JOIN studios s ON s.id = ss.studio_id\n            JOIN projects p ON p.id = s.project_id\n            WHERE ss.id = ? AND ss.studio_id = ? AND s.project_id = ? AND p.user_id = ?\n        )\n        RETURNING id"
   },
+  "6bba4ade0d1e5cc62dc28a64ad5d2aa9cfdef463725d1cbac9af2cd5086b7a48": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "INSERT INTO project_docs (project_id, doc_id) VALUES ($1, $2)"
+  },
   "6e842ac5eb4b5be53dff501a24b6b91c0557d6a7119480441a60c8e99de7daf1": {
     "describe": {
       "columns": [
@@ -871,6 +923,24 @@
       }
     },
     "query": "INSERT INTO studios (project_id, name) VALUES (?, ?) RETURNING id"
+  },
+  "804524ce5653a0df70fb32bb7cba5dd4593ac0f3236db279ba0829b76526ea4a": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        }
+      ],
+      "nullable": [
+        true
+      ],
+      "parameters": {
+        "Right": 3
+      }
+    },
+    "query": "DELETE FROM project_docs\n        WHERE project_id = $1 AND doc_id = $2 AND EXISTS (\n            SELECT id\n            FROM projects\n            WHERE id = $1 AND user_id = $3\n        )\n        RETURNING id"
   },
   "834600ffd689d32c250771a3118d24fa93e71a6690b14703fe0b7feda05d53b6": {
     "describe": {
@@ -1161,6 +1231,60 @@
       }
     },
     "query": "SELECT id FROM projects WHERE id = ? AND user_id = ?"
+  },
+  "d2aa09b48fdb1d608c6034758e3d43509abb7ebe114d81724409d664a46fc5df": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "url",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "index_status",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "name",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "favicon",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "description",
+          "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "modified_at",
+          "ordinal": 6,
+          "type_info": "Datetime"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false
+      ],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "SELECT d.id, d.url, d.index_status, d.name, d.favicon, d.description, d.modified_at\n        FROM project_docs pd\n        INNER JOIN docs d ON d.id = pd.id\n        WHERE project_id = $1 AND EXISTS (\n            SELECT p.id\n            FROM projects p\n            WHERE p.id = $1 AND p.user_id = $2\n        )"
   },
   "d2b52987aaa4bdc39c04254834c941cad2165eefd02eef46fda413822be91fd0": {
     "describe": {
