@@ -11,9 +11,9 @@ import { Range } from '../../types/results';
 import CodeFull from '../../components/Code/CodeFull';
 import IpynbRenderer from '../../components/IpynbRenderer';
 
-type Props = { repoName: string; path: string };
+type Props = { repoName: string; path: string; noBorder?: boolean };
 
-const FileTab = ({ repoName, path }: Props) => {
+const FileTab = ({ repoName, path, noBorder }: Props) => {
   const { t } = useTranslation();
   const [file, setFile] = useState<
     (File & { hoverableRanges?: Record<number, Range[]> }) | null
@@ -40,7 +40,11 @@ const FileTab = ({ repoName, path }: Props) => {
   }, [repoName, path]);
 
   return (
-    <div className="flex flex-col flex-1 h-full overflow-auto">
+    <div
+      className={`flex flex-col flex-1 h-full overflow-auto ${
+        noBorder ? '' : 'border-l border-bg-border'
+      }`}
+    >
       <div className="w-full h-10 px-4 flex justify-between items-center flex-shrink-0 border-b border-bg-border bg-bg-sub">
         <div className="flex items-center gap-3 body-s text-label-title ellipsis">
           <FileIcon filename={path} noMargin />
@@ -50,7 +54,7 @@ const FileTab = ({ repoName, path }: Props) => {
           <MoreHorizontalIcon sizeClassName="w-3.5 h-3.5" />
         </Button>
       </div>
-      <div className="flex-1 h-full max-w-full pl-4 py-4 border-r border-bg-border overflow-auto">
+      <div className="flex-1 h-full max-w-full pl-4 py-4 overflow-auto">
         {file?.lang === 'jupyter notebook' ? (
           <IpynbRenderer data={file.contents} />
         ) : file?.indexed ? (

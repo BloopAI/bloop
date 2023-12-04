@@ -90,6 +90,8 @@
     "npm-run-all": "^4.1.5",
     "prismjs": "^1.29.0",
     "react": "^18.2.0",
+    "react-dnd": "^16.0.1",
+    "react-dnd-html5-backend": "^16.0.1",
     "react-dom": "^18.2.0",
     "react-i18next": "^13.0.2",
     "react-markdown": "^8.0.7",

@@ -530,5 +530,6 @@
 	"This file was not indexed by bloop. The reason for this might be that the file is to big or is in our list of excluded file types.": "Este archivo no fue indexado por Bloop. La razón de esto podría ser que el archivo es demasiado grande o está en nuestra lista de tipos de archivos excluidos.",
 	"Add tab": "Agregar pestaña",
 	"New Chat": "Nueva conversación",
-	"New Code Studio": "Nuevo estudio de código"
+	"New Code Studio": "Nuevo estudio de código",
+	"Release to open in split view": "Lanzar para abrir en vista dividida"
 }

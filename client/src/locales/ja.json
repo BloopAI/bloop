@@ -519,5 +519,6 @@
 	"This file was not indexed by bloop. The reason for this might be that the file is to big or is in our list of excluded file types.": "このファイルはBloopによってインデックス化されていませんでした。 この理由は、ファイルが大きくなるか、除外されたファイルタイプのリストにあるためかもしれません。",
 	"Add tab": "タブを追加します",
 	"New Chat": "新しいチャット",
-	"New Code Studio": "新しいコードスタジオ"
+	"New Code Studio": "新しいコードスタジオ",
+	"Release to open in split view": "スプリットビューで開くためにリリースします"
 }

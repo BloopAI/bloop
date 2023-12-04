@@ -1,31 +1,71 @@
-import React, { memo, useContext } from 'react';
+import React, { memo, useCallback, useContext, useMemo } from 'react';
 import HeaderRightPart from '../../../components/Header/HeaderRightPart';
 import { TabsContext } from '../../../context/tabsContext';
 import AddTabButton from './AddTabButton';
 import TabButton from './TabButton';
 
-type Props = {};
+type Props = {
+  side: 'left' | 'right';
+};
 
-const ProjectHeader = ({}: Props) => {
-  const { tabs } = useContext(TabsContext.All);
-  const { tab } = useContext(TabsContext.Current);
+const ProjectHeader = ({ side }: Props) => {
+  const { leftTabs, rightTabs } = useContext(TabsContext.All);
+  const { tab } = useContext(
+    TabsContext[side === 'left' ? 'CurrentLeft' : 'CurrentRight'],
+  );
+  const { setLeftTabs, setRightTabs } = useContext(TabsContext.Handlers);
+  const tabs = useMemo(() => {
+    return side === 'left' ? leftTabs : rightTabs;
+  }, [side, rightTabs, leftTabs]);
+
+  const moveTab = useCallback(
+    (dragIndex: number, hoverIndex: number) => {
+      const action = side === 'left' ? setLeftTabs : setRightTabs;
+      action((prevTabs) => {
+        console.log('prevTabs', prevTabs);
+        const newTabs = JSON.parse(JSON.stringify(prevTabs));
+        newTabs.splice(dragIndex, 1);
+        newTabs.splice(hoverIndex, 0, prevTabs[dragIndex]);
+        console.log('newTabs', newTabs);
+        return newTabs;
+        // return update(prevTabs, {
+        //   $splice: [
+        //     [dragIndex, 1],
+        //     [hoverIndex, 0, prevTabs[dragIndex]],
+        //   ],
+        // })
+      });
+    },
+    [side],
+  );
+
   return (
-    <div className="flex justify-between items-center h-10 border-b border-bg-border overflow-hidden">
+    <div
+      className={`flex justify-between items-center h-10 border-b border-bg-border overflow-hidden ${
+        side === 'right' ? 'border-l border-bg-border' : ''
+      }`}
+    >
       <div className="flex pl-4 pr-2 items-center gap-1 flex-1 h-full overflow-auto fade-right">
-        {tabs.map(({ key, ...t }) => (
+        {tabs.map(({ key, ...t }, i) => (
           <TabButton
             key={key}
             {...t}
             tabKey={key}
             isActive={tab?.key === key}
+            side={side}
+            isOnlyTab={tabs.length === 1}
+            moveTab={moveTab}
+            i={i}
           />
         ))}
         {!!tabs.length && <div className="h-3 w-px bg-bg-border mx-1" />}
         <AddTabButton />
       </div>
-      <div className="border-l border-bg-border h-full">
-        <HeaderRightPart />
-      </div>
+      {(side === 'right' || !rightTabs.length) && (
+        <div className="border-l border-bg-border h-full">
+          <HeaderRightPart />
+        </div>
+      )}
     </div>
   );
 };

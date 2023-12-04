@@ -63,6 +63,9 @@ const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
   const refreshAllProjects = useCallback(() => {
     getAllProjects().then((p) => {
       setProjects(p);
+      if (!currentProjectId) {
+        setCurrentProjectId(p[0].id);
+      }
       if (!p.length) {
         createProject(t('Default project')).then((newId) => {
           setCurrentProjectId(newId);

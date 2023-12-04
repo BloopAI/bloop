@@ -1,4 +1,6 @@
 import React, { memo } from 'react';
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 import { AnalyticsContextProvider } from './context/providers/AnalyticsContextProvider';
 import { PersonalQuotaContextProvider } from './context/providers/PersonalQuotaContextProvider';
 import ReportBugModal from './components/ReportBugModal';
@@ -14,24 +16,26 @@ import TabsContextProvider from './context/providers/TabsContextProvider';
 
 const App = () => {
   return (
-    <AnalyticsContextProvider>
-      <PersonalQuotaContextProvider>
-        <ProjectContextProvider>
-          <UIContextProvider>
-            <ReportBugModal />
-            <Onboarding />
-            <CommandBarContextProvider>
-              <Settings />
-              <ProjectSettings />
-              <CommandBar />
-              <TabsContextProvider>
-                <Project />
-              </TabsContextProvider>
-            </CommandBarContextProvider>
-          </UIContextProvider>
-        </ProjectContextProvider>
-      </PersonalQuotaContextProvider>
-    </AnalyticsContextProvider>
+    <DndProvider backend={HTML5Backend}>
+      <AnalyticsContextProvider>
+        <PersonalQuotaContextProvider>
+          <ProjectContextProvider>
+            <UIContextProvider>
+              <ReportBugModal />
+              <Onboarding />
+              <CommandBarContextProvider>
+                <Settings />
+                <ProjectSettings />
+                <CommandBar />
+                <TabsContextProvider>
+                  <Project />
+                </TabsContextProvider>
+              </CommandBarContextProvider>
+            </UIContextProvider>
+          </ProjectContextProvider>
+        </PersonalQuotaContextProvider>
+      </AnalyticsContextProvider>
+    </DndProvider>
   );
 };
 

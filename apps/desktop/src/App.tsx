@@ -252,7 +252,10 @@ function App() {
             </UIContext.BugReport.Provider>
           )}
           <TextSearch contentRoot={contentContainer.current} />
-          <div ref={contentContainer}>
+          <div
+            ref={contentContainer}
+            className="w-screen h-screen overflow-hidden"
+          >
             <BrowserRouter>
               {!shouldShowSplashScreen && <ClientApp />}
             </BrowserRouter>

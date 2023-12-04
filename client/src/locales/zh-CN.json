@@ -525,5 +525,6 @@
 	"This file was not indexed by bloop. The reason for this might be that the file is to big or is in our list of excluded file types.": "Bloop并未索引此文件。 这样做的原因可能是该文件属于大型或在我们排除的文件类型列表中。",
 	"Add tab": "添加选项卡",
 	"New Chat": "新聊天",
-	"New Code Studio": "新代码工作室"
+	"New Code Studio": "新代码工作室",
+	"Release to open in split view": "释放以在分裂视图中打开"
 }

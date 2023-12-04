@@ -150,3 +150,4 @@ export { default as LinkChainIcon } from './LinkChain';
 export { default as ArrowTriangleBottomIcon } from './ArrowTriangleBottom';
 export { default as FolderIcon } from './Folder';
 export { default as ChatBubblesIcon } from './ChatBubbles';
+export { default as SplitViewIcon } from './SplitView';

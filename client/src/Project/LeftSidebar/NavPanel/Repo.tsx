@@ -65,14 +65,15 @@ const RepoNav = ({ repoName, repoRef, i, isExpanded, setExpanded }: Props) => {
 
   useEffect(() => {
     if (isExpanded) {
-      containerRef.current?.scrollIntoView({ block: 'nearest' });
+      // containerRef.current?.scrollIntoView({ block: 'nearest' });
     }
   }, [isExpanded]);
 
   return (
     <div className="select-none" ref={containerRef}>
-      <a
-        href="#"
+      <span
+        role="button"
+        tabIndex={0}
         className={`h-10 flex items-center gap-3 px-4 bg-bg-sub ellipsis ${
           isExpanded ? 'sticky z-10 top-0 left-0' : ''
         }`}
@@ -101,7 +102,7 @@ const RepoNav = ({ repoName, repoRef, i, isExpanded, setExpanded }: Props) => {
             <MoreHorizontalIcon sizeClassName="w-3.5 h-3.5" />
           </Button>
         </div>
-      </a>
+      </span>
       <div
         style={{
           maxHeight: isExpanded && files.length ? undefined : 0,

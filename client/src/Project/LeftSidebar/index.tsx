@@ -20,7 +20,10 @@ const LeftSidebar = ({}: Props) => {
     40,
   );
   return (
-    <div className="h-full relative z-10 min-w-[204px]" ref={panelRef}>
+    <div
+      className="h-full relative z-10 min-w-[204px] flex-shrink-0 overflow-hidden"
+      ref={panelRef}
+    >
       <div className="w-ful flex hover:bg-bg-base-hover border-b border-bg-border h-10">
         {os.type === 'Darwin' ? <span className="w-16 flex-shrink-0" /> : ''}
         <Dropdown

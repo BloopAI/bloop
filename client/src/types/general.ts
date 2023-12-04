@@ -94,6 +94,15 @@ export type FileTabType = {
   key: string;
 };
 
+export type TabType = FileTabType;
+
+export type DraggableTabItem = {
+  id: string;
+  index: number;
+  t: TabType;
+  side: 'left' | 'right';
+};
+
 export type ConversationMessage = {
   author: 'user' | 'server';
   text?: string;
