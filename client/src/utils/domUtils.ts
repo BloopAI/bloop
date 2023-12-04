@@ -13,5 +13,10 @@ export const findAllElementsInCurrentTab = <
   return document.querySelectorAll(`[data-active="true"] ${selector}`);
 };
 
-export const isFocusInInput = () =>
-  ['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName || '');
+export const isFocusInInput = (ignoreCommandInput?: boolean) => {
+  const isInInput = ['INPUT', 'TEXTAREA'].includes(
+    document.activeElement?.tagName || '',
+  );
+  const isInCommandInput = document.activeElement?.id === 'command-input';
+  return ignoreCommandInput ? isInInput && !isInCommandInput : isInInput;
+};

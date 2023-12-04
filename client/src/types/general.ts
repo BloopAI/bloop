@@ -402,6 +402,7 @@ export type CommandBarItemCustomType = {
   key: string;
   Component: MemoExoticComponent<any>;
   componentProps: Record<string, any>;
+  focusedItemProps?: Record<string, any>;
 };
 
 export type CommandBarItemGeneralType = {
@@ -425,14 +426,25 @@ export type CommandBarItemGeneralType = {
   onClick?: () => void;
 };
 
+export type CommandBarItemInvisibleType = {
+  footerHint: string | ReactElement;
+  footerBtns: {
+    label: string;
+    shortcut?: string[];
+    action?: () => void | Promise<void>;
+  }[];
+  focusedItemProps?: Record<string, any>;
+};
+
 export type CommandBarItemType =
   | CommandBarItemCustomType
-  | CommandBarItemGeneralType;
+  | CommandBarItemGeneralType
+  | CommandBarItemInvisibleType;
 
 export type CommandBarSectionType = {
   label?: string;
   key: string;
-  items: CommandBarItemType[];
+  items: (CommandBarItemGeneralType | CommandBarItemCustomType)[];
   itemsOffset: number;
 };
 
@@ -449,6 +461,8 @@ export type CommandBarActiveStepType = {
 
 export enum CommandBarStepEnum {
   INITIAL = 'initial',
+  MANAGE_REPOS = 'manage_repos',
+  ADD_NEW_REPO = 'add_new_repo',
   PRIVATE_REPOS = 'private_repos',
   PUBLIC_REPOS = 'public_repos',
   LOCAL_REPOS = 'local_repos',

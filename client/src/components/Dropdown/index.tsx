@@ -3,6 +3,7 @@ import React, {
   PropsWithChildren,
   ReactElement,
   useCallback,
+  useEffect,
   useRef,
   useState,
 } from 'react';
@@ -10,6 +11,7 @@ import Tippy, { TippyProps } from '@tippyjs/react/headless';
 import { Placement } from 'tippy.js';
 import { useArrowKeyNavigation } from '../../hooks/useArrowNavigationHook';
 import { useOnClickOutside } from '../../hooks/useOnClickOutsideHook';
+import useKeyboardNavigation from '../../hooks/useKeyboardNavigation';
 
 type Props = {
   dropdownPlacement?: TippyProps['placement'];
@@ -17,6 +19,8 @@ type Props = {
   size?: 'small' | 'medium' | 'large';
   dropdownItems: ReactElement;
   containerClassName?: string;
+  onVisibilityChange?: (isVisible: boolean) => void;
+  color?: 'shade' | 'base';
 };
 
 const sizesMap = {
@@ -48,8 +52,10 @@ const Dropdown = ({
   dropdownPlacement = 'bottom-start',
   appendTo = 'parent',
   size = 'medium',
+  color = 'shade',
   dropdownItems,
   containerClassName,
+  onVisibilityChange,
 }: PropsWithChildren<Props>) => {
   const [isVisible, setIsVisible] = useState(false);
   const contextMenuRef = useArrowKeyNavigation({ selectors: 'button' });
@@ -65,6 +71,19 @@ const Dropdown = ({
     setIsVisible((prev) => !prev);
   }, []);
 
+  useEffect(() => {
+    onVisibilityChange?.(isVisible);
+  }, [isVisible]);
+
+  const handleKeyEvent = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsVisible(false);
+    }
+  }, []);
+  useKeyboardNavigation(handleKeyEvent, !isVisible, true);
+
   const renderContent = useCallback(
     (attr: {
       'data-placement': Placement;
@@ -78,9 +97,9 @@ const Dropdown = ({
           className={`${isVisible ? '' : 'scale-0 opacity-0'} ${
             transformOriginMap[attr['data-placement']]
           } max-h-96 overflow-auto transition-transform duration-150
-       rounded-md border border-bg-border bg-bg-shade shadow-high ${
-         sizesMap[size]
-       } flex flex-col gap-1 select-none`}
+       rounded-md border border-bg-border ${
+         color === 'base' ? 'bg-bg-base' : 'bg-bg-shade'
+       } shadow-high ${sizesMap[size]} flex flex-col gap-1 select-none`}
           onClick={handleClose}
         >
           {dropdownItems}

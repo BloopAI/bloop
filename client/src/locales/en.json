@@ -536,5 +536,19 @@
 	"Add tab": "Add tab",
 	"New Chat": "New Chat",
 	"New Code Studio": "New Code Studio",
-	"Release to open in split view": "Release to open in split view"
+	"Release to open in split view": "Release to open in split view",
+	"Manage repositories": "Manage repositories",
+	"Add new repository": "Add new repository",
+	"Local": "Local",
+	"Next": "Next",
+	"Add repository": "Add repository",
+	"Add private repository": "Add private repository",
+	"Actions": "Actions",
+	"Filter repositories by": "Filter repositories by",
+	"Private": "Private",
+	"Public": "Public",
+	"Display": "Display",
+	"GitHub": "GitHub",
+	"Open in GitHub": "Open in GitHub",
+	"Open in {{viewer}}": "Open in {{viewer}}"
 }

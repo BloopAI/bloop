@@ -5,9 +5,10 @@ import Section from './Section';
 
 type Props = {
   sections: CommandBarSectionType[];
+  disableKeyNav?: boolean;
 };
 
-const CommandBarBody = ({ sections }: Props) => {
+const CommandBarBody = ({ sections, disableKeyNav }: Props) => {
   const [focusedIndex, setFocusedIndex] = useState(0);
 
   const handleKeyEvent = useCallback(
@@ -33,7 +34,7 @@ const CommandBarBody = ({ sections }: Props) => {
     },
     [sections],
   );
-  useKeyboardNavigation(handleKeyEvent);
+  useKeyboardNavigation(handleKeyEvent, disableKeyNav);
 
   return (
     <div className="flex flex-col gap-1 flex-1 w-full p-2 overflow-auto">
@@ -45,6 +46,7 @@ const CommandBarBody = ({ sections }: Props) => {
           focusedIndex={focusedIndex}
           setFocusedIndex={setFocusedIndex}
           offset={s.itemsOffset}
+          disableKeyNav={disableKeyNav}
         />
       ))}
     </div>

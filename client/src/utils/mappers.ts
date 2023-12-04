@@ -1,14 +1,11 @@
-import { RepoType, RepoUi, SyncStatus } from '../types/general';
+import { RepoProvider, RepoType, RepoUi, SyncStatus } from '../types/general';
 import { splitPath } from './index';
 
-export const mapGitHubRepos = (githubRepos: RepoType[]) => {
+export const mapReposBySections = (githubRepos: RepoType[]) => {
   const byOrg: Record<string, RepoUi[]> = {};
   githubRepos.forEach((r) => {
     const pathParts = splitPath(r.name);
-    if (!byOrg[pathParts[0]]) {
-      byOrg[pathParts[0]] = [];
-    }
-    byOrg[pathParts[0]].push({
+    const repoUI = {
       ...r,
       shortName: pathParts[pathParts.length - 1],
       folderName: pathParts[0],
@@ -24,11 +21,25 @@ export const mapGitHubRepos = (githubRepos: RepoType[]) => {
         SyncStatus.Indexing,
         SyncStatus.Queued,
       ].includes(r.sync_status),
-    });
+    };
+    const sectionName =
+      r.provider === RepoProvider.Local ? 'Local' : pathParts[0];
+    if (!byOrg[sectionName]) {
+      byOrg[sectionName] = [];
+    }
+    byOrg[sectionName].push(repoUI);
   });
   const result: { org: string; items: RepoUi[]; offset: number }[] = [];
   Object.keys(byOrg)
-    .sort((a, b) => (a.toLowerCase() < b.toLowerCase() ? -1 : 1))
+    .sort((a, b) =>
+      a === 'Local'
+        ? 1
+        : b === 'Local'
+        ? -1
+        : a.toLowerCase() < b.toLowerCase()
+        ? -1
+        : 1,
+    )
     .forEach((k) => {
       result.push({
         org: k,

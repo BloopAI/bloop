@@ -12,6 +12,8 @@ import PublicRepos from './steps/PublicRepos';
 import LocalRepos from './steps/LocalRepos';
 import Documentation from './steps/Documentation';
 import CreateProject from './steps/CreateProject';
+import ManageRepos from './steps/ManageRepos';
+import AddNewRepo from './steps/AddNewRepo';
 
 type Props = {};
 
@@ -67,6 +69,10 @@ const CommandBar = ({}: Props) => {
         <Documentation />
       ) : chosenStep.id === CommandBarStepEnum.CREATE_PROJECT ? (
         <CreateProject />
+      ) : chosenStep.id === CommandBarStepEnum.MANAGE_REPOS ? (
+        <ManageRepos />
+      ) : chosenStep.id === CommandBarStepEnum.ADD_NEW_REPO ? (
+        <AddNewRepo />
       ) : null}
     </Modal>
   );

@@ -2,6 +2,7 @@ import { SymbolType, Range, TokenInfoType } from './results';
 import {
   DiffChunkType,
   DiffHunkType,
+  RepoType,
   StudioContextDoc,
   StudioContextFile,
 } from './general';
@@ -392,5 +393,5 @@ export type ProjectShortType = {
 };
 
 export type ProjectFullType = ProjectShortType & {
-  repos: string[];
+  repos: RepoType[];
 };

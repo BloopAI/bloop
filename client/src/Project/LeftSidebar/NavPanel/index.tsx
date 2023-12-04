@@ -1,26 +1,24 @@
-import { memo, useState } from 'react';
+import { memo, useContext, useState } from 'react';
+import { ProjectContext } from '../../../context/projectContext';
 import RepoNav from './Repo';
 
 type Props = {};
 
 const NavPanel = ({}: Props) => {
   const [expanded, setExpanded] = useState(-1);
+  const { project } = useContext(ProjectContext.Current);
   return (
     <div className="flex flex-col h-full flex-1 overflow-auto">
-      <RepoNav
-        setExpanded={setExpanded}
-        isExpanded={expanded === 0}
-        i={0}
-        repoName="gecko_learn"
-        repoRef="local//Users/anastasiia/Projects/gecko_learn"
-      />
-      <RepoNav
-        setExpanded={setExpanded}
-        isExpanded={expanded === 1}
-        i={1}
-        repoName="github.com/BloopAI/bloop"
-        repoRef="github.com/BloopAI/bloop"
-      />
+      {project?.repos.map((r, i) => (
+        <RepoNav
+          key={r.ref}
+          setExpanded={setExpanded}
+          isExpanded={expanded === i}
+          i={i}
+          repoName={r.name}
+          repoRef={r.ref}
+        />
+      ))}
     </div>
   );
 };

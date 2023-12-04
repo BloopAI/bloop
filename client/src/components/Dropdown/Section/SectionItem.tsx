@@ -1,4 +1,4 @@
-import { memo, ReactElement, useCallback } from 'react';
+import { memo, ReactElement, useCallback, useEffect, useRef } from 'react';
 import { CheckIcon } from '../../../icons';
 import { checkEventKeys } from '../../../utils/keyboardUtils';
 import useShortcuts from '../../../hooks/useShortcuts';
@@ -10,15 +10,26 @@ type Props = {
   label: string;
   shortcut?: string[];
   isSelected?: boolean;
+  isFocused?: boolean;
   onClick: () => void;
+  color?: 'shade' | 'base';
 };
 
-const SectionItem = ({ icon, label, shortcut, onClick, isSelected }: Props) => {
+const SectionItem = ({
+  icon,
+  label,
+  shortcut,
+  onClick,
+  isSelected,
+  isFocused,
+  color = 'shade',
+}: Props) => {
   const shortcutKeys = useShortcuts(shortcut);
+  const ref = useRef<HTMLButtonElement>(null);
 
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
-      if (!isFocusInInput()) {
+      if (!isFocusInInput(true)) {
         if (checkEventKeys(e, shortcut)) {
           e.preventDefault();
           e.stopPropagation();
@@ -34,8 +45,21 @@ const SectionItem = ({ icon, label, shortcut, onClick, isSelected }: Props) => {
   return (
     <button
       onClick={onClick}
-      className={`w-full text-left rounded-6 h-8 flex items-center px-2 gap-2 text-label-muted bg-bg-shade 
-        hover:text-label-title hover:bg-bg-shade-hover`}
+      ref={ref}
+      className={`w-full text-left rounded-6 h-8 flex items-center px-2 gap-2
+        hover:text-label-title ${
+          color === 'shade'
+            ? 'hover:bg-bg-shade-hover'
+            : 'hover:bg-bg-base-hover'
+        } ${
+          isFocused
+            ? `text-label-title ${
+                color === 'shade' ? 'bg-bg-shade-hover' : 'bg-bg-base-hover'
+              }`
+            : `text-label-muted ${
+                color === 'shade' ? 'bg-bg-shade' : 'bg-bg-base'
+              }`
+        } focus:outline-0 focus:outline-none`}
     >
       {icon}
       <p className="flex-1 body-s-b text-label-title ellisis">{label}</p>

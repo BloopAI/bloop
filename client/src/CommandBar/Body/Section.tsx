@@ -1,14 +1,18 @@
 import { Dispatch, memo, SetStateAction } from 'react';
-import { CommandBarItemType, CommandBarStepType } from '../../types/general';
+import {
+  CommandBarItemCustomType,
+  CommandBarItemGeneralType,
+} from '../../types/general';
 import SectionDivider from './SectionDivider';
 import Item from './Item';
 
 type Props = {
   title?: string;
-  items: CommandBarItemType[];
+  items: (CommandBarItemCustomType | CommandBarItemGeneralType)[];
   focusedIndex: number;
   setFocusedIndex: Dispatch<SetStateAction<number>>;
   offset: number;
+  disableKeyNav?: boolean;
 };
 
 const CommandBarBodySection = ({
@@ -17,6 +21,7 @@ const CommandBarBodySection = ({
   setFocusedIndex,
   offset,
   focusedIndex,
+  disableKeyNav,
 }: Props) => {
   return (
     <div className="flex flex-col">
@@ -30,6 +35,7 @@ const CommandBarBodySection = ({
             setFocusedIndex={setFocusedIndex}
             isFirst={i === 0}
             i={i + offset}
+            disableKeyNav={disableKeyNav}
           />
         ) : (
           <Item
@@ -39,6 +45,7 @@ const CommandBarBodySection = ({
             isFocused={focusedIndex === i + offset}
             setFocusedIndex={setFocusedIndex}
             isFirst={i === 0}
+            disableKeyNav={disableKeyNav}
           />
         ),
       )}

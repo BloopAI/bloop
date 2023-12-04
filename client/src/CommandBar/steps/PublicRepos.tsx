@@ -9,24 +9,16 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
-import {
-  CommandBarSectionType,
-  CommandBarStepEnum,
-  RepoProvider,
-} from '../../types/general';
+import { CommandBarStepEnum } from '../../types/general';
 import { CommandBarContext } from '../../context/commandBarContext';
-import { getIndexedRepos, syncRepo } from '../../services/api';
-import { PlusSignIcon } from '../../icons';
+import { syncRepo } from '../../services/api';
 import Header from '../Header';
-import Body from '../Body';
 import Footer from '../Footer';
-import RepoItem from './items/RepoItem';
 
 type Props = {};
 
 const PublicRepos = ({}: Props) => {
   const { t } = useTranslation();
-  const [isAddMode, setIsAddMode] = useState(false);
   const { setChosenStep, setFocusedItem } = useContext(
     CommandBarContext.Handlers,
   );
@@ -36,89 +28,25 @@ const PublicRepos = ({}: Props) => {
     setInputValue(e.target.value);
   }, []);
 
-  const enterAddMode = useCallback(() => {
+  useEffect(() => {
     setFocusedItem({
       footerHint: t('Paste a link to any public repository hosted on GitHub'),
       footerBtns: [{ label: t('Start indexing'), shortcut: ['entr'] }],
     });
-    setIsAddMode(true);
   }, []);
-
-  const addItem = useMemo(() => {
-    return {
-      itemsOffset: 0,
-      key: 'add',
-      items: [
-        {
-          label: t('Add public repository'),
-          Icon: PlusSignIcon,
-          footerHint: t('Add any public repository hosted on GitHub'),
-          footerBtns: [
-            {
-              label: t('Add'),
-              shortcut: ['entr'],
-              action: enterAddMode,
-            },
-          ],
-          key: 'add',
-          id: 'Add',
-          onClick: enterAddMode,
-        },
-      ],
-    };
-  }, []);
-  const [sections, setSections] = useState<CommandBarSectionType[]>([addItem]);
 
   const breadcrumbs = useMemo(() => {
-    const arr = [t('Public repositories')];
-    if (isAddMode) {
-      arr.push(t('Add public repository'));
-    }
-    return arr;
-  }, [t, isAddMode]);
+    return [t('Add public repository')];
+  }, [t]);
 
   const handleBack = useCallback(() => {
-    if (isAddMode) {
-      setIsAddMode(false);
-    } else {
-      setChosenStep({ id: CommandBarStepEnum.INITIAL });
-    }
-  }, [isAddMode]);
-
-  const refetchRepos = useCallback(() => {
-    getIndexedRepos().then((data) => {
-      const mapped = data.list
-        .filter((r) => r.provider !== RepoProvider.Local)
-        .map((r) => ({
-          Component: RepoItem,
-          componentProps: {
-            repo: { ...r, shortName: r.ref.split('/').pop() },
-            refetchRepos,
-          },
-          key: r.ref,
-        }));
-      if (!mapped.length) {
-        enterAddMode();
-      }
-      setSections([
-        addItem,
-        {
-          key: 'indexed',
-          itemsOffset: 1,
-          label: t('Indexed GitHub repositories'),
-          items: mapped,
-        },
-      ]);
-    });
-  }, []);
-
-  useEffect(() => {
-    refetchRepos();
+    setChosenStep({ id: CommandBarStepEnum.MANAGE_REPOS });
   }, []);
 
   const handleAddSubmit = useCallback((inputValue: string) => {
     setFocusedItem({
       footerHint: t('Verifying access...'),
+      footerBtns: [],
     });
     let cleanRef = inputValue
       .replace('https://', '')
@@ -134,13 +62,13 @@ const PublicRepos = ({}: Props) => {
       .then((resp) => {
         if (resp?.data?.visibility === 'public') {
           syncRepo(`github.com/${cleanRef}`);
-          setIsAddMode(false);
-          refetchRepos();
+          handleBack();
         } else {
           setFocusedItem({
             footerHint: t(
               "This is not a public repository / We couldn't find this repository",
             ),
+            footerBtns: [],
           });
         }
       })
@@ -150,45 +78,21 @@ const PublicRepos = ({}: Props) => {
           footerHint: t(
             "This is not a public repository / We couldn't find this repository",
           ),
+          footerBtns: [],
         });
       });
   }, []);
-
-  const sectionsToShow = useMemo(() => {
-    if (!inputValue) {
-      return sections;
-    }
-    const newSections: CommandBarSectionType[] = [];
-    sections.forEach((s) => {
-      const newItems = s.items.filter((i) =>
-        ('label' in i ? i.label : i.componentProps.repo.shortName)
-          .toLowerCase()
-          .startsWith(inputValue.toLowerCase()),
-      );
-      if (newItems.length) {
-        newSections.push({ ...s, items: newItems });
-      }
-    });
-    return newSections;
-  }, [inputValue, sections]);
 
   return (
     <div className="w-full flex flex-col max-h-[28.875rem] max-w-[40rem] overflow-auto">
       <Header
         breadcrumbs={breadcrumbs}
-        placeholder={
-          isAddMode
-            ? t('Repository URL...')
-            : t('Search public repositories...')
-        }
+        placeholder={t('Repository URL...')}
         handleBack={handleBack}
         value={inputValue}
         onChange={handleInputChange}
-        customSubmitHandler={isAddMode ? handleAddSubmit : undefined}
+        customSubmitHandler={handleAddSubmit}
       />
-      {isAddMode || !sectionsToShow.length ? null : (
-        <Body sections={sectionsToShow} />
-      )}
       <Footer />
     </div>
   );

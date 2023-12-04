@@ -451,7 +451,7 @@ export const updateProject = (id: string, data: Partial<ProjectShortType>) =>
   http.put(`/projects/${id}`, data).then((r) => r.data);
 export const deleteProject = (id: string) =>
   http.delete(`/projects/${id}`).then((r) => r.data);
-export const getProjectRepos = (id: string): Promise<{ ref: string }[]> =>
+export const getProjectRepos = (id: string): Promise<RepoType[]> =>
   http(`/projects/${id}/repos`).then((r) => r.data);
 export const addRepoToProject = (id: string, repoRef: string) =>
   http.post(`/projects/${id}/repos`, { ref: repoRef }).then((r) => r.data);

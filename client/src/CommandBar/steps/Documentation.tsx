@@ -141,6 +141,7 @@ const Documentation = ({}: Props) => {
   const handleAddSubmit = useCallback((inputValue: string) => {
     setFocusedItem({
       footerHint: t('Verifying access...'),
+      footerBtns: [],
     });
     setInputValue('');
     verifyDocsUrl(inputValue.trim())
@@ -153,6 +154,7 @@ const Documentation = ({}: Props) => {
           footerHint: t(
             "We couldn't find any docs at that link. Try again or make sure the link is correct!",
           ),
+          footerBtns: [],
         });
       });
   }, []);

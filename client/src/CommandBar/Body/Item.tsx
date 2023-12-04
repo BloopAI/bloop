@@ -23,6 +23,8 @@ type Props = CommandBarItemGeneralType & {
   isFirst?: boolean;
   setFocusedIndex: Dispatch<SetStateAction<number>>;
   customRightElement?: ReactElement;
+  focusedItemProps?: Record<string, any>;
+  disableKeyNav?: boolean;
 };
 
 const CommandBarItem = ({
@@ -39,6 +41,8 @@ const CommandBarItem = ({
   footerHint,
   customRightElement,
   onClick,
+  focusedItemProps,
+  disableKeyNav,
 }: Props) => {
   const ref = useRef<HTMLButtonElement>(null);
   const shortcutKeys = useShortcuts(shortcut);
@@ -51,10 +55,11 @@ const CommandBarItem = ({
       setFocusedItem({
         footerHint,
         footerBtns,
+        focusedItemProps,
       });
       ref.current?.scrollIntoView({ block: 'nearest' });
     }
-  }, [isFocused, footerBtns, footerHint]);
+  }, [isFocused, footerBtns, footerHint, focusedItemProps]);
 
   const handleMouseOver = useCallback(() => {
     setFocusedIndex(i);
@@ -88,7 +93,7 @@ const CommandBarItem = ({
     },
     [isFocused, shortcut, footerBtns, handleClick],
   );
-  useKeyboardNavigation(handleKeyEvent);
+  useKeyboardNavigation(handleKeyEvent, disableKeyNav);
 
   return (
     <button

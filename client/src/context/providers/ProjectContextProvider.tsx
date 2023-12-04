@@ -33,9 +33,7 @@ const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
 
   const refreshCurrentProjectRepos = useCallback(async () => {
     getProjectRepos(currentProjectId).then((r) => {
-      setProject((prev) =>
-        prev ? { ...prev, repos: r.map((r) => r.ref) } : null,
-      );
+      setProject((prev) => (prev ? { ...prev, repos: r } : null));
     });
   }, [currentProjectId]);
 

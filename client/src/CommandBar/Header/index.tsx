@@ -12,15 +12,29 @@ import useKeyboardNavigation from '../../hooks/useKeyboardNavigation';
 import { CommandBarContext } from '../../context/commandBarContext';
 import ChipItem from './ChipItem';
 
-type Props = {
+type PropsWithoutInput = {
+  noInput: true;
+  customSubmitHandler?: never;
+  onChange?: never;
+  value?: never;
+  placeholder?: never;
+};
+
+type PropsWithInput = {
+  noInput?: false;
+  value: string;
+  onChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  customSubmitHandler?: (value: string) => void;
+  placeholder?: string;
+};
+
+type GeneralProps = {
   handleBack?: () => void;
   breadcrumbs?: string[];
   customRightComponent?: ReactElement;
-  customSubmitHandler?: (value: string) => void;
-  onChange: (e: ChangeEvent<HTMLInputElement>) => void;
-  placeholder?: string;
-  value: string;
 };
+
+type Props = GeneralProps & (PropsWithInput | PropsWithoutInput);
 
 const CommandBarHeader = ({
   handleBack,
@@ -47,32 +61,23 @@ const CommandBarHeader = ({
 
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
-      if (isVisible) {
-        if (e.key === 'Escape') {
-          e.stopPropagation();
-          e.preventDefault();
-          if (handleBack) {
-            handleBack();
-          } else {
-            setIsVisible(false);
-          }
-        } else if (e.key === 'Enter' && customSubmitHandler && !isComposing) {
-          e.stopPropagation();
-          e.preventDefault();
-          customSubmitHandler(value);
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        e.preventDefault();
+        if (handleBack) {
+          handleBack();
+        } else {
+          setIsVisible(false);
         }
+      } else if (e.key === 'Enter' && customSubmitHandler && !isComposing) {
+        e.stopPropagation();
+        e.preventDefault();
+        customSubmitHandler(value);
       }
     },
-    [
-      isVisible,
-      setIsVisible,
-      handleBack,
-      customSubmitHandler,
-      value,
-      isComposing,
-    ],
+    [setIsVisible, handleBack, customSubmitHandler, value, isComposing],
   );
-  useKeyboardNavigation(handleKeyEvent);
+  useKeyboardNavigation(handleKeyEvent, !isVisible);
 
   return (
     <div className="w-full flex flex-col p-4 items-start gap-4 border-b border-bg-border">
@@ -97,6 +102,7 @@ const CommandBarHeader = ({
         onChange={onChange}
         placeholder={placeholder || t('Search projects or commands...')}
         type="search"
+        id="command-input"
         autoComplete="off"
         autoCorrect="off"
         className="w-full bg-transparent outline-none focus:outline-0 body-base placeholder:text-label-muted"

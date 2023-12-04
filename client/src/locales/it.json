@@ -497,5 +497,16 @@
 	"Add tab": "Aggiungi scheda",
 	"New Chat": "Nuova chat",
 	"New Code Studio": "Nuovo studio di codice",
-	"Release to open in split view": "Rilascio per aprire in vista divisa"
+	"Release to open in split view": "Rilascio per aprire in vista divisa",
+	"Manage repositories": "Gestire i repository",
+	"Add new repository": "Aggiungi nuovo repository",
+	"Local": "Locale",
+	"Add repository": "Aggiungi repository",
+	"Add private repository": "Aggiungi repository privato",
+	"Actions": "Azioni",
+	"Filter repositories by": "Filtro repository di",
+	"Public": "Pubblica",
+	"Display": "Schermo",
+	"GitHub": "Github",
+	"Open in GitHub": "Aperto in Github"
 }

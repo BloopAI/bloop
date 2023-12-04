@@ -3,16 +3,16 @@ import { CommandBarContext } from '../commandBarContext';
 import {
   CommandBarActiveStepType,
   CommandBarItemGeneralType,
+  CommandBarItemInvisibleType,
   CommandBarStepEnum,
 } from '../../types/general';
 
 type Props = {};
 
 const CommandBarContextProvider = ({ children }: PropsWithChildren<Props>) => {
-  const [focusedItem, setFocusedItem] = useState<{
-    footerHint?: CommandBarItemGeneralType['footerHint'];
-    footerBtns?: CommandBarItemGeneralType['footerBtns'];
-  } | null>(null);
+  const [focusedItem, setFocusedItem] = useState<
+    CommandBarItemGeneralType | CommandBarItemInvisibleType | null
+  >(null);
   const [isVisible, setIsVisible] = useState(false);
   const [chosenStep, setChosenStep] = useState<CommandBarActiveStepType>({
     id: CommandBarStepEnum.INITIAL,

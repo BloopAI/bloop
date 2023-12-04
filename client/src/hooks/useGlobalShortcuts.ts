@@ -5,19 +5,10 @@ import { CommandBarStepEnum, SettingSections } from '../types/general';
 import { CommandBarContext } from '../context/commandBarContext';
 
 export const useGlobalShortcuts = () => {
-  const { theme, setTheme } = useContext(UIContext.Theme);
+  const { setTheme } = useContext(UIContext.Theme);
   const { setChosenStep, setIsVisible } = useContext(
     CommandBarContext.Handlers,
   );
-  const { setSettingsOpen, setSettingsSection } = useContext(
-    UIContext.Settings,
-  );
-
-  const themeOptions = useMemo(() => {
-    return (['light', 'dark', 'black', 'system'] as Theme[]).filter(
-      (t) => t !== theme,
-    );
-  }, [theme]);
 
   const toggleLightTheme = useMemo(() => {
     return {
@@ -87,6 +78,16 @@ export const useGlobalShortcuts = () => {
     };
   }, []);
 
+  const openManageRepos = useMemo(() => {
+    return {
+      shortcut: ['option', 'R'],
+      action: () => {
+        setChosenStep({ id: CommandBarStepEnum.MANAGE_REPOS });
+        setIsVisible(true);
+      },
+    };
+  }, []);
+
   return {
     toggleLightTheme,
     toggleBlackTheme,
@@ -96,5 +97,6 @@ export const useGlobalShortcuts = () => {
     openPublicRepos,
     openLocalRepos,
     openAddDocs,
+    openManageRepos,
   };
 };

@@ -520,5 +520,16 @@
 	"Add tab": "タブを追加します",
 	"New Chat": "新しいチャット",
 	"New Code Studio": "新しいコードスタジオ",
-	"Release to open in split view": "スプリットビューで開くためにリリースします"
+	"Release to open in split view": "スプリットビューで開くためにリリースします",
+	"Manage repositories": "リポジトリを管理します",
+	"Add new repository": "新しいリポジトリを追加します",
+	"Local": "地元",
+	"Add repository": "リポジトリを追加します",
+	"Add private repository": "プライベートリポジトリを追加します",
+	"Actions": "行動",
+	"Filter repositories by": "レポジトリをフィルターします",
+	"Public": "公共",
+	"Display": "画面",
+	"GitHub": "github",
+	"Open in {{viewer}}": "{{viewer}}で開く"
 }

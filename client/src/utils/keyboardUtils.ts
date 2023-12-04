@@ -51,10 +51,11 @@ export const checkEventKeys = (e: KeyboardEvent, shortcut?: string[]) => {
   }
   if (!keys.includes(e.key)) {
     if (
-      e.altKey &&
-      keys.includes(
-        e.code.replace('Key', '').replace('Digit', '').toLowerCase(),
-      )
+      (e.altKey &&
+        keys.includes(
+          e.code.replace('Key', '').replace('Digit', '').toLowerCase(),
+        )) ||
+      (e.shiftKey && keys.includes(e.code.replace('Digit', '').toLowerCase()))
     ) {
       return true;
     }

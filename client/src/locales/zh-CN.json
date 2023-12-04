@@ -526,5 +526,16 @@
 	"Add tab": "添加选项卡",
 	"New Chat": "新聊天",
 	"New Code Studio": "新代码工作室",
-	"Release to open in split view": "释放以在分裂视图中打开"
+	"Release to open in split view": "释放以在分裂视图中打开",
+	"Manage repositories": "管理存储库",
+	"Add new repository": "添加新存储库",
+	"Local": "当地的",
+	"Add repository": "添加存储库",
+	"Add private repository": "添加私人存储库",
+	"Actions": "动作",
+	"Filter repositories by": "过滤器存储库",
+	"Private": "私人的",
+	"Display": "展示",
+	"GitHub": "github",
+	"Open in {{viewer}}": "在{{viewer}}中打开"
 }
