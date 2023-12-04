@@ -41,7 +41,7 @@ pub fn functions(add_proc: bool) -> serde_json::Value {
                         },
                         "path": {
                             "type": "integer",
-                            "description": "The indices of the path containing the symbol."
+                            "description": "The index of the path containing the symbol."
                         }
                     },
                     "required": ["symbol"]

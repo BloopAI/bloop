@@ -54,6 +54,7 @@ impl Exchange {
                 (Some(l @ SearchStep::Path { .. }), r @ SearchStep::Path { .. }) => *l = r,
                 (Some(l @ SearchStep::Code { .. }), r @ SearchStep::Code { .. }) => *l = r,
                 (Some(l @ SearchStep::Proc { .. }), r @ SearchStep::Proc { .. }) => *l = r,
+                (Some(l @ SearchStep::Symbol { .. }), r @ SearchStep::Symbol { .. }) => *l = r,
                 _ => panic!("Tried to replace a step that was not found"),
             },
             Update::Article(full_text) => {
