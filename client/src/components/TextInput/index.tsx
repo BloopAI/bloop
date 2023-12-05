@@ -112,7 +112,7 @@ const TextInput = forwardRef(function TextInputWithRef(
     <div
       className={`flex flex-col gap-2 w-full ${
         disabled ? 'text-label-base' : 'text-label-title'
-      } body-s`}
+      } body-base`}
     >
       {label || helperText ? (
         <div className={`flex justify-between items-center w-full`}>
@@ -142,13 +142,12 @@ const TextInput = forwardRef(function TextInputWithRef(
             id={id}
             name={name}
             disabled={disabled}
-            rows={4}
+            rows={6}
             onBlur={onBlur}
             autoComplete="off"
             spellCheck="false"
             className={`bg-transparent resize-none border-none focus:outline-none w-full 
-            group-focus-within:placeholder:text-label-title group-hover:placeholder:text-label-title 
-            disabled:placeholder:text-label-muted placeholder:text-label-base
+            placeholder:text-label-muted disabled:placeholder:text-label-faint
             transition-all duration-150 ease-in-out outline-none outline-0`}
             onKeyDown={handleEnter}
           />
