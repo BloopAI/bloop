@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useContext, useMemo } from 'react';
+import React, { memo, useCallback, useContext } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { ArrowLeftIcon, ChevronDownIcon } from '../../icons';
 import { DeviceContext } from '../../context/deviceContext';

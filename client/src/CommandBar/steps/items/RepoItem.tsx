@@ -303,7 +303,15 @@ const RepoItem = ({
           ? 'bg-bg-contrast text-label-contrast'
           : 'bg-bg-border'
       }
-      onClick={onRepoSync}
+      onClick={
+        status === SyncStatus.Done
+          ? isInProject
+            ? handleRemoveFromProject
+            : handleAddToProject
+          : isIndexing
+          ? handleCancelSync
+          : onRepoSync
+      }
       footerBtns={
         status === SyncStatus.Done
           ? [

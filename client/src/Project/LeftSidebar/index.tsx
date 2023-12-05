@@ -1,4 +1,4 @@
-import React, { memo, useContext, useMemo } from 'react';
+import React, { memo, useContext } from 'react';
 import useResizeableWidth from '../../hooks/useResizeableWidth';
 import { LEFT_SIDEBAR_WIDTH_KEY } from '../../services/storage';
 import ProjectsDropdown from '../../components/Header/ProjectsDropdown';
@@ -30,6 +30,7 @@ const LeftSidebar = ({}: Props) => {
           dropdownItems={<ProjectsDropdown />}
           dropdownPlacement="bottom-start"
           containerClassName="flex-1"
+          appendTo={document.body}
         >
           <div className="flex-1 flex px-4 items-center text-left h-10 gap-4 border-r border-bg-border">
             <p className="flex-1 body-s-b">

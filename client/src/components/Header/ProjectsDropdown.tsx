@@ -10,6 +10,8 @@ import {
   ProjectSettingSections,
 } from '../../types/general';
 import { UIContext } from '../../context/uiContext';
+import FileIcon from '../FileIcon';
+import { getFileExtensionForLang } from '../../utils';
 
 type Props = {};
 
@@ -44,7 +46,16 @@ const ProjectsDropdown = ({}: Props) => {
             isSelected={p.id === project?.id}
             onClick={() => setCurrentProjectId(p.id)}
             label={p.name}
-            icon={<ShapesIcon sizeClassName="w-4 h-4" />}
+            icon={
+              p.most_common_langs?.[0] ? (
+                <FileIcon
+                  filename={getFileExtensionForLang(p.most_common_langs[0])}
+                  noMargin
+                />
+              ) : (
+                <ShapesIcon sizeClassName="w-4 h-4" />
+              )
+            }
           />
         ))}
       </div>

@@ -1,14 +1,28 @@
 import { useContext, useMemo } from 'react';
-import { Theme } from '../types';
 import { UIContext } from '../context/uiContext';
-import { CommandBarStepEnum, SettingSections } from '../types/general';
+import {
+  CommandBarStepEnum,
+  ProjectSettingSections,
+  SettingSections,
+} from '../types/general';
 import { CommandBarContext } from '../context/commandBarContext';
+import { DeviceContext } from '../context/deviceContext';
+import { useSignOut } from './useSignOut';
 
 export const useGlobalShortcuts = () => {
   const { setTheme } = useContext(UIContext.Theme);
   const { setChosenStep, setIsVisible } = useContext(
     CommandBarContext.Handlers,
   );
+  const { setProjectSettingsSection, setProjectSettingsOpen } = useContext(
+    UIContext.ProjectSettings,
+  );
+  const { setSettingsSection, setSettingsOpen } = useContext(
+    UIContext.Settings,
+  );
+  const { setBugReportModalOpen } = useContext(UIContext.BugReport);
+  const { openLink } = useContext(DeviceContext);
+  const handleSignOut = useSignOut();
 
   const toggleLightTheme = useMemo(() => {
     return {
@@ -88,6 +102,78 @@ export const useGlobalShortcuts = () => {
     };
   }, []);
 
+  const createNewProject = useMemo(() => {
+    return {
+      shortcut: ['cmd', 'N'],
+      action: () => {
+        setChosenStep({ id: CommandBarStepEnum.CREATE_PROJECT });
+        setIsVisible(true);
+      },
+    };
+  }, []);
+
+  const openProjectSettings = useMemo(() => {
+    return {
+      shortcut: ['option', 'P'],
+      action: () => {
+        setProjectSettingsSection(ProjectSettingSections.GENERAL);
+        setProjectSettingsOpen(true);
+        setIsVisible(false);
+      },
+    };
+  }, []);
+
+  const openSettings = useMemo(() => {
+    return {
+      shortcut: ['option', 'A'],
+      action: () => {
+        setSettingsSection(SettingSections.GENERAL);
+        setSettingsOpen(true);
+        setIsVisible(false);
+      },
+    };
+  }, []);
+
+  const openSubscriptionSettings = useMemo(() => {
+    return {
+      shortcut: ['option', 'S'],
+      action: () => {
+        setSettingsSection(SettingSections.SUBSCRIPTION);
+        setSettingsOpen(true);
+        setIsVisible(false);
+      },
+    };
+  }, []);
+
+  const openAppDocs = useMemo(() => {
+    return {
+      shortcut: ['option', 'D'],
+      action: () => {
+        openLink('https://bloop.ai/docs');
+      },
+    };
+  }, []);
+
+  const reportABug = useMemo(() => {
+    return {
+      shortcut: ['option', 'B'],
+      action: () => {
+        setBugReportModalOpen(true);
+        setIsVisible(false);
+      },
+    };
+  }, []);
+
+  const signOut = useMemo(() => {
+    return {
+      shortcut: ['option', 'shift', 'Q'],
+      action: () => {
+        handleSignOut();
+        setIsVisible(false);
+      },
+    };
+  }, []);
+
   return {
     toggleLightTheme,
     toggleBlackTheme,
@@ -98,5 +184,12 @@ export const useGlobalShortcuts = () => {
     openLocalRepos,
     openAddDocs,
     openManageRepos,
+    createNewProject,
+    openProjectSettings,
+    openSettings,
+    openSubscriptionSettings,
+    openAppDocs,
+    reportABug,
+    signOut,
   };
 };

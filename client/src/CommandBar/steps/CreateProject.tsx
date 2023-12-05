@@ -41,6 +41,9 @@ const CreateProject = ({}: Props) => {
     setCurrentProjectId(id);
     setIsVisible(false);
     refreshAllProjects();
+    setChosenStep({
+      id: CommandBarStepEnum.INITIAL,
+    });
   }, []);
 
   const breadcrumbs = useMemo(() => {

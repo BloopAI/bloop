@@ -13,8 +13,6 @@ import {
   CogIcon,
   DocumentsIcon,
   DoorOutIcon,
-  GlobeIcon,
-  HardDriveIcon,
   MacintoshIcon,
   MagazineIcon,
   RepositoryIcon,
@@ -31,12 +29,9 @@ import {
   CommandBarItemGeneralType,
   CommandBarSectionType,
   CommandBarStepEnum,
-  SettingSections,
 } from '../../types/general';
 import { UIContext } from '../../context/uiContext';
 import { Theme } from '../../types';
-import { DeviceContext } from '../../context/deviceContext';
-import { useSignOut } from '../../hooks/useSignOut';
 import { useGlobalShortcuts } from '../../hooks/useGlobalShortcuts';
 
 type Props = {};
@@ -47,13 +42,7 @@ const InitialCommandBar = ({}: Props) => {
   const { projects } = useContext(ProjectContext.All);
   const { setCurrentProjectId, project } = useContext(ProjectContext.Current);
   const { theme } = useContext(UIContext.Theme);
-  const { setBugReportModalOpen } = useContext(UIContext.BugReport);
-  const { openLink } = useContext(DeviceContext);
-  const { setSettingsOpen, setSettingsSection } = useContext(
-    UIContext.Settings,
-  );
   const [inputValue, setInputValue] = useState('');
-  const handleSignOut = useSignOut();
   const globalShortcuts = useGlobalShortcuts();
 
   const handleInputChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
@@ -62,28 +51,6 @@ const InitialCommandBar = ({}: Props) => {
 
   const switchProject = useCallback((id: string) => {
     setCurrentProjectId(id);
-    setIsVisible(false);
-  }, []);
-
-  const openGeneralSettings = useCallback(() => {
-    setSettingsSection(SettingSections.GENERAL);
-    setSettingsOpen(true);
-    setIsVisible(false);
-  }, []);
-
-  const openSubscriptionSettings = useCallback(() => {
-    setSettingsSection(SettingSections.SUBSCRIPTION);
-    setSettingsOpen(true);
-    setIsVisible(false);
-  }, []);
-
-  const reportBug = useCallback(() => {
-    setBugReportModalOpen(true);
-    setIsVisible(false);
-  }, []);
-
-  const signOut = useCallback(() => {
-    handleSignOut();
     setIsVisible(false);
   }, []);
 
@@ -129,7 +96,7 @@ const InitialCommandBar = ({}: Props) => {
         Icon: MagazineIcon,
         id: CommandBarStepEnum.CREATE_PROJECT,
         key: 'new-project',
-        shortcut: ['cmd', 'N'],
+        shortcut: globalShortcuts.createNewProject.shortcut,
         footerHint: t('Create new project'),
         footerBtns: [
           {
@@ -187,14 +154,14 @@ const InitialCommandBar = ({}: Props) => {
         Icon: CogIcon,
         id: `account-settings`,
         key: `account-settings`,
-        onClick: openGeneralSettings,
-        shortcut: ['option', 'A'],
+        onClick: globalShortcuts.openSettings.action,
+        shortcut: globalShortcuts.openSettings.shortcut,
         footerHint: t(`Open account settings`),
         footerBtns: [
           {
             label: t('Open'),
             shortcut: ['entr'],
-            action: openGeneralSettings,
+            action: globalShortcuts.openSettings.action,
           },
         ],
       },
@@ -203,14 +170,14 @@ const InitialCommandBar = ({}: Props) => {
         Icon: WalletIcon,
         id: `subscription-settings`,
         key: `subscription-settings`,
-        onClick: openSubscriptionSettings,
-        shortcut: ['option', 'S'],
+        onClick: globalShortcuts.openSubscriptionSettings.action,
+        shortcut: globalShortcuts.openSubscriptionSettings.shortcut,
         footerHint: t(`Open subscription settings`),
         footerBtns: [
           {
             label: t('Open'),
             shortcut: ['entr'],
-            action: openSubscriptionSettings,
+            action: globalShortcuts.openSubscriptionSettings.action,
           },
         ],
       },
@@ -219,14 +186,14 @@ const InitialCommandBar = ({}: Props) => {
         Icon: DocumentsIcon,
         id: `app-docs`,
         key: `app-docs`,
-        onClick: () => openLink('https://bloop.ai/docs'),
-        shortcut: ['option', 'D'],
+        onClick: globalShortcuts.openAppDocs.action,
+        shortcut: globalShortcuts.openAppDocs.shortcut,
         footerHint: t(`View bloop app documentation on our website`),
         footerBtns: [
           {
             label: t('Open'),
             shortcut: ['entr'],
-            action: () => openLink('https://bloop.ai/docs'),
+            action: globalShortcuts.openAppDocs.action,
           },
         ],
       },
@@ -235,14 +202,14 @@ const InitialCommandBar = ({}: Props) => {
         Icon: BugIcon,
         id: `bug`,
         key: `bug`,
-        onClick: reportBug,
-        shortcut: ['option', 'B'],
+        onClick: globalShortcuts.reportABug.action,
+        shortcut: globalShortcuts.reportABug.shortcut,
         footerHint: t(`Report a bug`),
         footerBtns: [
           {
             label: t('Open'),
             shortcut: ['entr'],
-            action: reportBug,
+            action: globalShortcuts.reportABug.action,
           },
         ],
       },
@@ -251,14 +218,14 @@ const InitialCommandBar = ({}: Props) => {
         Icon: DoorOutIcon,
         id: `sign-out`,
         key: `sign-out`,
-        onClick: signOut,
-        shortcut: ['option', 'shift', 'Q'],
+        onClick: globalShortcuts.signOut.action,
+        shortcut: globalShortcuts.signOut.shortcut,
         footerHint: t(`Sign out`),
         footerBtns: [
           {
             label: t('Sign out'),
             shortcut: ['entr'],
-            action: signOut,
+            action: globalShortcuts.signOut.action,
           },
         ],
       },

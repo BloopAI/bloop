@@ -390,6 +390,7 @@ export type ProjectShortType = {
   id: string;
   name: string;
   modified_at: null | string;
+  most_common_langs: string[];
 };
 
 export type ProjectFullType = ProjectShortType & {
