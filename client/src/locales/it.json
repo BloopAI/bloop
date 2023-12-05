@@ -512,5 +512,9 @@
 	"More actions": "Più azioni",
 	"Below are a few suggestions you can ask me to get started:": "Di seguito sono riportati alcuni suggerimenti che puoi chiedermi di iniziare:",
 	"You": "Voi",
-	"Write a message, @ to mention files, folders or docs...": "Scrivi un messaggio, @ per menzionare file, cartelle o documenti ..."
+	"Write a message, @ to mention files, folders or docs...": "Scrivi un messaggio, @ per menzionare file, cartelle o documenti ...",
+	"Copy message": "Copia messaggio",
+	"Streaming response...": "Risposta in streaming ...",
+	"Upvote": "Voto",
+	"Editing previously submitted questions will discard all answers and questions following it": "La modifica delle domande precedentemente inviate eliminerà tutte le risposte e le domande che lo seguono"
 }

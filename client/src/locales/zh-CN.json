@@ -541,5 +541,9 @@
 	"More actions": "更多操作",
 	"Below are a few suggestions you can ask me to get started:": "以下是您可以要求我开始的一些建议：",
 	"You": "你",
-	"Write a message, @ to mention files, folders or docs...": "写一条消息， @以提及文件，文件夹或文档..."
+	"Write a message, @ to mention files, folders or docs...": "写一条消息， @以提及文件，文件夹或文档...",
+	"Copy message": "复制消息",
+	"Streaming response...": "流响应...",
+	"Downvote": "低位",
+	"Editing previously submitted questions will discard all answers and questions following it": "编辑先前提交的问题将丢弃所有答案和问题"
 }

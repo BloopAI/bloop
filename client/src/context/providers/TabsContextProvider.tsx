@@ -24,13 +24,19 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
             path: string;
             repoRef: string;
             repoName: string;
+            scrollToLine?: string;
           }
         | { type: TabTypesEnum.CHAT },
+      forceSide?: 'left' | 'right',
     ) => {
       const setTabsAction =
-        focusedPanel === 'left' ? setLeftTabs : setRightTabs;
+        focusedPanel === 'left' || forceSide === 'left'
+          ? setLeftTabs
+          : setRightTabs;
       const setActiveTabAction =
-        focusedPanel === 'left' ? setActiveLeftTab : setActiveRightTab;
+        focusedPanel === 'left' || forceSide === 'left'
+          ? setActiveLeftTab
+          : setActiveRightTab;
       setTabsAction((prev) => {
         const newTab: FileTabType | ChatTabType =
           data.type === TabTypesEnum.FILE && data.path && data.repoRef
@@ -39,6 +45,7 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
                 repoRef: data.repoRef,
                 repoName: data.repoName,
                 key: `${data.repoRef}-${data.path}`,
+                scrollToLine: data.scrollToLine,
                 type: TabTypesEnum.FILE,
               }
             : {

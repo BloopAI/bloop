@@ -6,9 +6,10 @@ import Conversation from './Conversation';
 
 type Props = {
   noBorder?: boolean;
+  side: 'left' | 'right';
 };
 
-const ChatTab = ({ noBorder }: Props) => {
+const ChatTab = ({ noBorder, side }: Props) => {
   const { t } = useTranslation();
   return (
     <div
@@ -34,7 +35,7 @@ const ChatTab = ({ noBorder }: Props) => {
         </Button>
       </div>
       <div className="flex-1 flex flex-col max-w-full px-4 pt-4 overflow-auto">
-        <Conversation />
+        <Conversation side={side} />
       </div>
     </div>
   );

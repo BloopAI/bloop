@@ -287,16 +287,15 @@ export const deleteConversation = (
     .then((r) => r.data);
 
 export const upvoteAnswer = (
+  projectId: string,
   thread_id: string,
   query_id: string,
-  repo_ref: string,
   feedback: { type: 'positive' } | { type: 'negative'; feedback: string },
 ): Promise<ConversationType> =>
   http
-    .post(`/answer/vote`, {
+    .post(`/projects/${projectId}/answer/vote`, {
       thread_id,
       query_id,
-      repo_ref,
       feedback,
     })
     .then((r) => r.data);

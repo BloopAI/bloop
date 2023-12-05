@@ -9,8 +9,10 @@ type HandlersContextType = {
           path: string;
           repoRef: string;
           repoName: string;
+          scrollToLine: string;
         }
       | { type: TabTypesEnum.CHAT },
+    forceSide?: 'left' | 'right',
   ) => void;
   closeTab: (key: string, side: 'left' | 'right') => void;
   setActiveLeftTab: Dispatch<SetStateAction<TabType | null>>;

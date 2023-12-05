@@ -555,5 +555,10 @@
 	"Hi, I am bloop! In <2><0></0>Chat mode</2> I can answer any questions related to any of your repositories.": "Hi, I am bloop! In <2><0></0>Chat mode</2> I can answer any questions related to any of your repositories.",
 	"Below are a few suggestions you can ask me to get started:": "Below are a few suggestions you can ask me to get started:",
 	"You": "You",
-	"Write a message, @ to mention files, folders or docs...": "Write a message, @ to mention files, folders or docs..."
+	"Write a message, @ to mention files, folders or docs...": "Write a message, @ to mention files, folders or docs...",
+	"Copy message": "Copy message",
+	"Streaming response...": "Streaming response...",
+	"Upvote": "Upvote",
+	"Downvote": "Downvote",
+	"Editing previously submitted questions will discard all answers and questions following it": "Editing previously submitted questions will discard all answers and questions following it"
 }

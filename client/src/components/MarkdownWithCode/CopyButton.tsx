@@ -2,7 +2,7 @@ import React, { memo, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Button from '../Button';
 import { copyToClipboard } from '../../utils';
-import { CheckIcon, Clipboard, CopyMD } from '../../icons';
+import { CheckIcon, CopyTextIcon } from '../../icons';
 
 type Props = {
   isInHeader?: boolean;
@@ -38,15 +38,14 @@ const CopyButton = ({ isInHeader, code, className }: Props) => {
         variant="secondary"
         size={isInHeader ? 'mini' : 'small'}
         onClick={onClick}
+        onlyIcon
+        title={codeCopied ? t('Copied') : t('Copy')}
       >
         {codeCopied ? (
-          <CheckIcon />
-        ) : isInHeader ? (
-          <CopyMD raw sizeClassName="w-3 h-3" />
+          <CheckIcon sizeClassName="w-3.5 h-3.5" />
         ) : (
-          <Clipboard />
+          <CopyTextIcon sizeClassName="w-3.5 h-3.5" />
         )}
-        {codeCopied ? t('Copied') : t('Copy')}
       </Button>
     </div>
   );

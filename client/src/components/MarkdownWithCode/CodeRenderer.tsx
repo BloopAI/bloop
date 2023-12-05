@@ -8,30 +8,24 @@ import {
   useMemo,
 } from 'react';
 import { FileHighlightsType } from '../../types/general';
+import FileChip from '../Chips/FileChip';
 import CodeWithBreadcrumbs from './CodeWithBreadcrumbs';
 import NewCode from './NewCode';
-import FileChip from './FileChip';
 
 type Props = {
   children: ReactNode[];
   repoName?: string;
   fileChips: MutableRefObject<never[]>;
   hideCode?: boolean;
-  updateScrollToIndex: (lines: string) => void;
   setFileHighlights: Dispatch<SetStateAction<FileHighlightsType>>;
   setHoveredLines: Dispatch<SetStateAction<[number, number] | null>>;
   className?: string;
   propsJSON: string;
   inline?: boolean;
-  navigateFullResult: (
-    path: string,
-    pathParams?: Record<string, string>,
-    recordId?: number,
-    threadId?: string,
-  ) => void;
   recordId?: number;
   threadId?: string;
   isCodeStudio?: boolean;
+  side: 'left' | 'right';
 };
 
 const CodeRenderer = ({
@@ -39,16 +33,15 @@ const CodeRenderer = ({
   children,
   inline,
   hideCode,
-  updateScrollToIndex,
   fileChips,
   setFileHighlights,
   setHoveredLines,
   repoName,
   propsJSON,
-  navigateFullResult,
   recordId,
   threadId,
   isCodeStudio,
+  side,
 }: Props) => {
   const matchLang = useMemo(
     () =>
@@ -64,6 +57,10 @@ const CodeRenderer = ({
   const matchPath = useMemo(
     () => /path:(.*?)(,|$)/.exec(className || ''),
     [className],
+  );
+  const [repoRef, filePath] = useMemo(
+    () => matchPath?.[1].split(':') || [],
+    [matchPath],
   );
   const matchLines = useMemo(
     () => /lines:(.+)/.exec(className || ''),
@@ -98,8 +95,8 @@ const CodeRenderer = ({
   );
 
   const handleChipClick = useCallback(() => {
-    updateScrollToIndex(`${lines[0]}_${lines[1] ?? lines[0]}`);
-  }, [updateScrollToIndex, lines]);
+    // updateScrollToIndex(`${lines[0]}_${lines[1] ?? lines[0]}`);
+  }, [lines]);
 
   return (
     <>
@@ -109,8 +106,8 @@ const CodeRenderer = ({
         matchType?.[1] === 'Quoted' ? (
           hideCode ? (
             <FileChip
-              fileName={matchPath?.[1] || ''}
-              filePath={matchPath?.[1] || ''}
+              fileName={filePath || ''}
+              filePath={filePath || ''}
               skipIcon={false}
               onClick={handleChipClick}
               lines={linesToUse}
@@ -122,14 +119,14 @@ const CodeRenderer = ({
             <CodeWithBreadcrumbs
               code={code}
               language={matchLang?.[1] || ''}
-              filePath={matchPath?.[1] || ''}
+              filePath={filePath || ''}
               onResultClick={(path, lines) => {
-                navigateFullResult(
-                  path,
-                  lines ? { scrollToLine: lines } : undefined,
-                  recordId,
-                  threadId,
-                );
+                // navigateFullResult(
+                //   path,
+                //   lines ? { scrollToLine: lines } : undefined,
+                //   recordId,
+                //   threadId,
+                // );
               }}
               startLine={lines[0] ? lines[0] : null}
               repoName={repoName}
@@ -139,7 +136,7 @@ const CodeRenderer = ({
           <NewCode
             code={code}
             language={matchLang?.[1] || ''}
-            filePath={matchPath?.[1] || ''}
+            filePath={filePath || ''}
             isCodeStudio={isCodeStudio}
           />
         )

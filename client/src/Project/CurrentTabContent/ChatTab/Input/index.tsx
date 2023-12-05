@@ -11,6 +11,7 @@ import {
 } from '../../../../types/general';
 import { getAutocomplete } from '../../../../services/api';
 import { FileResItem, LangItem } from '../../../../types/api';
+import useKeyboardNavigation from '../../../../hooks/useKeyboardNavigation';
 import InputCore from './InputCore';
 
 type Props = {
@@ -22,7 +23,6 @@ type Props = {
   setInputValue: Dispatch<
     SetStateAction<{ parsed: ParsedQueryType[]; plain: string }>
   >;
-  loadingSteps?: ChatLoadingStep[];
   selectedLines?: [number, number] | null;
   setSelectedLines?: (l: [number, number] | null) => void;
   queryIdToEdit?: string;
@@ -50,7 +50,6 @@ const ConversationInput = ({
   generationInProgress,
   isStoppable,
   onStop,
-  loadingSteps,
   selectedLines,
   setSelectedLines,
   queryIdToEdit,
@@ -148,8 +147,20 @@ const ConversationInput = ({
     [],
   );
 
+  const handleKeyEvent = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && onMessageEditCancel) {
+        e.preventDefault();
+        e.stopPropagation();
+        onMessageEditCancel();
+      }
+    },
+    [onMessageEditCancel],
+  );
+  useKeyboardNavigation(handleKeyEvent, !queryIdToEdit);
+
   return (
-    <div className="flex items-start w-full py-4 gap-4 rounded-md">
+    <div className="flex items-start w-full p-4 gap-4 rounded-md">
       <div className="w-7 h-7 rounded-full overflow-hidden select-none">
         <img src={envConfig.github_user?.avatar_url} alt={t('avatar')} />
       </div>
@@ -167,16 +178,29 @@ const ConversationInput = ({
             'Write a message, @ to mention files, folders or docs...',
           )}
         />
-        <button
-          className="self-end flex gap-1 items-center py-1 pr-1 pl-2 rounded-6 body-mini-b text-label-base bg-bg-base disabled:text-label-muted disabled:bg-bg-base"
-          disabled={!value?.plain || generationInProgress}
-          onClick={onSubmitButtonClicked}
-        >
-          <Trans>Submit</Trans>
-          <div className="w-5 h-5 flex items-center justify-center px-1 rounded bg-bg-base-hover body-mini text-label-base">
-            ↵
-          </div>
-        </button>
+        <div className="self-end flex gap-2 items-center">
+          {!!queryIdToEdit && (
+            <button
+              className="flex gap-1 items-center py-1 pr-1 pl-2 rounded-6 body-mini-b text-label-base bg-bg-base disabled:text-label-muted disabled:bg-bg-base"
+              onClick={onMessageEditCancel}
+            >
+              <Trans>Cancel</Trans>
+              <div className="h-5 flex items-center justify-center px-1 rounded bg-bg-base-hover body-mini text-label-base">
+                Esc
+              </div>
+            </button>
+          )}
+          <button
+            className="flex gap-1 items-center py-1 pr-1 pl-2 rounded-6 body-mini-b text-label-base bg-bg-base disabled:text-label-muted disabled:bg-bg-base"
+            disabled={!value?.plain || generationInProgress}
+            onClick={onSubmitButtonClicked}
+          >
+            <Trans>Submit</Trans>
+            <div className="w-5 h-5 flex items-center justify-center px-1 rounded bg-bg-base-hover body-mini text-label-base">
+              ↵
+            </div>
+          </button>
+        </div>
       </div>
     </div>
   );

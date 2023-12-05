@@ -33,7 +33,7 @@ const StarterMessage = ({
   }, [project?.repos]);
 
   return (
-    <div className="flex items-start gap-5 rounded-md py-4">
+    <div className="flex items-start gap-5 rounded-md p-4">
       <div className="flex w-7 h-7 items-center justify-center rounded-full bg-brand-default-subtitle">
         <img className="bloop-head-img w-7 h-7" alt="bloop" />
       </div>

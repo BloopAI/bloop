@@ -6,49 +6,40 @@ import {
   ReactNode,
   SetStateAction,
   useCallback,
+  useContext,
   useMemo,
 } from 'react';
-import { FileHighlightsType } from '../../types/general';
+import { FileHighlightsType, TabTypesEnum } from '../../types/general';
+import { TabsContext } from '../../context/tabsContext';
+import FileChip from '../Chips/FileChip';
 import FolderChip from './FolderChip';
-import FileChip from './FileChip';
 
 type Props = {
   href?: string;
   children: ReactNode[];
-  navigateRepoPath: (repo: string, path?: string | undefined) => void;
-  repoName?: string;
-  selectedBranch: string | null;
   fileChips: MutableRefObject<never[]>;
   hideCode?: boolean;
-  updateScrollToIndex: (lines: string) => void;
   setFileHighlights: Dispatch<SetStateAction<FileHighlightsType>>;
   setHoveredLines: Dispatch<SetStateAction<[number, number] | null>>;
-  navigateFullResult: (
-    path: string,
-    pathParams?: Record<string, string>,
-    recordId?: number,
-    threadId?: string,
-  ) => void;
   recordId?: number;
   threadId?: string;
+  side: 'left' | 'right';
 };
 
 const LinkRenderer = ({
   href,
   children,
-  navigateRepoPath,
-  repoName,
-  selectedBranch,
   fileChips,
   hideCode,
-  updateScrollToIndex,
   setFileHighlights,
   setHoveredLines,
-  navigateFullResult,
   recordId,
   threadId,
+  side,
 }: Props) => {
+  const { openNewTab } = useContext(TabsContext.Handlers);
   const [filePath, lines] = useMemo(() => href?.split('#') || [], [href]);
+  const [repo, path] = useMemo(() => href?.split(':') || [], [filePath]);
   const [start, end] = useMemo(
     () => lines?.split('-').map((l) => Number(l.slice(1))) || [],
     [lines],
@@ -72,36 +63,33 @@ const LinkRenderer = ({
   }, [hideCode, start, end]);
 
   const handleClickFile = useCallback(() => {
-    hideCode
-      ? updateScrollToIndex(`${start}_${end ?? start}`)
-      : navigateFullResult(
-          filePath,
-          start > -1 ? { scrollToLine: `${start}_${end ?? start}` } : undefined,
-          recordId,
-          threadId,
-        );
-  }, [hideCode, updateScrollToIndex, start, end, filePath, recordId, threadId]);
+    // openNewTab(
+    //   {
+    //     type: TabTypesEnum.FILE,
+    //     repoName,
+    //     repoRef,
+    //     path: filePath,
+    //     scrollToLine: `${start}_${end ?? start}`,
+    //   },
+    //   side === 'left' ? 'right' : 'left',
+    // );
+  }, [hideCode, start, end, path, recordId, threadId, side]);
 
   const handleClickFolder = useCallback(() => {
-    if (repoName) {
-      navigateRepoPath(repoName, filePath);
-    }
-  }, [navigateRepoPath, repoName, filePath]);
+    // if (repoName) {
+    //   navigateRepoPath(repoName, filePath);
+    // }
+  }, [path]);
 
   return (
     <>
       {filePath.endsWith('/') ? (
-        <FolderChip
-          onClick={handleClickFolder}
-          path={filePath}
-          repoName={repoName}
-          selectedBranch={selectedBranch}
-        />
+        <FolderChip onClick={handleClickFolder} path={path} repoName={repo} />
       ) : (
         <FileChip
-          fileName={fileName || filePath || ''}
-          filePath={filePath}
-          skipIcon={!!fileName && fileName !== filePath}
+          fileName={fileName || path || ''}
+          filePath={path}
+          skipIcon={!!fileName && fileName !== path}
           fileChips={fileChips}
           onClick={handleClickFile}
           lines={linesToUse}

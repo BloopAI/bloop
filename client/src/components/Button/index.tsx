@@ -16,6 +16,7 @@ type Props = {
     | 'primary'
     | 'secondary'
     | 'tertiary'
+    | 'tertiary-active'
     | 'ghost'
     | 'studio'
     | 'danger';
@@ -57,6 +58,8 @@ const variantStylesMap = {
     'hover:text-label-title hover:bg-bg-base-hover ' +
     'disabled:text-label-faint ' +
     'disabled:hover:text-label-faint disabled:hover:bg-transparent',
+  'tertiary-active':
+    'text-label-title bg-bg-base-hover disabled:text-label-faint',
   danger:
     'text-red border border-bg-border bg-bg-base shadow-low ' +
     'hover:bg-bg-base-hover hover:border-bg-border-hover ' +

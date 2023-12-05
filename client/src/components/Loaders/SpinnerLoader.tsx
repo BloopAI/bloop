@@ -1,14 +1,16 @@
-import { memo } from 'react';
 import SpinLoader from '../../icons/SpinLoader';
 
 type Props = {
   sizeClassName?: string;
+  colorClassName?: string;
 };
 
-const SpinLoaderContainer = ({ sizeClassName }: Props) => {
+const SpinLoaderContainer = ({ sizeClassName, colorClassName }: Props) => {
   return (
     <div
-      className={`${sizeClassName} animate-spin-slow flex-shrink-0 text-label-base`}
+      className={`${sizeClassName} animate-spin-slow flex-shrink-0 ${
+        colorClassName || 'text-label-base'
+      }`}
     >
       <SpinLoader raw />
     </div>

@@ -118,7 +118,7 @@ const SubscriptionSettings = ({}: Props) => {
       <hr className="border-bg-divider my-8" />
       {isUpgradeRequested ? (
         <div className="w-full flex flex-col gap-6 items-center">
-          <SpinLoaderContainer sizeClassName="w-4.5 h-4.5" />
+          <SpinLoaderContainer sizeClassName="w-4.5 h-4.5 text-label-base" />
           <div className="flex flex-col gap-2 items-center">
             <p className="text-label-title body-base-b">
               <Trans>Complete your transaction in Stripe...</Trans>

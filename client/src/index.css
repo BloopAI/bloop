@@ -271,19 +271,19 @@
     --default-dark-shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.16);
     --default-dark-shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.16);
     --default-dark-shadow-float: 0px 4px 32px 0px rgba(0, 0, 0, 0.35);
-    --default-dark-shadow-high: 0px 8px 24px 0px rgba(0, 0, 0, 0.08);
-    --default-dark-shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
-    --default-dark-shadow-low: 0px 1px 2px 0px rgba(0, 0, 0, 0.35);
+    --default-dark-shadow-high: 0px 8px 24px 0px rgba(0,0,0,0.35);
+    --default-dark-shadow-medium: 0px 8px 24px 0px rgba(0,0,0,0.35);
+    --default-dark-shadow-low: 0px 8px 24px 0px rgba(0,0,0,0.35);
 
     --default-dark-onboarding-chats-img: url("../public/chatsImage-dark.png");
     --default-dark-bloop-head-img: url("../public/bloopHeadMascot.png");
 
     --default-light-shadow-rings-blue: 0px 0px 0px 2px rgba(194, 197, 255, 0.08);
     --default-light-shadow-rings-gray: 0px 0px 0px 2px rgba(49, 50, 51, 0.08);
-    --default-light-shadow-float: 0px 16px 70px 0px rgba(0, 0, 0, 0.28);
-    --default-light-shadow-high: 0px 8px 24px 0px rgba(0, 0, 0, 0.08);
-    --default-light-shadow-medium: 0px 2px 8px 0px rgba(0, 0, 0, 0.09);
-    --default-light-shadow-low: 0px 1px 1px 0px rgba(0, 0, 0, 0.07);
+    --default-light-shadow-float: 0px 4px 32px 0px rgba(0,0,0,0.16);
+    --default-light-shadow-high: 0px 8px 24px 0px rgba(0,0,0,0.08);
+    --default-light-shadow-medium: 0px 1px 8px 0px rgba(0,0,0,0.12);
+    --default-light-shadow-low: 0px 1px 2px 0px rgba(0,0,0,0.08);
 
     --default-light-onboarding-chats-img: url("../public/chatsImage-light.png");
     --default-light-bloop-head-img: url("../public/bloopHeadMascotLight.png");
@@ -1200,3 +1200,10 @@ img.ProseMirror-separator {
   @apply bg-bg-base-hover
 }
 /* prose mirror editor end */
+
+.icon-stroked path {
+  stroke: rgb(var(--bg-sub));
+  stroke-width: 1px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}

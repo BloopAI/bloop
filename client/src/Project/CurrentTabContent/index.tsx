@@ -50,7 +50,7 @@ const CurrentTabContent = ({ side, onDrop, shouldStretch }: Props) => {
             noBorder={side === 'left'}
           />
         ) : tab?.type === TabTypesEnum.CHAT ? (
-          <ChatTab noBorder={side === 'left'} />
+          <ChatTab noBorder={side === 'left'} side={side} />
         ) : (
           <EmptyTab />
         )}

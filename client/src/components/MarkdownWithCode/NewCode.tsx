@@ -21,12 +21,8 @@ const NewCode = ({
   return (
     <div
       className={`${
-        !isSummary
-          ? isCodeStudio
-            ? ' bg-bg-sub text-xs'
-            : ' text-sm'
-          : 'text-sm'
-      } my-4 border border-bg-border rounded-md relative group-code`}
+        !isSummary ? (isCodeStudio ? ' text-xs' : ' text-sm') : 'text-sm'
+      } bg-bg-sub my-4 border border-bg-border rounded-md relative group-code`}
     >
       <div
         className={`border-bg-border border-b bg-bg-base rounded-t-md p-2 flex items-center justify-between gap-2`}
@@ -46,7 +42,9 @@ const NewCode = ({
         </div>
         <CopyButton isInHeader code={code} />
       </div>
-      <div className={`overflow-auto ${isCodeStudio ? 'p-2' : 'py-2 code-s'}`}>
+      <div
+        className={`overflow-auto ${isCodeStudio ? 'p-2' : 'py-2 code-mini'}`}
+      >
         <CodeFragment
           showLines={false}
           code={code}

@@ -535,5 +535,9 @@
 	"More actions": "より多くのアクション",
 	"Below are a few suggestions you can ask me to get started:": "以下は、あなたが私に始めるように頼むことができるいくつかの提案です：",
 	"You": "あなた",
-	"Write a message, @ to mention files, folders or docs...": "メッセージを書く @ファイル、フォルダー、またはドキュメントに言及するために..."
+	"Write a message, @ to mention files, folders or docs...": "メッセージを書く @ファイル、フォルダー、またはドキュメントに言及するために...",
+	"Copy message": "メッセージをコピーします",
+	"Streaming response...": "ストリーミング応答...",
+	"Downvote": "ダウンボート",
+	"Editing previously submitted questions will discard all answers and questions following it": "以前に提出された質問を編集すると、それに続くすべての回答と質問が破棄されます"
 }

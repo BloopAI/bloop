@@ -9,14 +9,13 @@ import RepoEntry from '../../Project/LeftSidebar/NavPanel/RepoEntry';
 type Props = {
   onClick: () => void;
   path: string;
-  selectedBranch: string | null;
   repoName?: string;
 };
 
-const FolderChip = ({ onClick, path, repoName, selectedBranch }: Props) => {
+const FolderChip = ({ onClick, path, repoName }: Props) => {
   const fetchFiles = useCallback(
     async (path?: string) => {
-      const resp = await search(buildRepoQuery(repoName, path, selectedBranch));
+      const resp = await search(buildRepoQuery(repoName, path));
       if (!resp.data?.[0]?.data) {
         return [];
       }
@@ -28,7 +27,7 @@ const FolderChip = ({ onClick, path, repoName, selectedBranch }: Props) => {
         }
       });
     },
-    [repoName, selectedBranch],
+    [repoName],
   );
 
   return (

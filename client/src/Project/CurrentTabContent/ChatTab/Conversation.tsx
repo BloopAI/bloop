@@ -6,7 +6,7 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import ScrollToBottom from 'react-scroll-to-bottom';
 import {
   ChatMessage,
@@ -21,11 +21,14 @@ import { DeviceContext } from '../../../context/deviceContext';
 import { ProjectContext } from '../../../context/projectContext';
 import { conversationsCache } from '../../../services/cache';
 import { mapLoadingSteps } from '../../../mappers/conversation';
+import { WarningSignIcon } from '../../../icons';
 import StarterMessage from './StarterMessage';
 import Input from './Input';
 import Message from './Message';
 
-type Props = {};
+type Props = {
+  side: 'left' | 'right';
+};
 
 let prevEventSource: EventSource | undefined;
 
@@ -33,7 +36,7 @@ const focusInput = () => {
   findElementInCurrentTab('.ProseMirror')?.focus();
 };
 
-const Conversation = ({}: Props) => {
+const Conversation = ({ side }: Props) => {
   const { t } = useTranslation();
   const { apiUrl } = useContext(DeviceContext);
   const { project } = useContext(ProjectContext.Current);
@@ -418,16 +421,21 @@ const Conversation = ({}: Props) => {
           isEmptyConversation
           setInputValueImperatively={setInputValueImperatively}
         />
-        {conversation.map((m, i) => (
+        {(hideMessagesFrom === null
+          ? conversation
+          : conversation.slice(0, hideMessagesFrom + 1)
+        ).map((m, i) => (
           <Message
             key={i}
             i={i}
+            side={side}
+            projectId={project?.id!}
             isLoading={m.author === ChatMessageAuthor.Server && m.isLoading}
             loadingSteps={
               m.author === ChatMessageAuthor.Server ? m.loadingSteps : []
             }
             author={m.author}
-            text={m.text}
+            text={m.text || ''}
             parsedQuery={
               m.author === ChatMessageAuthor.Server ? undefined : m.parsedQuery
             }
@@ -458,6 +466,19 @@ const Conversation = ({}: Props) => {
             }
           />
         ))}
+        {hideMessagesFrom !== null && (
+          <div className="flex items-center w-full p-4 gap-4 select-none">
+            <div className="w-7 h-7 flex items-center justify-center rounded-full bg-yellow-subtle text-yellow">
+              <WarningSignIcon sizeClassName="w-3.5 h-3.5" />
+            </div>
+            <p className="text-yellow body-s">
+              <Trans>
+                Editing previously submitted questions will discard all answers
+                and questions following it
+              </Trans>
+            </p>
+          </div>
+        )}
       </ScrollToBottom>
       <Input
         selectedLines={selectedLines}
@@ -465,7 +486,6 @@ const Conversation = ({}: Props) => {
         onStop={stopGenerating}
         submittedQuery={submittedQuery}
         isStoppable={isLoading}
-        loadingSteps={loadingSteps}
         onMessageEditCancel={onMessageEditCancel}
         generationInProgress={
           (conversation[conversation.length - 1] as ChatMessageServer)

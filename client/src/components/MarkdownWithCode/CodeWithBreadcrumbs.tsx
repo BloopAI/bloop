@@ -11,7 +11,6 @@ type Props = {
   startLine: number | null;
   language: string;
   code: string;
-  isSummary?: boolean;
 };
 
 const CodeWithBreadcrumbs = ({
@@ -21,7 +20,6 @@ const CodeWithBreadcrumbs = ({
   startLine,
   language,
   code,
-  isSummary,
 }: Props) => {
   const handleResultClick = useCallback(
     (e: MouseEvent) => {
@@ -42,19 +40,13 @@ const CodeWithBreadcrumbs = ({
 
   return (
     <div
-      className={`text-sm border border-bg-border rounded-md flex-1 overflow-x-auto cursor-pointer ${
-        isSummary ? '' : 'my-4'
-      }`}
+      className={`text-sm border border-bg-border bg-bg-sub rounded-md flex-1 overflow-x-auto cursor-pointer`}
       onClick={handleResultClick}
     >
       <div
         className={`flex items-center justify-between gap-2 w-full border-b border-bg-border bg-bg-base p-2 cursor-pointer overflow-hidden`}
       >
-        <div
-          className={`flex items-center gap-2 w-full cursor-pointer ${
-            isSummary ? '-mt-5' : ''
-          }`}
-        >
+        <div className={`flex items-center gap-2 w-full cursor-pointer`}>
           <FileIcon filename={filePath} />
           {/*<BreadcrumbsPath*/}
           {/*  path={filePath}*/}
@@ -63,12 +55,12 @@ const CodeWithBreadcrumbs = ({
           {/*    type === FileTreeFileType.FILE ? onResultClick(path) : {}*/}
           {/*  }*/}
           {/*/>*/}
-          <span className="ellipsis">{filePath}</span>
+          <span className="ellipsis flex-1">{filePath}</span>
           <CopyButton code={code} isInHeader />
         </div>
       </div>
       <div className="relative">
-        <div className={`relative overflow-x-auto py-4 code-s`}>
+        <div className={`relative overflow-x-auto py-4 code-mini`}>
           <CodeFragment
             code={code}
             language={language}

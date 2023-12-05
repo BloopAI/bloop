@@ -3,6 +3,7 @@ import React, {
   MutableRefObject,
   SetStateAction,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -112,10 +113,21 @@ const FileChip = ({
     }
   }, [isHovered]);
 
+  const lineStyle = useMemo(() => {
+    return {
+      backgroundColor: `rgb(${
+        index > -1
+          ? highlightColors[index % highlightColors.length].join(', ')
+          : ''
+      })`,
+    };
+  }, [index]);
+
   return (
     <button
-      className={`inline-flex items-center bg-bg-shade rounded-4 overflow-hidden 
-                text-label-title hover:text-label-title border border-transparent hover:border-bg-border 
+      className={`h-5 inline-flex items-center bg-bg-base rounded overflow-hidden 
+                text-label-title border border-bg-border
+                hover:border-bg-border-hover hover:bg-bg-base-hover
                 cursor-pointer align-middle ellipsis`}
       ref={ref}
       onClick={onClick}
@@ -123,25 +135,15 @@ const FileChip = ({
       onMouseEnter={() => (setHoveredLines ? setHovered(true) : {})}
     >
       {!!lines && (
-        <span
-          className="w-0.5 h-4 ml-1 rounded-px"
-          style={{
-            width: 2,
-            height: 14,
-            backgroundColor: `rgb(${
-              index > -1
-                ? highlightColors[index % highlightColors.length].join(', ')
-                : ''
-            })`,
-          }}
-        />
+        <span className="w-0.5 h-3.5 ml-1 rounded-px" style={lineStyle} />
       )}
-      <span className="flex gap-1 px-1 py-0.5 items-center border-r border-bg-border code-s ellipsis">
-        {!skipIcon && <FileIcon filename={fileName} noMargin />}
+      <span className="flex gap-1 px-1 items-center body-s ellipsis">
+        {!skipIcon && (
+          <span className="scale-75 -mx-0.5">
+            <FileIcon filename={fileName} noMargin />
+          </span>
+        )}
         <span className="ellipsis">{fileName}</span>
-      </span>
-      <span className="p-1 inline-flex items-center justify-center">
-        <ArrowOutIcon sizeClassName="w-3.5 h-3.5" />
       </span>
     </button>
   );

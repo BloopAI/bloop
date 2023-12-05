@@ -546,5 +546,9 @@
 	"More actions": "Mas acciones",
 	"Hi, I am bloop! In <2><0></0>Chat mode</2> I can answer any questions related to any of your repositories.": "¡Hola, soy Bloop! En <2> <0> </0> Modo de chat </2> Puedo responder cualquier pregunta relacionada con cualquiera de sus repositorios.",
 	"You": "Tú",
-	"Write a message, @ to mention files, folders or docs...": "Escriba un mensaje, @ para mencionar archivos, carpetas o documentos ..."
+	"Write a message, @ to mention files, folders or docs...": "Escriba un mensaje, @ para mencionar archivos, carpetas o documentos ...",
+	"Copy message": "Copiar mensaje",
+	"Streaming response...": "Respuesta de transmisión ...",
+	"Upvote": "Votación superior",
+	"Editing previously submitted questions will discard all answers and questions following it": "La edición de preguntas enviadas previamente descartará todas las respuestas y preguntas que lo sigan"
 }

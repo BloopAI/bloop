@@ -9,8 +9,6 @@ import {
 } from 'react';
 import { ReactMarkdownProps } from 'react-markdown/lib/complex-types';
 import { CodeProps } from 'react-markdown/lib/ast-to-react';
-import { AppNavigationContext } from '../../old_stuff/context/appNavigationContext';
-import { SearchContext } from '../../old_stuff/context/searchContext';
 import { FileHighlightsContext } from '../../context/fileHighlightsContext';
 import LinkRenderer from './LinkRenderer';
 import CodeRenderer from './CodeRenderer';
@@ -21,6 +19,7 @@ type Props = {
   recordId?: number;
   threadId?: string;
   isCodeStudio?: boolean;
+  side: 'left' | 'right';
 };
 
 const MarkdownWithCode = ({
@@ -29,12 +28,9 @@ const MarkdownWithCode = ({
   recordId,
   threadId,
   isCodeStudio,
+  side,
 }: Props) => {
-  const { navigateRepoPath, navigateFullResult } =
-    useContext(AppNavigationContext);
-  const { selectedBranch } = useContext(SearchContext.SelectedBranch);
   const fileChips = useRef([]);
-  const { updateScrollToIndex } = useContext(AppNavigationContext);
   const { setFileHighlights, setHoveredLines } = useContext(
     FileHighlightsContext.Setters,
   );
@@ -61,16 +57,13 @@ const MarkdownWithCode = ({
         return (
           <LinkRenderer
             href={props.href}
-            navigateRepoPath={navigateRepoPath}
-            selectedBranch={selectedBranch}
             fileChips={fileChips}
             hideCode={hideCode}
-            updateScrollToIndex={updateScrollToIndex}
             setFileHighlights={setFileHighlights}
             setHoveredLines={setHoveredLines}
-            navigateFullResult={navigateFullResult}
             recordId={recordId}
             threadId={threadId}
+            side={side}
           >
             {props.children}
           </LinkRenderer>
@@ -80,24 +73,23 @@ const MarkdownWithCode = ({
         return (
           <CodeRenderer
             hideCode={hideCode}
-            updateScrollToIndex={updateScrollToIndex}
             setFileHighlights={setFileHighlights}
             setHoveredLines={setHoveredLines}
             fileChips={fileChips}
             inline={inline}
             className={className}
             propsJSON={JSON.stringify(props)}
-            navigateFullResult={navigateFullResult}
             recordId={recordId}
             threadId={threadId}
             isCodeStudio={isCodeStudio}
+            side={side}
           >
             {children}
           </CodeRenderer>
         );
       },
     };
-  }, [hideCode, updateScrollToIndex, selectedBranch]);
+  }, [hideCode]);
 
   return <ReactMarkdown components={components}>{markdown}</ReactMarkdown>;
 };
