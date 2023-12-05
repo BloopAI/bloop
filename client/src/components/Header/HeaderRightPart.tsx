@@ -1,5 +1,5 @@
 import React, { memo, useCallback, useContext } from 'react';
-import { Trans } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import Button from '../Button';
 import { KLetterIcon, PersonIcon } from '../../icons';
 import Dropdown from '../Dropdown';
@@ -10,6 +10,7 @@ import UserDropdown from './UserDropdown';
 type Props = {};
 
 const HeaderRightPart = ({}: Props) => {
+  useTranslation();
   const { envConfig } = useContext(EnvContext);
   const { setIsVisible } = useContext(CommandBarContext.Handlers);
 

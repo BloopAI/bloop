@@ -6,7 +6,7 @@ import {
   useEffect,
   useState,
 } from 'react';
-import { Trans } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { ChatBubblesIcon } from '../../../icons';
 import { TutorialQuestionType } from '../../../types/api';
 import { getTutorialQuestions } from '../../../services/api';
@@ -21,6 +21,7 @@ const StarterMessage = ({
   isEmptyConversation,
   setInputValueImperatively,
 }: Props) => {
+  useTranslation();
   const [tutorials, setTutorials] = useState<TutorialQuestionType[]>([]);
   const { project } = useContext(ProjectContext.Current);
 

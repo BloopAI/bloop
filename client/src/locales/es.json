@@ -549,6 +549,8 @@
 	"Write a message, @ to mention files, folders or docs...": "Escriba un mensaje, @ para mencionar archivos, carpetas o documentos ...",
 	"Copy message": "Copiar mensaje",
 	"Streaming response...": "Respuesta de transmisión ...",
-	"Upvote": "Votación superior",
-	"Editing previously submitted questions will discard all answers and questions following it": "La edición de preguntas enviadas previamente descartará todas las respuestas y preguntas que lo sigan"
+	"Upvote": "Votar a favor",
+	"Downvote": "Voto descendente",
+	"Editing previously submitted questions will discard all answers and questions following it": "La edición de preguntas enviadas previamente descartará todas las respuestas y preguntas que lo sigan",
+	"Below are a few suggestions you can ask me to get started:": "A continuación hay algunas sugerencias que puede pedirme que comience:"
 }

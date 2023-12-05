@@ -16,7 +16,7 @@ import useKeyboardNavigation from '../../hooks/useKeyboardNavigation';
 type Props = {
   dropdownPlacement?: TippyProps['placement'];
   appendTo?: TippyProps['appendTo'];
-  size?: 'small' | 'medium' | 'large';
+  size?: 'small' | 'medium' | 'large' | 'auto';
   dropdownItems: ReactElement;
   containerClassName?: string;
   onVisibilityChange?: (isVisible: boolean) => void;
@@ -27,6 +27,7 @@ const sizesMap = {
   small: 'w-52',
   medium: 'w-72',
   large: 'w-100',
+  auto: 'min-w-sm',
 };
 
 const transformOriginMap = {

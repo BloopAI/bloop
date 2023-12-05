@@ -50,7 +50,7 @@ const AddTabButton = ({ tabsLength }: Props) => {
           </div>
         </div>
       }
-      size="small"
+      size="auto"
       dropdownPlacement={tabsLength > 1 ? 'bottom-end' : 'bottom-start'}
     >
       <Button variant="tertiary" size="small" onlyIcon title={t('Add tab')}>
