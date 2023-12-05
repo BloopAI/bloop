@@ -57,7 +57,7 @@ const ConversationMessage = ({
         <p className="body-base-b text-label-title select-none">
           {author === ChatMessageAuthor.User ? <Trans>You</Trans> : 'bloop'}
         </p>
-        <p className="text-label-title body-base code-studio-md break-word overflow-auto">
+        <div className="text-label-title body-base code-studio-md break-word overflow-auto">
           {author === ChatMessageAuthor.Server ? (
             <MarkdownWithCode
               markdown={text!}
@@ -67,7 +67,7 @@ const ConversationMessage = ({
           ) : (
             <UserParsedQuery textQuery={text!} parsedQuery={parsedQuery} />
           )}
-        </p>
+        </div>
       </div>
     </div>
   );

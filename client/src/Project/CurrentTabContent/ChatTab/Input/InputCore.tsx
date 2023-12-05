@@ -203,7 +203,7 @@ const InputCore = ({
         nodeViews={nodeViews}
         dispatchTransaction={dispatchTransaction}
       >
-        <div ref={setMount} />
+        <div ref={setMount} autoCorrect="off" />
         {renderNodeViews()}
       </ProseMirror>
     </div>

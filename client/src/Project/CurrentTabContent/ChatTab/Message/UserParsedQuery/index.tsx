@@ -13,7 +13,7 @@ type Props = {
 
 const UserParsedQuery = ({ textQuery, parsedQuery }: Props) => {
   return (
-    <div className="">
+    <span className="">
       {parsedQuery
         ? parsedQuery.map((p, i) =>
             p.type === ParsedQueryTypeEnum.TEXT ? (
@@ -25,7 +25,7 @@ const UserParsedQuery = ({ textQuery, parsedQuery }: Props) => {
             ) : null,
           )
         : textQuery}
-    </div>
+    </span>
   );
 };
 
