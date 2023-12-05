@@ -6,18 +6,25 @@ use crate::{
     Application,
 };
 
+#[derive(serde::Serialize)]
+pub struct ListItem {
+    // TODO: Can we remove this in favour of just the `repo_ref`?
+    repo: Repo,
+    branch: Option<String>,
+}
+
 pub async fn list(
     app: Extension<Application>,
     user: Extension<User>,
     Path(project_id): Path<i64>,
-) -> webserver::Result<Json<Vec<Repo>>> {
+) -> webserver::Result<Json<Vec<ListItem>>> {
     let user_id = user
         .username()
         .ok_or_else(webserver::no_user_id)?
         .to_string();
 
-    let repos = sqlx::query! {
-        "SELECT repo_ref
+    let list = sqlx::query! {
+        "SELECT repo_ref, branch
         FROM project_repos
         WHERE project_id = $1 AND EXISTS (
             SELECT p.id
@@ -30,18 +37,26 @@ pub async fn list(
     .fetch_all(&*app.sql)
     .await?
     .into_iter()
-    .filter_map(|row| row.repo_ref.parse().ok())
-    .filter_map(|repo_ref| app.repo_pool.get(&repo_ref))
-    .map(|entry| Repo::from((entry.key(), entry.get())))
+    .filter_map(|row| {
+        let repo_ref = row.repo_ref.parse().ok()?;
+        let entry = app.repo_pool.get(&repo_ref)?;
+        let repo = Repo::from((entry.key(), entry.get()));
+
+        Some(ListItem {
+            repo,
+            branch: row.branch,
+        })
+    })
     .collect();
 
-    Ok(Json(repos))
+    Ok(Json(list))
 }
 
 #[derive(serde::Deserialize)]
 pub struct Add {
     #[serde(rename = "ref")]
     repo_ref: RepoRef,
+    branch: Option<String>,
 }
 
 pub async fn add(
@@ -67,9 +82,10 @@ pub async fn add(
     let repo_ref = params.repo_ref.to_string();
 
     sqlx::query! {
-        "INSERT INTO project_repos (project_id, repo_ref) VALUES ($1, $2)",
+        "INSERT INTO project_repos (project_id, repo_ref, branch) VALUES ($1, $2, $3)",
         project_id,
         repo_ref,
+        params.branch,
     }
     .execute(&*app.sql)
     .await

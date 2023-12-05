@@ -451,13 +451,12 @@ impl Agent {
         &'a self,
         query: &str,
     ) -> impl Iterator<Item = FileDocument> + 'a {
-        let branch = self.last_exchange().query.first_branch();
         let langs = self.last_exchange().query.langs.iter().map(Deref::deref);
 
         let user_id = self.user.username().expect("didn't have user ID");
 
-        let repos = sqlx::query! {
-            "SELECT pr.repo_ref
+        let (repos, branches): (Vec<_>, Vec<_>) = sqlx::query! {
+            "SELECT pr.repo_ref, pr.branch
             FROM project_repos pr
             INNER JOIN projects p ON p.id = pr.project_id AND p.user_id = ?",
             user_id,
@@ -466,13 +465,19 @@ impl Agent {
         .await
         .expect("failed to fetch repo associations")
         .into_iter()
-        .filter_map(|r| RepoRef::from_str(&r.repo_ref).ok());
+        .filter_map(|row| {
+            let repo_ref = RepoRef::from_str(&row.repo_ref).ok()?;
+            Some((repo_ref, row.branch))
+        })
+        .unzip();
+
+        let branch = branches.first().cloned().flatten();
 
         debug!(?query, ?branch, %self.conversation.thread_id, "executing fuzzy search");
         self.app
             .indexes
             .file
-            .fuzzy_path_match(repos, branch.as_deref(), query, langs, 50)
+            .fuzzy_path_match(repos.into_iter(), branch.as_deref(), query, langs, 50)
             .await
     }
 
