@@ -21,7 +21,7 @@ mod config;
 mod docs;
 mod file;
 mod github;
-mod hoverable;
+pub mod hoverable;
 mod index;
 pub mod intelligence;
 pub mod middleware;

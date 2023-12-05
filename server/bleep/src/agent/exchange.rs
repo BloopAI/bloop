@@ -3,6 +3,11 @@ use std::fmt;
 
 use chrono::prelude::{DateTime, Utc};
 use rand::seq::SliceRandom;
+use crate::intelligence::code_navigation::FileSymbols;
+use crate::indexes::Indexes;
+use std::sync::Arc;
+use crate::webserver::hoverable::{inner_handle, HoverableRequest};
+use crate::webserver::intelligence::{inner_handle as token_info, TokenInfoRequest};
 
 /// A continually updated conversation exchange.
 ///
@@ -188,7 +193,82 @@ pub struct CodeChunk {
     pub start_line: usize,
     #[serde(rename = "end")]
     pub end_line: usize,
+    
 }
+
+fn extract_chars_from_line(input: &str, line_number: usize, start_col: usize, end_col: usize) -> Option<String> {
+    let lines: Vec<&str> = input.lines().collect();
+
+    if let Some(line) = lines.get(line_number) {
+        let mut char_indices = line.char_indices();
+
+        let start_byte = char_indices.nth(start_col)?.0;
+        let end_byte = char_indices.nth(end_col - start_col - 1)?.0;
+
+        return Some(line[start_byte..end_byte].to_string());
+    }
+    None
+}
+
+pub struct ChunkRefDef {
+    pub chunk: CodeChunk,
+    pub metadata: Vec<RefDefMetadata>,
+    
+}
+
+impl ChunkRefDef {
+    pub async fn new(chunk: CodeChunk, repo_ref: String, indexes: Arc<Indexes>) -> Self {
+        // get hoverable elements
+        let hoverable_request = HoverableRequest{
+            repo_ref: repo_ref.clone(),
+            relative_path: chunk.path.clone(),
+            branch: None,
+        };
+        let hoverable_response = inner_handle(
+            hoverable_request,
+            indexes.clone()
+        ).await.expect("hoverable response failed");
+
+        // for each element call token-info
+        let token_info_vec = hoverable_response.ranges.iter().filter(
+            |range| (range.start.line >= chunk.start_line) & (range.start.line < chunk.end_line)
+        ).map(|range| token_info(TokenInfoRequest{
+            relative_path: chunk.path.clone(),
+            repo_ref: repo_ref.clone(),
+            branch: None,
+            start: range.start.byte,
+            end: range.end.byte,
+        }, indexes.clone()));
+
+        let token_info_vec = futures::future::join_all(token_info_vec).await.into_iter()
+        .map(|response| response.unwrap()).collect::<Vec<_>>();
+
+        // add metadata and return self
+        
+        
+        Self {
+            chunk: chunk.clone(),
+            metadata: token_info_vec.into_iter().zip(hoverable_response.ranges.into_iter())
+            .map(|(token_info, range)| 
+            RefDefMetadata{name: extract_chars_from_line(chunk.snippet.clone().as_str(), range.start.line - chunk.start_line, range.start.column, range.end.column).unwrap(),
+                 file_symbols:token_info.data})
+                 .collect(),
+        }
+    }
+}
+
+impl fmt::Display for ChunkRefDef {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // TODO add metadata
+        write!(f, "{}", self.chunk)
+    }
+}
+
+pub struct RefDefMetadata{
+    pub name: String,
+    pub file_symbols: Vec<FileSymbols>,
+}
+
 
 impl CodeChunk {
     /// Returns true if a code-chunk contains an empty snippet or a snippet with only whitespace
