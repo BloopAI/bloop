@@ -1,17 +1,17 @@
-import React, { memo, useCallback, useContext } from 'react';
+import React, { memo, useContext } from 'react';
 import { useDrop } from 'react-dnd';
 import { Trans } from 'react-i18next';
 import { TabsContext } from '../../context/tabsContext';
-import { DraggableTabItem, FileTabType } from '../../types/general';
+import { DraggableTabItem, TabType, TabTypesEnum } from '../../types/general';
 import { SplitViewIcon } from '../../icons';
 import EmptyTab from './EmptyTab';
 import FileTab from './FileTab';
 import Header from './Header';
-import DropTarget from './DropTarget';
+import ChatTab from './ChatTab';
 
 type Props = {
   side: 'left' | 'right';
-  onDrop: (t: FileTabType) => void;
+  onDrop: (t: TabType) => void;
   shouldStretch?: boolean;
 };
 
@@ -43,12 +43,14 @@ const CurrentTabContent = ({ side, onDrop, shouldStretch }: Props) => {
     >
       <Header side={side} />
       <div className="overflow-hidden h-full flex-1 relative" ref={drop}>
-        {tab ? (
+        {tab?.type === TabTypesEnum.FILE ? (
           <FileTab
             path={tab.path}
             repoName={tab.repoName}
             noBorder={side === 'left'}
           />
+        ) : tab?.type === TabTypesEnum.CHAT ? (
+          <ChatTab noBorder={side === 'left'} />
         ) : (
           <EmptyTab />
         )}

@@ -394,4 +394,9 @@ export type ProjectShortType = {
 
 export type ProjectFullType = ProjectShortType & {
   repos: RepoType[];
+  conversations: {
+    created_at: number;
+    thread_id: string;
+    title: string;
+  }[];
 };

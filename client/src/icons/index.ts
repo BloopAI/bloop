@@ -104,7 +104,7 @@ export { default as Info } from './Info';
 export { default as Unlike } from './Unlike';
 export { default as Clock } from './Clock';
 export { default as SortAlphabetical } from './SortAlphabetical';
-export { default as ArrowOut } from './ArrowOut';
+export { default as ArrowOutIcon } from './ArrowOut';
 export { default as Sparkles } from './Sparkles';
 export { default as ArrowJumpLeft } from './ArrowJumpLeft';
 export { default as Def } from './Def';

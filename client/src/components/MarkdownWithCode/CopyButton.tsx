@@ -1,8 +1,8 @@
 import React, { memo, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import Button from '../../../components/Button';
-import { copyToClipboard } from '../../../utils';
-import { CheckIcon, Clipboard, CopyMD } from '../../../icons';
+import Button from '../Button';
+import { copyToClipboard } from '../../utils';
+import { CheckIcon, Clipboard, CopyMD } from '../../icons';
 
 type Props = {
   isInHeader?: boolean;
@@ -36,7 +36,7 @@ const CopyButton = ({ isInHeader, code, className }: Props) => {
     >
       <Button
         variant="secondary"
-        size={isInHeader ? 'tiny' : 'small'}
+        size={isInHeader ? 'mini' : 'small'}
         onClick={onClick}
       >
         {codeCopied ? (

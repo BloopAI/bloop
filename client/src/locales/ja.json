@@ -531,5 +531,9 @@
 	"Public": "公共",
 	"Display": "画面",
 	"GitHub": "github",
-	"Open in {{viewer}}": "{{viewer}}で開く"
+	"Open in {{viewer}}": "{{viewer}}で開く",
+	"More actions": "より多くのアクション",
+	"Below are a few suggestions you can ask me to get started:": "以下は、あなたが私に始めるように頼むことができるいくつかの提案です：",
+	"You": "あなた",
+	"Write a message, @ to mention files, folders or docs...": "メッセージを書く @ファイル、フォルダー、またはドキュメントに言及するために..."
 }

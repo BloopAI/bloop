@@ -1,7 +1,6 @@
-import Code from '../../../components/CodeBlock/Code';
-import { getFileExtensionForLang, getPrettyLangName } from '../../../utils';
-import FileIcon from '../../../components/FileIcon';
-import BreadcrumbsPath from '../../../components/BreadcrumbsPath';
+import { getFileExtensionForLang, getPrettyLangName } from '../../utils';
+import FileIcon from '../FileIcon';
+import CodeFragment from '../Code/CodeFragment';
 import CopyButton from './CopyButton';
 
 type Props = {
@@ -24,17 +23,13 @@ const NewCode = ({
       className={`${
         !isSummary
           ? isCodeStudio
-            ? 'my-4 bg-bg-sub text-xs border-bg-border'
-            : 'my-4 bg-chat-bg-base text-sm border-chat-bg-divider'
-          : 'bg-chat-bg-sub text-sm'
-      } border rounded-md relative group-code`}
+            ? ' bg-bg-sub text-xs'
+            : ' text-sm'
+          : 'text-sm'
+      } my-4 border border-bg-border rounded-md relative group-code`}
     >
       <div
-        className={`${
-          isCodeStudio
-            ? 'bg-bg-shade border-bg-border'
-            : 'bg-chat-bg-shade border-chat-bg-divider'
-        } border-b rounded-t-md p-2 flex items-center justify-between gap-2`}
+        className={`border-bg-border border-b bg-bg-base rounded-t-md p-2 flex items-center justify-between gap-2`}
       >
         <div className="flex items-center gap-2 overflow-hidden flex-1">
           <FileIcon
@@ -42,7 +37,7 @@ const NewCode = ({
             noMargin
           />
           {filePath ? (
-            <BreadcrumbsPath path={filePath} repo={''} nonInteractive />
+            <span>BreadcrumbsPath nonInteractive</span>
           ) : (
             <span className="caption-strong">
               {getPrettyLangName(language) || language}
@@ -52,7 +47,12 @@ const NewCode = ({
         <CopyButton isInHeader code={code} />
       </div>
       <div className={`overflow-auto ${isCodeStudio ? 'p-2' : 'py-2 code-s'}`}>
-        <Code showLines={false} code={code} language={language} canWrap />
+        <CodeFragment
+          showLines={false}
+          code={code}
+          language={language}
+          canWrap
+        />
       </div>
     </div>
   );

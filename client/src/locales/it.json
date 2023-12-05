@@ -508,5 +508,9 @@
 	"Public": "Pubblica",
 	"Display": "Schermo",
 	"GitHub": "Github",
-	"Open in GitHub": "Aperto in Github"
+	"Open in GitHub": "Aperto in Github",
+	"More actions": "Più azioni",
+	"Below are a few suggestions you can ask me to get started:": "Di seguito sono riportati alcuni suggerimenti che puoi chiedermi di iniziare:",
+	"You": "Voi",
+	"Write a message, @ to mention files, folders or docs...": "Scrivi un messaggio, @ per menzionare file, cartelle o documenti ..."
 }

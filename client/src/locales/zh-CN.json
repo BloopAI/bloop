@@ -537,5 +537,9 @@
 	"Private": "私人的",
 	"Display": "展示",
 	"GitHub": "github",
-	"Open in {{viewer}}": "在{{viewer}}中打开"
+	"Open in {{viewer}}": "在{{viewer}}中打开",
+	"More actions": "更多操作",
+	"Below are a few suggestions you can ask me to get started:": "以下是您可以要求我开始的一些建议：",
+	"You": "你",
+	"Write a message, @ to mention files, folders or docs...": "写一条消息， @以提及文件，文件夹或文档..."
 }

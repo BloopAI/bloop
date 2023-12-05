@@ -50,7 +50,12 @@ const FileTab = ({ repoName, path, noBorder }: Props) => {
           <FileIcon filename={path} noMargin />
           {splitPath(path).slice(-2).join('/')}
         </div>
-        <Button variant="tertiary" size="mini" onlyIcon title={t('')}>
+        <Button
+          variant="tertiary"
+          size="mini"
+          onlyIcon
+          title={t('More actions')}
+        >
           <MoreHorizontalIcon sizeClassName="w-3.5 h-3.5" />
         </Button>
       </div>

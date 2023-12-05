@@ -88,13 +88,27 @@ export type CodeStudioShortType = {
   most_common_ext: string;
 };
 
+export enum TabTypesEnum {
+  FILE = 'file',
+  CHAT = 'chat',
+}
+
 export type FileTabType = {
+  type: TabTypesEnum.FILE;
+  key: string;
   path: string;
   repoName: string;
-  key: string;
+  repoRef: string;
 };
 
-export type TabType = FileTabType;
+export type ChatTabType = {
+  type: TabTypesEnum.CHAT;
+  key: string;
+  threadId?: string;
+  name?: string;
+};
+
+export type TabType = FileTabType | ChatTabType;
 
 export type DraggableTabItem = {
   id: string;
@@ -483,3 +497,21 @@ export enum ProjectSettingSections {
 }
 
 export type SettingsTypesSections = SettingSections | ProjectSettingSections;
+
+type InputEditorTextContent = {
+  type: 'text';
+  text: string;
+};
+
+type InputEditorMentionContent = {
+  type: 'mention';
+  attrs: {
+    type: 'lang' | 'path';
+    id: string;
+    display: string;
+  };
+};
+
+export type InputEditorContent =
+  | InputEditorTextContent
+  | InputEditorMentionContent;

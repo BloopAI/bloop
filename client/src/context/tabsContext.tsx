@@ -1,8 +1,17 @@
 import { createContext, Dispatch, SetStateAction } from 'react';
-import { TabType } from '../types/general';
+import { TabType, TabTypesEnum } from '../types/general';
 
 type HandlersContextType = {
-  openNewTab: (path: string, repoName: string) => void;
+  openNewTab: (
+    data:
+      | {
+          type: TabTypesEnum.FILE;
+          path: string;
+          repoRef: string;
+          repoName: string;
+        }
+      | { type: TabTypesEnum.CHAT },
+  ) => void;
   closeTab: (key: string, side: 'left' | 'right') => void;
   setActiveLeftTab: Dispatch<SetStateAction<TabType | null>>;
   setActiveRightTab: Dispatch<SetStateAction<TabType | null>>;
@@ -13,7 +22,7 @@ type HandlersContextType = {
 
 export const TabsContext = {
   Handlers: createContext<HandlersContextType>({
-    openNewTab: (path: string, repoName: string) => {},
+    openNewTab: () => {},
     closeTab: (key: string, side: 'left' | 'right') => {},
     setActiveLeftTab: () => {},
     setActiveRightTab: () => {},

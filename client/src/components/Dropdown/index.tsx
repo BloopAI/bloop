@@ -102,7 +102,7 @@ const Dropdown = ({
        } shadow-high ${sizesMap[size]} flex flex-col gap-1 select-none`}
           onClick={handleClose}
         >
-          {dropdownItems}
+          {isVisible && dropdownItems}
         </div>
       );
     },

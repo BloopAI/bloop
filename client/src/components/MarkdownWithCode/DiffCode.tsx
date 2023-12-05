@@ -1,13 +1,12 @@
 import React, { useCallback, useContext, useMemo, useState } from 'react';
-import Code from '../../../components/CodeBlock/Code';
-import Button from '../../../components/Button';
-import { Clipboard } from '../../../icons';
-import { copyToClipboard } from '../../../utils';
-import FileIcon from '../../../components/FileIcon';
-import { MessageResultModify } from '../../types/general';
-import { FileTreeFileType } from '../../../types';
-import BreadcrumbsPath from '../../../components/BreadcrumbsPath';
-import { FileModalContext } from '../../context/fileModalContext';
+import Button from '../Button';
+import { Clipboard } from '../../icons';
+import { copyToClipboard } from '../../utils';
+import FileIcon from '../FileIcon';
+import { MessageResultModify } from '../../old_stuff/types/general';
+import { FileTreeFileType } from '../../types';
+import { FileModalContext } from '../../old_stuff/context/fileModalContext';
+import CodeFragment from '../Code/CodeFragment';
 
 type Props = {
   data: MessageResultModify['Modify'];
@@ -39,13 +38,13 @@ const DiffCode = ({ data, repoName }: Props) => {
           onClick={() => onResultClick(data.path)}
         >
           <FileIcon filename={data.path} />
-          <BreadcrumbsPath
-            path={data.path}
-            repo={repoName}
-            onClick={(path, type) =>
-              type === FileTreeFileType.FILE ? onResultClick(path) : {}
-            }
-          />
+          {/*<BreadcrumbsPath*/}
+          {/*  path={data.path}*/}
+          {/*  repo={repoName}*/}
+          {/*  onClick={(path, type) =>*/}
+          {/*    type === FileTreeFileType.FILE ? onResultClick(path) : {}*/}
+          {/*  }*/}
+          {/*/>*/}
         </div>
         <div className="flex items-center justify-center p-0.5 gap-0.5 bg-bg-sub rounded-4">
           <button
@@ -73,7 +72,7 @@ const DiffCode = ({ data, repoName }: Props) => {
       {data.diff?.lines ? (
         <div className="relative py-4">
           <div className="overflow-auto">
-            <Code
+            <CodeFragment
               lineStart={data.diff.header?.old_start}
               code={showRaw ? rawCode : data.diff.lines?.join('\n')}
               language={data.language}

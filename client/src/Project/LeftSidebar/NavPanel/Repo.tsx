@@ -121,6 +121,7 @@ const RepoNav = ({ repoName, repoRef, i, isExpanded, setExpanded }: Props) => {
             fetchFiles={fetchFiles}
             fullPath={f.name}
             repoRef={repoRef}
+            repoName={repoName}
             refetchParentFolder={refetchParentFolder}
           />
         ))}

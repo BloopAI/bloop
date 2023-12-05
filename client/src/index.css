@@ -1160,3 +1160,43 @@ h5, .h5 {
 .padding-start > *:first-child {
   padding-left: 32px;
 }
+
+/* prose mirror editor start */
+.ProseMirror {
+  max-height: 40vh;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+.ProseMirror pre code {
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.ProseMirror pre {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.ProseMirror:focus {
+  outline: none;
+}
+
+.ProseMirror[data-placeholder]::before {
+  color: rgb(var(--label-muted));
+  position: absolute;
+  content: attr(data-placeholder);
+  pointer-events: none;
+}
+
+img.ProseMirror-separator {
+  display: inline !important;
+  border: none !important;
+  margin: 0 !important;
+}
+
+.suggestion-item-active .suggestion-item {
+  @apply bg-bg-base-hover
+}
+/* prose mirror editor end */

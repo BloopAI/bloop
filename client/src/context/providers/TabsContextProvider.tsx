@@ -1,6 +1,11 @@
 import { memo, PropsWithChildren, useCallback, useMemo, useState } from 'react';
 import { TabsContext } from '../tabsContext';
-import { TabType } from '../../types/general';
+import {
+  ChatTabType,
+  FileTabType,
+  TabType,
+  TabTypesEnum,
+} from '../../types/general';
 
 type Props = {};
 
@@ -12,13 +17,34 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
   const [focusedPanel, setFocusedPanel] = useState<'left' | 'right'>('left');
 
   const openNewTab = useCallback(
-    (path: string, repoName: string) => {
+    (
+      data:
+        | {
+            type: TabTypesEnum.FILE;
+            path: string;
+            repoRef: string;
+            repoName: string;
+          }
+        | { type: TabTypesEnum.CHAT },
+    ) => {
       const setTabsAction =
         focusedPanel === 'left' ? setLeftTabs : setRightTabs;
       const setActiveTabAction =
         focusedPanel === 'left' ? setActiveLeftTab : setActiveRightTab;
       setTabsAction((prev) => {
-        const newTab = { path, repoName, key: `${repoName}-${path}` };
+        const newTab: FileTabType | ChatTabType =
+          data.type === TabTypesEnum.FILE && data.path && data.repoRef
+            ? {
+                path: data.path,
+                repoRef: data.repoRef,
+                repoName: data.repoName,
+                key: `${data.repoRef}-${data.path}`,
+                type: TabTypesEnum.FILE,
+              }
+            : {
+                type: TabTypesEnum.CHAT,
+                key: Date.now().toString(),
+              };
         setActiveTabAction(newTab);
         if (!prev.find((t) => t.key === newTab.key)) {
           return [...prev, newTab];

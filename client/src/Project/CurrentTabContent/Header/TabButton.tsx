@@ -1,11 +1,21 @@
-import { memo, useCallback, useContext, MouseEvent, useRef } from 'react';
+import React, {
+  memo,
+  MouseEvent,
+  useCallback,
+  useContext,
+  useRef,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDrag, useDrop } from 'react-dnd';
-import { DraggableTabItem, TabType } from '../../../types/general';
+import {
+  DraggableTabItem,
+  TabType,
+  TabTypesEnum,
+} from '../../../types/general';
 import FileIcon from '../../../components/FileIcon';
 import { splitPath } from '../../../utils';
 import Button from '../../../components/Button';
-import { CloseSignIcon } from '../../../icons';
+import { ChatBubblesIcon, CloseSignIcon } from '../../../icons';
 import { TabsContext } from '../../../context/tabsContext';
 
 type Props = TabType & {
@@ -15,13 +25,20 @@ type Props = TabType & {
   isOnlyTab: boolean;
   moveTab: (i: number, j: number) => void;
   i: number;
+  repoRef?: string;
+  path?: string;
+  threadId?: string;
+  name?: string;
 };
 
 const TabButton = ({
   isActive,
   tabKey,
-  repoName,
+  repoRef,
   path,
+  threadId,
+  type,
+  name,
   side,
   moveTab,
   isOnlyTab,
@@ -82,7 +99,13 @@ const TabButton = ({
     type: `tab-${side}`,
     canDrag: side !== 'left' || !isOnlyTab,
     item: (): DraggableTabItem => {
-      return { id: tabKey, index: i, t: { key: tabKey, repoName, path }, side };
+      return {
+        id: tabKey,
+        index: i,
+        // @ts-ignore
+        t: { key: tabKey, repoRef, path, type, threadId, name },
+        side,
+      };
     },
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
@@ -100,9 +123,10 @@ const TabButton = ({
 
   const handleClick = useCallback(() => {
     const setAction = side === 'left' ? setActiveLeftTab : setActiveRightTab;
-    setAction({ path, repoName, key: tabKey });
+    // @ts-ignore
+    setAction({ path, repoRef, key: tabKey, type, threadId, name });
     setFocusedPanel(side);
-  }, [path, repoName, tabKey, side]);
+  }, [path, repoRef, tabKey, side]);
 
   return (
     <a
@@ -118,13 +142,20 @@ const TabButton = ({
       } hover:bg-bg-base-hover transition duration-75 ease-in-out select-none`}
       data-handler-id={handlerId}
     >
-      <FileIcon filename={path} noMargin />
+      {type === TabTypesEnum.FILE ? (
+        <FileIcon filename={path} noMargin />
+      ) : (
+        <ChatBubblesIcon
+          sizeClassName="w-4 h-4"
+          className="text-brand-default"
+        />
+      )}
       <p
         className={`body-mini-b ellipsis group-hover:text-label-title flex-1 ${
           isActive ? 'text-label-title' : 'text-label-muted'
         } transition duration-75 ease-in-out`}
       >
-        {splitPath(path).pop()}
+        {type === TabTypesEnum.FILE ? splitPath(path).pop() : 'New chat'}
       </p>
       <Button
         variant="ghost"

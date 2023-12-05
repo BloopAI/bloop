@@ -17,6 +17,7 @@ import {
   createProject,
   getAllProjects,
   getProject,
+  getProjectConversations,
   getProjectRepos,
 } from '../../services/api';
 import { ProjectFullType, ProjectShortType } from '../../types/api';
@@ -36,13 +37,19 @@ const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
       setProject((prev) => (prev ? { ...prev, repos: r } : null));
     });
   }, [currentProjectId]);
+  const refreshCurrentProjectConversations = useCallback(async () => {
+    getProjectConversations(currentProjectId).then((r) => {
+      setProject((prev) => (prev ? { ...prev, conversations: r } : null));
+    });
+  }, [currentProjectId]);
 
   const refreshCurrentProject = useCallback(() => {
     if (currentProjectId) {
       getProject(currentProjectId)
         .then((p) => {
-          setProject({ ...p, repos: [] });
+          setProject({ ...p, repos: [], conversations: [] });
           refreshCurrentProjectRepos();
+          refreshCurrentProjectConversations();
         })
         .catch((err) => {
           console.log(err);

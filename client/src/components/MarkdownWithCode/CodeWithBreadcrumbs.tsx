@@ -1,8 +1,7 @@
 import React, { useCallback, MouseEvent } from 'react';
-import FileIcon from '../../../components/FileIcon';
-import BreadcrumbsPath from '../../../components/BreadcrumbsPath';
-import { FileTreeFileType } from '../../../types';
-import Code from '../../../components/CodeBlock/Code';
+import FileIcon from '../FileIcon';
+import { FileTreeFileType } from '../../types';
+import CodeFragment from '../Code/CodeFragment';
 import CopyButton from './CopyButton';
 
 type Props = {
@@ -43,17 +42,13 @@ const CodeWithBreadcrumbs = ({
 
   return (
     <div
-      className={`text-sm border border-chat-bg-divider rounded-md flex-1 overflow-x-auto cursor-pointer ${
+      className={`text-sm border border-bg-border rounded-md flex-1 overflow-x-auto cursor-pointer ${
         isSummary ? '' : 'my-4'
       }`}
       onClick={handleResultClick}
     >
       <div
-        className={`flex items-center justify-between gap-2 w-full border-b ${
-          isSummary
-            ? 'bg-chat-bg-sub'
-            : 'bg-chat-bg-shade border-chat-bg-divider'
-        } p-2 cursor-pointer overflow-hidden`}
+        className={`flex items-center justify-between gap-2 w-full border-b border-bg-border bg-bg-base p-2 cursor-pointer overflow-hidden`}
       >
         <div
           className={`flex items-center gap-2 w-full cursor-pointer ${
@@ -61,19 +56,20 @@ const CodeWithBreadcrumbs = ({
           }`}
         >
           <FileIcon filename={filePath} />
-          <BreadcrumbsPath
-            path={filePath}
-            repo={repoName || ''}
-            onClick={(path, type) =>
-              type === FileTreeFileType.FILE ? onResultClick(path) : {}
-            }
-          />
+          {/*<BreadcrumbsPath*/}
+          {/*  path={filePath}*/}
+          {/*  repo={repoName || ''}*/}
+          {/*  onClick={(path, type) =>*/}
+          {/*    type === FileTreeFileType.FILE ? onResultClick(path) : {}*/}
+          {/*  }*/}
+          {/*/>*/}
+          <span className="ellipsis">{filePath}</span>
           <CopyButton code={code} isInHeader />
         </div>
       </div>
       <div className="relative">
-        <div className={`relative overflow-x-auto py-4 bg-chat-bg-base code-s`}>
-          <Code
+        <div className={`relative overflow-x-auto py-4 code-s`}>
+          <CodeFragment
             code={code}
             language={language}
             showLines={startLine !== null}

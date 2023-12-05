@@ -9,14 +9,13 @@ import {
 } from 'react';
 import { ReactMarkdownProps } from 'react-markdown/lib/complex-types';
 import { CodeProps } from 'react-markdown/lib/ast-to-react';
-import { AppNavigationContext } from '../../context/appNavigationContext';
-import { SearchContext } from '../../context/searchContext';
-import { FileHighlightsContext } from '../../../context/fileHighlightsContext';
+import { AppNavigationContext } from '../../old_stuff/context/appNavigationContext';
+import { SearchContext } from '../../old_stuff/context/searchContext';
+import { FileHighlightsContext } from '../../context/fileHighlightsContext';
 import LinkRenderer from './LinkRenderer';
 import CodeRenderer from './CodeRenderer';
 
 type Props = {
-  repoName?: string;
   markdown: string;
   hideCode?: boolean;
   recordId?: number;
@@ -25,7 +24,6 @@ type Props = {
 };
 
 const MarkdownWithCode = ({
-  repoName,
   markdown,
   hideCode,
   recordId,
@@ -64,7 +62,6 @@ const MarkdownWithCode = ({
           <LinkRenderer
             href={props.href}
             navigateRepoPath={navigateRepoPath}
-            repoName={repoName}
             selectedBranch={selectedBranch}
             fileChips={fileChips}
             hideCode={hideCode}
@@ -88,7 +85,6 @@ const MarkdownWithCode = ({
             setHoveredLines={setHoveredLines}
             fileChips={fileChips}
             inline={inline}
-            repoName={repoName}
             className={className}
             propsJSON={JSON.stringify(props)}
             navigateFullResult={navigateFullResult}
@@ -101,7 +97,7 @@ const MarkdownWithCode = ({
         );
       },
     };
-  }, [repoName, hideCode, updateScrollToIndex, selectedBranch]);
+  }, [hideCode, updateScrollToIndex, selectedBranch]);
 
   return <ReactMarkdown components={components}>{markdown}</ReactMarkdown>;
 };

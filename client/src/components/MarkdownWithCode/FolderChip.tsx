@@ -1,12 +1,10 @@
-import React, { useCallback, useContext } from 'react';
-import { ArrowOut, FolderClosed } from '../../../icons';
-import DirEntry from '../IdeNavigation/DirEntry';
-import { search } from '../../../services/api';
-import { buildRepoQuery } from '../../../utils';
-import { Directory } from '../../../types/api';
-import { SyncStatus } from '../../types/general';
-import { AppNavigationContext } from '../../context/appNavigationContext';
-import OverflowTracker from '../../../components/OverflowTracker';
+import React, { useCallback } from 'react';
+import { ArrowOutIcon, FolderIcon } from '../../icons';
+import { search } from '../../services/api';
+import { buildRepoQuery } from '../../utils';
+import { Directory } from '../../types/api';
+import OverflowTracker from '../OverflowTracker';
+import RepoEntry from '../../Project/LeftSidebar/NavPanel/RepoEntry';
 
 type Props = {
   onClick: () => void;
@@ -16,7 +14,6 @@ type Props = {
 };
 
 const FolderChip = ({ onClick, path, repoName, selectedBranch }: Props) => {
-  const { navigateFullResult } = useContext(AppNavigationContext);
   const fetchFiles = useCallback(
     async (path?: string) => {
       const resp = await search(buildRepoQuery(repoName, path, selectedBranch));
@@ -34,13 +31,6 @@ const FolderChip = ({ onClick, path, repoName, selectedBranch }: Props) => {
     [repoName, selectedBranch],
   );
 
-  const navigateToPath = useCallback(
-    (path: string) => {
-      navigateFullResult(path);
-    },
-    [navigateFullResult],
-  );
-
   return (
     <>
       <button
@@ -50,11 +40,11 @@ const FolderChip = ({ onClick, path, repoName, selectedBranch }: Props) => {
         onClick={onClick}
       >
         <span className="flex gap-1 px-1 py-0.5 items-center border-r border-chat-bg-border code-s ellipsis">
-          <FolderClosed raw sizeClassName="w-3.5 h-3.5" />
+          <FolderIcon raw sizeClassName="w-3.5 h-3.5" />
           <span className="ellipsis">{path.slice(0, -1)}</span>
         </span>
         <span className="p-1 inline-flex items-center justify-center">
-          <ArrowOut sizeClassName="w-3.5 h-3.5" />
+          <ArrowOutIcon sizeClassName="w-3.5 h-3.5" />
         </span>
       </button>
       <div
@@ -63,20 +53,17 @@ const FolderChip = ({ onClick, path, repoName, selectedBranch }: Props) => {
         }
       >
         <OverflowTracker className="auto-fade-vertical">
-          <DirEntry
+          <RepoEntry
             name={path}
             isDirectory
             level={0}
-            currentPath={''}
             fetchFiles={fetchFiles}
             fullPath={path}
-            navigateToPath={navigateToPath}
             defaultOpen
             indexed
             repoRef={''}
-            repoStatus={SyncStatus.Done}
+            repoName={''}
             refetchParentFolder={() => {}}
-            markRepoIndexing={() => {}}
           />
         </OverflowTracker>
       </div>

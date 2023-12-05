@@ -10,6 +10,7 @@ import { ChevronRightIcon, EyeCutIcon, FolderIcon } from '../../../icons';
 import FileIcon from '../../../components/FileIcon';
 import { DirectoryEntry } from '../../../types/api';
 import { TabsContext } from '../../../context/tabsContext';
+import { TabTypesEnum } from '../../../types/general';
 
 type Props = {
   name: string;
@@ -20,6 +21,7 @@ type Props = {
   defaultOpen?: boolean;
   indexed: boolean;
   repoRef: string;
+  repoName: string;
   refetchParentFolder: () => void;
 };
 
@@ -32,6 +34,7 @@ const DirEntry = ({
   defaultOpen,
   indexed,
   repoRef,
+  repoName,
   refetchParentFolder,
 }: Props) => {
   const { openNewTab } = useContext(TabsContext.Handlers);
@@ -55,9 +58,14 @@ const DirEntry = ({
     if (isDirectory) {
       setOpen((prev) => !prev);
     } else {
-      openNewTab(fullPath, repoRef);
+      openNewTab({
+        type: TabTypesEnum.FILE,
+        path: fullPath,
+        repoRef,
+        repoName,
+      });
     }
-  }, [isDirectory, fullPath, openNewTab]);
+  }, [isDirectory, fullPath, openNewTab, repoRef, repoName]);
 
   return (
     <div
@@ -139,6 +147,7 @@ const DirEntry = ({
                   : true
               }
               repoRef={repoRef}
+              repoName={repoName}
               refetchParentFolder={refetchFolderFiles}
             />
           ))}

@@ -266,17 +266,18 @@ export const getConfig = () => http.get('/config').then((r) => r.data);
 export const putConfig = (data: Partial<EnvConfig>) =>
   http.put('/config', data).then((r) => r.data);
 
-export const getAllConversations = (
-  repo_ref: string,
+export const getProjectConversations = (
+  projectId: string,
 ): Promise<AllConversationsResponse> =>
-  http
-    .get('/answer/conversations', { params: { repo_ref } })
-    .then((r) => r.data);
+  http.get(`/projects/${projectId}/conversations`).then((r) => r.data);
 
 export const getConversation = (
+  projectId: string,
   thread_id: string,
 ): Promise<ConversationType[]> =>
-  http.get(`/answer/conversations/${thread_id}`).then((r) => r.data);
+  http
+    .get(`/projects/${projectId}/conversations/${thread_id}`)
+    .then((r) => r.data);
 
 export const deleteConversation = (
   thread_id: string,

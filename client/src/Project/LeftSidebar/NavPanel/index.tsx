@@ -1,5 +1,6 @@
 import { memo, useContext, useState } from 'react';
 import { ProjectContext } from '../../../context/projectContext';
+import { RepoProvider } from '../../../types/general';
 import RepoNav from './Repo';
 
 type Props = {};
@@ -15,7 +16,7 @@ const NavPanel = ({}: Props) => {
           setExpanded={setExpanded}
           isExpanded={expanded === i}
           i={i}
-          repoName={r.name}
+          repoName={r.provider === RepoProvider.Local ? r.name : r.ref}
           repoRef={r.ref}
         />
       ))}

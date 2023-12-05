@@ -550,5 +550,10 @@
 	"Display": "Display",
 	"GitHub": "GitHub",
 	"Open in GitHub": "Open in GitHub",
-	"Open in {{viewer}}": "Open in {{viewer}}"
+	"Open in {{viewer}}": "Open in {{viewer}}",
+	"More actions": "More actions",
+	"Hi, I am bloop! In <2><0></0>Chat mode</2> I can answer any questions related to any of your repositories.": "Hi, I am bloop! In <2><0></0>Chat mode</2> I can answer any questions related to any of your repositories.",
+	"Below are a few suggestions you can ask me to get started:": "Below are a few suggestions you can ask me to get started:",
+	"You": "You",
+	"Write a message, @ to mention files, folders or docs...": "Write a message, @ to mention files, folders or docs..."
 }
