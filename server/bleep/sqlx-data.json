@@ -24,6 +24,16 @@
     },
     "query": "SELECT name, (\n            SELECT ss.modified_at\n            FROM studio_snapshots ss\n            JOIN studios s ON s.project_id = $1 AND ss.studio_id = s.id\n            ORDER BY ss.modified_at DESC\n            LIMIT 1\n        ) AS modified_at\n        FROM projects\n        WHERE id = $1 AND user_id = $2\n        LIMIT 1"
   },
+  "0411fe6b12497b63d08f6fb4d0dffba5d74895105b80a76c8300c8054ccabb2b": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 3
+      }
+    },
+    "query": "INSERT INTO project_repos (project_id, repo_ref, branch) VALUES ($1, $2, $3)"
+  },
   "069c6404909c217e0b27e974480cce3f592a0d43ece6dec17fbcee37ce7a6ffa": {
     "describe": {
       "columns": [
@@ -185,6 +195,54 @@
       }
     },
     "query": "SELECT context FROM studio_snapshots WHERE id = ?"
+  },
+  "147e29626a2c6adc98c563344b9ce31656bbaa7b024ee1ce64d8ad8e40494d8f": {
+    "describe": {
+      "columns": [
+        {
+          "name": "repo_ref",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "branch",
+          "ordinal": 1,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        true
+      ],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "SELECT repo_ref, branch\n        FROM project_repos\n        WHERE project_id = $1 AND EXISTS (\n            SELECT p.id\n            FROM projects p\n            WHERE p.id = $1 AND p.user_id = $2\n        )"
+  },
+  "16c994183e3bb07ba8d6029c16d712222ce107cd1976889059c01780cb351dcd": {
+    "describe": {
+      "columns": [
+        {
+          "name": "repo_ref",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "branch",
+          "ordinal": 1,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        true
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT pr.repo_ref, pr.branch\n            FROM project_repos pr\n            INNER JOIN projects p ON p.id = pr.project_id AND p.user_id = ?"
   },
   "1e8cdc6e2b23d18be0a15b2b79cb7f834d78ad942b29b448be57c0fdfab81d40": {
     "describe": {
@@ -1076,16 +1134,6 @@
     },
     "query": "UPDATE studio_snapshots SET context = ? WHERE id = ?"
   },
-  "a72a44c5f6db62bc0ffc92ce0e06cdcdcadfb02ce33399a167bbf216e7a039ce": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Right": 2
-      }
-    },
-    "query": "INSERT INTO project_repos (project_id, repo_ref) VALUES ($1, $2)"
-  },
   "a7d8d84f5c97f5223d048bc3cdef92580195491edb3fc4c1757886a47be880bf": {
     "describe": {
       "columns": [
@@ -1185,24 +1233,6 @@
       }
     },
     "query": "UPDATE templates SET name = ? WHERE id = ?"
-  },
-  "b194d61bd132827ab30dd215cb91c3c3d70db79f576b93f22373ec1d7b4f6489": {
-    "describe": {
-      "columns": [
-        {
-          "name": "repo_ref",
-          "ordinal": 0,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Right": 2
-      }
-    },
-    "query": "SELECT repo_ref\n        FROM project_repos\n        WHERE project_id = $1 AND EXISTS (\n            SELECT p.id\n            FROM projects p\n            WHERE p.id = $1 AND p.user_id = $2\n        )"
   },
   "b3ebaeec21c90aa9ebc59a808e03c661839d0a0eaa86ad2bf4251e895f8e0a03": {
     "describe": {
@@ -1323,24 +1353,6 @@
       }
     },
     "query": "UPDATE studio_snapshots SET messages = ? WHERE id = ?"
-  },
-  "dc6c684b6a31f9a64024b0fcec346517fd9696a4b398151cc3809164c17778db": {
-    "describe": {
-      "columns": [
-        {
-          "name": "repo_ref",
-          "ordinal": 0,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Right": 1
-      }
-    },
-    "query": "SELECT pr.repo_ref\n            FROM project_repos pr\n            INNER JOIN projects p ON p.id = pr.project_id AND p.user_id = ?"
   },
   "dcb7f9427283203bce10fe7d618057ef3eab5f6af2277e7a1ac8ba050609894d": {
     "describe": {
