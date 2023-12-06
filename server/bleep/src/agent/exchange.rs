@@ -8,6 +8,8 @@ use crate::indexes::Indexes;
 use std::sync::Arc;
 use crate::webserver::hoverable::{inner_handle, HoverableRequest};
 use crate::webserver::intelligence::{inner_handle as token_info, TokenInfoRequest};
+use crate::intelligence::code_navigation::OccurrenceKind::{Definition, Reference};
+
 
 /// A continually updated conversation exchange.
 ///
@@ -259,8 +261,27 @@ impl ChunkRefDef {
 
 impl fmt::Display for ChunkRefDef {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let metadata_str = self.metadata.iter().map(
+            |metadata|
+            {
+                let response_def = metadata.file_symbols.iter()
+                .filter(|x| x.data.iter().any(|y| match y.kind { Definition => true, _ => false}))
+                .map(|x| format!("{}", x.file))
+                .collect::<Vec<_>>().join("\n");
+
+                let response_ref = metadata.file_symbols.iter()
+                .filter(|x| x.data.iter().any(|y| match y.kind { Reference => true, _ => false}))
+                .map(|x| format!("{}", x.file))
+                .collect::<Vec<_>>().join("\n");
+
+                let response = format!("Symbol: {}\nDefinition:\n{}\n\nReferences:\n{}", metadata.name, response_def, response_ref);
+
+                dbg!("{}", response.clone());
+                response
+            }
+        ).collect::<Vec<_>>();
         // TODO add metadata
-        write!(f, "{}", self.chunk)
+        write!(f, "{}\n\nMetadata:\n\n{}", self.chunk, metadata_str.join("\n\n"))
     }
 }
 
