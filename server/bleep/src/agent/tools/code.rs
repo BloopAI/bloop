@@ -75,7 +75,8 @@ impl Agent {
         let response = chunks
             .iter()
             .filter(|c| !c.is_empty())
-            .map(|c| ChunkRefDef::new(c.clone(), self.repo_ref.name.clone(), self.app.indexes.clone()));
+            .map(|c| ChunkRefDef::new(c.clone(), format!("github.com/{}",
+                             self.repo_ref.name.clone()), self.app.indexes.clone()));
         
         let response = futures::future::join_all(response).await.into_iter().map(|c| c.to_string())
             .collect::<Vec<_>>()
