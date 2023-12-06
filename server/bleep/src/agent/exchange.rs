@@ -1,15 +1,14 @@
 use crate::query::parser::SemanticQuery;
 use std::fmt;
 
-use chrono::prelude::{DateTime, Utc};
-use rand::seq::SliceRandom;
-use crate::intelligence::code_navigation::FileSymbols;
 use crate::indexes::Indexes;
-use std::sync::Arc;
+use crate::intelligence::code_navigation::FileSymbols;
+use crate::intelligence::code_navigation::OccurrenceKind::{Definition, Reference};
 use crate::webserver::hoverable::{inner_handle, HoverableRequest, HoverableResponse};
 use crate::webserver::intelligence::{inner_handle as token_info, TokenInfoRequest};
-use crate::intelligence::code_navigation::OccurrenceKind::{Definition, Reference};
-
+use chrono::prelude::{DateTime, Utc};
+use rand::seq::SliceRandom;
+use std::sync::Arc;
 
 /// A continually updated conversation exchange.
 ///
@@ -144,7 +143,7 @@ pub enum SearchStep {
         symbol: String,
         path: String,
         response: String,
-    }
+    },
 }
 
 impl SearchStep {
@@ -166,7 +165,7 @@ impl SearchStep {
                 paths: paths.clone(),
                 response: "[hidden, compressed]".into(),
             },
-            Self::Symbol { symbol, path,.. } => Self::Symbol {
+            Self::Symbol { symbol, path, .. } => Self::Symbol {
                 symbol: symbol.clone(),
                 path: path.clone(),
                 response: "[hidden, compressed]".into(),
@@ -197,101 +196,147 @@ pub struct CodeChunk {
     pub end_line: usize,
     pub start_byte: usize,
     pub end_byte: usize,
-    
 }
-
-
 
 pub struct ChunkRefDef {
     pub chunk: CodeChunk,
     pub metadata: Vec<RefDefMetadata>,
-    
 }
 
 impl ChunkRefDef {
     pub async fn new(chunk: CodeChunk, repo_ref: String, indexes: Arc<Indexes>) -> Self {
         // get hoverable elements
-        let hoverable_request = HoverableRequest{
+        let hoverable_request = HoverableRequest {
             repo_ref: repo_ref.clone(),
             relative_path: chunk.path.clone(),
             branch: None,
         };
-        let hoverable_response = inner_handle(
-            hoverable_request,
-            indexes.clone()
-        ).await.unwrap_or_else(|_e| HoverableResponse{ranges: Vec::new()});
+        let hoverable_response = inner_handle(hoverable_request, indexes.clone())
+            .await
+            .unwrap_or_else(|_e| HoverableResponse { ranges: Vec::new() });
 
         // for each element call token-info
-        let token_info_vec = hoverable_response.ranges.iter().filter(
-            |range| { let f = (range.start.byte >= chunk.start_byte) && (range.start.byte < chunk.end_byte);
-            f}
-        ).map(|range| token_info(TokenInfoRequest{
-            relative_path: chunk.path.clone(),
-            repo_ref: repo_ref.clone(),
-            branch: None,
-            start: range.start.byte,
-            end: range.end.byte,
-        }, indexes.clone()));
+        let token_info_vec = hoverable_response
+            .ranges
+            .iter()
+            .filter(|range| {
+                let f =
+                    (range.start.byte >= chunk.start_byte) && (range.start.byte < chunk.end_byte);
+                f
+            })
+            .map(|range| {
+                token_info(
+                    TokenInfoRequest {
+                        relative_path: chunk.path.clone(),
+                        repo_ref: repo_ref.clone(),
+                        branch: None,
+                        start: range.start.byte,
+                        end: range.end.byte,
+                    },
+                    indexes.clone(),
+                )
+            });
 
-        let token_info_vec = futures::future::join_all(token_info_vec).await.into_iter()
-        .map(|response| response.unwrap()).collect::<Vec<_>>();
+        let token_info_vec = futures::future::join_all(token_info_vec)
+            .await
+            .into_iter()
+            .map(|response| response.unwrap())
+            .collect::<Vec<_>>();
 
         // add metadata and return self
-        
-        
+
         Self {
             chunk: chunk.clone(),
-            metadata: {let mut metadata = token_info_vec.into_iter().zip(hoverable_response.ranges.into_iter().filter(
-                |range| { let f = (range.start.byte >= chunk.start_byte) && (range.start.byte < chunk.end_byte);
-                    f}
-            ))
-            .map(|(token_info, range)| {
-            let filtered_token_info = token_info.data.into_iter().filter(|x| x.file != chunk.path).collect::<Vec<_>>();  
-            let m = RefDefMetadata{name: chunk.snippet.clone()[(range.start.byte - chunk.start_byte)..(range.end.byte - chunk.start_byte)].to_string(),
-                 file_symbols: filtered_token_info};
-                 
-                m})
-                 .collect::<Vec<_>>();
+            metadata: {
+                let mut metadata = token_info_vec
+                    .into_iter()
+                    .zip(hoverable_response.ranges.into_iter().filter(|range| {
+                        let f = (range.start.byte >= chunk.start_byte)
+                            && (range.start.byte < chunk.end_byte);
+                        f
+                    }))
+                    .map(|(token_info, range)| {
+                        let filtered_token_info = token_info
+                            .data
+                            .into_iter()
+                            .filter(|x| x.file != chunk.path)
+                            .collect::<Vec<_>>();
+                        let m = RefDefMetadata {
+                            name: chunk.snippet.clone()[(range.start.byte - chunk.start_byte)
+                                ..(range.end.byte - chunk.start_byte)]
+                                .to_string(),
+                            file_symbols: filtered_token_info,
+                        };
+
+                        m
+                    })
+                    .collect::<Vec<_>>();
                 metadata.sort_by(|a, b| a.name.cmp(&b.name));
                 metadata.dedup_by(|a, b| a.name == b.name);
-                metadata},
+                metadata
+            },
         }
     }
 }
 
 impl fmt::Display for ChunkRefDef {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let metadata_str = self.metadata.iter().map(
-            |metadata|
-            {
-                let response_def = metadata.file_symbols.iter()
-                .filter(|x| x.data.iter().any(|y| match y.kind { Definition => true, _ => false}))
-                .map(|x| format!("{}", x.file))
-                .collect::<Vec<_>>();
+        let metadata_str = self
+            .metadata
+            .iter()
+            .map(|metadata| {
+                let response_def = metadata
+                    .file_symbols
+                    .iter()
+                    .filter(|x| {
+                        x.data.iter().any(|y| match y.kind {
+                            Definition => true,
+                            _ => false,
+                        })
+                    })
+                    .map(|x| format!("{}", x.file))
+                    .collect::<Vec<_>>();
 
-                let response_ref = metadata.file_symbols.iter()
-                .filter(|x| x.data.iter().any(|y| match y.kind { Reference => true, _ => false}))
-                .map(|x| format!("{}", x.file))
-                .collect::<Vec<_>>();
+                let response_ref = metadata
+                    .file_symbols
+                    .iter()
+                    .filter(|x| {
+                        x.data.iter().any(|y| match y.kind {
+                            Reference => true,
+                            _ => false,
+                        })
+                    })
+                    .map(|x| format!("{}", x.file))
+                    .collect::<Vec<_>>();
 
                 (response_def, response_ref, metadata.name.clone())
-            }
-        ).filter(|(x, y, _)| (x.len() + y.len() > 0) && (y.len() < 5) && (x.len() < 3)).map(|(def_vec, ref_vec, symbol_name)|{
-            let mut met_str = format!("Symbol: {}", symbol_name);
-            if def_vec.len() > 0 {met_str = format!("{}\nDefinition: {}", met_str, def_vec.join("\n"));}
-            if ref_vec.len() > 0 {met_str = format!("{}\nReferences: {}", met_str, ref_vec.join("\n"));}
-            met_str
-        }).collect::<Vec<_>>();
+            })
+            .filter(|(x, y, _)| (x.len() + y.len() > 0) && (y.len() < 5) && (x.len() < 3))
+            .map(|(def_vec, ref_vec, symbol_name)| {
+                let mut met_str = format!("Symbol: {}", symbol_name);
+                if def_vec.len() > 0 {
+                    met_str = format!("{}\nDefinition: {}", met_str, def_vec.join("\n"));
+                }
+                if ref_vec.len() > 0 {
+                    met_str = format!("{}\nReferences: {}", met_str, ref_vec.join("\n"));
+                }
+                met_str
+            })
+            .collect::<Vec<_>>();
         dbg!("{}", metadata_str.clone());
-        write!(f, "{}\n\nMetadata:\n\n{}", self.chunk, metadata_str.join("\n\n"))
+        write!(
+            f,
+            "{}\n\nMetadata:\n\n{}",
+            self.chunk,
+            metadata_str.join("\n\n")
+        )
     }
 }
 
-pub struct RefDefMetadata{
+pub struct RefDefMetadata {
     pub name: String,
     pub file_symbols: Vec<FileSymbols>,
 }
-
 
 impl CodeChunk {
     /// Returns true if a code-chunk contains an empty snippet or a snippet with only whitespace

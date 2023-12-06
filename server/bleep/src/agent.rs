@@ -202,7 +202,7 @@ impl Agent {
             }
 
             Action::Path { query } => self.path_search(query).await?,
-            Action::Symbol { symbol , path} => self.symbol_search(symbol, path).await?,
+            Action::Symbol { symbol, path } => self.symbol_search(symbol, path).await?,
             Action::Code { query } => self.code_search(query).await?,
             Action::Proc { query, paths } => self.process_files(query, paths).await?,
         };
@@ -551,7 +551,7 @@ pub enum Action {
     },
     Symbol {
         symbol: String,
-        path: usize
+        path: usize,
     },
     Proc {
         query: String,
