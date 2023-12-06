@@ -49,7 +49,7 @@ const Preferences = ({}: Props) => {
           </p>
         </div>
         <Dropdown
-          dropdownItems={<ThemeDropdown />}
+          DropdownComponent={ThemeDropdown}
           size="small"
           dropdownPlacement="bottom-end"
         >
@@ -71,7 +71,7 @@ const Preferences = ({}: Props) => {
           </p>
         </div>
         <Dropdown
-          dropdownItems={<LanguageDropdown />}
+          DropdownComponent={LanguageDropdown}
           size="small"
           dropdownPlacement="bottom-end"
         >

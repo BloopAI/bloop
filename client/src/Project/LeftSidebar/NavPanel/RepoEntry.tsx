@@ -24,6 +24,7 @@ type Props = {
   repoName: string;
   lastIndex: string;
   currentPath?: string;
+  branch?: string | null;
 };
 
 const RepoEntry = ({
@@ -38,6 +39,7 @@ const RepoEntry = ({
   repoRef,
   repoName,
   lastIndex,
+  branch,
 }: Props) => {
   const { openNewTab } = useContext(TabsContext.Handlers);
   const [isOpen, setOpen] = useState(
@@ -86,9 +88,10 @@ const RepoEntry = ({
         path: fullPath,
         repoRef,
         repoName,
+        branch,
       });
     }
-  }, [isDirectory, fullPath, openNewTab, repoRef, repoName]);
+  }, [isDirectory, fullPath, openNewTab, repoRef, repoName, branch]);
 
   return (
     <div
@@ -173,6 +176,7 @@ const RepoEntry = ({
               repoName={repoName}
               lastIndex={lastIndex}
               currentPath={currentPath}
+              branch={branch}
             />
           ))}
         </div>

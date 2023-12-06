@@ -35,7 +35,7 @@ const UserForm = ({ form, setForm, onContinue }: Props) => {
             </Button>
           )}
           <Dropdown
-            dropdownItems={<LanguageDropdown />}
+            DropdownComponent={LanguageDropdown}
             size="small"
             dropdownPlacement="bottom-end"
           >

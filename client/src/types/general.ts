@@ -99,6 +99,7 @@ export type FileTabType = {
   path: string;
   repoName: string;
   repoRef: string;
+  branch?: string | null;
   scrollToLine?: string;
 };
 

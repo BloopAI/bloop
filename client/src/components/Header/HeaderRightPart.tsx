@@ -23,7 +23,7 @@ const HeaderRightPart = ({}: Props) => {
         <KLetterIcon sizeClassName="w-3.5 h-3.5" className="-translate-y-px" />
         <Trans>Commands</Trans>
       </Button>
-      <Dropdown dropdownItems={<UserDropdown />} dropdownPlacement="bottom-end">
+      <Dropdown DropdownComponent={UserDropdown} dropdownPlacement="bottom-end">
         {envConfig.github_user?.avatar_url ? (
           <div className="w-5 h-5 rounded-full overflow-hidden">
             <img src={envConfig.github_user?.avatar_url} alt="avatar" />

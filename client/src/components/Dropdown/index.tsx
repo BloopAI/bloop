@@ -1,7 +1,6 @@
 import React, {
   memo,
   PropsWithChildren,
-  ReactElement,
   useCallback,
   useEffect,
   useRef,
@@ -17,7 +16,8 @@ type Props = {
   dropdownPlacement?: TippyProps['placement'];
   appendTo?: TippyProps['appendTo'];
   size?: 'small' | 'medium' | 'large' | 'auto';
-  dropdownItems: ReactElement;
+  DropdownComponent: (props: any) => JSX.Element | null;
+  dropdownComponentProps?: Record<string, any>;
   containerClassName?: string;
   onVisibilityChange?: (isVisible: boolean) => void;
   color?: 'shade' | 'base';
@@ -54,7 +54,8 @@ const Dropdown = ({
   appendTo = 'parent',
   size = 'medium',
   color = 'shade',
-  dropdownItems,
+  DropdownComponent,
+  dropdownComponentProps,
   containerClassName,
   onVisibilityChange,
 }: PropsWithChildren<Props>) => {
@@ -103,11 +104,16 @@ const Dropdown = ({
        } shadow-high ${sizesMap[size]} flex flex-col gap-1 select-none`}
           onClick={handleClose}
         >
-          {isVisible && dropdownItems}
+          {isVisible && (
+            <DropdownComponent
+              {...dropdownComponentProps}
+              handleClose={handleClose}
+            />
+          )}
         </div>
       );
     },
-    [dropdownItems, isVisible, dropdownPlacement],
+    [DropdownComponent, dropdownComponentProps, isVisible, dropdownPlacement],
   );
 
   return (

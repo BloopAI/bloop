@@ -1,4 +1,11 @@
-import { memo, ReactElement, useCallback, MouseEvent, useRef } from 'react';
+import {
+  memo,
+  ReactElement,
+  useCallback,
+  MouseEvent,
+  useRef,
+  useEffect,
+} from 'react';
 import { CheckIcon } from '../../../icons';
 import { checkEventKeys } from '../../../utils/keyboardUtils';
 import useShortcuts from '../../../hooks/useShortcuts';
@@ -28,6 +35,12 @@ const SectionItem = ({
 }: Props) => {
   const shortcutKeys = useShortcuts(shortcut);
   const ref = useRef<HTMLAnchorElement>(null);
+
+  useEffect(() => {
+    if (isFocused) {
+      ref.current?.scrollIntoView({ block: 'nearest' });
+    }
+  }, [isFocused]);
 
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
@@ -66,7 +79,10 @@ const SectionItem = ({
     >
       <span className="flex items-center gap-2 h-full overflow-hidden">
         {icon}
-        <span className="flex-1 body-s-b text-label-title ellisis">
+        <span
+          className="flex-1 body-s-b text-label-title ellipsis"
+          title={label}
+        >
           {label}
         </span>
         <span className="body-mini-b text-label-muted">

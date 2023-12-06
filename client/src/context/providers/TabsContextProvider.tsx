@@ -25,6 +25,7 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
             repoRef: string;
             repoName: string;
             scrollToLine?: string;
+            branch?: string | null;
           }
         | { type: TabTypesEnum.CHAT },
       forceSide?: 'left' | 'right',
@@ -46,6 +47,7 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
                 repoName: data.repoName,
                 key: `${data.repoRef}-${data.path}`,
                 scrollToLine: data.scrollToLine,
+                branch: data.branch,
                 type: TabTypesEnum.FILE,
               }
             : {

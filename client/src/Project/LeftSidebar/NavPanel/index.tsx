@@ -20,7 +20,7 @@ const NavPanel = ({}: Props) => {
     }
     return null;
   }, [focusedPanel, leftTab, rightTab]);
-  console.log('currentlyFocusedTab', currentlyFocusedTab);
+
   return (
     <div className="flex flex-col h-full flex-1 overflow-auto">
       {project?.repos.map((r, i) => (

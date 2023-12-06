@@ -115,7 +115,7 @@ const UserFormStep1 = ({ form, setForm, onContinue }: Props) => {
           <Trans>Select color theme:</Trans>
         </span>
         <Dropdown
-          dropdownItems={<ThemeDropdown />}
+          DropdownComponent={ThemeDropdown}
           size="small"
           dropdownPlacement="bottom-end"
         >

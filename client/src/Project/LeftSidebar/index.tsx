@@ -21,13 +21,13 @@ const LeftSidebar = ({}: Props) => {
   );
   return (
     <div
-      className="h-full relative z-10 min-w-[204px] flex-shrink-0 overflow-hidden"
+      className="h-full relative z-10 min-w-[204px] flex-shrink-0 overflow-hidden flex flex-col"
       ref={panelRef}
     >
       <div className="w-ful flex hover:bg-bg-base-hover border-b border-bg-border h-10">
         {os.type === 'Darwin' ? <span className="w-16 flex-shrink-0" /> : ''}
         <Dropdown
-          dropdownItems={<ProjectsDropdown />}
+          DropdownComponent={ProjectsDropdown}
           dropdownPlacement="bottom-start"
           containerClassName="flex-1"
           appendTo={document.body}

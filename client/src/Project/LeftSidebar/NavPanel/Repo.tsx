@@ -4,8 +4,10 @@ import React, {
   SetStateAction,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
+  MouseEvent,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Directory, DirectoryEntry } from '../../../types/api';
@@ -35,6 +37,8 @@ type Props = {
   allBranches: { name: string; last_commit_unix_secs: number }[];
   indexedBranches: string[];
 };
+
+const reactRoot = document.getElementById('root')!;
 
 const RepoNav = ({
   repoName,
@@ -88,6 +92,21 @@ const RepoNav = ({
     }
   }, [isExpanded]);
 
+  const dropdownComponentProps = useMemo(() => {
+    return {
+      key: repoRef,
+      projectId,
+      repoRef,
+      selectedBranch: branch,
+      indexedBranches,
+      allBranches,
+    };
+  }, [projectId, repoRef, branch, indexedBranches, allBranches]);
+
+  const noPropagate = useCallback((e?: MouseEvent) => {
+    e?.stopPropagation();
+  }, []);
+
   return (
     <div className="select-none" ref={containerRef}>
       <span
@@ -118,18 +137,11 @@ const RepoNav = ({
           )}
         </div>
         {isExpanded && (
-          <div onClick={(e) => e.stopPropagation()}>
+          <div onClick={noPropagate}>
             <Dropdown
-              dropdownItems={
-                <RepoDropdown
-                  projectId={projectId}
-                  repoRef={repoRef}
-                  selectedBranch={branch}
-                  indexedBranches={indexedBranches}
-                  allBranches={allBranches}
-                />
-              }
-              appendTo={document.body}
+              DropdownComponent={RepoDropdown}
+              dropdownComponentProps={dropdownComponentProps}
+              appendTo={reactRoot}
               dropdownPlacement="bottom-start"
             >
               <Button variant="tertiary" size="mini" onlyIcon title={t('')}>
@@ -160,6 +172,7 @@ const RepoNav = ({
             repoName={repoName}
             currentPath={currentPath}
             lastIndex={lastIndex}
+            branch={branch}
           />
         ))}
       </div>

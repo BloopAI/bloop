@@ -72,7 +72,7 @@ const Header = ({ type = 'default' }: Props) => {
           </div>
         ) : (
           <Dropdown
-            dropdownItems={<ProjectsDropdown />}
+            DropdownComponent={ProjectsDropdown}
             dropdownPlacement="bottom-start"
           >
             <div className="flex px-4 items-center text-left h-10 gap-4 border-r border-bg-border hover:bg-bg-base-hover">

@@ -114,7 +114,7 @@ const PrivateReposStep = ({}: Props) => {
       )}
       <Footer
         onDropdownVisibilityChange={setIsDropdownVisible}
-        actionsDropdown={<ActionsDropdown />}
+        ActionsDropdown={ActionsDropdown}
       />
     </div>
   );

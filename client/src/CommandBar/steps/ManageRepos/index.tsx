@@ -179,6 +179,15 @@ const ManageRepos = ({}: Props) => {
     setChosenStep({ id: CommandBarStepEnum.INITIAL });
   }, []);
 
+  const actionsDropdownProps = useMemo(() => {
+    return {
+      repoType,
+      setRepoType,
+      filter,
+      setFilter,
+    };
+  }, [repoType, filter]);
+
   return (
     <div className="w-full flex flex-col max-h-[28.875rem] max-w-[40rem] overflow-auto">
       <Header
@@ -193,14 +202,8 @@ const ManageRepos = ({}: Props) => {
       )}
       <Footer
         onDropdownVisibilityChange={setIsDropdownVisible}
-        actionsDropdown={
-          <ActionsDropdown
-            repoType={repoType}
-            setRepoType={setRepoType}
-            filter={filter}
-            setFilter={setFilter}
-          />
-        }
+        ActionsDropdown={ActionsDropdown}
+        actionsDropdownProps={actionsDropdownProps}
       />
     </div>
   );

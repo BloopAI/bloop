@@ -110,9 +110,15 @@ const ActionsDropDown = ({
           focusedIndex <
           focusedDropdownItemsLength + providerOptions.length
         ) {
-          setRepoType(providerOptions[focusedIndex]);
+          setRepoType(
+            providerOptions[focusedIndex - focusedDropdownItemsLength],
+          );
         } else {
-          setFilter(filterOptions[focusedIndex - providerOptions.length]);
+          setFilter(
+            filterOptions[
+              focusedIndex - focusedDropdownItemsLength - providerOptions.length
+            ],
+          );
         }
       }
     },

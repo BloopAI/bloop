@@ -7,6 +7,7 @@ import {
   MouseEvent,
   ChangeEvent,
   useMemo,
+  useEffect,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import DropdownSection from '../../../components/Dropdown/Section';
@@ -28,6 +29,7 @@ import SpinLoaderContainer from '../../../components/Loaders/SpinnerLoader';
 import SectionLabel from '../../../components/Dropdown/Section/SectionLabel';
 import Button from '../../../components/Button';
 import { ProjectContext } from '../../../context/projectContext';
+import { PersonalQuotaContext } from '../../../context/personalQuotaContext';
 
 type Props = {
   repoRef: string;
@@ -51,10 +53,12 @@ const RepoDropdown = ({
   const [search, setSearch] = useState('');
   const [branchesToSync, setBranchesToSync] = useState<string[]>([]);
   const [indexing, setIndexing] = useState({ branch: '', percentage: 0 });
-  const { apiUrl } = useContext(DeviceContext);
+  const { apiUrl, isSelfServe } = useContext(DeviceContext);
   const { refreshCurrentProjectRepos } = useContext(ProjectContext.Current);
+  const { isSubscribed } = useContext(PersonalQuotaContext.Values);
 
   const startEventSource = useCallback(() => {
+    eventSourceRef.current?.close();
     eventSourceRef.current = new EventSource(
       `${apiUrl.replace('https:', '')}/repos/status`,
     );
@@ -64,8 +68,6 @@ const RepoDropdown = ({
         console.log('data', data);
         if (data.ev?.status_change && data.ref === repoRef) {
           if (data.ev?.status_change === SyncStatus.Done) {
-            eventSourceRef.current?.close();
-            eventSourceRef.current = null;
             setIsSyncing(false);
             refreshCurrentProjectRepos();
           }
@@ -86,6 +88,13 @@ const RepoDropdown = ({
       eventSourceRef.current = null;
     };
   }, [repoRef]);
+
+  useEffect(() => {
+    if (!branchesToSync.length) {
+      eventSourceRef.current?.close();
+      eventSourceRef.current = null;
+    }
+  }, [branchesToSync]);
 
   const onRepoSync = useCallback(
     async (e?: MouseEvent) => {
@@ -110,8 +119,14 @@ const RepoDropdown = ({
     e?.stopPropagation();
   }, []);
 
+  useEffect(() => {
+    setBranchesToSync((prevState) =>
+      prevState.filter((p) => !indexedBranches.includes(p)),
+    );
+  }, [indexedBranches]);
+
   const notSyncedBranches = useMemo(() => {
-    return allBranches
+    return [...allBranches]
       .reverse()
       .filter(
         (b) =>
@@ -127,6 +142,51 @@ const RepoDropdown = ({
     }
   }, [projectId, repoRef]);
 
+  const indexedBranchesToShow = useMemo(() => {
+    if (!search) {
+      return indexedBranches;
+    }
+    return indexedBranches.filter((b) =>
+      b
+        .replace(/^origin\//, '')
+        .toLowerCase()
+        .includes(search.toLowerCase()),
+    );
+  }, [indexedBranches, search]);
+
+  const indexingBranchesToShow = useMemo(() => {
+    if (!search) {
+      return branchesToSync;
+    }
+    return branchesToSync.filter((b) =>
+      b
+        .replace(/^origin\//, '')
+        .toLowerCase()
+        .includes(search.toLowerCase()),
+    );
+  }, [branchesToSync, search]);
+
+  const notIndexedBranchesToShow = useMemo(() => {
+    if (!search) {
+      return notSyncedBranches;
+    }
+    return notSyncedBranches.filter((b) =>
+      b
+        .replace(/^origin\//, '')
+        .toLowerCase()
+        .includes(search.toLowerCase()),
+    );
+  }, [notSyncedBranches, search]);
+
+  const switchToBranch = useCallback(
+    (branch: string, e?: MouseEvent) => {
+      e?.stopPropagation();
+      // addRepoToProject(projectId, repoRef, branch);
+      // refreshCurrentProjectRepos();
+    },
+    [projectId, repoRef],
+  );
+
   return (
     <div onClick={noPropagate}>
       <DropdownSection borderBottom>
@@ -141,22 +201,24 @@ const RepoDropdown = ({
             )
           }
         />
-        <SectionItem
-          onClick={toggleBranches}
-          label={t('Branches')}
-          icon={<BranchIcon sizeClassName="w-4 h-4" />}
-          customRightElement={
-            <span className="body-s text-label-muted">
-              {selectedBranch}
-              <ArrowTriangleBottomIcon
-                sizeClassName="w-2 h-2"
-                className={`ml-2 ${
-                  isBranchesOpen ? 'rotate-180' : 'rotate-0'
-                } transition-transform duration-150 ease-in-out`}
-              />
-            </span>
-          }
-        />
+        {(isSelfServe || isSubscribed) && (
+          <SectionItem
+            onClick={toggleBranches}
+            label={t('Branches')}
+            icon={<BranchIcon sizeClassName="w-4 h-4" />}
+            customRightElement={
+              <span className="body-s text-label-muted">
+                {selectedBranch}
+                <ArrowTriangleBottomIcon
+                  sizeClassName="w-2 h-2"
+                  className={`ml-2 ${
+                    isBranchesOpen ? 'rotate-180' : 'rotate-0'
+                  } transition-transform duration-150 ease-in-out`}
+                />
+              </span>
+            }
+          />
+        )}
       </DropdownSection>
       <div
         style={{
@@ -172,37 +234,48 @@ const RepoDropdown = ({
             onChange={handleInputChange}
             className="px-2 bg-transparent h-8 rounded focus:outline-0 focus:outline-none"
             autoFocus
+            type="search"
+            autoComplete="off"
           />
         </DropdownSection>
-        <DropdownSection borderBottom>
-          <SectionLabel text={t('Synced')} />
-          {indexedBranches.map((b) => (
-            <SectionItem
-              onClick={noPropagate}
-              label={b.replace(/^origin\//, '')}
-              icon={<BranchIcon sizeClassName="w-4 h-4" />}
-              key={b}
-              isSelected={selectedBranch === b}
-            />
-          ))}
-        </DropdownSection>
-        {!!branchesToSync.length && (
+        {!!indexedBranchesToShow.length && (
+          <DropdownSection borderBottom>
+            <SectionLabel text={t('Synced')} />
+            {indexedBranchesToShow.map((b) => (
+              <SectionItem
+                onClick={(e) => switchToBranch(b, e)}
+                label={b.replace(/^origin\//, '')}
+                icon={<BranchIcon sizeClassName="w-4 h-4" />}
+                key={b}
+                isSelected={selectedBranch === b}
+              />
+            ))}
+          </DropdownSection>
+        )}
+        {!!indexingBranchesToShow.length && (
           <DropdownSection borderBottom>
             <SectionLabel text={t('Syncing')} />
-            {branchesToSync.map((b) => (
+            {indexingBranchesToShow.map((b) => (
               <SectionItem
                 onClick={noPropagate}
                 icon={<SpinLoaderContainer sizeClassName="w-4 h-4" />}
                 label={b.replace(/^origin\//, '')}
                 key={b}
+                customRightElement={
+                  <span className="text-label-muted body-s">
+                    {indexing.branch === b
+                      ? indexing.percentage + '%'
+                      : t('Queued...')}
+                  </span>
+                }
               />
             ))}
           </DropdownSection>
         )}
-        {!!notSyncedBranches.length && (
+        {!!notIndexedBranchesToShow.length && (
           <DropdownSection borderBottom>
             <SectionLabel text={t('Not synced')} />
-            {notSyncedBranches.map((b) => (
+            {notIndexedBranchesToShow.map((b) => (
               <SectionItem
                 onClick={noPropagate}
                 label={b.replace(/^origin\//, '')}

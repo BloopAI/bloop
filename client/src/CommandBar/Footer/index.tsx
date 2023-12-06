@@ -1,4 +1,4 @@
-import { memo, ReactElement, useCallback, useContext, useRef } from 'react';
+import { memo, useCallback, useContext, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CommandBarContext } from '../../context/commandBarContext';
 import Dropdown from '../../components/Dropdown';
@@ -6,12 +6,14 @@ import useKeyboardNavigation from '../../hooks/useKeyboardNavigation';
 import HintButton from './HintButton';
 
 type Props = {
-  actionsDropdown?: ReactElement;
+  ActionsDropdown?: (props: any) => JSX.Element | null;
+  actionsDropdownProps?: Record<string, any>;
   onDropdownVisibilityChange?: (isVisible: boolean) => void;
 };
 
 const CommandBarFooter = ({
-  actionsDropdown,
+  ActionsDropdown,
+  actionsDropdownProps,
   onDropdownVisibilityChange,
 }: Props) => {
   const { t } = useTranslation();
@@ -25,7 +27,7 @@ const CommandBarFooter = ({
       actionsBtn.current?.click();
     }
   }, []);
-  useKeyboardNavigation(handleKeyEvent, !actionsDropdown);
+  useKeyboardNavigation(handleKeyEvent, !ActionsDropdown);
 
   return (
     <div className="flex items-center gap-1 w-full py-2.5 pl-4 pr-3 border-t border-bg-border">
@@ -33,11 +35,12 @@ const CommandBarFooter = ({
         {focusedItem?.footerHint}
       </p>
       {focusedItem?.footerBtns?.map((b) => <HintButton key={b.label} {...b} />)}
-      {!!actionsDropdown && (
+      {!!ActionsDropdown && (
         <Dropdown
           dropdownPlacement="top-end"
           color="base"
-          dropdownItems={actionsDropdown}
+          DropdownComponent={ActionsDropdown}
+          dropdownComponentProps={actionsDropdownProps}
           appendTo={document.body}
           onVisibilityChange={onDropdownVisibilityChange}
         >
