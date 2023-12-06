@@ -58,6 +58,8 @@ impl Agent {
                     snippet: chunk.text,
                     start_line: chunk.start_line as usize,
                     end_line: chunk.end_line as usize,
+                    start_byte: chunk.start_byte as usize,
+                    end_byte: chunk.end_byte as usize,
                 }
             })
             .collect::<Vec<_>>();
