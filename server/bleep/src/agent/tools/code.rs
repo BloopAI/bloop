@@ -3,12 +3,11 @@ use tracing::{debug, info, instrument, trace};
 
 use crate::{
     agent::{
-        exchange::{CodeChunk, SearchStep, Update, ChunkRefDef},
+        exchange::{ChunkRefDef, CodeChunk, SearchStep, Update},
         prompts, Agent,
     },
     analytics::EventData,
     llm_gateway,
-    
 };
 
 impl Agent {
@@ -74,13 +73,18 @@ impl Agent {
                 .push(chunk.clone())
         }
 
-        let response = chunks
-            .iter()
-            .filter(|c| !c.is_empty())
-            .map(|c| ChunkRefDef::new(c.clone(), format!("github.com/{}",
-                             self.repo_ref.name.clone()), self.app.indexes.clone()));
-        
-        let response = futures::future::join_all(response).await.into_iter().map(|c| c.to_string())
+        let response = chunks.iter().filter(|c| !c.is_empty()).map(|c| {
+            ChunkRefDef::new(
+                c.clone(),
+                format!("github.com/{}", self.repo_ref.name.clone()),
+                self.app.indexes.clone(),
+            )
+        });
+
+        let response = futures::future::join_all(response)
+            .await
+            .into_iter()
+            .map(|c| c.to_string())
             .collect::<Vec<_>>()
             .join("\n\n");
 

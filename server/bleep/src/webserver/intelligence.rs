@@ -123,7 +123,6 @@ pub async fn inner_handle(
     }
 }
 
-
 /// The request made to the `related-files` endpoint.
 #[derive(Debug, Deserialize)]
 pub(super) struct RelatedFilesRequest {
