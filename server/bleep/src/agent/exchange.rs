@@ -195,22 +195,12 @@ pub struct CodeChunk {
     pub start_line: usize,
     #[serde(rename = "end")]
     pub end_line: usize,
+    pub start_byte: usize,
+    pub end_byte: usize,
     
 }
 
-fn extract_chars_from_line(input: &str, line_number: usize, start_col: usize, end_col: usize) -> Option<String> {
-    let lines: Vec<&str> = input.lines().collect();
 
-    if let Some(line) = lines.get(line_number) {
-        let mut char_indices = line.char_indices();
-
-        let start_byte = char_indices.nth(start_col)?.0;
-        let end_byte = char_indices.nth(end_col - start_col - 1)?.0;
-
-        return Some(line[start_byte..end_byte].to_string());
-    }
-    None
-}
 
 pub struct ChunkRefDef {
     pub chunk: CodeChunk,
@@ -233,7 +223,8 @@ impl ChunkRefDef {
 
         // for each element call token-info
         let token_info_vec = hoverable_response.ranges.iter().filter(
-            |range| (range.start.line >= chunk.start_line) & (range.start.line < chunk.end_line)
+            |range| { let f = (range.start.byte >= chunk.start_byte) && (range.start.byte < chunk.end_byte);
+            f}
         ).map(|range| token_info(TokenInfoRequest{
             relative_path: chunk.path.clone(),
             repo_ref: repo_ref.clone(),
@@ -250,10 +241,16 @@ impl ChunkRefDef {
         
         Self {
             chunk: chunk.clone(),
-            metadata: token_info_vec.into_iter().zip(hoverable_response.ranges.into_iter())
-            .map(|(token_info, range)| 
-            RefDefMetadata{name: extract_chars_from_line(chunk.snippet.clone().as_str(), range.start.line - chunk.start_line, range.start.column, range.end.column).unwrap(),
-                 file_symbols:token_info.data})
+            metadata: token_info_vec.into_iter().zip(hoverable_response.ranges.into_iter().filter(
+                |range| { let f = (range.start.byte >= chunk.start_byte) && (range.start.byte < chunk.end_byte);
+                    f}
+            ))
+            .map(|(token_info, range)| {
+            let filtered_token_info = token_info.data.into_iter().filter(|x| x.file != chunk.path).collect::<Vec<_>>();  
+            let m = RefDefMetadata{name: chunk.snippet.clone()[(range.start.byte - chunk.start_byte)..(range.end.byte - chunk.start_byte)].to_string(),
+                 file_symbols: filtered_token_info};
+                 
+                m})
                  .collect(),
         }
     }
@@ -279,7 +276,7 @@ impl fmt::Display for ChunkRefDef {
                 dbg!("{}", response.clone());
                 response
             }
-        ).collect::<Vec<_>>();
+        ).filter(|x| !x.contains("\nDefinition:\n\n\nReferences:\n")).collect::<Vec<_>>();
         // TODO add metadata
         write!(f, "{}\n\nMetadata:\n\n{}", self.chunk, metadata_str.join("\n\n"))
     }
