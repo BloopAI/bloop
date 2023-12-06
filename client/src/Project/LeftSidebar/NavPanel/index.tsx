@@ -1,6 +1,7 @@
-import { memo, useContext, useState } from 'react';
+import { memo, useContext, useMemo, useState } from 'react';
 import { ProjectContext } from '../../../context/projectContext';
-import { RepoProvider } from '../../../types/general';
+import { RepoProvider, TabTypesEnum } from '../../../types/general';
+import { TabsContext } from '../../../context/tabsContext';
 import RepoNav from './Repo';
 
 type Props = {};
@@ -8,6 +9,18 @@ type Props = {};
 const NavPanel = ({}: Props) => {
   const [expanded, setExpanded] = useState(-1);
   const { project } = useContext(ProjectContext.Current);
+  const { focusedPanel } = useContext(TabsContext.All);
+  const { tab: leftTab } = useContext(TabsContext.CurrentLeft);
+  const { tab: rightTab } = useContext(TabsContext.CurrentRight);
+
+  const currentlyFocusedTab = useMemo(() => {
+    const focusedTab = focusedPanel === 'left' ? leftTab : rightTab;
+    if (focusedTab?.type === TabTypesEnum.FILE) {
+      return focusedTab;
+    }
+    return null;
+  }, [focusedPanel, leftTab, rightTab]);
+  console.log('currentlyFocusedTab', currentlyFocusedTab);
   return (
     <div className="flex flex-col h-full flex-1 overflow-auto">
       {project?.repos.map((r, i) => (
@@ -22,8 +35,14 @@ const NavPanel = ({}: Props) => {
           }
           repoRef={r.repo.ref}
           branch={r.branch}
+          lastIndex={r.repo.last_index}
           allBranches={r.repo.branches}
           indexedBranches={r.repo.branch_filter?.select || []}
+          currentPath={
+            currentlyFocusedTab?.repoRef === r.repo.ref
+              ? currentlyFocusedTab?.path
+              : undefined
+          }
         />
       ))}
     </div>

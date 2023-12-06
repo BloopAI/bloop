@@ -103,8 +103,9 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
     () => ({
       leftTabs,
       rightTabs,
+      focusedPanel,
     }),
-    [leftTabs, rightTabs],
+    [leftTabs, rightTabs, focusedPanel],
   );
 
   const currentLeftContextValue = useMemo(

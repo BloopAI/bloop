@@ -399,13 +399,12 @@ export const getQuota = () => http('/quota').then((r) => r.data);
 export const getSubscriptionLink = () =>
   http('/quota/create-checkout-session').then((r) => r.data);
 
-export const forceFileToBeIndexed = (repoRef: string, filePath: string) => {
+export const forceFileToBeIndexed = (repoRef: string, filePath: string) =>
   http.patch(
     '/repos/indexed',
     { file_filter: { rules: [{ include_file: filePath }] } },
     { params: { repo: repoRef } },
   );
-};
 
 export const getTutorialQuestions = (
   repo_ref: string,

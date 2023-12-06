@@ -1,6 +1,17 @@
-import React, { memo, useEffect, useState } from 'react';
+import React, {
+  memo,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { getHoverables, search } from '../../services/api';
+import {
+  forceFileToBeIndexed,
+  getHoverables,
+  search,
+} from '../../services/api';
 import { buildRepoQuery, splitPath } from '../../utils';
 import FileIcon from '../../components/FileIcon';
 import Button from '../../components/Button';
@@ -10,34 +21,103 @@ import { mapRanges } from '../../mappers/results';
 import { Range } from '../../types/results';
 import CodeFull from '../../components/Code/CodeFull';
 import IpynbRenderer from '../../components/IpynbRenderer';
+import SpinLoaderContainer from '../../components/Loaders/SpinnerLoader';
+import { SyncStatus } from '../../types/general';
+import { DeviceContext } from '../../context/deviceContext';
+import { ProjectContext } from '../../context/projectContext';
 
-type Props = { repoName: string; path: string; noBorder?: boolean };
+type Props = {
+  repoName: string;
+  repoRef: string;
+  path: string;
+  noBorder?: boolean;
+};
 
-const FileTab = ({ repoName, path, noBorder }: Props) => {
+const FileTab = ({ repoName, path, noBorder, repoRef }: Props) => {
   const { t } = useTranslation();
   const [file, setFile] = useState<
     (File & { hoverableRanges?: Record<number, Range[]> }) | null
   >(null);
+  const [indexRequested, setIndexRequested] = useState(false);
+  const { apiUrl } = useContext(DeviceContext);
+  const { refreshCurrentProjectRepos } = useContext(ProjectContext.Current);
+  const eventSourceRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
+    setIndexRequested(false);
+  }, [repoName, path, repoRef]);
+
+  const refetchFile = useCallback(() => {
     search(buildRepoQuery(repoName, path)).then((resp) => {
       const item = resp?.data?.[0]?.data as File;
       if (!item) {
         return;
       }
       setFile(item);
-      getHoverables(
-        item.relative_path,
-        item.repo_ref,
-        // selectedBranch ? selectedBranch : undefined,
-      ).then((data) => {
-        setFile((prevState) => ({
-          ...prevState!,
-          hoverableRanges: mapRanges(data.ranges),
-        }));
-      });
+      if (item.indexed) {
+        getHoverables(
+          item.relative_path,
+          item.repo_ref,
+          // selectedBranch ? selectedBranch : undefined,
+        ).then((data) => {
+          setFile((prevState) => ({
+            ...prevState!,
+            hoverableRanges: mapRanges(data.ranges),
+          }));
+        });
+      }
     });
   }, [repoName, path]);
+
+  useEffect(() => {
+    refetchFile();
+  }, [refetchFile]);
+
+  const startEventSource = useCallback(() => {
+    eventSourceRef.current = new EventSource(
+      `${apiUrl.replace('https:', '')}/repos/status`,
+    );
+    eventSourceRef.current.onmessage = (ev) => {
+      try {
+        const data = JSON.parse(ev.data);
+        if (data.ev?.status_change && data.ref === repoRef) {
+          if (data.ev?.status_change === SyncStatus.Done) {
+            eventSourceRef.current?.close();
+            eventSourceRef.current = null;
+            refreshCurrentProjectRepos();
+            setTimeout(refetchFile, 2000);
+          }
+        }
+      } catch {
+        eventSourceRef.current?.close();
+        eventSourceRef.current = null;
+      }
+    };
+    eventSourceRef.current.onerror = () => {
+      eventSourceRef.current?.close();
+      eventSourceRef.current = null;
+    };
+  }, [repoRef]);
+
+  useEffect(() => {
+    return () => {
+      eventSourceRef.current?.close();
+      eventSourceRef.current = null;
+    };
+  }, []);
+
+  const onIndexRequested = useCallback(
+    async (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (path) {
+        setIndexRequested(true);
+        await forceFileToBeIndexed(repoRef, path);
+        startEventSource();
+        setTimeout(() => refetchFile(), 1000);
+      }
+    },
+    [repoRef, path],
+  );
 
   return (
     <div
@@ -88,9 +168,15 @@ const FileTab = ({ repoName, path, noBorder }: Props) => {
                 </Trans>
               </p>
             </div>
-            <Button size="large" variant="primary">
-              <Trans>Force index</Trans>
-            </Button>
+            {!indexRequested ? (
+              <Button size="large" variant="primary" onClick={onIndexRequested}>
+                <Trans>Force index</Trans>
+              </Button>
+            ) : (
+              <div className="text-bg-main mt-6">
+                <SpinLoaderContainer sizeClassName="w-8 h-8" />
+              </div>
+            )}
           </div>
         )}
       </div>

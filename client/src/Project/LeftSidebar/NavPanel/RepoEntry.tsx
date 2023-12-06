@@ -22,31 +22,54 @@ type Props = {
   indexed: boolean;
   repoRef: string;
   repoName: string;
-  refetchParentFolder: () => void;
+  lastIndex: string;
+  currentPath?: string;
 };
 
-const DirEntry = ({
+const RepoEntry = ({
   name,
   level,
   isDirectory,
+  currentPath,
   fullPath,
   fetchFiles,
   defaultOpen,
   indexed,
   repoRef,
   repoName,
-  refetchParentFolder,
+  lastIndex,
 }: Props) => {
   const { openNewTab } = useContext(TabsContext.Handlers);
-  const [isOpen, setOpen] = useState(defaultOpen);
-  const [indexRequested, setIndexRequested] = useState(false);
-  const [isIndexing, setIsIndexing] = useState(false);
+  const [isOpen, setOpen] = useState(
+    defaultOpen || (currentPath && currentPath.startsWith(fullPath)),
+  );
   const [subItems, setSubItems] = useState<DirectoryEntry[] | null>(null);
   const ref = useRef<HTMLAnchorElement>(null);
+  const [isMounted, setIsMounted] = useState(false);
 
   const refetchFolderFiles = useCallback(() => {
     fetchFiles(fullPath).then(setSubItems);
   }, [fullPath]);
+
+  useEffect(() => {
+    if (currentPath && currentPath.startsWith(fullPath)) {
+      setOpen(true);
+    }
+  }, [currentPath, fullPath]);
+
+  useEffect(() => {
+    if (
+      subItems?.length &&
+      subItems.find(
+        (si) => si.entry_data !== 'Directory' && !si.entry_data.File.indexed,
+      ) &&
+      isMounted
+    ) {
+      refetchFolderFiles();
+    } else {
+      setIsMounted(true);
+    }
+  }, [lastIndex]);
 
   useEffect(() => {
     if (isDirectory && isOpen && !subItems) {
@@ -77,8 +100,8 @@ const DirEntry = ({
       <a
         className={`min-w-full w-max text-left h-7 flex-shrink-0 flex items-center gap-3 px-4 cursor-pointer body-mini group
       ${
-        'currentPath' === fullPath
-          ? 'bg-bg-main/15 text-label-title'
+        currentPath === fullPath
+          ? 'bg-bg-shade-hover text-label-title'
           : 'hover:bg-bg-base-hover hover:text-label-title active:bg-transparent'
       } ${
         isOpen && isDirectory
@@ -134,7 +157,7 @@ const DirEntry = ({
             style={{ left: level * 27 + 8 }}
           />
           {subItems.map((si) => (
-            <DirEntry
+            <RepoEntry
               key={name + si.name}
               name={si.name}
               isDirectory={si.entry_data === 'Directory'}
@@ -148,7 +171,8 @@ const DirEntry = ({
               }
               repoRef={repoRef}
               repoName={repoName}
-              refetchParentFolder={refetchFolderFiles}
+              lastIndex={lastIndex}
+              currentPath={currentPath}
             />
           ))}
         </div>
@@ -157,4 +181,4 @@ const DirEntry = ({
   );
 };
 
-export default memo(DirEntry);
+export default memo(RepoEntry);

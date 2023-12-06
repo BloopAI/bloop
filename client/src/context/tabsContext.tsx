@@ -32,9 +32,14 @@ export const TabsContext = {
     setLeftTabs: () => {},
     setRightTabs: () => {},
   }),
-  All: createContext<{ leftTabs: TabType[]; rightTabs: TabType[] }>({
+  All: createContext<{
+    leftTabs: TabType[];
+    rightTabs: TabType[];
+    focusedPanel: 'left' | 'right';
+  }>({
     leftTabs: [],
     rightTabs: [],
+    focusedPanel: 'left',
   }),
   CurrentLeft: createContext<{ tab: TabType | null }>({
     tab: null,

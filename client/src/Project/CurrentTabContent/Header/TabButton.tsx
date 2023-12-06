@@ -26,6 +26,7 @@ type Props = TabType & {
   moveTab: (i: number, j: number) => void;
   i: number;
   repoRef?: string;
+  repoName?: string;
   path?: string;
   threadId?: string;
   name?: string;
@@ -42,6 +43,7 @@ const TabButton = ({
   side,
   moveTab,
   isOnlyTab,
+  repoName,
   i,
 }: Props) => {
   const { t } = useTranslation();
@@ -124,9 +126,9 @@ const TabButton = ({
   const handleClick = useCallback(() => {
     const setAction = side === 'left' ? setActiveLeftTab : setActiveRightTab;
     // @ts-ignore
-    setAction({ path, repoRef, key: tabKey, type, threadId, name });
+    setAction({ path, repoRef, repoName, key: tabKey, type, threadId, name });
     setFocusedPanel(side);
-  }, [path, repoRef, tabKey, side]);
+  }, [path, repoRef, tabKey, side, repoName]);
 
   return (
     <a

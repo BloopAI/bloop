@@ -29,6 +29,8 @@ type Props = {
   isExpanded: boolean;
   i: number;
   projectId: string;
+  lastIndex: string;
+  currentPath?: string;
   branch: string;
   allBranches: { name: string; last_commit_unix_secs: number }[];
   indexedBranches: string[];
@@ -44,6 +46,8 @@ const RepoNav = ({
   indexedBranches,
   allBranches,
   projectId,
+  lastIndex,
+  currentPath,
 }: Props) => {
   const { t } = useTranslation();
   const [files, setFiles] = useState<DirectoryEntry[]>([]);
@@ -139,7 +143,7 @@ const RepoNav = ({
         style={{
           maxHeight: isExpanded && files.length ? undefined : 0,
         }}
-        className="overflow-hidden"
+        className={isExpanded ? 'overflow-auto' : 'overflow-hidden'}
       >
         {files.map((f) => (
           <RepoEntry
@@ -154,7 +158,8 @@ const RepoNav = ({
             fullPath={f.name}
             repoRef={repoRef}
             repoName={repoName}
-            refetchParentFolder={refetchParentFolder}
+            currentPath={currentPath}
+            lastIndex={lastIndex}
           />
         ))}
       </div>

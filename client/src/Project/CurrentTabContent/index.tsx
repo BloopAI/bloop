@@ -51,12 +51,19 @@ const CurrentTabContent = ({ side, onDrop, shouldStretch }: Props) => {
       <div className="overflow-hidden h-full flex-1 relative" ref={drop}>
         {tab?.type === TabTypesEnum.FILE ? (
           <FileTab
+            key={tab.key}
             path={tab.path}
             repoName={tab.repoName}
+            repoRef={tab.repoRef}
             noBorder={side === 'left'}
           />
         ) : tab?.type === TabTypesEnum.CHAT ? (
-          <ChatTab noBorder={side === 'left'} side={side} tabKey={tab.key} />
+          <ChatTab
+            noBorder={side === 'left'}
+            side={side}
+            tabKey={tab.key}
+            key={tab.key}
+          />
         ) : (
           <EmptyTab />
         )}
