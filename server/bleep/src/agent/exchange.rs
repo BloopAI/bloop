@@ -6,7 +6,7 @@ use rand::seq::SliceRandom;
 use crate::intelligence::code_navigation::FileSymbols;
 use crate::indexes::Indexes;
 use std::sync::Arc;
-use crate::webserver::hoverable::{inner_handle, HoverableRequest};
+use crate::webserver::hoverable::{inner_handle, HoverableRequest, HoverableResponse};
 use crate::webserver::intelligence::{inner_handle as token_info, TokenInfoRequest};
 use crate::intelligence::code_navigation::OccurrenceKind::{Definition, Reference};
 
@@ -219,7 +219,7 @@ impl ChunkRefDef {
         let hoverable_response = inner_handle(
             hoverable_request,
             indexes.clone()
-        ).await.expect("hoverable response failed");
+        ).await.unwrap_or_else(|_e| HoverableResponse{ranges: Vec::new()});
 
         // for each element call token-info
         let token_info_vec = hoverable_response.ranges.iter().filter(
@@ -241,7 +241,7 @@ impl ChunkRefDef {
         
         Self {
             chunk: chunk.clone(),
-            metadata: token_info_vec.into_iter().zip(hoverable_response.ranges.into_iter().filter(
+            metadata: {let mut metadata = token_info_vec.into_iter().zip(hoverable_response.ranges.into_iter().filter(
                 |range| { let f = (range.start.byte >= chunk.start_byte) && (range.start.byte < chunk.end_byte);
                     f}
             ))
@@ -251,7 +251,10 @@ impl ChunkRefDef {
                  file_symbols: filtered_token_info};
                  
                 m})
-                 .collect(),
+                 .collect::<Vec<_>>();
+                metadata.sort_by(|a, b| a.name.cmp(&b.name));
+                metadata.dedup_by(|a, b| a.name == b.name);
+                metadata},
         }
     }
 }
@@ -264,20 +267,22 @@ impl fmt::Display for ChunkRefDef {
                 let response_def = metadata.file_symbols.iter()
                 .filter(|x| x.data.iter().any(|y| match y.kind { Definition => true, _ => false}))
                 .map(|x| format!("{}", x.file))
-                .collect::<Vec<_>>().join("\n");
+                .collect::<Vec<_>>();
 
                 let response_ref = metadata.file_symbols.iter()
                 .filter(|x| x.data.iter().any(|y| match y.kind { Reference => true, _ => false}))
                 .map(|x| format!("{}", x.file))
-                .collect::<Vec<_>>().join("\n");
+                .collect::<Vec<_>>();
 
-                let response = format!("Symbol: {}\nDefinition:\n{}\n\nReferences:\n{}", metadata.name, response_def, response_ref);
-
-                dbg!("{}", response.clone());
-                response
+                (response_def, response_ref, metadata.name.clone())
             }
-        ).filter(|x| !x.contains("\nDefinition:\n\n\nReferences:\n")).collect::<Vec<_>>();
-        // TODO add metadata
+        ).filter(|(x, y, _)| (x.len() + y.len() > 0) && (y.len() < 5) && (x.len() < 3)).map(|(def_vec, ref_vec, symbol_name)|{
+            let mut met_str = format!("Symbol: {}", symbol_name);
+            if def_vec.len() > 0 {met_str = format!("{}\nDefinition: {}", met_str, def_vec.join("\n"));}
+            if ref_vec.len() > 0 {met_str = format!("{}\nReferences: {}", met_str, ref_vec.join("\n"));}
+            met_str
+        }).collect::<Vec<_>>();
+        dbg!("{}", metadata_str.clone());
         write!(f, "{}\n\nMetadata:\n\n{}", self.chunk, metadata_str.join("\n\n"))
     }
 }
