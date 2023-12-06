@@ -116,7 +116,7 @@ export function getMentionsPlugin(opts: Partial<Options>) {
   // default options
   const defaultOpts = {
     mentionTrigger: '@',
-    allowSpace: true,
+    allowSpace: false,
     getSuggestions: (
       type: string,
       text: string,
@@ -194,7 +194,10 @@ export function getMentionsPlugin(opts: Partial<Options>) {
           : offsetLeft +
             (window.innerWidth - (offsetLeft + el.clientWidth) - 10) +
             'px';
-      el.style.bottom = window.innerHeight - offsetTop + 'px';
+      el.style.bottom =
+        window.innerHeight - offsetTop + el.clientHeight > window.innerHeight
+          ? window.innerHeight - offsetTop - el.clientHeight - 20 + 'px'
+          : window.innerHeight - offsetTop + 'px';
     }, 10);
 
     el.style.display = 'block';

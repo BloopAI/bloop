@@ -34,20 +34,22 @@ export const mentionNode: NodeSpec = {
         'data-first': node.attrs.isFirst,
         'data-display': node.attrs.display,
         class:
-          'prosemirror-tag-node inline-flex gap-1.5 items-center align-bottom bg-chat-bg-border-hover rounded px-1',
+          'prosemirror-tag-node inline-flex gap-1 h-[22px] items-center align-bottom bg-bg-base border border-bg-border rounded px-1',
       },
       node.attrs.type === 'dir'
         ? folderIcon
         : [
             'span',
             {
-              class: `text-left w-4 h-4 file-icon flex-shrink-0 inline-flex items-center ${icons.getClassWithColor(
-                (node.attrs.type === 'lang'
-                  ? node.attrs.display.includes(' ')
-                    ? '.txt'
-                    : getFileExtensionForLang(node.attrs.display, true)
-                  : node.attrs.display) || '.txt',
-              )}`,
+              class: `text-left w-4 h-4 file-icon flex-shrink-0 inline-flex items-center ${
+                icons.getClassWithColor(
+                  (node.attrs.type === 'lang'
+                    ? node.attrs.display.includes(' ')
+                      ? '.txt'
+                      : getFileExtensionForLang(node.attrs.display, true)
+                    : node.attrs.display) || '.txt',
+                ) || icons.getClassWithColor('index.txt')
+              }`,
             },
             '',
           ],

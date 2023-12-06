@@ -19,6 +19,7 @@ import {
   ParsedQueryTypeEnum,
 } from '../../../../types/general';
 import { getFileExtensionForLang } from '../../../../utils';
+import { blurInput } from '../../../../utils/domUtils';
 import { getMentionsPlugin } from './mentionPlugin';
 import { addMentionNodes } from './utils';
 import { placeholderPlugin } from './placeholderPlugin';
@@ -75,7 +76,7 @@ const InputCore = ({
         },
         getSuggestionsHTML: (items) => {
           return (
-            '<div class="suggestion-item-list rounded-md border border-bg-border p-1 shadow-high max-h-[500px] overflow-auto bg-bg-shade">' +
+            '<div class="suggestion-item-list rounded-md border border-bg-border p-1 shadow-high max-h-[40vh] overflow-auto bg-bg-shade">' +
             items
               .map(
                 (i) =>
@@ -111,8 +112,23 @@ const InputCore = ({
 
   const plugins = useMemo(() => {
     return [
+      placeholderPlugin(placeholder),
+      react(),
+      mentionPlugin,
       keymap({
         ...baseKeymap,
+        Escape: (state) => {
+          const key = Object.keys(state).find((k) =>
+            k.startsWith('autosuggestions'),
+          );
+
+          // @ts-ignore
+          if (key && state[key]?.active) {
+            return true;
+          }
+          blurInput();
+          return true;
+        },
         Enter: (state) => {
           const key = Object.keys(state).find((k) =>
             k.startsWith('autosuggestions'),
@@ -151,9 +167,6 @@ const InputCore = ({
         'Cmd-Enter': baseKeymap.Enter,
         'Shift-Enter': baseKeymap.Enter,
       }),
-      placeholderPlugin(placeholder),
-      react(),
-      mentionPlugin,
     ];
   }, [onSubmit]);
 
@@ -196,7 +209,7 @@ const InputCore = ({
   }, [state]);
 
   return (
-    <div className="w-full body-base pb-4 leading-[24px] overflow-auto bg-transparent rounded-lg outline-none focus:outline-0 resize-none flex-grow-0 flex flex-col justify-center">
+    <div className="w-full body-base pb-4 !leading-[24px] overflow-auto bg-transparent rounded-lg outline-none focus:outline-0 resize-none flex-grow-0 flex flex-col justify-center">
       <ProseMirror
         mount={mount}
         state={state}

@@ -105,7 +105,7 @@ const TabButton = ({
         id: tabKey,
         index: i,
         // @ts-ignore
-        t: { key: tabKey, repoRef, path, type, threadId, name },
+        t: { key: tabKey, repoRef, repoName, path, type, threadId, name },
         side,
       };
     },

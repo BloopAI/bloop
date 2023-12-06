@@ -24,3 +24,7 @@ export const isFocusInInput = (ignoreCommandInput?: boolean) => {
 export const focusInput = () => {
   findElementInCurrentTab('.ProseMirror')?.focus();
 };
+
+export const blurInput = () => {
+  findElementInCurrentTab('.ProseMirror')?.blur();
+};
