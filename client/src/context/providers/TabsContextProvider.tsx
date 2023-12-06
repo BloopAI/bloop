@@ -30,11 +30,11 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
       forceSide?: 'left' | 'right',
     ) => {
       const setTabsAction =
-        focusedPanel === 'left' || forceSide === 'left'
+        (!forceSide && focusedPanel === 'left') || forceSide === 'left'
           ? setLeftTabs
           : setRightTabs;
       const setActiveTabAction =
-        focusedPanel === 'left' || forceSide === 'left'
+        (!forceSide && focusedPanel === 'left') || forceSide === 'left'
           ? setActiveLeftTab
           : setActiveRightTab;
       setTabsAction((prev) => {

@@ -1,4 +1,4 @@
-import React, { memo, useContext } from 'react';
+import React, { memo, useCallback, useContext } from 'react';
 import { useDrop } from 'react-dnd';
 import { Trans } from 'react-i18next';
 import { TabsContext } from '../../context/tabsContext';
@@ -19,6 +19,7 @@ const CurrentTabContent = ({ side, onDrop, shouldStretch }: Props) => {
   const { tab } = useContext(
     TabsContext[side === 'left' ? 'CurrentLeft' : 'CurrentRight'],
   );
+  const { setFocusedPanel } = useContext(TabsContext.Handlers);
 
   const [{ isOver, canDrop }, drop] = useDrop(
     () => ({
@@ -35,11 +36,16 @@ const CurrentTabContent = ({ side, onDrop, shouldStretch }: Props) => {
     [onDrop],
   );
 
+  const focusPanel = useCallback(() => {
+    setFocusedPanel(side);
+  }, [side]);
+
   return (
     <div
       className={`${
         shouldStretch ? 'flex-1' : ''
       } h-full flex flex-col overflow-hidden`}
+      onClick={focusPanel}
     >
       <Header side={side} />
       <div className="overflow-hidden h-full flex-1 relative" ref={drop}>
@@ -50,7 +56,7 @@ const CurrentTabContent = ({ side, onDrop, shouldStretch }: Props) => {
             noBorder={side === 'left'}
           />
         ) : tab?.type === TabTypesEnum.CHAT ? (
-          <ChatTab noBorder={side === 'left'} side={side} />
+          <ChatTab noBorder={side === 'left'} side={side} tabKey={tab.key} />
         ) : (
           <EmptyTab />
         )}

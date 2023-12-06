@@ -9,15 +9,16 @@ import { TabTypesEnum } from '../../../types/general';
 
 type Props = {
   tabsLength: number;
+  side: 'left' | 'right';
 };
 
-const AddTabButton = ({ tabsLength }: Props) => {
+const AddTabButton = ({ tabsLength, side }: Props) => {
   const { t } = useTranslation();
   const { openNewTab } = useContext(TabsContext.Handlers);
 
   const openChatTab = useCallback(() => {
-    openNewTab({ type: TabTypesEnum.CHAT });
-  }, [openNewTab]);
+    openNewTab({ type: TabTypesEnum.CHAT }, side);
+  }, [openNewTab, side]);
 
   return (
     <Dropdown

@@ -516,3 +516,8 @@ type InputEditorMentionContent = {
 export type InputEditorContent =
   | InputEditorTextContent
   | InputEditorMentionContent;
+
+export type InputValueType = {
+  parsed: ParsedQueryType[];
+  plain: string;
+};

@@ -59,7 +59,7 @@ const ProjectHeader = ({ side }: Props) => {
           />
         ))}
         {!!tabs.length && <div className="h-3 w-px bg-bg-border mx-1" />}
-        <AddTabButton tabsLength={tabs.length} />
+        <AddTabButton tabsLength={tabs.length} side={side} />
       </div>
       {(side === 'right' || !rightTabs.length) && (
         <div className="border-l border-bg-border h-full">

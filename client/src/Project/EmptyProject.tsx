@@ -4,14 +4,18 @@ import Header from '../components/Header';
 import { PlusSignIcon, ShapesIcon } from '../icons';
 import Button from '../components/Button';
 import { CommandBarContext } from '../context/commandBarContext';
+import { CommandBarStepEnum } from '../types/general';
 
 type Props = {};
 
 const EmptyProject = ({}: Props) => {
   useTranslation();
-  const { setIsVisible } = useContext(CommandBarContext.Handlers);
+  const { setIsVisible, setChosenStep } = useContext(
+    CommandBarContext.Handlers,
+  );
 
   const openCommandBar = useCallback(() => {
+    setChosenStep({ id: CommandBarStepEnum.MANAGE_REPOS });
     setIsVisible(true);
   }, []);
 

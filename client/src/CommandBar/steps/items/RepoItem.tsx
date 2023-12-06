@@ -287,13 +287,9 @@ const RepoItem = ({
       id={CommandBarStepEnum.REPO_SETTINGS}
       footerHint={
         isIndexing
-          ? t('Indexing started at') +
-            ' ' +
-            format(indexingStartedAt, 'MMM, dd yyyy', {
-              ...(getDateFnsLocale(locale) || {}),
-            })
+          ? t('Indexing...')
           : status === SyncStatus.Done
-          ? `Open ${repo.shortName}`
+          ? ``
           : t('Index repository')
       }
       iconContainerClassName={

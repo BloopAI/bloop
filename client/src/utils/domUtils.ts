@@ -20,3 +20,7 @@ export const isFocusInInput = (ignoreCommandInput?: boolean) => {
   const isInCommandInput = document.activeElement?.id === 'command-input';
   return ignoreCommandInput ? isInInput && !isInCommandInput : isInInput;
 };
+
+export const focusInput = () => {
+  findElementInCurrentTab('.ProseMirror')?.focus();
+};

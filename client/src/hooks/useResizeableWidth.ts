@@ -19,7 +19,7 @@ const useResizeableWidth = (
       if (!savedPanelSize) {
         panel.style.width = `${defaultWidth}%`;
       } else {
-        panel.style.width = `${Math.max(savedPanelSize, maxWidth)}%`;
+        panel.style.width = `${Math.min(savedPanelSize, maxWidth)}%`;
         if (savedPanelSize > maxWidth) {
           localStorage.setItem(localStorageKey, maxWidth.toString());
         }

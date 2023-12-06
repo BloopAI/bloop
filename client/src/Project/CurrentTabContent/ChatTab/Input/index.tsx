@@ -1,4 +1,12 @@
-import { Dispatch, memo, SetStateAction, useCallback, useContext } from 'react';
+import {
+  Dispatch,
+  memo,
+  SetStateAction,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { EnvContext } from '../../../../context/envContext';
 import {
@@ -62,6 +70,37 @@ const ConversationInput = ({
 }: Props) => {
   const { t } = useTranslation();
   const { envConfig } = useContext(EnvContext);
+  const [initialValue, setInitialValue] = useState<
+    Record<string, any> | null | undefined
+  >({
+    type: 'paragraph',
+    content: value?.parsed
+      .filter((pq) => ['path', 'lang', 'text'].includes(pq.type))
+      .map((pq) =>
+        pq.type === 'text'
+          ? { type: 'text', text: pq.text }
+          : {
+              type: 'mention',
+              attrs: {
+                id: pq.text,
+                display: pq.text,
+                type: pq.type,
+                isFirst: false,
+              },
+            },
+      ),
+  });
+  const [hasRendered, setHasRendered] = useState(false);
+
+  useEffect(() => {
+    setHasRendered(true);
+  }, []);
+
+  useEffect(() => {
+    if (hasRendered) {
+      setInitialValue(valueToEdit);
+    }
+  }, [valueToEdit]);
 
   const onSubmit = useCallback(
     (value: { parsed: ParsedQueryType[]; plain: string }) => {
@@ -171,7 +210,7 @@ const ConversationInput = ({
         <InputCore
           getDataLang={getDataLang}
           getDataPath={getDataPath}
-          initialValue={valueToEdit}
+          initialValue={initialValue}
           onChange={onChangeInput}
           onSubmit={onSubmit}
           placeholder={t(

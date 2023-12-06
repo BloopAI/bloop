@@ -9,7 +9,7 @@ type HandlersContextType = {
           path: string;
           repoRef: string;
           repoName: string;
-          scrollToLine: string;
+          scrollToLine?: string;
         }
       | { type: TabTypesEnum.CHAT },
     forceSide?: 'left' | 'right',
