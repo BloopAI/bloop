@@ -548,5 +548,7 @@
 	"Editing previously submitted questions will discard all answers and questions following it": "编辑先前提交的问题将丢弃所有答案和问题",
 	"Hi, I am bloop! In <2><0></0>Chat mode</2> I can answer any questions related to any of your repositories.": "嗨，我是Bloop！ 在<2> <0> </0>聊天模式</2>我可以回答与您的任何存储库有关的任何问题。",
 	"Upvote": "举重",
-	"Commands": "命令"
+	"Commands": "命令",
+	"Branches": "分支",
+	"Syncing": "同步"
 }

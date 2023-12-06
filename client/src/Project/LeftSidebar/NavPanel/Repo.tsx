@@ -20,6 +20,7 @@ import {
 } from '../../../icons';
 import Button from '../../../components/Button';
 import RepoEntry from './RepoEntry';
+import RepoDropdown from './RepoDropdown';
 
 type Props = {
   repoName: string;
@@ -27,16 +28,30 @@ type Props = {
   setExpanded: Dispatch<SetStateAction<number>>;
   isExpanded: boolean;
   i: number;
+  projectId: string;
+  branch: string;
+  allBranches: { name: string; last_commit_unix_secs: number }[];
+  indexedBranches: string[];
 };
 
-const RepoNav = ({ repoName, repoRef, i, isExpanded, setExpanded }: Props) => {
+const RepoNav = ({
+  repoName,
+  repoRef,
+  i,
+  isExpanded,
+  setExpanded,
+  branch,
+  indexedBranches,
+  allBranches,
+  projectId,
+}: Props) => {
   const { t } = useTranslation();
   const [files, setFiles] = useState<DirectoryEntry[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const fetchFiles = useCallback(
     async (path?: string) => {
-      const resp = await search(buildRepoQuery(repoName, path));
+      const resp = await search(buildRepoQuery(repoName, path, branch));
       if (!resp.data?.[0]?.data) {
         return [];
       }
@@ -48,7 +63,7 @@ const RepoNav = ({ repoName, repoRef, i, isExpanded, setExpanded }: Props) => {
         }
       });
     },
-    [repoName],
+    [repoName, branch],
   );
 
   const refetchParentFolder = useCallback(() => {
@@ -88,20 +103,37 @@ const RepoNav = ({ repoName, repoRef, i, isExpanded, setExpanded }: Props) => {
           <p className="text-label-title ellipsis">
             {splitPath(repoName).pop()}
           </p>
-          <span className="text-label-muted">/</span>
-          <div onClick={(e) => e.stopPropagation()}>
-            <Dropdown dropdownItems={<div></div>}>
+          {isExpanded && (
+            <>
+              <span className="text-label-muted">/</span>
               <span className="flex items-center text-label-muted gap-1 body-s-b">
-                main <ArrowTriangleBottomIcon sizeClassName="w-2 h-2" />
+                {branch?.replace(/^origin\//, '')}{' '}
+                <ArrowTriangleBottomIcon sizeClassName="w-2 h-2" />
               </span>
+            </>
+          )}
+        </div>
+        {isExpanded && (
+          <div onClick={(e) => e.stopPropagation()}>
+            <Dropdown
+              dropdownItems={
+                <RepoDropdown
+                  projectId={projectId}
+                  repoRef={repoRef}
+                  selectedBranch={branch}
+                  indexedBranches={indexedBranches}
+                  allBranches={allBranches}
+                />
+              }
+              appendTo={document.body}
+              dropdownPlacement="bottom-start"
+            >
+              <Button variant="tertiary" size="mini" onlyIcon title={t('')}>
+                <MoreHorizontalIcon sizeClassName="w-3.5 h-3.5" />
+              </Button>
             </Dropdown>
           </div>
-        </div>
-        <div onClick={(e) => e.stopPropagation()}>
-          <Button variant="tertiary" size="mini" onlyIcon title={t('')}>
-            <MoreHorizontalIcon sizeClassName="w-3.5 h-3.5" />
-          </Button>
-        </div>
+        )}
       </span>
       <div
         style={{

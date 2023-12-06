@@ -519,5 +519,7 @@
 	"Editing previously submitted questions will discard all answers and questions following it": "La modifica delle domande precedentemente inviate eliminerà tutte le risposte e le domande che lo seguono",
 	"Hi, I am bloop! In <2><0></0>Chat mode</2> I can answer any questions related to any of your repositories.": "Ciao, sono Bloop! In <2> <0> </0> Modalità chat </2> Posso rispondere a qualsiasi domanda relativa a uno qualsiasi dei tuoi repository.",
 	"Downvote": "Votare in negativo",
-	"Commands": "Comandi"
+	"Commands": "Comandi",
+	"Branches": "Rami",
+	"Syncing": "Sincronizzazione"
 }

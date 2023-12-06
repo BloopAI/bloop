@@ -19,8 +19,8 @@ const App = () => {
     <DndProvider backend={HTML5Backend}>
       <AnalyticsContextProvider>
         <PersonalQuotaContextProvider>
-          <ProjectContextProvider>
-            <UIContextProvider>
+          <UIContextProvider>
+            <ProjectContextProvider>
               <ReportBugModal />
               <Onboarding />
               <CommandBarContextProvider>
@@ -31,8 +31,8 @@ const App = () => {
                   <Project />
                 </TabsContextProvider>
               </CommandBarContextProvider>
-            </UIContextProvider>
-          </ProjectContextProvider>
+            </ProjectContextProvider>
+          </UIContextProvider>
         </PersonalQuotaContextProvider>
       </AnalyticsContextProvider>
     </DndProvider>

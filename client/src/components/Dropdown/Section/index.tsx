@@ -10,7 +10,7 @@ const DropdownSection = ({
 }: PropsWithChildren<Props>) => {
   return (
     <div
-      className={`flex flex-col p-1 items-start ${
+      className={`flex flex-col p-1 items-start overflow-hidden ${
         borderBottom ? 'border-b border-bg-border' : ''
       }`}
     >

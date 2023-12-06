@@ -12,12 +12,18 @@ const NavPanel = ({}: Props) => {
     <div className="flex flex-col h-full flex-1 overflow-auto">
       {project?.repos.map((r, i) => (
         <RepoNav
-          key={r.ref}
+          projectId={project?.id}
+          key={r.repo.ref}
           setExpanded={setExpanded}
           isExpanded={expanded === i}
           i={i}
-          repoName={r.provider === RepoProvider.Local ? r.name : r.ref}
-          repoRef={r.ref}
+          repoName={
+            r.repo.provider === RepoProvider.Local ? r.repo.name : r.repo.ref
+          }
+          repoRef={r.repo.ref}
+          branch={r.branch}
+          allBranches={r.repo.branches}
+          indexedBranches={r.repo.branch_filter?.select || []}
         />
       ))}
     </div>

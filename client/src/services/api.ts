@@ -451,10 +451,18 @@ export const updateProject = (id: string, data: Partial<ProjectShortType>) =>
   http.put(`/projects/${id}`, data).then((r) => r.data);
 export const deleteProject = (id: string) =>
   http.delete(`/projects/${id}`).then((r) => r.data);
-export const getProjectRepos = (id: string): Promise<RepoType[]> =>
+export const getProjectRepos = (
+  id: string,
+): Promise<{ repo: RepoType; branch: string }[]> =>
   http(`/projects/${id}/repos`).then((r) => r.data);
-export const addRepoToProject = (id: string, repoRef: string) =>
-  http.post(`/projects/${id}/repos`, { ref: repoRef }).then((r) => r.data);
+export const addRepoToProject = (
+  id: string,
+  repoRef: string,
+  branch?: string,
+) =>
+  http
+    .post(`/projects/${id}/repos`, { ref: repoRef, branch })
+    .then((r) => r.data);
 export const removeRepoFromProject = (id: string, repoRef: string) =>
   http
     .delete(`/projects/${id}/repos/${encodeURIComponent(repoRef)}`)

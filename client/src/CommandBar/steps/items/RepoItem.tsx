@@ -134,7 +134,11 @@ const RepoItem = ({
 
   const handleAddToProject = useCallback(async () => {
     if (project?.id) {
-      await addRepoToProject(project.id, repo.ref);
+      await addRepoToProject(
+        project.id,
+        repo.ref,
+        repo.branch_filter?.select?.[0],
+      );
       refreshCurrentProjectRepos();
     }
   }, [repo]);
@@ -173,7 +177,7 @@ const RepoItem = ({
   }, [repo.ref]);
 
   const isInProject = useMemo(() => {
-    return project?.repos.find((r) => r.ref === repo.ref);
+    return project?.repos.find((r) => r.repo.ref === repo.ref);
   }, [project, repo.ref]);
 
   const focusedItemProps = useMemo(() => {

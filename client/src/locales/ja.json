@@ -541,5 +541,7 @@
 	"Downvote": "ダウンボート",
 	"Editing previously submitted questions will discard all answers and questions following it": "以前に提出された質問を編集すると、それに続くすべての回答と質問が破棄されます",
 	"Hi, I am bloop! In <2><0></0>Chat mode</2> I can answer any questions related to any of your repositories.": "こんにちは、私はブループです！ <2><0></0>チャットモード</2>リポジトリのいずれかに関連する質問に答えることができます。",
-	"Upvote": "賛成票"
+	"Upvote": "賛成票",
+	"Branches": "枝",
+	"Syncing": "同期"
 }

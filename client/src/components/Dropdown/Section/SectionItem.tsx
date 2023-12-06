@@ -1,4 +1,4 @@
-import { memo, ReactElement, useCallback, useEffect, useRef } from 'react';
+import { memo, ReactElement, useCallback, MouseEvent, useRef } from 'react';
 import { CheckIcon } from '../../../icons';
 import { checkEventKeys } from '../../../utils/keyboardUtils';
 import useShortcuts from '../../../hooks/useShortcuts';
@@ -7,11 +7,12 @@ import { isFocusInInput } from '../../../utils/domUtils';
 
 type Props = {
   icon?: ReactElement;
+  customRightElement?: ReactElement;
   label: string;
   shortcut?: string[];
   isSelected?: boolean;
   isFocused?: boolean;
-  onClick: () => void;
+  onClick: (e?: MouseEvent) => void;
   color?: 'shade' | 'base';
 };
 
@@ -23,9 +24,10 @@ const SectionItem = ({
   isSelected,
   isFocused,
   color = 'shade',
+  customRightElement,
 }: Props) => {
   const shortcutKeys = useShortcuts(shortcut);
-  const ref = useRef<HTMLButtonElement>(null);
+  const ref = useRef<HTMLAnchorElement>(null);
 
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
@@ -43,10 +45,11 @@ const SectionItem = ({
   useKeyboardNavigation(handleKeyEvent);
 
   return (
-    <button
+    <a
+      href="#"
       onClick={onClick}
       ref={ref}
-      className={`w-full text-left rounded-6 h-8 flex items-center px-2 gap-2
+      className={`w-full text-left rounded-6 h-8 px-2 overflow-hidden
         hover:text-label-title ${
           color === 'shade'
             ? 'hover:bg-bg-shade-hover'
@@ -61,16 +64,23 @@ const SectionItem = ({
               }`
         } focus:outline-0 focus:outline-none`}
     >
-      {icon}
-      <p className="flex-1 body-s-b text-label-title ellisis">{label}</p>
-      <p className="body-mini-b text-label-muted">{shortcutKeys?.join(' ')}</p>
-      {isSelected && (
-        <CheckIcon
-          sizeClassName="w-4 h-4"
-          className="text-bg-border-selected"
-        />
-      )}
-    </button>
+      <span className="flex items-center gap-2 h-full overflow-hidden">
+        {icon}
+        <span className="flex-1 body-s-b text-label-title ellisis">
+          {label}
+        </span>
+        <span className="body-mini-b text-label-muted">
+          {shortcutKeys?.join(' ')}
+        </span>
+        {isSelected && (
+          <CheckIcon
+            sizeClassName="w-4 h-4"
+            className="text-bg-border-selected"
+          />
+        )}
+        {customRightElement}
+      </span>
+    </a>
   );
 };
 

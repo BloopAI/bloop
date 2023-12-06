@@ -27,7 +27,7 @@ const StarterMessage = ({
 
   useEffect(() => {
     if (project?.repos.length) {
-      getTutorialQuestions(project.repos[0].ref).then((resp) =>
+      getTutorialQuestions(project.repos[0].repo.ref).then((resp) =>
         setTutorials(resp.questions),
       );
     }

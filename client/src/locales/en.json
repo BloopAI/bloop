@@ -560,5 +560,7 @@
 	"Streaming response...": "Streaming response...",
 	"Upvote": "Upvote",
 	"Downvote": "Downvote",
-	"Editing previously submitted questions will discard all answers and questions following it": "Editing previously submitted questions will discard all answers and questions following it"
+	"Editing previously submitted questions will discard all answers and questions following it": "Editing previously submitted questions will discard all answers and questions following it",
+	"Branches": "Branches",
+	"Syncing": "Syncing"
 }

@@ -118,7 +118,7 @@ const ManageRepos = ({}: Props) => {
             return item.componentProps.repo.sync_status === SyncStatus.Done;
           case Filter.InThisProject:
             return !!project?.repos.find(
-              (r) => r.ref === item.componentProps.repo.ref,
+              (r) => r.repo.ref === item.componentProps.repo.ref,
             );
           default:
             return true;
