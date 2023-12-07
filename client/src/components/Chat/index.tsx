@@ -94,7 +94,7 @@ const Chat = () => {
               queryIdToEdit ? `&parent_query_id=${queryIdToEdit}` : ''
             }`
           : ''
-      }&model=${
+      }&answer_model=${
         preferredAnswerSpeed === 'normal'
           ? 'gpt-4-turbo-24k'
           : 'gpt-3.5-turbo-finetuned'
