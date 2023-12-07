@@ -160,6 +160,7 @@ const ChatPersistentState = ({ tabKey }: Props) => {
                       },
                 ),
       });
+      focusInput();
     },
     [],
   );

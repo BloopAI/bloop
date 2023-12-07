@@ -10,7 +10,6 @@ import {
 import { Trans, useTranslation } from 'react-i18next';
 import { EnvContext } from '../../../../context/envContext';
 import {
-  ChatLoadingStep,
   ChatMessage,
   ChatMessageServer,
   InputEditorContent,
@@ -20,6 +19,7 @@ import {
 import { getAutocomplete } from '../../../../services/api';
 import { FileResItem, LangItem } from '../../../../types/api';
 import useKeyboardNavigation from '../../../../hooks/useKeyboardNavigation';
+import KeyboardHint from '../../../../components/KeyboardHint';
 import InputCore from './InputCore';
 
 type Props = {
@@ -188,15 +188,19 @@ const ConversationInput = ({
 
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && onMessageEditCancel) {
+      if (
+        e.key === 'Escape' &&
+        ((onMessageEditCancel && queryIdToEdit) || (isStoppable && onStop))
+      ) {
         e.preventDefault();
         e.stopPropagation();
-        onMessageEditCancel();
+        onMessageEditCancel?.();
+        onStop?.();
       }
     },
-    [onMessageEditCancel],
+    [onMessageEditCancel, isStoppable, onStop],
   );
-  useKeyboardNavigation(handleKeyEvent, !queryIdToEdit);
+  useKeyboardNavigation(handleKeyEvent, !queryIdToEdit && !isStoppable);
 
   return (
     <div className="flex items-start w-full p-4 gap-4 rounded-md">
@@ -218,15 +222,22 @@ const ConversationInput = ({
           )}
         />
         <div className="self-end flex gap-2 items-center">
+          {isStoppable && (
+            <button
+              className="flex gap-1 items-center py-1 pr-1 pl-2 rounded-6 body-mini-b text-label-base bg-bg-base disabled:text-label-muted disabled:bg-bg-base"
+              onClick={onStop}
+            >
+              <Trans>Stop generating</Trans>
+              <KeyboardHint shortcut="Esc" />
+            </button>
+          )}
           {!!queryIdToEdit && (
             <button
               className="flex gap-1 items-center py-1 pr-1 pl-2 rounded-6 body-mini-b text-label-base bg-bg-base disabled:text-label-muted disabled:bg-bg-base"
               onClick={onMessageEditCancel}
             >
               <Trans>Cancel</Trans>
-              <div className="h-5 flex items-center justify-center px-1 rounded bg-bg-base-hover body-mini text-label-base">
-                Esc
-              </div>
+              <KeyboardHint shortcut="Esc" />
             </button>
           )}
           <button
@@ -235,9 +246,7 @@ const ConversationInput = ({
             onClick={onSubmitButtonClicked}
           >
             <Trans>Submit</Trans>
-            <div className="w-5 h-5 flex items-center justify-center px-1 rounded bg-bg-base-hover body-mini text-label-base">
-              ↵
-            </div>
+            <KeyboardHint shortcut="entr" />
           </button>
         </div>
       </div>
