@@ -25,6 +25,7 @@ import {
   getPlainFromStorage,
   LANGUAGE_KEY,
   savePlainToStorage,
+  USER_FONT_SIZE_KEY,
 } from '../../../client/src/services/storage';
 import { LocaleType } from '../../../client/src/types/general';
 import { polling } from '../../../client/src/utils/requestUtils';
@@ -165,11 +166,24 @@ function App() {
         .getPropertyValue('font-size');
       const fontSize = parseFloat(style);
 
-      (root as HTMLElement).style.fontSize =
-        (e.key === '0' ? 16 : fontSize + (e.key === '=' ? 1 : -1)) + 'px';
+      const newFontSize =
+        e.key === '0' ? 16 : fontSize + (e.key === '=' ? 1 : -1);
+      (root as HTMLElement).style.fontSize = newFontSize + 'px';
+      savePlainToStorage(USER_FONT_SIZE_KEY, newFontSize);
     }
   }, []);
   useKeyboardNavigation(handleKeyEvent);
+
+  useEffect(() => {
+    const root = document.querySelector(':root');
+    if (!root) {
+      return;
+    }
+    const newFontSize = getPlainFromStorage(USER_FONT_SIZE_KEY);
+    if (newFontSize) {
+      (root as HTMLElement).style.fontSize = newFontSize + 'px';
+    }
+  }, []);
 
   useEffect(() => {
     let intervalId: number;
