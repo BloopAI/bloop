@@ -1,6 +1,7 @@
 use crate::query::parser::SemanticQuery;
 use std::fmt;
 
+use crate::agent::Agent;
 use crate::indexes::Indexes;
 use crate::intelligence::code_navigation::FileSymbols;
 use crate::intelligence::code_navigation::OccurrenceKind::{Definition, Reference};
@@ -261,18 +262,46 @@ impl ChunkRefDef {
                             .into_iter()
                             .filter(|x| x.file != chunk.path)
                             .collect::<Vec<_>>();
+                        let defs = filtered_token_info
+                            .iter()
+                            .filter(|x| {
+                                x.data.iter().any(|y| match y.kind {
+                                    Definition => true,
+                                    _ => false,
+                                })
+                            })
+                            .map(|x| x.file.clone())
+                            .collect::<Vec<_>>();
+                        let refs = filtered_token_info
+                            .iter()
+                            .filter(|x| {
+                                x.data.iter().any(|y| match y.kind {
+                                    Reference => true,
+                                    _ => false,
+                                })
+                            })
+                            .map(|x| x.file.clone())
+                            .collect::<Vec<_>>();
+
                         let m = RefDefMetadata {
                             name: chunk.snippet.clone()[(range.start.byte - chunk.start_byte)
                                 ..(range.end.byte - chunk.start_byte)]
                                 .to_string(),
-                            file_symbols: filtered_token_info,
+                            file_symbols: RefDef {
+                                defs: defs,
+                                refs: refs,
+                                alias_defs: None,
+                                alias_refs: None,
+                            },
                         };
 
                         m
                     })
+                    .filter(|x| (x.file_symbols.refs.len() + x.file_symbols.defs.len() > 0) && (x.file_symbols.refs.len() < 5) && (x.file_symbols.defs.len() < 3)) // && 
                     .collect::<Vec<_>>();
                 metadata.sort_by(|a, b| a.name.cmp(&b.name));
                 metadata.dedup_by(|a, b| a.name == b.name);
+                dbg!("Metadata length: {}", metadata.len());
                 metadata
             },
         }
@@ -284,41 +313,21 @@ impl fmt::Display for ChunkRefDef {
         let metadata_str = self
             .metadata
             .iter()
-            .map(|metadata| {
-                let response_def = metadata
-                    .file_symbols
-                    .iter()
-                    .filter(|x| {
-                        x.data.iter().any(|y| match y.kind {
-                            Definition => true,
-                            _ => false,
-                        })
-                    })
-                    .map(|x| format!("{}", x.file))
-                    .collect::<Vec<_>>();
-
-                let response_ref = metadata
-                    .file_symbols
-                    .iter()
-                    .filter(|x| {
-                        x.data.iter().any(|y| match y.kind {
-                            Reference => true,
-                            _ => false,
-                        })
-                    })
-                    .map(|x| format!("{}", x.file))
-                    .collect::<Vec<_>>();
-
-                (response_def, response_ref, metadata.name.clone())
-            })
-            .filter(|(x, y, _)| (x.len() + y.len() > 0) && (y.len() < 5) && (x.len() < 3))
-            .map(|(def_vec, ref_vec, symbol_name)| {
-                let mut met_str = format!("Symbol: {}", symbol_name);
-                if def_vec.len() > 0 {
-                    met_str = format!("{}\nDefinition: {}", met_str, def_vec.join("\n"));
+            .map(|m| {
+                let mut met_str = format!("Symbol: {}", m.name);
+                if m.file_symbols.defs.len() > 0 {
+                    met_str = format!(
+                        "{}\nDefinition: {}",
+                        met_str,
+                        m.file_symbols.alias_defs.clone().unwrap().iter().map(|x| format!("{}", x)).collect::<Vec<_>>().join(", ")
+                    );
                 }
-                if ref_vec.len() > 0 {
-                    met_str = format!("{}\nReferences: {}", met_str, ref_vec.join("\n"));
+                if m.file_symbols.refs.len() > 0 {
+                    met_str = format!(
+                        "{}\nReferences: {}",
+                        met_str,
+                        m.file_symbols.alias_refs.clone().unwrap().iter().map(|x| format!("{}", x)).collect::<Vec<_>>().join(", ")
+                    );
                 }
                 met_str
             })
@@ -335,7 +344,14 @@ impl fmt::Display for ChunkRefDef {
 
 pub struct RefDefMetadata {
     pub name: String,
-    pub file_symbols: Vec<FileSymbols>,
+    pub file_symbols: RefDef,
+}
+
+pub struct RefDef {
+    pub refs: Vec<String>,
+    pub defs: Vec<String>,
+    pub alias_refs: Option<Vec<usize>>,
+    pub alias_defs: Option<Vec<usize>>,
 }
 
 impl CodeChunk {
