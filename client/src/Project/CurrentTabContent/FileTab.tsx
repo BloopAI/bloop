@@ -151,7 +151,7 @@ const FileTab = ({ repoName, path, noBorder, repoRef }: Props) => {
             hoverableRanges={file.hoverableRanges}
             repoName={file.repo_name}
           />
-        ) : (
+        ) : !!file && !file.indexed ? (
           <div className="flex-1 h-full flex flex-col items-center justify-center gap-6">
             <div className="w-15 h-15 flex items-center justify-center rounded-xl border border-bg-divider">
               <EyeCutIcon sizeClassName="w-5 h-5" />
@@ -162,15 +162,14 @@ const FileTab = ({ repoName, path, noBorder, repoRef }: Props) => {
               </p>
               <p className="body-s text-label-base !leading-5">
                 <Trans>
-                  This file was not indexed by bloop. The reason for this might
-                  be that the file is to big or is in our list of excluded file
-                  types.
+                  This might be because the file is too big or it has one of
+                  bloop&apos;s excluded file types.
                 </Trans>
               </p>
             </div>
             {!indexRequested ? (
               <Button size="large" variant="primary" onClick={onIndexRequested}>
-                <Trans>Force index</Trans>
+                <Trans>Index</Trans>
               </Button>
             ) : (
               <div className="text-bg-main mt-6">
@@ -178,7 +177,7 @@ const FileTab = ({ repoName, path, noBorder, repoRef }: Props) => {
               </div>
             )}
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

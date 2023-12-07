@@ -550,5 +550,6 @@
 	"Upvote": "举重",
 	"Commands": "命令",
 	"Branches": "分支",
-	"Syncing": "同步"
+	"Syncing": "同步",
+	"This might be because the file is too big or it has one of bloop's excluded file types.": "这可能是因为文件太大，或者它具有Bloop排除的文件类型之一。"
 }

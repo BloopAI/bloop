@@ -201,7 +201,7 @@ export function getMentionsPlugin(opts: Partial<Options>) {
     }, 10);
 
     el.style.display = 'block';
-    el.style.zIndex = '999999';
+    el.style.zIndex = '80';
   };
 
   const hideList = function () {
@@ -367,6 +367,9 @@ export function getMentionsPlugin(opts: Partial<Options>) {
             options.delay,
             this,
           );
+        },
+        destroy: () => {
+          hideList();
         },
       };
     },

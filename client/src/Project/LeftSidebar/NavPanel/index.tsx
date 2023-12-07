@@ -1,4 +1,4 @@
-import { memo, useContext, useMemo, useState } from 'react';
+import { memo, useContext, useEffect, useMemo, useState } from 'react';
 import { ProjectContext } from '../../../context/projectContext';
 import { RepoProvider, TabTypesEnum } from '../../../types/general';
 import { TabsContext } from '../../../context/tabsContext';
@@ -20,6 +20,12 @@ const NavPanel = ({}: Props) => {
     }
     return null;
   }, [focusedPanel, leftTab, rightTab]);
+
+  useEffect(() => {
+    if (project?.repos.length === 1) {
+      setExpanded(0);
+    }
+  }, [project?.repos]);
 
   return (
     <div className="flex flex-col h-full flex-1 overflow-auto">

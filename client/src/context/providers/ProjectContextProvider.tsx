@@ -34,10 +34,12 @@ const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
   );
   const [project, setProject] = useState<ProjectFullType | null>(null);
   const [projects, setProjects] = useState<ProjectShortType[]>([]);
+  const [isReposLoaded, setIsReposLoaded] = useState(false);
 
   const refreshCurrentProjectRepos = useCallback(async () => {
     getProjectRepos(currentProjectId).then((r) => {
       setProject((prev) => (prev ? { ...prev, repos: r } : null));
+      setIsReposLoaded(true);
     });
   }, [currentProjectId]);
   const refreshCurrentProjectConversations = useCallback(async () => {
@@ -94,11 +96,12 @@ const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
   const currentValue = useMemo(
     () => ({
       project,
+      isReposLoaded,
       setCurrentProjectId,
       refreshCurrentProjectRepos,
       refreshCurrentProject,
     }),
-    [project],
+    [project, isReposLoaded],
   );
 
   const allValue = useMemo(

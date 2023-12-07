@@ -521,5 +521,6 @@
 	"Downvote": "Votare in negativo",
 	"Commands": "Comandi",
 	"Branches": "Rami",
-	"Syncing": "Sincronizzazione"
+	"Syncing": "Sincronizzazione",
+	"This might be because the file is too big or it has one of bloop's excluded file types.": "Ciò potrebbe essere dovuto al fatto che il file è troppo grande o ha uno dei tipi di file esclusi di Bloop."
 }

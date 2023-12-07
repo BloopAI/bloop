@@ -1,4 +1,12 @@
-import { memo, PropsWithChildren, useCallback, useMemo, useState } from 'react';
+import {
+  memo,
+  PropsWithChildren,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { TabsContext } from '../tabsContext';
 import {
   ChatTabType,
@@ -6,10 +14,12 @@ import {
   TabType,
   TabTypesEnum,
 } from '../../types/general';
+import { ProjectContext } from '../projectContext';
 
 type Props = {};
 
 const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
+  const { project, isReposLoaded } = useContext(ProjectContext.Current);
   const [leftTabs, setLeftTabs] = useState<TabType[]>([]);
   const [rightTabs, setRightTabs] = useState<TabType[]>([]);
   const [activeLeftTab, setActiveLeftTab] = useState<TabType | null>(null);
@@ -87,6 +97,18 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
       return newTabs;
     });
   }, []);
+
+  useEffect(() => {
+    if (isReposLoaded && project?.repos) {
+      const checkIfTabShouldClose = (tab: TabType | null) =>
+        tab?.type === TabTypesEnum.FILE &&
+        !project.repos.find((r) => r.repo.ref === tab.repoRef);
+      setActiveLeftTab((prev) => (checkIfTabShouldClose(prev) ? null : prev));
+      setActiveRightTab((prev) => (checkIfTabShouldClose(prev) ? null : prev));
+      setLeftTabs((prev) => prev.filter((t) => !checkIfTabShouldClose(t)));
+      setRightTabs((prev) => prev.filter((t) => !checkIfTabShouldClose(t)));
+    }
+  }, [isReposLoaded, project?.repos]);
 
   const handlersContextValue = useMemo(
     () => ({

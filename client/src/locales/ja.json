@@ -543,5 +543,6 @@
 	"Hi, I am bloop! In <2><0></0>Chat mode</2> I can answer any questions related to any of your repositories.": "こんにちは、私はブループです！ <2><0></0>チャットモード</2>リポジトリのいずれかに関連する質問に答えることができます。",
 	"Upvote": "賛成票",
 	"Branches": "枝",
-	"Syncing": "同期"
+	"Syncing": "同期",
+	"This might be because the file is too big or it has one of bloop's excluded file types.": "これは、ファイルが大きすぎるか、bloopの除外されたファイルタイプの1つがあるためかもしれません。"
 }

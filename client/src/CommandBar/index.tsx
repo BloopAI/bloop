@@ -55,7 +55,7 @@ const CommandBar = ({}: Props) => {
     <Modal
       isVisible={isVisible}
       onClose={handleClose}
-      containerClassName={'max-h-[28.875rem] w-full max-w-[40rem]'}
+      containerClassName={'max-h-[28.875rem] w-full max-w-[40rem] !z-90'}
     >
       {chosenStep.id === CommandBarStepEnum.INITIAL ? (
         <Initial />

@@ -43,11 +43,7 @@ const PrivateReposStep = ({}: Props) => {
   const refetchRepos = useCallback(async () => {
     const data = await getRepos();
     const mapped = mapReposBySections(
-      data.list.filter(
-        (r) =>
-          r.provider !== RepoProvider.Local &&
-          r.sync_status !== SyncStatus.Done,
-      ),
+      data.list.filter((r) => r.provider !== RepoProvider.Local),
     ).map((o) => ({
       items: o.items.map((r) => ({
         Component: RepoItem,

@@ -554,5 +554,6 @@
 	"Editing previously submitted questions will discard all answers and questions following it": "La edición de preguntas enviadas previamente descartará todas las respuestas y preguntas que lo sigan",
 	"Below are a few suggestions you can ask me to get started:": "A continuación hay algunas sugerencias que puede pedirme que comience:",
 	"Branches": "Sucursales",
-	"Syncing": "Sincronización"
+	"Syncing": "Sincronización",
+	"This might be because the file is too big or it has one of bloop's excluded file types.": "Esto podría deberse a que el archivo es demasiado grande o tiene uno de los tipos de archivos excluidos de Bloop."
 }

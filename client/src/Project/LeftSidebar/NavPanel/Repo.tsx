@@ -144,7 +144,12 @@ const RepoNav = ({
               appendTo={reactRoot}
               dropdownPlacement="bottom-start"
             >
-              <Button variant="tertiary" size="mini" onlyIcon title={t('')}>
+              <Button
+                variant="tertiary"
+                size="mini"
+                onlyIcon
+                title={t('More actions')}
+              >
                 <MoreHorizontalIcon sizeClassName="w-3.5 h-3.5" />
               </Button>
             </Dropdown>
