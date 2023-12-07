@@ -297,7 +297,11 @@ impl ChunkRefDef {
 
                         m
                     })
-                    .filter(|x| (x.file_symbols.refs.len() + x.file_symbols.defs.len() > 0) && (x.file_symbols.refs.len() < 5) && (x.file_symbols.defs.len() < 3)) // && 
+                    .filter(|x| {
+                        (x.file_symbols.refs.len() + x.file_symbols.defs.len() > 0)
+                            && (x.file_symbols.refs.len() < 5)
+                            && (x.file_symbols.defs.len() < 3)
+                    }) // &&
                     .collect::<Vec<_>>();
                 metadata.sort_by(|a, b| a.name.cmp(&b.name));
                 metadata.dedup_by(|a, b| a.name == b.name);
@@ -319,26 +323,44 @@ impl fmt::Display for ChunkRefDef {
                     met_str = format!(
                         "{}\nDefinition: {}",
                         met_str,
-                        m.file_symbols.alias_defs.clone().unwrap().iter().map(|x| format!("{}", x)).collect::<Vec<_>>().join(", ")
+                        m.file_symbols
+                            .alias_defs
+                            .clone()
+                            .unwrap()
+                            .iter()
+                            .map(|x| format!("{}", x))
+                            .collect::<Vec<_>>()
+                            .join(", ")
                     );
                 }
                 if m.file_symbols.refs.len() > 0 {
                     met_str = format!(
                         "{}\nReferences: {}",
                         met_str,
-                        m.file_symbols.alias_refs.clone().unwrap().iter().map(|x| format!("{}", x)).collect::<Vec<_>>().join(", ")
+                        m.file_symbols
+                            .alias_refs
+                            .clone()
+                            .unwrap()
+                            .iter()
+                            .map(|x| format!("{}", x))
+                            .collect::<Vec<_>>()
+                            .join(", ")
                     );
                 }
                 met_str
             })
             .collect::<Vec<_>>();
         dbg!("{}", metadata_str.clone());
-        write!(
-            f,
-            "{}\n\nMetadata:\n\n{}",
-            self.chunk,
-            metadata_str.join("\n\n")
-        )
+        if metadata_str.is_empty() {
+            write!(f, "")
+        } else {
+            write!(
+                f,
+                "{}\n\nMetadata:\n\n{}",
+                self.chunk,
+                metadata_str.join("\n\n")
+            )
+        }
     }
 }
 

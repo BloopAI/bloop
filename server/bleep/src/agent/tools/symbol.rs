@@ -76,28 +76,84 @@ impl Agent {
         dbg!("{}", &token_response);
 
         let data_response = token_response.data;
+        let content = data_response.iter().map(|x| self.get_file_content(&x.file));
+        let content = futures::future::join_all(content)
+            .await
+            .into_iter()
+            .map(|x| x.unwrap().unwrap().content.to_string())
+            .collect::<Vec<_>>();
 
         let response_def = data_response
             .iter()
-            .filter(|x| {
+            .zip(content.iter())
+            .filter(|(x, _c)| {
                 x.data.iter().any(|y| match y.kind {
                     Definition => true,
                     _ => false,
                 })
             })
-            .map(|x| format!("{}: {}", self.get_path_alias(x.file.as_str()), x.file))
+            .map(|(x, c)| {
+                let chunks = x
+                    .data
+                    .iter()
+                    .filter(|y| match y.kind {
+                        Definition => true,
+                        _ => false,
+                    })
+                    .map(|occ| {
+                        let file_lines = c.lines().collect::<Vec<_>>();
+                        file_lines[(occ.range.start.line - 1).max(0)
+                            ..(occ.range.end.line + 10).min(file_lines.len())]
+                            .to_vec()
+                            .join("\n")
+                    })
+                    .collect::<Vec<_>>()
+                    .join("\n\n");
+
+                format!(
+                    "{}: {}\n\n{}",
+                    self.get_path_alias(x.file.as_str()),
+                    x.file,
+                    chunks
+                )
+            })
             .collect::<Vec<_>>()
             .join("\n");
 
         let response_ref = data_response
             .iter()
-            .filter(|x| {
+            .zip(content.iter())
+            .filter(|(x, _c)| {
                 x.data.iter().any(|y| match y.kind {
                     Reference => true,
                     _ => false,
                 })
             })
-            .map(|x| format!("{}: {}", self.get_path_alias(x.file.as_str()), x.file))
+            .map(|(x, c)| {
+                let chunks = x
+                    .data
+                    .iter()
+                    .filter(|y| match y.kind {
+                        Reference => true,
+                        _ => false,
+                    })
+                    .map(|occ| {
+                        let file_lines = c.lines().collect::<Vec<_>>();
+                        file_lines[(occ.range.start.line - 1).max(0)
+                            ..(occ.range.end.line + 10).min(file_lines.len())]
+                            .to_vec()
+                            .join("\n")
+                    })
+                    .collect::<Vec<_>>()
+                    .join("\n\n");
+
+                format!(
+                    "{}: {}\n\n{}",
+                    self.get_path_alias(x.file.as_str()),
+                    x.file,
+                    chunks
+                )
+            })
             .collect::<Vec<_>>()
             .join("\n");
 

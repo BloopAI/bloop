@@ -81,27 +81,39 @@ impl Agent {
             )
         });
 
-        
-
         let response = futures::future::join_all(response)
             .await
             .into_iter()
             .map(|c| {
                 // adding paths with alias
-                let metadata = c.metadata
+                let metadata = c
+                    .metadata
                     .iter()
                     .map(|m| RefDefMetadata {
                         name: m.name.clone(),
                         file_symbols: crate::agent::exchange::RefDef {
-                             refs: m.file_symbols.refs.clone(),
-                              defs: m.file_symbols.defs.clone(), 
-                              alias_refs: Some(m.file_symbols.refs.iter().map(|x| self.get_path_alias(x)).collect::<Vec<_>>()), 
-                              alias_defs: Some(m.file_symbols.defs.iter().map(|x| self.get_path_alias(x)).collect::<Vec<_>>()) },
+                            refs: m.file_symbols.refs.clone(),
+                            defs: m.file_symbols.defs.clone(),
+                            alias_refs: Some(
+                                m.file_symbols
+                                    .refs
+                                    .iter()
+                                    .map(|x| self.get_path_alias(x))
+                                    .collect::<Vec<_>>(),
+                            ),
+                            alias_defs: Some(
+                                m.file_symbols
+                                    .defs
+                                    .iter()
+                                    .map(|x| self.get_path_alias(x))
+                                    .collect::<Vec<_>>(),
+                            ),
+                        },
                     })
                     .collect::<Vec<_>>();
-                ChunkRefDef{
+                ChunkRefDef {
                     chunk: c.chunk,
-                    metadata: metadata
+                    metadata: metadata,
                 }
             })
             .map(|c| c.to_string())
