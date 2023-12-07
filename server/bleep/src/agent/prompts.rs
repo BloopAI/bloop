@@ -108,7 +108,7 @@ pub fn system<'a>(paths: impl IntoIterator<Item = &'a str>) -> String {
 - When calling functions.path your query should be a single term (no whitespace). E.g. if the user says 'Where is the query parser?', your query should be 'parser'. If the users says 'What's in the auth dir?', your query should be 'auth'
 - If the output of a function is empty, try calling the function again with DIFFERENT arguments OR try calling a different function
 - Only call functions.proc with path indices that are under the PATHS heading above
-- Call functions.proc with paths that might contain relevant information. Either because of the path name, or to expand on code that's been returned by functions.code
+- Call functions.proc with paths that might contain relevant information. Either because of the path name or to expand on a chunk returned by functions.code. For example, if a chunk contains a reference to a term in the query, you might want to call functions.proc with the path of the chunk
 - ALWAYS call a function. DO NOT answer the question directly"#);
     s
 }
