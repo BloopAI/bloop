@@ -69,8 +69,10 @@ pub(super) async fn vote(
 pub struct Answer {
     pub q: String,
     pub repo_ref: RepoRef,
-    #[serde(default = "default_model")]
-    pub model: agent::model::AnswerModel,
+    #[serde(default = "default_answer_model")]
+    pub answer_model: agent::model::LLMModel,
+    #[serde(default = "default_agent_model")]
+    pub agent_model: agent::model::LLMModel,
     #[serde(default = "default_thread_id")]
     pub thread_id: uuid::Uuid,
     /// Optional id of the parent of the exchange to overwrite
@@ -82,8 +84,12 @@ fn default_thread_id() -> uuid::Uuid {
     uuid::Uuid::new_v4()
 }
 
-fn default_model() -> agent::model::AnswerModel {
-    agent::model::GPT_3_5_TURBO_FINETUNED
+fn default_answer_model() -> agent::model::LLMModel {
+    agent::model::GPT_4_TURBO_24K
+}
+
+fn default_agent_model() -> agent::model::LLMModel {
+    agent::model::GPT_4
 }
 
 pub(super) async fn answer(
@@ -207,12 +213,20 @@ async fn try_execute_agent(
     Sse<std::pin::Pin<Box<dyn tokio_stream::Stream<Item = Result<sse::Event>> + Send>>>,
 > {
     QueryLog::new(&app.sql).insert(&params.q).await?;
+    let Answer {
+        thread_id,
+        repo_ref,
+        answer_model,
+        agent_model,
+        ..
+    } = params.clone();
 
     let llm_gateway = user
         .llm_gateway(&app)
         .await?
         .temperature(0.0)
-        .session_reference_id(conversation_id.to_string());
+        .session_reference_id(conversation_id.to_string())
+        .model(agent_model.model_name);
 
     // confirm client compatibility with answer-api
     match llm_gateway
@@ -243,12 +257,6 @@ async fn try_execute_agent(
         }
     };
 
-    let Answer {
-        thread_id,
-        repo_ref,
-        model,
-        ..
-    } = params.clone();
     let stream = async_stream::try_stream! {
         let (exchange_tx, exchange_rx) = tokio::sync::mpsc::channel(10);
 
@@ -262,7 +270,8 @@ async fn try_execute_agent(
             thread_id,
             query_id,
             exchange_state: ExchangeState::Pending,
-            model,
+            answer_model,
+            agent_model
         };
 
         let mut exchange_rx = tokio_stream::wrappers::ReceiverStream::new(exchange_rx);
@@ -339,7 +348,7 @@ async fn try_execute_agent(
         Ok(sse::Event::default()
             .json_data(json!({
                 "thread_id": params.thread_id.to_string(),
-                "query_id": query_id
+                "query_id": query_id,
             }))
             // This should never happen, so we force an unwrap.
             .expect("failed to serialize initialization object"))
@@ -391,7 +400,8 @@ pub async fn explain(
         repo_ref: params.repo_ref,
         thread_id: params.thread_id,
         parent_exchange_id: None,
-        model: agent::model::GPT_4,
+        answer_model: agent::model::GPT_4_TURBO_24K,
+        agent_model: agent::model::GPT_4,
     };
 
     let conversation_id = ConversationId {
