@@ -41,7 +41,7 @@ export const UIContextProvider = memo(
       'onBoardingState',
     );
     const { isSelfServe } = useContext(DeviceContext);
-    const { setEnvConfig } = useContext(EnvContext);
+    const { setEnvConfig, envConfig } = useContext(EnvContext);
     const [isGithubConnected, setGithubConnected] = useState(
       isSelfServe ? !!getPlainFromStorage(REFRESH_TOKEN_KEY) : false,
     );
@@ -90,6 +90,13 @@ export const UIContextProvider = memo(
         });
       }
     }, []);
+
+    useEffect(() => {
+      if (envConfig.github_user) {
+        setGithubConnected(!!envConfig.github_user);
+        setGithubChecked(true);
+      }
+    }, [envConfig.github_user]);
 
     useEffect(() => {
       if (!['dark', 'light', 'black', 'system'].includes(theme)) {

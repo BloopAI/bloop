@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { Fragment, memo } from 'react';
 import { SettingsTypesSections } from '../../types/general';
 import SectionButton from './SectionButton';
 
@@ -26,7 +26,7 @@ function SectionsNav<T extends SettingsTypesSections>({
   return (
     <div className="flex flex-col gap-1 flex-1">
       {sections.map(({ title, Icon, items }) => (
-        <>
+        <Fragment key={title}>
           <div className="flex items-center gap-2 h-9 text-label-muted w-56">
             <Icon sizeClassName="w-4 h-4" />
             <p className="body-s-b">{title}</p>
@@ -40,7 +40,7 @@ function SectionsNav<T extends SettingsTypesSections>({
               handleClick={item.onClick}
             />
           ))}
-        </>
+        </Fragment>
       ))}
     </div>
   );

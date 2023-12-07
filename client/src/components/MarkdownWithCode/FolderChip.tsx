@@ -62,7 +62,7 @@ const FolderChip = ({ onClick, path, repoName }: Props) => {
             indexed
             repoRef={''}
             repoName={''}
-            refetchParentFolder={() => {}}
+            lastIndex={''}
           />
         </OverflowTracker>
       </div>
