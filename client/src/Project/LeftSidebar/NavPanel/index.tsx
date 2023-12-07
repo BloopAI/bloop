@@ -27,6 +27,17 @@ const NavPanel = ({}: Props) => {
     }
   }, [project?.repos]);
 
+  useEffect(() => {
+    if (currentlyFocusedTab?.repoRef) {
+      const repoIndex = project?.repos.findIndex(
+        (r) => r.repo.ref === currentlyFocusedTab.repoRef,
+      );
+      if (repoIndex !== undefined && repoIndex > -1) {
+        setExpanded(repoIndex);
+      }
+    }
+  }, [currentlyFocusedTab]);
+
   return (
     <div className="flex flex-col h-full flex-1 overflow-auto">
       {project?.repos.map((r, i) => (
