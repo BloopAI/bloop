@@ -11,7 +11,10 @@ import { CloseSign, Sparkles } from '../../../icons';
 import Button from '../../../components/Button';
 import CodeFull from '../../../components/CodeBlock/CodeFull';
 import { FullResult } from '../../../types/results';
-import { FullResultModeEnum } from '../../../types/general';
+import {
+  FullResultModeEnum,
+  ParsedQueryTypeEnum,
+} from '../../../types/general';
 import ModalOrSidebar from '../../../components/ModalOrSidebar';
 import { ChatContext } from '../../../context/chatContext';
 import ModeToggle from './ModeToggle';
@@ -66,9 +69,11 @@ const ResultModal = ({ result, onResultClosed, mode, setMode }: Props) => {
       setThreadId('');
       const endLine = result.code.split(/\n(?!$)/g).length - 1;
       setIsHistoryTab(false);
-      setSubmittedQuery(
-        `#explain_${result.relativePath}:0-${endLine}-${Date.now()}`,
-      );
+      const v = `#explain_${result.relativePath}:0-${endLine}-${Date.now()}`;
+      setSubmittedQuery({
+        plain: v,
+        parsed: [{ type: ParsedQueryTypeEnum.TEXT, text: v }],
+      });
       setChatOpen(true);
       onResultClosed();
     },

@@ -1,5 +1,5 @@
 import { createContext, Dispatch, SetStateAction } from 'react';
-import { ChatMessage } from '../types/general';
+import { ChatMessage, ParsedQueryType } from '../types/general';
 
 type ValuesContextType = {
   conversation: ChatMessage[];
@@ -7,7 +7,7 @@ type ValuesContextType = {
   isHistoryTab: boolean;
   tooltipText: string;
   threadId: string;
-  submittedQuery: string;
+  submittedQuery: { parsed: ParsedQueryType[]; plain: string };
   selectedLines: [number, number] | null;
 };
 
@@ -17,7 +17,9 @@ type SettersContextType = {
   setIsHistoryTab: Dispatch<SetStateAction<boolean>>;
   setTooltipText: Dispatch<SetStateAction<string>>;
   setThreadId: Dispatch<SetStateAction<string>>;
-  setSubmittedQuery: Dispatch<SetStateAction<string>>;
+  setSubmittedQuery: Dispatch<
+    SetStateAction<{ parsed: ParsedQueryType[]; plain: string }>
+  >;
   setSelectedLines: Dispatch<SetStateAction<[number, number] | null>>;
 };
 
@@ -27,7 +29,7 @@ export const ChatContext = {
     isChatOpen: false,
     isHistoryTab: false,
     tooltipText: '',
-    submittedQuery: '',
+    submittedQuery: { parsed: [], plain: '' },
     threadId: '',
     selectedLines: null,
   }),

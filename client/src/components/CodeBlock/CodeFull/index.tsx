@@ -19,7 +19,10 @@ import useAppNavigation from '../../../hooks/useAppNavigation';
 import SearchOnPage from '../../SearchOnPage';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
 import { MAX_LINES_BEFORE_VIRTUALIZE } from '../../../consts/code';
-import { findElementInCurrentTab } from '../../../utils/domUtils';
+import {
+  findElementInCurrentTab,
+  isFocusInInput,
+} from '../../../utils/domUtils';
 import CodeContainer from './CodeContainer';
 import ExplainButton from './ExplainButton';
 
@@ -286,8 +289,7 @@ const CodeFull = ({
       if (
         (event.ctrlKey || event.metaKey) &&
         event.key === 'a' &&
-        (event.target as HTMLElement)?.tagName !== 'INPUT' &&
-        (event.target as HTMLElement)?.tagName !== 'TEXTAREA'
+        !isFocusInInput()
       ) {
         // Prevent the default action (i.e. selecting all text in the browser)
         event.preventDefault();

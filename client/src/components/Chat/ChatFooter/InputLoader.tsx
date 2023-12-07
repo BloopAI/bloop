@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChatLoadingStep } from '../../../types/general';
 
 const InputLoader = ({ loadingSteps }: { loadingSteps: ChatLoadingStep[] }) => {
+  const { t } = useTranslation();
   const [state, setState] = useState(-1);
   const [currIndex, setCurrIndex] = useState(-1);
   const steps = useRef(loadingSteps);
@@ -63,7 +65,7 @@ const InputLoader = ({ loadingSteps }: { loadingSteps: ChatLoadingStep[] }) => {
         }`}
       />
       <div className="absolute top-4 left-11 right-9 ellipsis">
-        {loadingSteps?.[currIndex]?.displayText}
+        {loadingSteps?.[currIndex]?.displayText || t('Generating answer...')}
       </div>
     </div>
   );

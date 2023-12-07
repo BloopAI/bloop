@@ -6,6 +6,7 @@ import { findElementInCurrentTab } from '../../../utils/domUtils';
 import { ChatContext } from '../../../context/chatContext';
 import { DeviceContext } from '../../../context/deviceContext';
 import { copyToClipboard } from '../../../utils';
+import { ParsedQueryTypeEnum } from '../../../types/general';
 
 type Props = {
   popupPosition: {
@@ -98,7 +99,7 @@ const ExplainButton = ({
                     ]);
                     closePopup?.();
                     setTimeout(
-                      () => findElementInCurrentTab('#question-input')?.focus(),
+                      () => findElementInCurrentTab('.ProseMirror')?.focus(),
                       300,
                     );
                   }}
@@ -119,11 +120,13 @@ const ExplainButton = ({
                       currentSelection[1][0],
                     ]);
                     setIsHistoryTab(false);
-                    setSubmittedQuery(
-                      `#explain_${relativePath}:${currentSelection[0][0]}-${
-                        currentSelection[1][0]
-                      }-${Date.now()}`,
-                    );
+                    const v = `#explain_${relativePath}:${
+                      currentSelection[0][0]
+                    }-${currentSelection[1][0]}-${Date.now()}`;
+                    setSubmittedQuery({
+                      plain: v,
+                      parsed: [{ type: ParsedQueryTypeEnum.TEXT, text: v }],
+                    });
                     setChatOpen(true);
                     setPopupPosition(null);
                     closePopup?.();

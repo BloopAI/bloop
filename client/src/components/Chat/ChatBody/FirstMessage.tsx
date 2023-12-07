@@ -1,10 +1,4 @@
-import React, {
-  Dispatch,
-  memo,
-  SetStateAction,
-  useEffect,
-  useState,
-} from 'react';
+import React, { memo, useEffect, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { TutorialQuestionType } from '../../../types/api';
 import { getTutorialQuestions } from '../../../services/api';
@@ -13,12 +7,12 @@ type Props = {
   repoName: string;
   repoRef: string;
   isEmptyConversation: boolean;
-  setInputValue: Dispatch<SetStateAction<string>>;
+  setInputValueImperatively: (s: string) => void;
 };
 
 const FirstMessage = ({
   repoName,
-  setInputValue,
+  setInputValueImperatively,
   repoRef,
   isEmptyConversation,
 }: Props) => {
@@ -60,7 +54,7 @@ const FirstMessage = ({
                 className="px-3 py-1 rounded-full border border-chat-bg-divider bg-chat-bg-sub flex-shrink-0 caption text-label-base"
                 onClick={() => {
                   // setIsTutorialHidden(true);
-                  setInputValue(t.question);
+                  setInputValueImperatively(t.question);
                 }}
               >
                 {t.tag}

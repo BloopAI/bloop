@@ -1,4 +1,4 @@
-import React, { Dispatch, SetStateAction, useContext } from 'react';
+import React, { useContext } from 'react';
 import ScrollToBottom from 'react-scroll-to-bottom';
 import {
   ChatMessage,
@@ -17,7 +17,7 @@ type Props = {
   isLoading?: boolean;
   isHistory?: boolean;
   onMessageEdit: (queryId: string, i: number) => void;
-  setInputValue: Dispatch<SetStateAction<string>>;
+  setInputValueImperatively: (s: string) => void;
 };
 
 const Conversation = ({
@@ -28,7 +28,7 @@ const Conversation = ({
   isHistory,
   repoName,
   onMessageEdit,
-  setInputValue,
+  setInputValueImperatively,
 }: Props) => {
   const { navigatedItem } = useContext(AppNavigationContext);
 
@@ -37,7 +37,7 @@ const Conversation = ({
       {!isHistory && (
         <FirstMessage
           repoName={repoName}
-          setInputValue={setInputValue}
+          setInputValueImperatively={setInputValueImperatively}
           repoRef={repoRef}
           isEmptyConversation={!conversation.length}
         />

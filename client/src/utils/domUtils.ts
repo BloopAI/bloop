@@ -14,4 +14,5 @@ export const findAllElementsInCurrentTab = <
 };
 
 export const isFocusInInput = () =>
-  ['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName || '');
+  ['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName || '') ||
+  (document.activeElement as HTMLElement)?.isContentEditable;

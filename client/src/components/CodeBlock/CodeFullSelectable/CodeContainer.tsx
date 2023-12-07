@@ -12,7 +12,10 @@ import React, {
 } from 'react';
 import { Token as TokenType } from '../../../types/prism';
 import { hashCode, mergeRanges } from '../../../utils';
-import { findElementInCurrentTab } from '../../../utils/domUtils';
+import {
+  findElementInCurrentTab,
+  isFocusInInput,
+} from '../../../utils/domUtils';
 import { CODE_LINE_HEIGHT } from '../../../consts/code';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
 import SelectionHandler from './SelectionHandler';
@@ -181,9 +184,7 @@ const CodeContainerSelectable = ({
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
       if (
-        !['TEXTAREA', 'INPUT'].includes(
-          document.activeElement?.tagName || '',
-        ) &&
+        !isFocusInInput() &&
         !e.shiftKey &&
         !e.ctrlKey &&
         !e.metaKey &&
