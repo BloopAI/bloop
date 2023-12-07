@@ -30,13 +30,21 @@ pub const GPT_3_5_TURBO_FINETUNED: LLMModel = LLMModel {
     history_headroom: 1024,
     system_prompt: prompts::answer_article_prompt_finetuned,
 };
-// to use 24k out of 128k (add 128-24 to the headrooms)
+
+// GPT-4 turbo has a context window of 128k tokens
+const GPT_4_TURBO_MAX_TOKENS: usize = 128_000;
+// We want to use only 24k tokens
+const ACTUAL_MAX_TOKENS: usize = 24_000;
+// 104k tokens should be left unused. This is done by adding 104k to the headrooms
+// (tokens left unused for other purposes answer, prompt...)
+const HEADROOM_CORRECTION: usize = GPT_4_TURBO_MAX_TOKENS - ACTUAL_MAX_TOKENS;
+// PS: when we want to fully utilize the model max context window, the correction is 0
 pub const GPT_4_TURBO_24K: LLMModel = LLMModel {
     tokenizer: "gpt-4-1106-preview",
     model_name: "gpt-4-1106-preview",
-    answer_headroom: 1024 + 104000,
-    prompt_headroom: 2500 + 104000,
-    history_headroom: 2048 + 104000,
+    answer_headroom: 1024 + HEADROOM_CORRECTION,
+    prompt_headroom: 2500 + HEADROOM_CORRECTION,
+    history_headroom: 2048 + HEADROOM_CORRECTION,
     system_prompt: prompts::answer_article_prompt,
 };
 
