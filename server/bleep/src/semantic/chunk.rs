@@ -151,7 +151,7 @@ impl OverlapStrategy {
 
 impl Default for OverlapStrategy {
     fn default() -> Self {
-        Self::Partial(0.5)
+        Self::Partial(0.75)
     }
 }
 
@@ -174,7 +174,7 @@ fn add_token_range<'s>(
     }
 
     debug_assert!(
-        o.end - o.start < 256,
+        o.end - o.start < 512,
         "chunk too large: {} tokens in {:?} bytes {:?}",
         o.end - o.start,
         o,

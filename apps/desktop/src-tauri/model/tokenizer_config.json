@@ -1,3 +1,16 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:5a0279327ed471a6e4cfb88b6f62f73d8e8ddf3fdc1e9cbb98f692b1b9ae0d91
-size 579
+{
+  "cls_token": "[CLS]",
+  "do_basic_tokenize": true,
+  "do_lower_case": true,
+  "mask_token": "[MASK]",
+  "model_max_length": 512,
+  "name_or_path": "sentence-transformers/all-MiniLM-L6-v2",
+  "never_split": null,
+  "pad_token": "[PAD]",
+  "sep_token": "[SEP]",
+  "special_tokens_map_file": "/Users/gabriel/.cache/huggingface/hub/models--sentence-transformers--all-MiniLM-L6-v2/snapshots/7dbbc90392e2f80f3d3c277d6e90027e55de9125/special_tokens_map.json",
+  "strip_accents": null,
+  "tokenize_chinese_chars": true,
+  "tokenizer_class": "BertTokenizer",
+  "unk_token": "[UNK]"
+}
