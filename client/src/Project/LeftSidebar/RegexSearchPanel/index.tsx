@@ -21,7 +21,6 @@ import {
   FileResItem,
   RepoItem,
 } from '../../../types/api';
-import { SuggestionType } from '../../../types/results';
 import GitHubIcon from '../../../icons/GitHubIcon';
 import { splitPath } from '../../../utils';
 import { ProjectContext } from '../../../context/projectContext';
@@ -48,13 +47,16 @@ type ResultType = CodeItem | RepoItem | FileResItem | DirectoryItem | FileItem;
 const RegexSearchPanel = ({}: Props) => {
   const { t } = useTranslation();
   const [inputValue, setInputValue] = useState('');
-  const [options, setOptions] = useState<SuggestionType[]>([]);
+  // const [options, setOptions] = useState<SuggestionType[]>([]);
   const [results, setResults] = useState<Record<string, ResultType[]>>({});
+  const [resultsRaw, setResultsRaw] = useState<ResultType[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const { setIsRegexSearchEnabled } = useContext(ProjectContext.RegexSearch);
+  const [focusedIndex, setFocusedIndex] = useState(-1);
 
   const onChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
+    setFocusedIndex(-1);
   }, []);
 
   const onClear = useCallback(() => {
@@ -143,18 +145,34 @@ const RegexSearchPanel = ({}: Props) => {
         }
       });
       setResults(newResults);
+      setResultsRaw(data.data);
       // closeMenu();
     },
     [inputValue],
   );
 
-  const handleKeyEvent = useCallback((e: KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      e.stopPropagation();
-      inputRef.current?.blur();
-    }
-  }, []);
+  const handleKeyEvent = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        inputRef.current?.blur();
+      } else if (e.key === 'ArrowDown' && resultsRaw.length) {
+        e.preventDefault();
+        e.stopPropagation();
+        setFocusedIndex((prev) =>
+          prev < resultsRaw.length - 1 ? prev + 1 : -1,
+        );
+      } else if (e.key === 'ArrowUp' && resultsRaw.length) {
+        e.preventDefault();
+        e.stopPropagation();
+        setFocusedIndex((prev) =>
+          prev > -1 ? prev - 1 : resultsRaw.length - 1,
+        );
+      }
+    },
+    [resultsRaw],
+  );
   useKeyboardNavigation(handleKeyEvent);
 
   return (
@@ -196,9 +214,9 @@ const RegexSearchPanel = ({}: Props) => {
       {/*  highlightedIndex={highlightedIndex}*/}
       {/*/>*/}
       {!!Object.keys(results).length && (
-        <ul>
-          {Object.keys(results).map((repoRef, i) => (
-            <li key={repoRef} className="relative">
+        <ul className="flex-1 flex flex-col overflow-auto">
+          {Object.keys(results).map((repoRef, repoIndex, array) => (
+            <li key={repoRef} className="relative flex flex-col">
               <span className="absolute top-10 bottom-0 left-5 w-px bg-bg-border" />
               <span className="h-10 flex-shrink-0 flex items-center gap-3 px-4 bg-bg-sub body-s-b text-label-title">
                 {repoRef.startsWith('github.com/') ? (
@@ -210,15 +228,29 @@ const RegexSearchPanel = ({}: Props) => {
                   .slice(repoRef.startsWith('github.com/') ? -2 : -1)
                   .join('/')}
               </span>
-              <ul className="pl-10 pr-4">
+              <ul className="flex flex-col">
                 {results[repoRef].map((r, i) => (
-                  <li key={i}>
+                  <li key={i} className="flex flex-col">
                     {r.kind === 'snippets' ? (
-                      <CodeResult {...r.data} />
+                      <CodeResult
+                        {...r.data}
+                        isFirst={i === 0}
+                        isFocused={
+                          focusedIndex ===
+                          i + (array[repoIndex - 1]?.length || 0)
+                        }
+                      />
                     ) : r.kind === 'repository_result' ? (
                       <RepoResult />
                     ) : r.kind === 'file_result' ? (
-                      <FileResult {...r.data} />
+                      <FileResult
+                        {...r.data}
+                        isFirst={i === 0}
+                        isFocused={
+                          focusedIndex ===
+                          i + (array[repoIndex - 1]?.length || 0)
+                        }
+                      />
                     ) : (
                       r.kind
                     )}

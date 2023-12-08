@@ -1,10 +1,17 @@
-import { memo, useCallback, useContext, useMemo, useState } from 'react';
+import {
+  memo,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { SnippetItem } from '../../../../types/api';
 import { ChevronRightIcon } from '../../../../icons';
 import FileIcon from '../../../../components/FileIcon';
-import BreadcrumbsPathContainer from '../../../../components/Breadcrumbs/PathContainer';
 import { TabsContext } from '../../../../context/tabsContext';
 import { TabTypesEnum } from '../../../../types/general';
+import useKeyboardNavigation from '../../../../hooks/useKeyboardNavigation';
 import CodeLine from './CodeLine';
 
 type Props = {
@@ -13,6 +20,8 @@ type Props = {
   repo_ref: string;
   lang: string;
   snippets: SnippetItem[];
+  isFocused: boolean;
+  isFirst: boolean;
 };
 
 const CodeResult = ({
@@ -21,16 +30,39 @@ const CodeResult = ({
   repo_ref,
   lang,
   snippets,
+  isFocused,
+  isFirst,
 }: Props) => {
   const { openNewTab } = useContext(TabsContext.Handlers);
+  const ref = useRef<HTMLDivElement>(null);
   const [isExpanded, setIsExpanded] = useState(true);
   const toggleExpanded = useCallback(() => {
     setIsExpanded((prev) => !prev);
   }, []);
 
-  const snippetsStyle = useMemo(() => {
-    return { maxHeight: isExpanded ? undefined : 0 };
-  }, [isExpanded]);
+  useEffect(() => {
+    if (isFocused) {
+      ref.current?.scrollIntoView({ block: 'nearest' });
+    }
+  }, [isFocused]);
+
+  const handleKeyEvent = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.stopPropagation();
+        e.preventDefault();
+        openNewTab({
+          type: TabTypesEnum.FILE,
+          path: relative_path,
+          repoName: repo_name,
+          repoRef: repo_ref,
+          scrollToLine: `${snippets[0].line_range.start}_${snippets[0].line_range.end}`,
+        });
+      }
+    },
+    [repo_name, repo_ref, relative_path, openNewTab],
+  );
+  useKeyboardNavigation(handleKeyEvent, !isFocused);
 
   const handleClick = useCallback(() => {
     openNewTab({
@@ -42,11 +74,14 @@ const CodeResult = ({
   }, [repo_name, repo_ref, relative_path, openNewTab]);
 
   return (
-    <div className="relative">
-      <span className="absolute top-7 bottom-0 left-1.5 w-px bg-bg-border" />
+    <div className="relative flex flex-col">
+      <span className="absolute top-7 bottom-0 left-11.5 w-px bg-bg-border" />
       <div
-        className="flex items-center gap-3 ellipsis body-mini text-label-title h-7 flex-shrink-0"
+        className={`flex w-max min-w-full items-center gap-3 whitespace-nowrap body-mini text-label-title h-7 flex-shrink-0 ${
+          isFirst ? 'scroll-mt-10' : ''
+        } ${isFocused ? 'bg-bg-shade-hover' : ''} pl-10 pr-4`}
         onClick={toggleExpanded}
+        ref={ref}
       >
         <ChevronRightIcon
           sizeClassName="w-3.5 h-3.5"
@@ -62,7 +97,7 @@ const CodeResult = ({
         {/*/>*/}
         <div onClick={handleClick}>{relative_path}</div>
       </div>
-      <ul className="pl-2.5">
+      <ul className="pl-2.5 ml-10 pr-4">
         {isExpanded
           ? snippets.map((s, i) => (
               <CodeLine
