@@ -159,17 +159,11 @@ impl Default for OverlapStrategy {
 ///
 /// We filter chunks where over 50% of non-whitespace tokens are numeric or punctuation
 fn is_noisy(chunk: &str) -> bool {
-    let mut non_whitespace_count = 0;
-    let mut numeric_or_punctuation_count = 0;
-
-    for c in chunk.chars() {
-        if !c.is_whitespace() {
-            non_whitespace_count += 1;
-            if c.is_numeric() || c.is_ascii_punctuation() {
-                numeric_or_punctuation_count += 1;
-            }
-        }
-    }
+    let non_whitespace_count = chunk.chars().filter(|c| !c.is_whitespace()).count();
+    let numeric_or_punctuation_count = chunk
+        .chars()
+        .filter(|c| c.is_numeric() || c.is_ascii_punctuation())
+        .count();
 
     // Chunks that are all whitespace are noisy
     if non_whitespace_count == 0 {
