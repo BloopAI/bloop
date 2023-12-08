@@ -1,20 +1,36 @@
-import { memo, useEffect, useMemo, useRef, useState } from 'react';
-import { Range } from '../../../types/results';
+import React, {
+  memo,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { Range, TokenInfoWrapped } from '../../../types/results';
 import { getPrismLanguage, tokenizeCode } from '../../../utils/prism';
 import CodeLine from '../CodeLine';
-import CodeToken from '../CodeToken';
 import { useDiffLines } from '../../../hooks/useDiffLines';
 import { findElementInCurrentTab } from '../../../utils/domUtils';
+import { getTokenInfo } from '../../../services/api';
+import { mapTokenInfo } from '../../../mappers/results';
+import { TabsContext } from '../../../context/tabsContext';
+import { TabTypesEnum } from '../../../types/general';
+import { useOnClickOutside } from '../../../hooks/useOnClickOutsideHook';
+import RefsDefsPopup from '../../RefsDefsPopup';
+import CodeToken from './Token';
 
 type Props = {
   code: string;
   language: string;
   hoverableRanges?: Record<number, Range[]>;
   relativePath: string;
-  repoPath: string;
+  repoRef: string;
   repoName: string;
   isDiff?: boolean;
   scrollToLine?: string;
+  branch?: string | null;
+  tokenRange?: string;
 };
 
 const CodeFull = ({
@@ -22,12 +38,31 @@ const CodeFull = ({
   isDiff,
   hoverableRanges,
   repoName,
-  repoPath,
+  repoRef,
   relativePath,
+  branch,
   language,
   scrollToLine,
+  tokenRange,
 }: Props) => {
+  const { openNewTab } = useContext(TabsContext.Handlers);
+  const [tokenInfo, setTokenInfo] = useState<TokenInfoWrapped>({
+    data: { references: [], definitions: [] },
+    hoverableRange: null,
+    tokenRange: null,
+    isLoading: false,
+    lineNumber: -1,
+  });
+  const popupRef = useRef<HTMLDivElement>(null);
+  const [isPopupVisible, setPopupVisible] = useState(false);
+  const [popupPosition, setPopupPosition] = useState<{
+    top: number;
+    left?: number;
+    right?: number;
+  } | null>(null);
+  useOnClickOutside(popupRef, () => setPopupVisible(false));
   const firstRender = useRef(true);
+
   const lang = useMemo(
     () => getPrismLanguage(language) || 'plaintext',
     [language],
@@ -72,8 +107,99 @@ const CodeFull = ({
     }
   }, []);
 
+  const getHoverableContent = useCallback(
+    (hoverableRange: Range, tokenRange: Range, lineNumber?: number) => {
+      if (hoverableRange && relativePath) {
+        setTokenInfo({
+          data: { references: [], definitions: [] },
+          hoverableRange,
+          tokenRange,
+          lineNumber,
+          isLoading: true,
+        });
+        getTokenInfo(
+          relativePath,
+          repoRef,
+          hoverableRange.start,
+          hoverableRange.end,
+          branch ? branch : undefined,
+        )
+          .then((data) => {
+            setTokenInfo({
+              data: mapTokenInfo(data.data, relativePath),
+              hoverableRange,
+              tokenRange,
+              lineNumber,
+              isLoading: false,
+            });
+          })
+          .catch(() => {
+            setTokenInfo({
+              data: { references: [], definitions: [] },
+              hoverableRange,
+              tokenRange,
+              lineNumber,
+              isLoading: false,
+            });
+          });
+      }
+    },
+    [relativePath, branch],
+  );
+
+  useEffect(() => {
+    if (tokenRange) {
+      const [start, end] = tokenRange.split('_').map((l) => Number(l));
+      getHoverableContent({ start, end }, { start, end });
+    }
+  }, [tokenRange, getHoverableContent]);
+
+  const handleRefsDefsClick = useCallback(
+    (lineNum: number, filePath: string, tokenRange: string) => {
+      setTokenInfo({
+        data: { references: [], definitions: [] },
+        hoverableRange: null,
+        tokenRange: null,
+        isLoading: false,
+        lineNumber: -1,
+      });
+      openNewTab({
+        type: TabTypesEnum.FILE,
+        path: filePath,
+        repoRef,
+        repoName,
+        branch,
+        scrollToLine: `${lineNum}_${lineNum}`,
+        tokenRange,
+      });
+    },
+    [openNewTab],
+  );
+  useEffect(() => {
+    if (tokenInfo.tokenRange) {
+      let tokenElem = findElementInCurrentTab(
+        `[data-byte-range="${tokenInfo.tokenRange.start}-${tokenInfo.tokenRange.end}"]`,
+      );
+      if (tokenElem && tokenElem instanceof HTMLElement) {
+        setPopupPosition({
+          top: tokenElem.offsetTop + 10,
+          ...(tokenElem.offsetLeft > tokenElem.offsetParent!.scrollWidth / 2
+            ? {
+                right:
+                  tokenElem.offsetParent!.clientWidth -
+                  (tokenElem.offsetLeft + tokenElem.offsetWidth),
+              }
+            : { left: tokenElem.offsetLeft }),
+        });
+        setPopupVisible(true);
+      }
+    } else {
+      setPopupPosition(null);
+    }
+  }, [tokenInfo]);
+
   return (
-    <div>
+    <div className="relative">
       <pre className={`prism-code language-${lang} w-full h-full code-s`}>
         <code>
           {tokens.map((line, index) => {
@@ -105,9 +231,9 @@ const CodeFull = ({
                 {line.map((token, i) => (
                   <CodeToken
                     key={`cell-${index}-${i}`}
-                    // lineHoverRanges={hoverableRanges?.[index] || []}
+                    lineHoverRanges={hoverableRanges?.[index] || []}
                     token={token}
-                    // getHoverableContent={getHoverableContent}
+                    getHoverableContent={getHoverableContent}
                   />
                 ))}
               </CodeLine>
@@ -115,6 +241,18 @@ const CodeFull = ({
           })}
         </code>
       </pre>
+      {!!popupPosition && isPopupVisible && (
+        <div className="absolute max-w-sm" style={popupPosition} ref={popupRef}>
+          <RefsDefsPopup
+            placement={popupPosition.right ? 'bottom-end' : 'bottom-start'}
+            data={tokenInfo}
+            repoName={repoName}
+            onRefDefClick={handleRefsDefsClick}
+            language={language}
+            relativePath={relativePath}
+          />
+        </div>
+      )}
     </div>
   );
 };

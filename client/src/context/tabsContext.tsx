@@ -11,6 +11,7 @@ type HandlersContextType = {
           repoName: string;
           branch?: string | null;
           scrollToLine?: string;
+          tokenRange?: string;
         }
       | { type: TabTypesEnum.CHAT },
     forceSide?: 'left' | 'right',

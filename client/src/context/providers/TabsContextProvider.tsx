@@ -36,6 +36,7 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
             repoName: string;
             scrollToLine?: string;
             branch?: string | null;
+            tokenRange?: string;
           }
         | { type: TabTypesEnum.CHAT },
       forceSide?: 'left' | 'right',
@@ -59,6 +60,7 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
                 scrollToLine: data.scrollToLine,
                 branch: data.branch,
                 type: TabTypesEnum.FILE,
+                tokenRange: data.tokenRange,
               }
             : {
                 type: TabTypesEnum.CHAT,
@@ -73,13 +75,15 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
           previousTab &&
           previousTab.type === TabTypesEnum.FILE &&
           newTab.type === TabTypesEnum.FILE &&
-          previousTab.scrollToLine !== newTab.scrollToLine
+          (previousTab.scrollToLine !== newTab.scrollToLine ||
+            previousTab.tokenRange !== newTab.tokenRange)
         ) {
           const previousTabIndex = prev.findIndex((t) => t.key === newTab.key);
           const newTabs = [...prev];
           newTabs[previousTabIndex] = {
             ...previousTab,
             scrollToLine: newTab.scrollToLine,
+            tokenRange: newTab.tokenRange,
           };
           return newTabs;
         }

@@ -101,6 +101,7 @@ export type FileTabType = {
   repoRef: string;
   branch?: string | null;
   scrollToLine?: string;
+  tokenRange?: string;
 };
 
 export type ChatTabType = {

@@ -31,7 +31,9 @@ type Props = {
   repoRef: string;
   path: string;
   scrollToLine?: string;
+  tokenRange?: string;
   noBorder?: boolean;
+  branch?: string | null;
 };
 
 const FileTab = ({
@@ -40,6 +42,8 @@ const FileTab = ({
   noBorder,
   repoRef,
   scrollToLine,
+  branch,
+  tokenRange,
 }: Props) => {
   const { t } = useTranslation();
   const [file, setFile] = useState<
@@ -55,7 +59,7 @@ const FileTab = ({
   }, [repoName, path, repoRef]);
 
   const refetchFile = useCallback(() => {
-    search(buildRepoQuery(repoName, path)).then((resp) => {
+    search(buildRepoQuery(repoName, path, branch)).then((resp) => {
       const item = resp?.data?.[0]?.data as File;
       if (!item) {
         return;
@@ -74,7 +78,7 @@ const FileTab = ({
         });
       }
     });
-  }, [repoName, path]);
+  }, [repoName, path, branch]);
 
   useEffect(() => {
     refetchFile();
@@ -153,11 +157,13 @@ const FileTab = ({
           <CodeFull
             code={file.contents}
             language={file.lang}
-            repoPath={file.repo_ref}
+            repoRef={file.repo_ref}
             relativePath={file.relative_path}
             hoverableRanges={file.hoverableRanges}
             repoName={file.repo_name}
             scrollToLine={scrollToLine}
+            branch={branch}
+            tokenRange={tokenRange}
           />
         ) : !!file && !file.indexed ? (
           <div className="flex-1 h-full flex flex-col items-center justify-center gap-6">

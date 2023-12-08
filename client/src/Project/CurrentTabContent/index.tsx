@@ -57,6 +57,8 @@ const CurrentTabContent = ({ side, onDrop, shouldStretch }: Props) => {
             repoRef={tab.repoRef}
             scrollToLine={tab.scrollToLine}
             noBorder={side === 'left'}
+            branch={tab.branch}
+            tokenRange={tab.tokenRange}
           />
         ) : tab?.type === TabTypesEnum.CHAT ? (
           <ChatTab
