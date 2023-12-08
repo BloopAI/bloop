@@ -6,7 +6,6 @@ use axum::{
     },
 };
 use futures::stream::{Stream, StreamExt};
-use tokio_stream::wrappers::ReceiverStream;
 use tracing::error;
 
 use crate::{
@@ -20,7 +19,7 @@ use std::convert::Infallible;
 
 // schema
 #[derive(serde::Deserialize)]
-pub struct Sync {
+pub struct Enqueue {
     url: url::Url,
 }
 
@@ -61,11 +60,11 @@ pub async fn delete(State(app): State<Application>, Path(id): Path<i64>) -> Resu
     Ok(Json(app.indexes.doc.delete(id).await?))
 }
 
-pub async fn sync(
+pub async fn enqueue(
     State(app): State<Application>,
+    Query(params): Query<Enqueue>,
     Extension(user): Extension<User>,
-    Query(params): Query<Sync>,
-) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+) -> Result<Json<i64>> {
     app.with_analytics(|hub| {
         hub.track_doc(
             &user,
@@ -73,33 +72,14 @@ pub async fn sync(
         )
     });
 
-    let (tx, rx) = tokio::sync::mpsc::channel(100);
-
-    tokio::spawn(async move {
-        let stream = app.indexes.doc.clone().sync(params.url).await;
-
-        futures::pin_mut!(stream);
-
-        while let Some(t) = stream.next().await {
-            // We intentionally ignore errors so that this stream is consumed in the background,
-            // regardless of whether the receiver still exists.
-            let _ = tx.send(t);
-        }
-    });
-
-    Sse::new(Box::pin(ReceiverStream::new(rx).map(|result| {
-        Ok(Event::default()
-            .json_data(result.as_ref().map_err(ToString::to_string))
-            .unwrap())
-    })))
-    .keep_alive(KeepAlive::default())
+    Ok(Json(app.indexes.doc.clone().enqueue(params.url).await?))
 }
 
-pub async fn resync(
+pub async fn status(
     State(app): State<Application>,
     Path(id): Path<i64>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
-    Sse::new(Box::pin(app.indexes.doc.clone().resync(id).await.map(
+    Sse::new(Box::pin(app.indexes.doc.clone().status(id).await.map(
         |result| {
             Ok(Event::default()
                 .json_data(result.as_ref().map_err(ToString::to_string))
@@ -107,6 +87,14 @@ pub async fn resync(
         },
     )))
     .keep_alive(KeepAlive::default())
+}
+
+pub async fn cancel(State(app): State<Application>, Path(id): Path<i64>) -> Result<Json<i64>> {
+    Ok(Json(app.indexes.doc.clone().cancel(id).await?))
+}
+
+pub async fn resync(State(app): State<Application>, Path(id): Path<i64>) -> Result<Json<i64>> {
+    Ok(Json(app.indexes.doc.clone().resync(id).await?))
 }
 
 pub async fn search(

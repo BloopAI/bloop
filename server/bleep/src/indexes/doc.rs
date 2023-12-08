@@ -8,7 +8,7 @@ use tantivy::{
     tokenizer::NgramTokenizer,
 };
 use thiserror::Error;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, RwLock};
 use tracing::{error, info, trace};
 
 use crate::{
@@ -25,7 +25,21 @@ pub struct Doc {
     sql: SqlDb,
     section_index: tantivy::Index,
     section_schema: schema::Section,
-    buffer_size: usize,
+    index_writer: Arc<Mutex<tantivy::IndexWriter>>,
+    index_reader: Arc<tantivy::IndexReader>,
+    index_queue: Arc<RwLock<Vec<SyncHandle>>>,
+}
+
+// Wrapper around a tokio::task::JoinHandle containing metadata about the task. All task
+// progress is collected by a reciever in the SyncHandle.
+struct SyncHandle {
+    id: i64,
+    url: String,
+    name: Option<String>,
+    favicon: Option<String>,
+    description: Option<String>,
+    join_handle: tokio::task::JoinHandle<()>,
+    progress_stream: tokio::sync::watch::Receiver<Progress>,
 }
 
 static STATUS_DONE: &str = "done";
@@ -44,6 +58,7 @@ pub struct SqlRecord {
 
 #[derive(serde::Serialize, Clone)]
 pub enum Progress {
+    Init(i64),
     Update(Update),
     Done(i64),
 }
@@ -91,16 +106,6 @@ pub enum Error {
 }
 
 impl Doc {
-    fn index_writer(&self) -> Result<tantivy::IndexWriter, Error> {
-        self.section_index
-            .writer(self.buffer_size)
-            .map_err(Error::Tantivy)
-    }
-
-    fn index_reader(&self) -> Result<tantivy::IndexReader, Error> {
-        self.section_index.reader().map_err(Error::Tantivy)
-    }
-
     /// Initialize docs index
     pub fn create(
         sql: SqlDb,
@@ -117,6 +122,10 @@ impl Doc {
             section_schema.schema.clone(),
         )
         .map_err(|e| Error::Initialize(e.to_string()))?;
+        let index_writer = Arc::new(Mutex::new(
+            section_index.writer(buffer_size).map_err(Error::Tantivy)?,
+        ));
+        let index_reader = Arc::new(section_index.reader().map_err(Error::Tantivy)?);
 
         section_index
             .set_multithread_executor(max_threads)
@@ -130,7 +139,9 @@ impl Doc {
             sql,
             section_index,
             section_schema,
-            buffer_size,
+            index_reader,
+            index_writer,
+            index_queue: Arc::new(RwLock::new(Vec::new())),
         })
     }
 
@@ -138,6 +149,12 @@ impl Doc {
     where
         &'a mut E: sqlx::Executor<'a, Database = sqlx::Sqlite>,
     {
+        let mut index_queue = self.index_queue.write().await;
+        let sync_handle = index_queue
+            .iter_mut()
+            .find(|job| job.id == id)
+            .ok_or(Error::InvalidDocId(id))?;
+        sync_handle.name = Some(title.to_string());
         sqlx::query! {
             "UPDATE docs SET name = ? WHERE id = ?",
             title,
@@ -158,6 +175,12 @@ impl Doc {
     where
         &'a mut E: sqlx::Executor<'a, Database = sqlx::Sqlite>,
     {
+        let mut index_queue = self.index_queue.write().await;
+        let sync_handle = index_queue
+            .iter_mut()
+            .find(|job| job.id == id)
+            .ok_or(Error::InvalidDocId(id))?;
+        sync_handle.favicon = Some(favicon.to_string());
         sqlx::query! {
             "UPDATE docs SET favicon = ? WHERE id = ?",
             favicon,
@@ -178,6 +201,12 @@ impl Doc {
     where
         &'a mut E: sqlx::Executor<'a, Database = sqlx::Sqlite>,
     {
+        let mut index_queue = self.index_queue.write().await;
+        let sync_handle = index_queue
+            .iter_mut()
+            .find(|job| job.id == id)
+            .ok_or(Error::InvalidDocId(id))?;
+        sync_handle.description = Some(description.to_string());
         sqlx::query! {
             "UPDATE docs SET description = ? WHERE id = ?",
             description,
@@ -248,94 +277,191 @@ impl Doc {
     ///
     /// The sqlite DB stores metadata about the doc-provider, and the tantivy index stores
     /// searchable page content.
-    pub async fn sync(self, url: url::Url) -> impl Stream<Item = Result<Progress, Error>> {
+    pub async fn enqueue(self, url: url::Url) -> Result<i64, Error> {
+        // check if index writer is available
+
+        let mut transaction = self.sql.begin().await?;
+        let url_string = url.to_string();
+        let id = sqlx::query! {
+            "INSERT INTO docs (url, index_status) VALUES (?, ?)",
+            url_string,
+            STATUS_INDEXING,
+        }
+        .execute(&mut transaction)
+        .await?
+        .last_insert_rowid();
+
+        let (tx, rx) = tokio::sync::watch::channel(Progress::Init(id));
+        let self_ = self.clone();
+        let url_ = url.clone();
+        let join_handle = tokio::task::spawn(async move {
+            self_.begin_sync_job(id, url_, tx, transaction).await; // TODO: handle err
+            ()
+        });
+
+        let mut lock = self.index_queue.write().await;
+        lock.push(SyncHandle {
+            id,
+            url: url.to_string(),
+            name: None,
+            favicon: None,
+            description: None,
+            join_handle,
+            progress_stream: rx,
+        });
+
+        Ok(id)
+    }
+
+    async fn begin_sync_job(
+        self,
+        id: i64,
+        url: url::Url,
+        tx: tokio::sync::watch::Sender<Progress>,
+        mut transaction: sqlx::Transaction<'_, sqlx::Sqlite>,
+    ) -> Result<(), Error> {
+        let mut is_meta_set = false;
+        let mut stream = Box::pin(self.clone().insert_into_tantivy(id, url.clone()));
+        let mut discovered_count = 0;
+
+        while let Some(progress) = stream.next().await {
+            // populate metadata in sqlite
+            //
+            // the first scraped doc that contains metadata is used to populate
+            // metadata in sqlite - this is typically the base_url entered by the user,
+            // if the base_url does not contain any metadata, we move on the the second
+            // scraped url
+            if let Progress::Update(update) = progress.clone() {
+                discovered_count = update.discovered_count;
+                if update.url == url || (!update.metadata.is_empty() && !is_meta_set) {
+                    // do not set meta for this doc provider in subsequent turns
+                    is_meta_set = true;
+                    self.set_metadata(&update.metadata, id, &url, &mut transaction)
+                        .await;
+                };
+            }
+            let _ = tx.send(progress); // TODO: log err here
+        }
+
+        // scraped doc, but no pages
+        if discovered_count == 0 {
+            // delete sql entry
+            sqlx::query!("DELETE FROM docs WHERE id = ? RETURNING id", id)
+                .fetch_optional(&mut transaction)
+                .await?
+                .ok_or(Error::InvalidDocId(id))?;
+            error!(doc_source = url.as_str(), "no docs found at url");
+            // return error
+            Err(Error::EmptyDocs(url))?;
+        }
+
+        self.set_index_status(STATUS_DONE, id, &mut transaction)
+            .await?;
+        transaction.commit().await?;
+
+        // remove handle from queue
+        let mut lock = self.index_queue.write().await;
+        lock.retain(|handle| handle.id != id);
+        Ok(())
+    }
+
+    pub async fn status(self, id: i64) -> impl Stream<Item = Result<Progress, Error>> {
         try_stream! {
-            // check if index writer is available
-            let index_writer = Arc::new(Mutex::new(self.index_writer()?));
-
-            let mut transaction = self.sql.begin().await?;
-
-            // add entry to sqlite
-            let url_string = url.to_string();
-            let id = sqlx::query! {
-                "INSERT INTO docs (url, index_status) VALUES (?, ?)",
-                url_string,
-                STATUS_INDEXING,
-            }
-            .execute(&mut transaction)
-            .await?
-            .last_insert_rowid();
-
-            let mut is_meta_set = false;
-            let stream =
-                self.clone()
-                    .insert_into_tantivy(id, url.clone(), Arc::clone(&index_writer));
-            let mut discovered_count = 0;
-            for await progress in stream {
-                // populate metadata in sqlite
-                //
-                // the first scraped doc that contains metadata is used to populate
-                // metadata in sqlite - this is typically the base_url entered by the user,
-                // if the base_url does not contain any metadata, we move on the the second
-                // scraped url
-                if let Progress::Update(update) = progress.clone() {
-                    discovered_count = update.discovered_count;
-                    if update.url == url || (!update.metadata.is_empty() && !is_meta_set) {
-                        // do not set meta for this doc provider in subsequent turns
-                        is_meta_set = true;
-                        self.set_metadata(&update.metadata, id, &url, &mut transaction).await;
-                    };
+            let lock = self.index_queue.read().await;
+            let handle = lock.iter().find(|handle| handle.id == id);
+            match handle {
+                Some(h) => {
+                    let s = tokio_stream::wrappers::WatchStream::new(h.progress_stream.clone());
+                    for await progress in s {
+                        yield progress;
+                    }
                 }
-                yield progress;
+                None => {
+                    let _ = self.list_one(id).await?;
+                    yield Progress::Done(id);
+                }
             }
-
-            // scraped doc, but no pages
-            if discovered_count == 0 {
-                // delete sql entry
-                sqlx::query!("DELETE FROM docs WHERE id = ? RETURNING id", id)
-                    .fetch_optional(&mut transaction)
-                    .await?
-                    .ok_or(Error::InvalidDocId(id))?;
-                error!(doc_source = url.as_str(), "no docs found at url");
-                // return error
-                Err(Error::EmptyDocs(url))?;
-            }
-
-            self.set_index_status(STATUS_DONE, id, &mut transaction).await?;
-            transaction.commit().await?;
         }
     }
 
+    /// Cancel a running index job
+    pub async fn cancel(self, id: i64) -> Result<i64, Error> {
+        let lock = self.index_queue.read().await;
+        let handle = lock
+            .iter()
+            .find(|handle| handle.id == id)
+            .ok_or(Error::InvalidDocId(id))?;
+        handle.join_handle.abort();
+        drop(lock);
+
+        // remove handle from queue
+        let mut lock = self.index_queue.write().await;
+        lock.retain(|handle| handle.id != id);
+
+        // bring tantivy back to last saved state
+        //
+        // - if this is a sync job: this rolls back to before the sync started
+        // - if this is a resync job: this rolls back to before the old copy was deleted
+        match self.index_writer.lock().await.rollback() {
+            Ok(_) => info!(%id, "successfully cancelled sync job"),
+            Err(e) => error!(%id, %e, "tantivy rollback failed"),
+        };
+
+        Ok(id)
+    }
+
     /// Update documentation in the index - this will rescrape the entire website
-    pub async fn resync(self, id: i64) -> impl Stream<Item = Result<Progress, Error>> {
-        try_stream! {
-            let url = sqlx::query!("SELECT url FROM docs WHERE id = ?", id)
-                .fetch_optional(&*self.sql)
-                .await?
-                .ok_or(Error::InvalidDocId(id))?
-                .url;
-            let url = url::Url::parse(&url).map_err(|e| Error::UrlParse(url, e))?;
+    ///
+    /// We may only resync ids that are persisted to the sql db, this ensures that resync cannot
+    /// be called on a currently syncing job
+    pub async fn resync(self, id: i64) -> Result<i64, Error> {
+        let record = sqlx::query!(
+            "SELECT id, index_status, name, url, favicon, description, modified_at FROM docs WHERE id = ?",
+            id
+        )
+        .fetch_one(&*self.sql)
+        .await
+        .map_err(|_| Error::InvalidDocId(id))?;
 
-            // delete old docs from tantivy
-            self.index_writer()?
-                .delete_term(Term::from_field_i64(self.section_schema.doc_id, id));
-            self.index_writer()?.commit()?;
+        let url =
+            url::Url::parse(&record.url).map_err(|e| Error::UrlParse(record.url.clone(), e))?;
 
-            sqlx::query! {
-                "UPDATE docs SET modified_at = datetime('now') WHERE id = ?",
-                id,
-            }
-            .execute(&*self.sql)
-            .await?;
+        // delete old docs from tantivy
+        self.index_writer
+            .lock()
+            .await
+            .delete_term(Term::from_field_i64(self.section_schema.doc_id, id));
 
-            let index_writer = Arc::new(Mutex::new(self.index_writer()?));
-
-            let stream = self
-                .insert_into_tantivy(id, url, Arc::clone(&index_writer));
-            for await progress in stream {
-                yield progress;
-            }
+        // update modified time
+        sqlx::query! {
+            "UPDATE docs SET modified_at = datetime('now') WHERE id = ?",
+            id,
         }
+        .execute(&*self.sql)
+        .await?;
+
+        // create a new sync job for this doc-id
+        let (tx, rx) = tokio::sync::watch::channel(Progress::Init(id));
+        let transaction = self.sql.begin().await?;
+        let self_ = self.clone();
+        let url_ = url.clone();
+        let join_handle = tokio::task::spawn(async move {
+            self_.begin_sync_job(id, url_, tx, transaction).await; // TODO: handle err
+            ()
+        });
+
+        let mut lock = self.index_queue.write().await;
+        lock.push(SyncHandle {
+            id,
+            url: url.to_string(),
+            name: record.name.clone(),
+            favicon: record.favicon.clone(),
+            description: record.description.clone(),
+            join_handle,
+            progress_stream: rx,
+        });
+
+        Ok(id)
     }
 
     /// Remove this doc source from tantivy and sqlite
@@ -348,16 +474,17 @@ impl Doc {
             .id;
 
         // delete entry from tantivy
-        self.index_writer()?
-            .delete_term(Term::from_field_i64(self.section_schema.doc_id, id));
-        self.index_writer()?.commit()?;
+        let mut index_writer = self.index_writer.lock().await;
+        index_writer.delete_term(Term::from_field_i64(self.section_schema.doc_id, id));
+        index_writer.commit()?;
 
         Ok(id)
     }
 
     /// List all synced doc sources
     pub async fn list(&self) -> Result<Vec<SqlRecord>, Error> {
-        Ok(sqlx::query!(
+        // the sqlite db contains indexed and resyncing doc-ids
+        let mut indexed = sqlx::query!(
             "SELECT id, index_status, name, url, favicon, description, modified_at FROM docs"
         )
         .fetch_all(&*self.sql)
@@ -372,19 +499,60 @@ impl Doc {
             url: record.url,
             modified_at: record.modified_at,
         })
-        .collect::<Vec<_>>())
+        .collect::<Vec<_>>();
+
+        // the index queue contains both sync and resync doc-ids
+        let index_queue = self.index_queue.read().await;
+        let syncing = index_queue
+            .iter()
+            .map(|job| SqlRecord {
+                id: job.id,
+                url: job.url.clone(),
+                name: job.name.clone(),
+                favicon: job.favicon.clone(),
+                description: job.description.clone(),
+                index_status: STATUS_INDEXING.to_owned(),
+                modified_at: chrono::Utc::now().naive_local(),
+            })
+            .collect::<Vec<_>>();
+
+        // if there is a resync job already, remove from list of indexed docs
+        indexed.retain(|x| !syncing.iter().any(|y| y.id == x.id));
+        indexed.extend(syncing);
+        indexed.sort_by_key(|record| record.id);
+
+        Ok(indexed)
     }
 
-    /// List a synced doc source by id
+    /// List a doc source by id.
+    ///
+    /// This doc-source could be in the sync-queue, if it is syncing/resyncing,
+    /// or in the sqlite db if it has been indexed completely
     pub async fn list_one(&self, id: i64) -> Result<SqlRecord, Error> {
-        let record = sqlx::query!(
+        let queued_item = self
+            .index_queue
+            .read()
+            .await
+            .iter()
+            .find(|job| job.id == id)
+            .map(|job| SqlRecord {
+                id: job.id,
+                url: job.url.clone(),
+                name: job.name.clone(),
+                favicon: job.favicon.clone(),
+                description: job.description.clone(),
+                index_status: STATUS_INDEXING.to_owned(),
+                modified_at: chrono::Utc::now().naive_local(),
+            });
+
+        let indexed_item = sqlx::query!(
             "SELECT id, index_status, name, url, favicon, description, modified_at FROM docs WHERE id = ?",
             id
         )
         .fetch_one(&*self.sql)
-        .await?;
-
-        Ok(SqlRecord {
+        .await
+        .ok()
+        .map(|record| SqlRecord {
             id: record.id,
             name: record.name,
             index_status: record.index_status,
@@ -392,7 +560,11 @@ impl Doc {
             favicon: record.favicon,
             url: record.url,
             modified_at: record.modified_at,
-        })
+        });
+
+        Ok(queued_item
+            .or(indexed_item)
+            .ok_or(Error::InvalidDocId(id))?)
     }
 
     /// Search for doc source by title
@@ -434,7 +606,7 @@ impl Doc {
         id: i64,
     ) -> Result<Vec<Section>, Error> {
         // use the tantivy index for section search
-        let reader = self.index_reader()?;
+        let reader = Arc::clone(&self.index_reader);
         let searcher = reader.searcher();
 
         let doc_id_query = Box::new(TermQuery::new(
@@ -603,7 +775,7 @@ impl Doc {
     }
 
     pub async fn list_sections(&self, limit: usize, id: i64) -> Result<Vec<Section>, Error> {
-        let reader = self.index_reader()?;
+        let reader = Arc::clone(&self.index_reader);
         let searcher = reader.searcher();
         let doc_id_query = Box::new(TermQuery::new(
             Term::from_field_i64(self.section_schema.doc_id, id),
@@ -622,7 +794,7 @@ impl Doc {
 
     /// Scroll pages in a doc
     pub async fn list_pages(&self, limit: usize, id: i64) -> Result<Vec<Page>, Error> {
-        let reader = self.index_reader()?;
+        let reader = Arc::clone(&self.index_reader);
         let searcher = reader.searcher();
         let doc_id_query = Box::new(TermQuery::new(
             Term::from_field_i64(self.section_schema.doc_id, id),
@@ -650,7 +822,7 @@ impl Doc {
         id: i64,
         relative_url: S,
     ) -> Result<Vec<Section>, Error> {
-        let reader = self.index_reader()?;
+        let reader = Arc::clone(&self.index_reader);
         let searcher = reader.searcher();
         let doc_id_query = Box::new(TermQuery::new(
             Term::from_field_i64(self.section_schema.doc_id, id),
@@ -685,10 +857,7 @@ impl Doc {
     }
 
     pub fn contains_url(&self, url: &url::Url) -> bool {
-        let Ok(reader) = self.index_reader() else {
-            return false;
-        };
-
+        let reader = Arc::clone(&self.index_reader);
         let searcher = reader.searcher();
         let query = Box::new(TermQuery::new(
             Term::from_field_text(self.section_schema.absolute_url, url.as_str()),
@@ -704,12 +873,7 @@ impl Doc {
     }
 
     /// Scrape & insert a doc source into tantivy and return doc metadata if available
-    fn insert_into_tantivy(
-        self,
-        id: i64,
-        doc_source: url::Url,
-        index_writer: Arc<Mutex<tantivy::IndexWriter>>,
-    ) -> impl Stream<Item = Progress> {
+    fn insert_into_tantivy(self, id: i64, doc_source: url::Url) -> impl Stream<Item = Progress> {
         stream! {
             let mut scraper = Scraper::with_config(Config::new(doc_source.clone()));
             let mut stream = Box::pin(scraper.complete());
@@ -729,7 +893,7 @@ impl Doc {
                 }
                 let doc_source = doc_source.clone();
                 let section_schema = self.section_schema.clone();
-                let index_writer = Arc::clone(&index_writer);
+                let index_writer = Arc::clone(&self.index_writer);
                 let cache = Arc::clone(&point_ids);
                 handles.push(tokio::task::spawn(async move {
                     let (section_ids, tantivy_docs_to_insert) = doc.sections(id, &doc_source, &section_schema);
@@ -746,7 +910,7 @@ impl Doc {
             futures::future::join_all(handles).await;
 
             trace!(%id, url = doc_source.as_str(), "commiting doc-provider to index");
-            match index_writer.lock().await.commit() {
+            match self.index_writer.lock().await.commit() {
                 Ok(_) => info!(%id, url = doc_source.as_str(), "index complete"),
                 Err(e) => error!(%id, url = doc_source.as_str(), %e, "tantivy commit failed"),
             }
