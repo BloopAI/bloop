@@ -64,26 +64,86 @@ pub async fn sync(
     State(app): State<Application>,
     Extension(user): Extension<User>,
     Query(params): Query<Sync>,
-) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+) -> () {
     app.with_analytics(|hub| {
         hub.track_doc(
             &user,
             DocEvent::new("sync").with_payload("url", &params.url),
         )
     });
-    Sse::new(Box::pin(
-        app.indexes
-            .doc
-            .clone()
-            .sync(params.url)
-            .await
-            .map(|result| {
-                Ok(Event::default()
-                    .json_data(result.as_ref().map_err(ToString::to_string))
-                    .unwrap())
-            }),
-    ))
+    todo!()
+    // Sse::new(Box::pin(
+    //     app.indexes
+    //         .doc
+    //         .clone()
+    //         .sync(params.url)
+    //         .await
+    //         .map(|result| {
+    //             Ok(Event::default()
+    //                 .json_data(result.as_ref().map_err(ToString::to_string))
+    //                 .unwrap())
+    //         }),
+    // ))
+    // .keep_alive(KeepAlive::default())
+}
+
+pub async fn enqueue(
+    State(app): State<Application>,
+    Query(params): Query<Sync>,
+) -> Result<Json<i64>> {
+    // app.with_analytics(|hub| {
+    //     hub.track_doc(
+    //         &user,
+    //         DocEvent::new("sync").with_payload("url", &params.url),
+    //     )
+    // });
+    Ok(Json(app.indexes.doc.clone().enqueue(params.url).await?))
+    // Sse::new(Box::pin(
+    //     app.indexes
+    //         .doc
+    //         .clone()
+    //         .sync(params.url)
+    //         .await
+    //         .map(|result| {
+    //             Ok(Event::default()
+    //                 .json_data(result.as_ref().map_err(ToString::to_string))
+    //                 .unwrap())
+    //         }),
+    // ))
+    // .keep_alive(KeepAlive::default())
+}
+
+pub async fn status(
+    State(app): State<Application>,
+    Path(id): Path<i64>,
+) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+    // app.with_analytics(|hub| {
+    //     hub.track_doc(
+    //         &user,
+    //         DocEvent::new("sync").with_payload("url", &params.url),
+    //     )
+    // });
+    Sse::new(Box::pin(app.indexes.doc.clone().status(id).await.map(
+        |result| {
+            Ok(Event::default()
+                .json_data(result.as_ref().map_err(ToString::to_string))
+                .unwrap())
+        },
+    )))
     .keep_alive(KeepAlive::default())
+    // Sse::new(Box::pin(
+    //     app.indexes
+    //         .doc
+    //         .clone()
+    //         .sync(params.url)
+    //         .await
+    //         .map(|result| {
+    //             Ok(Event::default()
+    //                 .json_data(result.as_ref().map_err(ToString::to_string))
+    //                 .unwrap())
+    //         }),
+    // ))
+    // .keep_alive(KeepAlive::default())
 }
 
 pub async fn resync(

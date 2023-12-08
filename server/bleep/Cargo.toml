@@ -42,7 +42,7 @@ harness = false
 tantivy = { version = "0.21.0", features = ["mmap"] }
 tantivy-columnar = "0.2.0"
 tokio = { version = "1.32.0", features = ["macros", "process", "rt", "rt-multi-thread", "io-std", "io-util", "sync", "fs"] }
-tokio-stream = "0.1.14"
+tokio-stream = { version = "0.1.14", features = ["sync"]}
 async-trait = "0.1.73"
 async-stream = "0.3.5"
 flume = "0.10.14"

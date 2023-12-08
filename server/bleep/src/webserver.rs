@@ -63,6 +63,8 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
                 .route("/", get(docs::list)) // list all doc providers
                 .route("/search", get(docs::search)) // text search over doc providers
                 .route("/sync", get(docs::sync)) // index a new doc provider
+                .route("/enqueue", get(docs::enqueue)) // enqueue a new url to begin syncing
+                .route("/:id/status", get(docs::status)) // query sync status of an existing doc source
                 .route("/verify", get(docs::verify)) // verify if a doc url is valid
                 .route("/:id", get(docs::list_one)) // list a doc provider by id
                 .route("/:id", delete(docs::delete)) // delete a doc provider by id

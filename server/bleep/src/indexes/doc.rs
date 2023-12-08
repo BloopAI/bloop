@@ -8,7 +8,7 @@ use tantivy::{
     tokenizer::NgramTokenizer,
 };
 use thiserror::Error;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, RwLock};
 use tracing::{error, info, trace};
 
 use crate::{
@@ -18,7 +18,10 @@ use crate::{
     scraper::{self, Config, Scraper},
 };
 
-use std::{collections::HashSet, sync::Arc};
+use std::{
+    collections::{HashSet, VecDeque},
+    sync::Arc,
+};
 
 #[derive(Clone)]
 pub struct Doc {
@@ -26,6 +29,13 @@ pub struct Doc {
     section_index: tantivy::Index,
     section_schema: schema::Section,
     buffer_size: usize,
+    index_queue: Arc<RwLock<VecDeque<SyncHandle>>>,
+}
+
+struct SyncHandle {
+    id: i64,
+    join_handle: tokio::task::JoinHandle<()>,
+    progress_stream: tokio::sync::watch::Receiver<Progress>,
 }
 
 static STATUS_DONE: &str = "done";
@@ -44,6 +54,7 @@ pub struct SqlRecord {
 
 #[derive(serde::Serialize, Clone)]
 pub enum Progress {
+    Init(i64),
     Update(Update),
     Done(i64),
 }
@@ -131,6 +142,7 @@ impl Doc {
             section_index,
             section_schema,
             buffer_size,
+            index_queue: Arc::new(RwLock::new(VecDeque::new())),
         })
     }
 
@@ -242,6 +254,111 @@ impl Doc {
         .await
         .map(|_| ())
         .map_err(Error::Sql)
+    }
+
+    pub async fn status(self, id: i64) -> impl Stream<Item = Result<Progress, Error>> {
+        try_stream! {
+            let lock = self.index_queue.read().await;
+            let handle = lock.iter().find(|handle| handle.id == id)
+                .ok_or(Error::InvalidDocId(id))?;
+            let s = tokio_stream::wrappers::WatchStream::new(handle.progress_stream.clone());
+            for await progress in s {
+                yield progress;
+            }
+            // loop {
+            //     yield Ok(handle.progress_stream.borrow_and_update());
+            //     if handle.progress_stream.changed().await.is_err() {
+            //         break;
+            //     }
+            // }
+        }
+    }
+
+    pub async fn enqueue(self, url: url::Url) -> Result<i64, Error> {
+        // check if index writer is available
+        let index_writer = Arc::new(Mutex::new(self.index_writer()?));
+
+        let mut transaction = self.sql.begin().await?;
+        let url_string = url.to_string();
+        let id = sqlx::query! {
+            "INSERT INTO docs (url, index_status) VALUES (?, ?)",
+            url_string,
+            STATUS_INDEXING,
+        }
+        .execute(&mut transaction)
+        .await?
+        .last_insert_rowid();
+        let (tx, rx) = tokio::sync::watch::channel(Progress::Init(id));
+
+        let self_ = self.clone();
+        let join_handle = tokio::task::spawn(async move {
+            self_
+                .begin_sync_job(id, url, tx, Arc::clone(&index_writer), transaction)
+                .await;
+            ()
+        });
+
+        let mut lock = self.index_queue.write().await;
+        lock.push_back(SyncHandle {
+            id,
+            join_handle,
+            progress_stream: rx,
+        });
+
+        Ok(id)
+    }
+
+    async fn begin_sync_job(
+        self,
+        id: i64,
+        url: url::Url,
+        tx: tokio::sync::watch::Sender<Progress>,
+        index_writer: Arc<Mutex<tantivy::IndexWriter>>,
+        mut transaction: sqlx::Transaction<'_, sqlx::Sqlite>,
+    ) -> Result<(), Error> {
+        let mut is_meta_set = false;
+        let mut stream = Box::pin(self.clone().insert_into_tantivy(
+            id,
+            url.clone(),
+            Arc::clone(&index_writer),
+        ));
+        let mut discovered_count = 0;
+
+        while let Some(progress) = stream.next().await {
+            // populate metadata in sqlite
+            //
+            // the first scraped doc that contains metadata is used to populate
+            // metadata in sqlite - this is typically the base_url entered by the user,
+            // if the base_url does not contain any metadata, we move on the the second
+            // scraped url
+            if let Progress::Update(update) = progress.clone() {
+                discovered_count = update.discovered_count;
+                if update.url == url || (!update.metadata.is_empty() && !is_meta_set) {
+                    // do not set meta for this doc provider in subsequent turns
+                    is_meta_set = true;
+                    self.set_metadata(&update.metadata, id, &url, &mut transaction)
+                        .await;
+                };
+            }
+            tx.send(progress);
+        }
+
+        // scraped doc, but no pages
+        if discovered_count == 0 {
+            // delete sql entry
+            sqlx::query!("DELETE FROM docs WHERE id = ? RETURNING id", id)
+                .fetch_optional(&mut transaction)
+                .await?
+                .ok_or(Error::InvalidDocId(id))?;
+            error!(doc_source = url.as_str(), "no docs found at url");
+            // return error
+            Err(Error::EmptyDocs(url))?;
+        }
+
+        self.set_index_status(STATUS_DONE, id, &mut transaction)
+            .await?;
+        transaction.commit().await?;
+        Ok(())
     }
 
     /// Add a doc source to the index
