@@ -5,7 +5,7 @@ use tracing::instrument;
 
 use crate::{
     agent::{
-        exchange::{SearchStep, Update},
+        exchange::{CodeChunk, SearchStep, Update},
         Agent,
     },
     analytics::EventData,
@@ -102,10 +102,21 @@ impl Agent {
                     })
                     .map(|occ| {
                         let file_lines = c.lines().collect::<Vec<_>>();
-                        file_lines[(occ.range.start.line - 1).max(0)
+                        let snippet = file_lines[(occ.range.start.line - 1).max(0)
                             ..(occ.range.end.line + 10).min(file_lines.len())]
                             .to_vec()
-                            .join("\n")
+                            .join("\n");
+                        let chunk = CodeChunk {
+                            alias: self.get_path_alias(x.file.as_str()),
+                            path: x.file.clone(),
+                            snippet: snippet.clone(),
+                            start_line: (occ.range.start.line - 1).max(0),
+                            end_line: (occ.range.end.line + 10).min(file_lines.len()),
+                            start_byte: 0,
+                            end_byte: 0,
+                        };
+                        self.exchanges.last_mut().unwrap().code_chunks.push(chunk);
+                        snippet
                     })
                     .collect::<Vec<_>>()
                     .join("\n\n");
@@ -139,10 +150,21 @@ impl Agent {
                     })
                     .map(|occ| {
                         let file_lines = c.lines().collect::<Vec<_>>();
-                        file_lines[(occ.range.start.line - 1).max(0)
+                        let snippet = file_lines[(occ.range.start.line - 1).max(0)
                             ..(occ.range.end.line + 10).min(file_lines.len())]
                             .to_vec()
-                            .join("\n")
+                            .join("\n");
+                        let chunk = CodeChunk {
+                            alias: self.get_path_alias(x.file.as_str()),
+                            path: x.file.clone(),
+                            snippet: snippet.clone(),
+                            start_line: (occ.range.start.line - 1).max(0),
+                            end_line: (occ.range.end.line + 10).min(file_lines.len()),
+                            start_byte: 0,
+                            end_byte: 0,
+                        };
+                        self.exchanges.last_mut().unwrap().code_chunks.push(chunk);
+                        snippet
                     })
                     .collect::<Vec<_>>()
                     .join("\n\n");
