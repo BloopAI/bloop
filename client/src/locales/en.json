@@ -563,5 +563,9 @@
 	"Editing previously submitted questions will discard all answers and questions following it": "Editing previously submitted questions will discard all answers and questions following it",
 	"Branches": "Branches",
 	"Syncing": "Syncing",
-	"This might be because the file is too big or it has one of bloop's excluded file types.": "This might be because the file is too big or it has one of bloop's excluded file types."
+	"This might be because the file is too big or it has one of bloop's excluded file types.": "This might be because the file is too big or it has one of bloop's excluded file types.",
+	"Toggle regex search": "Toggle regex search",
+	"Search your repositories using RegExp": "Search your repositories using RegExp",
+	"Toggle": "Toggle",
+	"Files, paths or folders...": "Files, paths or folders..."
 }

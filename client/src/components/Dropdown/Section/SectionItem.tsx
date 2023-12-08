@@ -15,11 +15,11 @@ import { isFocusInInput } from '../../../utils/domUtils';
 type Props = {
   icon?: ReactElement;
   customRightElement?: ReactElement;
-  label: string;
+  label: string | ReactElement;
   shortcut?: string[];
   isSelected?: boolean;
   isFocused?: boolean;
-  onClick: (e?: MouseEvent) => void;
+  onClick?: (e?: MouseEvent) => void;
   color?: 'shade' | 'base';
 };
 
@@ -44,7 +44,7 @@ const SectionItem = ({
 
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
-      if (!isFocusInInput(true)) {
+      if (!isFocusInInput(true) && onClick) {
         if (checkEventKeys(e, shortcut)) {
           e.preventDefault();
           e.stopPropagation();
@@ -55,7 +55,7 @@ const SectionItem = ({
     },
     [shortcut],
   );
-  useKeyboardNavigation(handleKeyEvent);
+  useKeyboardNavigation(handleKeyEvent, !onClick);
 
   return (
     <a
@@ -81,7 +81,7 @@ const SectionItem = ({
         {icon}
         <span
           className="flex-1 body-s-b text-label-title ellipsis"
-          title={label}
+          title={typeof label === 'string' ? label : undefined}
         >
           {label}
         </span>

@@ -544,5 +544,7 @@
 	"Upvote": "賛成票",
 	"Branches": "枝",
 	"Syncing": "同期",
-	"This might be because the file is too big or it has one of bloop's excluded file types.": "これは、ファイルが大きすぎるか、bloopの除外されたファイルタイプの1つがあるためかもしれません。"
+	"This might be because the file is too big or it has one of bloop's excluded file types.": "これは、ファイルが大きすぎるか、bloopの除外されたファイルタイプの1つがあるためかもしれません。",
+	"Toggle regex search": "正規表現検索を切り替えます",
+	"Files, paths or folders...": "ファイル、パス、またはフォルダー..."
 }

@@ -60,9 +60,7 @@ export type BaseResultType = {
 
 export interface CodeResult extends BaseResultType {
   relativePath: string;
-  repoPath: string;
-  branch: string;
-  code: string;
+  repoRef: string;
   snippets: Snippet[];
   type: ResultItemType.CODE;
   language: string;
@@ -79,7 +77,7 @@ export interface LangResult {
 }
 
 export interface RepoResult extends BaseResultType {
-  repository: string;
+  repoRef: string;
   branches: number;
   files: number;
   type: ResultItemType.REPO;
@@ -88,7 +86,7 @@ export interface RepoResult extends BaseResultType {
 
 export interface FileResult extends BaseResultType {
   relativePath: string;
-  repoPath: string;
+  repoRef: string;
   lines: number;
   highlights: Range[];
   type: ResultItemType.FILE;

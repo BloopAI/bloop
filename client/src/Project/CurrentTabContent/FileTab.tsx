@@ -30,10 +30,17 @@ type Props = {
   repoName: string;
   repoRef: string;
   path: string;
+  scrollToLine?: string;
   noBorder?: boolean;
 };
 
-const FileTab = ({ repoName, path, noBorder, repoRef }: Props) => {
+const FileTab = ({
+  repoName,
+  path,
+  noBorder,
+  repoRef,
+  scrollToLine,
+}: Props) => {
   const { t } = useTranslation();
   const [file, setFile] = useState<
     (File & { hoverableRanges?: Record<number, Range[]> }) | null
@@ -150,6 +157,7 @@ const FileTab = ({ repoName, path, noBorder, repoRef }: Props) => {
             relativePath={file.relative_path}
             hoverableRanges={file.hoverableRanges}
             repoName={file.repo_name}
+            scrollToLine={scrollToLine}
           />
         ) : !!file && !file.indexed ? (
           <div className="flex-1 h-full flex flex-col items-center justify-center gap-6">

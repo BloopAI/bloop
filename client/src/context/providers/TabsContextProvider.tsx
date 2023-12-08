@@ -65,14 +65,35 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
                 key: Date.now().toString(),
               };
         setActiveTabAction(newTab);
-        if (!prev.find((t) => t.key === newTab.key)) {
+        const previousTab = prev.find((t) => t.key === newTab.key);
+        if (!previousTab) {
           return [...prev, newTab];
+        }
+        if (
+          previousTab &&
+          previousTab.type === TabTypesEnum.FILE &&
+          newTab.type === TabTypesEnum.FILE &&
+          previousTab.scrollToLine !== newTab.scrollToLine
+        ) {
+          const previousTabIndex = prev.findIndex((t) => t.key === newTab.key);
+          const newTabs = [...prev];
+          newTabs[previousTabIndex] = {
+            ...previousTab,
+            scrollToLine: newTab.scrollToLine,
+          };
+          return newTabs;
         }
         return prev;
       });
     },
     [focusedPanel, leftTabs],
   );
+
+  useEffect(() => {
+    if (!rightTabs.length) {
+      setFocusedPanel('left');
+    }
+  }, [rightTabs]);
 
   const closeTab = useCallback((key: string, side: 'left' | 'right') => {
     const setTabsAction = side === 'left' ? setLeftTabs : setRightTabs;

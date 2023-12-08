@@ -35,6 +35,7 @@ const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
   const [project, setProject] = useState<ProjectFullType | null>(null);
   const [projects, setProjects] = useState<ProjectShortType[]>([]);
   const [isReposLoaded, setIsReposLoaded] = useState(false);
+  const [isRegexSearchEnabled, setIsRegexSearchEnabled] = useState(false);
 
   const refreshCurrentProjectRepos = useCallback(async () => {
     getProjectRepos(currentProjectId).then((r) => {
@@ -112,10 +113,20 @@ const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
     [projects, refreshAllProjects],
   );
 
+  const regexValue = useMemo(
+    () => ({
+      isRegexSearchEnabled,
+      setIsRegexSearchEnabled,
+    }),
+    [isRegexSearchEnabled],
+  );
+
   return (
     <ProjectContext.Current.Provider value={currentValue}>
       <ProjectContext.All.Provider value={allValue}>
-        {children}
+        <ProjectContext.RegexSearch.Provider value={regexValue}>
+          {children}
+        </ProjectContext.RegexSearch.Provider>
       </ProjectContext.All.Provider>
     </ProjectContext.Current.Provider>
   );

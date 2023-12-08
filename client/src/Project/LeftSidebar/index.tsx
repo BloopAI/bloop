@@ -7,12 +7,14 @@ import Dropdown from '../../components/Dropdown';
 import { DeviceContext } from '../../context/deviceContext';
 import { ProjectContext } from '../../context/projectContext';
 import NavPanel from './NavPanel';
+import RegexSearchPanel from './RegexSearchPanel';
 
 type Props = {};
 
 const LeftSidebar = ({}: Props) => {
   const { os } = useContext(DeviceContext);
   const { project } = useContext(ProjectContext.Current);
+  const { isRegexSearchEnabled } = useContext(ProjectContext.RegexSearch);
   const { panelRef, dividerRef } = useResizeableWidth(
     true,
     LEFT_SIDEBAR_WIDTH_KEY,
@@ -40,7 +42,7 @@ const LeftSidebar = ({}: Props) => {
           </div>
         </Dropdown>
       </div>
-      <NavPanel />
+      {isRegexSearchEnabled ? <RegexSearchPanel /> : <NavPanel />}
       <div
         ref={dividerRef}
         className="absolute top-0 right-0 transform group translate-x-1/2 w-2.5 h-full bottom-0 cursor-col-resize flex-shrink-0 z-10"

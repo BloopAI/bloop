@@ -29,7 +29,7 @@ const CodeToken = ({
       onClick={onClick}
     >
       <span
-        className={`${highlight ? `bg-bg-highlight/25 py-0.5` : ''} ${
+        className={`${highlight ? `bg-yellow/16 py-0.5` : ''} ${
           startHl ? 'rounded-l pl-[2px]' : ''
         } ${endHl ? 'rounded-r pr-[2px]' : ''}`}
       >

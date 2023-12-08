@@ -7,6 +7,7 @@ import {
 } from '../types/general';
 import { CommandBarContext } from '../context/commandBarContext';
 import { DeviceContext } from '../context/deviceContext';
+import { ProjectContext } from '../context/projectContext';
 import { useSignOut } from './useSignOut';
 
 export const useGlobalShortcuts = () => {
@@ -22,6 +23,7 @@ export const useGlobalShortcuts = () => {
   );
   const { setBugReportModalOpen } = useContext(UIContext.BugReport);
   const { openLink } = useContext(DeviceContext);
+  const { setIsRegexSearchEnabled } = useContext(ProjectContext.RegexSearch);
   const handleSignOut = useSignOut();
 
   const toggleLightTheme = useMemo(() => {
@@ -174,6 +176,16 @@ export const useGlobalShortcuts = () => {
     };
   }, []);
 
+  const toggleRegex = useMemo(() => {
+    return {
+      shortcut: ['cmd', '/'],
+      action: () => {
+        setIsRegexSearchEnabled((prev) => !prev);
+        setIsVisible(false);
+      },
+    };
+  }, []);
+
   return {
     toggleLightTheme,
     toggleBlackTheme,
@@ -191,5 +203,6 @@ export const useGlobalShortcuts = () => {
     openAppDocs,
     reportABug,
     signOut,
+    toggleRegex,
   };
 };

@@ -24,17 +24,15 @@ const mapRepoResults = (item: RepoItem, id: number): RepoResult => {
     id,
     branches: 0,
     files: 0,
-    repository: item.data.name.text,
     highlights: item.data.name.highlights,
     repoName: item.data.name.text,
+    repoRef: item.data.repo_ref,
   };
 };
 
 const mapCodeResults = (item: CodeItem, id: number): CodeResult => {
   return {
     type: ResultItemType.CODE,
-    branch: '',
-    code: '',
     snippets: item.data.snippets.map((snippet) => ({
       code: snippet.data,
       lineStart: snippet.line_range.start,
@@ -49,7 +47,7 @@ const mapCodeResults = (item: CodeItem, id: number): CodeResult => {
     })),
     language: item.data.lang,
     relativePath: item.data.relative_path,
-    repoPath: item.data.repo_ref.replace('local/', ''),
+    repoRef: item.data.repo_ref,
     id,
     repoName: item.data.repo_name,
   };
@@ -60,7 +58,7 @@ const mapFileResults = (item: FileResItem, id: number): FileResult => {
     relativePath: item.data.relative_path.text,
     type: ResultItemType.FILE,
     lines: 0,
-    repoPath: item.data.repo_ref.replace('local/', ''),
+    repoRef: item.data.repo_ref,
     id,
     language: item.data.lang,
     highlights: item.data.relative_path.highlights,

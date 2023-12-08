@@ -157,3 +157,4 @@ export { default as CheckListIcon } from './CheckList';
 export { default as LikeIcon } from './Like';
 export { default as UnlikeIcon } from './Unlike';
 export { default as RefreshIcon } from './Refresh';
+export { default as RegexSearchIcon } from './RegexSearch';

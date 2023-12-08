@@ -1,4 +1,4 @@
-import { createContext } from 'react';
+import { createContext, Dispatch, SetStateAction } from 'react';
 import { ProjectFullType, ProjectShortType } from '../types/api';
 
 export const ProjectContext = {
@@ -21,5 +21,12 @@ export const ProjectContext = {
   }>({
     projects: [],
     refreshAllProjects: () => {},
+  }),
+  RegexSearch: createContext<{
+    isRegexSearchEnabled: boolean;
+    setIsRegexSearchEnabled: Dispatch<SetStateAction<boolean>>;
+  }>({
+    isRegexSearchEnabled: false,
+    setIsRegexSearchEnabled: () => {},
   }),
 };

@@ -522,5 +522,7 @@
 	"Commands": "Comandi",
 	"Branches": "Rami",
 	"Syncing": "Sincronizzazione",
-	"This might be because the file is too big or it has one of bloop's excluded file types.": "Ciò potrebbe essere dovuto al fatto che il file è troppo grande o ha uno dei tipi di file esclusi di Bloop."
+	"This might be because the file is too big or it has one of bloop's excluded file types.": "Ciò potrebbe essere dovuto al fatto che il file è troppo grande o ha uno dei tipi di file esclusi di Bloop.",
+	"Toggle regex search": "Attiva la ricerca Regex",
+	"Files, paths or folders...": "File, percorsi o cartelle ..."
 }

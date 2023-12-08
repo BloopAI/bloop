@@ -40,6 +40,7 @@ module.exports = {
         "red-subtle": "rgba(var(--red-subtle), 1)",
         "red-subtle-hover": "rgba(var(--red-subtle-hover), 1)",
         "yellow": "rgba(var(--yellow), 1)",
+        "yellow/16": "rgba(var(--yellow), 0.16)",
         "yellow-subtle": "rgba(var(--yellow-subtle), 1)",
         "yellow-subtle-hover": "rgba(var(--yellow-subtle-hover), 1)",
         "blue": "rgba(var(--blue), 1)",

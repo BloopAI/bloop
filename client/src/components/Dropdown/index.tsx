@@ -48,6 +48,8 @@ const transformOriginMap = {
   'left-end': 'origin-bottom-right',
 };
 
+export const animationDuration: [number, number] = [150, 200];
+
 const Dropdown = ({
   children,
   dropdownPlacement = 'bottom-start',
@@ -126,7 +128,7 @@ const Dropdown = ({
         placement={dropdownPlacement}
         interactive
         appendTo={appendTo}
-        duration={[150, 200]}
+        duration={animationDuration}
         animation
         render={renderContent}
       >

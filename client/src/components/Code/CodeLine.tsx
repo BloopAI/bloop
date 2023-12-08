@@ -1,4 +1,4 @@
-import React, { ReactNode, useRef, memo } from 'react';
+import React, { ReactNode, useRef, memo, useMemo } from 'react';
 
 type Props = {
   lineNumber: number;
@@ -9,6 +9,7 @@ type Props = {
   hoverEffect?: boolean;
   isNewLine?: boolean;
   isRemovedLine?: boolean;
+  shouldHighlight?: boolean;
 };
 
 const CodeLine = ({
@@ -20,8 +21,17 @@ const CodeLine = ({
   isRemovedLine,
   lineNumberToShow = lineNumber + 1,
   lineNumbersDiff,
+  shouldHighlight,
 }: Props) => {
   const codeRef = useRef<HTMLTableCellElement>(null);
+  const style = useMemo(
+    () => ({
+      borderLeft: `3px solid ${
+        shouldHighlight ? 'rgb(var(--yellow))' : 'transparent'
+      }`,
+    }),
+    [shouldHighlight],
+  );
 
   return (
     <div
@@ -29,6 +39,7 @@ const CodeLine = ({
         isNewLine ? 'bg-bg-success/30' : isRemovedLine ? 'bg-bg-danger/30' : ''
       }`}
       data-line-number={lineNumber}
+      style={style}
     >
       {showLineNumbers &&
         (lineNumbersDiff ? (

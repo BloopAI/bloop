@@ -2,6 +2,7 @@ import React, { useCallback, MouseEvent } from 'react';
 import FileIcon from '../FileIcon';
 import { FileTreeFileType } from '../../types';
 import CodeFragment from '../Code/CodeFragment';
+import BreadcrumbsPathContainer from '../Breadcrumbs/PathContainer';
 import CopyButton from './CopyButton';
 
 type Props = {
@@ -37,6 +38,12 @@ const CodeWithBreadcrumbs = ({
     },
     [filePath, startLine, code, onResultClick],
   );
+  const onBreadcrumbClick = useCallback(
+    (path: string, type?: FileTreeFileType) => {
+      type === FileTreeFileType.FILE ? onResultClick(path) : {};
+    },
+    [onResultClick],
+  );
 
   return (
     <div
@@ -48,14 +55,11 @@ const CodeWithBreadcrumbs = ({
       >
         <div className={`flex items-center gap-2 w-full cursor-pointer`}>
           <FileIcon filename={filePath} />
-          {/*<BreadcrumbsPath*/}
-          {/*  path={filePath}*/}
-          {/*  repo={repoName || ''}*/}
-          {/*  onClick={(path, type) =>*/}
-          {/*    type === FileTreeFileType.FILE ? onResultClick(path) : {}*/}
-          {/*  }*/}
-          {/*/>*/}
-          <span className="ellipsis flex-1">{filePath}</span>
+          <BreadcrumbsPathContainer
+            path={filePath}
+            repo={repoName || ''}
+            onClick={onBreadcrumbClick}
+          />
           <CopyButton code={code} isInHeader />
         </div>
       </div>
