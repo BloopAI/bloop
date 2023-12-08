@@ -155,6 +155,24 @@ impl Default for OverlapStrategy {
     }
 }
 
+/// Heuristics for determining if a chunk is noisy
+///
+/// We filter chunks where over 50% of non-whitespace tokens are numeric or punctuation
+fn is_noisy(chunk: &str) -> bool {
+    let non_whitespace_count = chunk.chars().filter(|c| !c.is_whitespace()).count();
+    let numeric_or_punctuation_count = chunk
+        .chars()
+        .filter(|c| c.is_numeric() || c.is_ascii_punctuation())
+        .count();
+
+    // Chunks that are all whitespace are noisy
+    if non_whitespace_count == 0 {
+        return true;
+    }
+
+    (numeric_or_punctuation_count as f64 / non_whitespace_count as f64) > 0.5
+}
+
 /// This should take care of [CLS], [SEP] etc. which could be introduced during per-chunk tokenization
 pub const DEDUCT_SPECIAL_TOKENS: usize = 2;
 
@@ -170,6 +188,11 @@ fn add_token_range<'s>(
     let end_byte = offsets.get(o.end).map_or(src.len(), |&(s, _)| s);
 
     if end_byte <= start_byte {
+        return;
+    }
+
+    if is_noisy(&src[start_byte..end_byte]) {
+        debug!("skipping noisy chunk");
         return;
     }
 
