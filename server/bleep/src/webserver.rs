@@ -50,8 +50,6 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
 
     let mut api = Router::new()
         .route("/config", get(config::get).put(config::put))
-        // querying
-        .route("/q", get(query::handle))
         // autocomplete
         .route("/autocomplete", get(autocomplete::handle))
         // indexing
@@ -85,8 +83,8 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         .route("/token-value", get(intelligence::token_value))
         // misc
         .route("/search/code", get(search::semantic_code))
-        .route("/search/path", get(search::fuzzy_path))
         .route("/file", get(file::handle))
+        .route("/folder", get(file::folder))
         .route("/projects", get(project::list).post(project::create))
         .route(
             "/projects/:project_id",
@@ -118,6 +116,8 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
             "/projects/:project_id/conversations/:conversation_id",
             get(conversation::get),
         )
+        .route("/projects/:project_id/q", get(query::handle))
+        .route("/projects/:project_id/search/path", get(search::fuzzy_path))
         .route("/projects/:project_id/answer/vote", post(answer::vote))
         .route("/projects/:project_id/answer", get(answer::answer))
         .route("/projects/:project_id/answer/explain", get(answer::explain))
