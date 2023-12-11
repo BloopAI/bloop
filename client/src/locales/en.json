@@ -577,5 +577,6 @@
 	"Press <2>cmdKey</2> <4>K</4> on your keyboard to open the Command bar.": "Press <2>{{cmdKey}}</2> <4>K</4> on your keyboard to open the Command bar.",
 	"Press <2>cmdKey</2> <4>K</4> on your keyboard to open the Command bar and add a repository.": "Press <2>{{cmdKey}}</2> <4>K</4> on your keyboard to open the Command bar and add a repository.",
 	"Application theme": "Application theme",
-	"Change application colour theme": "Change application colour theme"
+	"Change application colour theme": "Change application colour theme",
+	"How fast or precise bloop's answers will be.": "How fast or precise bloop's answers will be."
 }

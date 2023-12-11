@@ -32,6 +32,7 @@ const ChatPersistentState = ({ tabKey }: Props) => {
   const { t } = useTranslation();
   const { apiUrl } = useContext(DeviceContext);
   const { project } = useContext(ProjectContext.Current);
+  const { preferredAnswerSpeed } = useContext(ProjectContext.AnswerSpeed);
   const { setChats } = useContext(ChatsContext);
 
   const [queryId, setQueryId] = useState('');
@@ -211,7 +212,11 @@ const ChatPersistentState = ({ tabKey }: Props) => {
               queryIdToEdit ? `&parent_query_id=${queryIdToEdit}` : ''
             }`
           : ''
-      }&model=gpt-4`;
+      }&answer_model=${
+        preferredAnswerSpeed === 'normal'
+          ? 'gpt-4-turbo-24k'
+          : 'gpt-3.5-turbo-finetuned'
+      }`;
       console.log(url);
       const eventSource = new EventSource(url);
       prevEventSource.current = eventSource;
@@ -401,7 +406,7 @@ const ChatPersistentState = ({ tabKey }: Props) => {
         eventSource.close();
       };
     },
-    [threadId, t, queryIdToEdit],
+    [threadId, t, queryIdToEdit, preferredAnswerSpeed],
   );
 
   useEffect(() => {

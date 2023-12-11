@@ -16,6 +16,7 @@ type Props = {
   icon?: ReactElement;
   customRightElement?: ReactElement;
   label: string | ReactElement;
+  description?: string | ReactElement;
   shortcut?: string[];
   isSelected?: boolean;
   isFocused?: boolean;
@@ -26,6 +27,7 @@ type Props = {
 const SectionItem = ({
   icon,
   label,
+  description,
   shortcut,
   onClick,
   isSelected,
@@ -62,7 +64,9 @@ const SectionItem = ({
       href="#"
       onClick={onClick}
       ref={ref}
-      className={`w-full text-left rounded-6 h-8 px-2 overflow-hidden
+      className={`w-full text-left rounded-6 ${
+        description ? 'py-2' : 'h-8'
+      } px-2 overflow-hidden
         hover:text-label-title ${
           color === 'shade'
             ? 'hover:bg-bg-shade-hover'
@@ -80,14 +84,19 @@ const SectionItem = ({
       <span className="flex items-center gap-2 h-full overflow-hidden">
         {icon}
         <span
-          className="flex-1 body-s-b text-label-title ellipsis"
+          className="flex-1 flex flex-col gap-1"
           title={typeof label === 'string' ? label : undefined}
         >
-          {label}
+          <span className="body-s text-label-title ellipsis">{label}</span>
+          {!!description && (
+            <span className="body-mini text-label-base">{description}</span>
+          )}
         </span>
-        <span className="body-mini-b text-label-muted">
-          {shortcutKeys?.join(' ')}
-        </span>
+        {!!shortcutKeys && (
+          <span className="body-mini-b text-label-muted">
+            {shortcutKeys?.join(' ')}
+          </span>
+        )}
         {isSelected && (
           <CheckIcon
             sizeClassName="w-4 h-4"

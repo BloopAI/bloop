@@ -12,6 +12,9 @@ import { ProjectContext } from '../context/projectContext';
 import Button from '../components/Button';
 import { deleteProject, updateProject } from '../services/api';
 import { UIContext } from '../context/uiContext';
+import Dropdown from '../components/Dropdown';
+import { ChevronDownIcon, RunIcon, WalkIcon } from '../icons';
+import AnswerSpeedDropdown from './AnswerSpeedDropdown';
 
 type Props = {};
 
@@ -21,6 +24,7 @@ const General = ({}: Props) => {
     ProjectContext.Current,
   );
   const { refreshAllProjects, projects } = useContext(ProjectContext.All);
+  const { preferredAnswerSpeed } = useContext(ProjectContext.AnswerSpeed);
   const { setProjectSettingsOpen } = useContext(UIContext.ProjectSettings);
   const [name, setName] = useState(project?.name || '');
 
@@ -73,6 +77,33 @@ const General = ({}: Props) => {
           onBlur={handleSubmit}
           onSubmit={handleSubmit}
         />
+      </div>
+      <hr className="border-bg-divider my-8" />
+      <div className="flex items-start gap-8 w-full justify-between">
+        <div className="flex flex-col gap-2">
+          <p className="body-base-b text-label-title">
+            <Trans>Answer speed</Trans>
+          </p>
+          <p className="body-s-b text-label-muted">
+            <Trans>How fast or precise bloop&apos;s answers will be.</Trans>
+          </p>
+        </div>
+        <Dropdown
+          DropdownComponent={AnswerSpeedDropdown}
+          dropdownPlacement="bottom-end"
+          size="auto"
+        >
+          <Button variant="secondary">
+            {preferredAnswerSpeed === 'fast' ? (
+              <RunIcon raw sizeClassName="w-4.5 h-4.5" />
+            ) : (
+              <WalkIcon raw sizeClassName="w-4.5 h-4.5" />
+            )}
+            {preferredAnswerSpeed.charAt(0).toUpperCase() +
+              preferredAnswerSpeed.slice(1)}
+            <ChevronDownIcon sizeClassName="w-4 h-4" />
+          </Button>
+        </Dropdown>
       </div>
       <hr className="border-bg-divider my-8" />
       <div className="flex items-start gap-8 w-full">

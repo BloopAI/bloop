@@ -10,6 +10,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { ProjectContext } from '../projectContext';
 import {
+  ANSWER_SPEED_KEY,
   getPlainFromStorage,
   PROJECT_KEY,
   savePlainToStorage,
@@ -36,6 +37,13 @@ const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
   const [projects, setProjects] = useState<ProjectShortType[]>([]);
   const [isReposLoaded, setIsReposLoaded] = useState(false);
   const [isRegexSearchEnabled, setIsRegexSearchEnabled] = useState(false);
+  const [preferredAnswerSpeed, setPreferredAnswerSpeed] = useState<
+    'normal' | 'fast'
+  >((getPlainFromStorage(ANSWER_SPEED_KEY) as 'normal') || 'normal');
+
+  useEffect(() => {
+    savePlainToStorage(ANSWER_SPEED_KEY, preferredAnswerSpeed);
+  }, [preferredAnswerSpeed]);
 
   const refreshCurrentProjectRepos = useCallback(async () => {
     getProjectRepos(currentProjectId).then((r) => {
@@ -121,11 +129,21 @@ const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
     [isRegexSearchEnabled],
   );
 
+  const answerSpeedValue = useMemo(
+    () => ({
+      preferredAnswerSpeed,
+      setPreferredAnswerSpeed,
+    }),
+    [preferredAnswerSpeed],
+  );
+
   return (
     <ProjectContext.Current.Provider value={currentValue}>
       <ProjectContext.All.Provider value={allValue}>
         <ProjectContext.RegexSearch.Provider value={regexValue}>
-          {children}
+          <ProjectContext.AnswerSpeed.Provider value={answerSpeedValue}>
+            {children}
+          </ProjectContext.AnswerSpeed.Provider>
         </ProjectContext.RegexSearch.Provider>
       </ProjectContext.All.Provider>
     </ProjectContext.Current.Provider>
