@@ -1,5 +1,6 @@
-import { memo, useCallback, useContext, useMemo, useState } from 'react';
+import { memo, useCallback, useContext, useMemo } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { useGlobalShortcuts } from '../../hooks/useGlobalShortcuts';
 import {
   CommandBarItemGeneralType,
@@ -12,7 +13,6 @@ import Footer from '../Footer';
 import { CommandBarContext } from '../../context/commandBarContext';
 import { DeviceContext } from '../../context/deviceContext';
 import { scanLocalRepos, syncRepo } from '../../services/api';
-import { ToastsContext } from '../../context/toastsContext';
 import SpinLoaderContainer from '../../components/Loaders/SpinnerLoader';
 
 type Props = {};
@@ -22,7 +22,6 @@ const AddNewRepo = ({}: Props) => {
   const globalShortcuts = useGlobalShortcuts();
   const { setChosenStep } = useContext(CommandBarContext.Handlers);
   const { homeDir, chooseFolder } = useContext(DeviceContext);
-  const { addToast } = useContext(ToastsContext.Handlers);
 
   const handleBack = useCallback(() => {
     setChosenStep({ id: CommandBarStepEnum.MANAGE_REPOS });
@@ -45,33 +44,32 @@ const AddNewRepo = ({}: Props) => {
       scanLocalRepos(folder).then((data) => {
         if (data.list.length === 1) {
           syncRepo(data.list[0].ref);
-          addToast({
-            type: 'default',
-            title: t('Indexing repository'),
-            text: (
+          toast(t('Indexing repository'), {
+            description: (
               <Trans values={{ repoName: data.list[0].name }}>
                 <span className="text-label-base body-s-b">repoName</span> has
                 started indexing. You’ll receive a notification as soon as this
                 process completes.
               </Trans>
             ),
-            Icon: SpinLoaderContainer,
+            icon: <SpinLoaderContainer sizeClassName="w-4 h-4" />,
+            unstyled: true,
           });
           handleBack();
           return;
         } else if (!data.list.length) {
-          addToast({
-            type: 'error',
-            title: t('Not a git repository'),
-            text: t('The folder you selected is not a git repository.'),
+          toast.error(t('Not a git repository'), {
+            description: t('The folder you selected is not a git repository.'),
+            icon: <HardDriveIcon sizeClassName="w-4 h-4" />,
+            unstyled: true,
           });
         } else if (data.list.length > 1) {
-          addToast({
-            type: 'error',
-            title: t('Folder too large'),
-            text: t(
+          toast.error(t('Folder too large'), {
+            description: t(
               'The folder you selected has multiple git repositories nested inside.',
             ),
+            icon: <HardDriveIcon sizeClassName="w-4 h-4" />,
+            unstyled: true,
           });
         }
       });

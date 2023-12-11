@@ -288,7 +288,7 @@
     --default-light-onboarding-chats-img: url("../public/chatsImage-light.png");
     --default-light-bloop-head-img: url("../public/bloopHeadMascotLight.png");
   }
-  [data-theme="dark"], body:not([data-theme]) {
+  body[data-theme="dark"], body:not([data-theme]) {
     --bg-sub: var(--default-dark-bg-sub);
     --bg-sub-hover: var(--default-dark-bg-sub-hover);
     --bg-base: var(--default-dark-bg-base);
@@ -347,7 +347,7 @@
     --onboarding-chats-img: var(--default-dark-onboarding-chats-img);
     --bloop-head-img: var(--default-dark-bloop-head-img);
   }
-  [data-theme="black"] {
+  body[data-theme="black"] {
     --bg-sub: var(--default-black-bg-sub);
     --bg-sub-hover: var(--default-black-bg-sub-hover);
     --bg-base: var(--default-black-bg-base);
@@ -407,7 +407,7 @@
     --bloop-head-img: var(--default-dark-bloop-head-img);
   }
   @media (prefers-color-scheme: dark) {
-    [data-theme="system"] {
+    body[data-theme="system"] {
       --bg-sub: var(--default-dark-bg-sub);
       --bg-sub-hover: var(--default-dark-bg-sub-hover);
       --bg-base: var(--default-dark-bg-base);
@@ -467,67 +467,67 @@
       --bloop-head-img: var(--default-dark-bloop-head-img);
     }
   }
-    [data-theme="light"] {
-      --bg-sub: var(--default-light-bg-sub);
-      --bg-sub-hover: var(--default-light-bg-sub-hover);
-      --bg-base: var(--default-light-bg-base);
-      --bg-base-hover: var(--default-light-bg-base-hover);
-      --bg-selected: var(--default-light-bg-selected);
-      --bg-shade: var(--default-light-bg-shade);
-      --bg-shade-hover: var(--default-light-bg-shade-hover);
-      --bg-border: var(--default-light-bg-border);
-      --bg-border-hover: var(--default-light-bg-border-hover);
-      --bg-border-selected: var(--default-light-bg-border-selected);
-      --bg-divider: var(--default-light-bg-divider);
-      --bg-contrast: var(--default-light-bg-contrast);
-      --bg-contrast-hover: var(--default-light-bg-contrast-hover);
+  body[data-theme="light"] {
+    --bg-sub: var(--default-light-bg-sub);
+    --bg-sub-hover: var(--default-light-bg-sub-hover);
+    --bg-base: var(--default-light-bg-base);
+    --bg-base-hover: var(--default-light-bg-base-hover);
+    --bg-selected: var(--default-light-bg-selected);
+    --bg-shade: var(--default-light-bg-shade);
+    --bg-shade-hover: var(--default-light-bg-shade-hover);
+    --bg-border: var(--default-light-bg-border);
+    --bg-border-hover: var(--default-light-bg-border-hover);
+    --bg-border-selected: var(--default-light-bg-border-selected);
+    --bg-divider: var(--default-light-bg-divider);
+    --bg-contrast: var(--default-light-bg-contrast);
+    --bg-contrast-hover: var(--default-light-bg-contrast-hover);
 
-      --label-title: var(--default-light-label-title);
-      --label-base: var(--default-light-label-base);
-      --label-muted: var(--default-light-label-muted);
-      --label-faint: var(--default-light-label-faint);
-      --label-link: var(--default-light-label-link);
-      --label-contrast: var(--default-light-label-contrast);
-      --label-control: var(--default-light-label-control);
+    --label-title: var(--default-light-label-title);
+    --label-base: var(--default-light-label-base);
+    --label-muted: var(--default-light-label-muted);
+    --label-faint: var(--default-light-label-faint);
+    --label-link: var(--default-light-label-link);
+    --label-contrast: var(--default-light-label-contrast);
+    --label-control: var(--default-light-label-control);
 
-      --sub-surface: var(--default-light-sub-surface);
-      --shade-surface: var(--default-light-shade-surface);
-      --base-surface: var(--default-light-base-surface);
+    --sub-surface: var(--default-light-sub-surface);
+    --shade-surface: var(--default-light-shade-surface);
+    --base-surface: var(--default-light-base-surface);
 
-      --brand-default: var(--default-light-brand-default);
-      --brand-default-hover: var(--default-light-brand-default-hover);
-      --brand-default-subtitle: var(--default-light-brand-default-subtitle);
-      --brand-studio: var(--default-light-brand-studio);
-      --brand-studio-hover: var(--default-light-brand-studio-hover);
-      --brand-studio-subtle: var(--default-light-brand-studio-subtle);
+    --brand-default: var(--default-light-brand-default);
+    --brand-default-hover: var(--default-light-brand-default-hover);
+    --brand-default-subtitle: var(--default-light-brand-default-subtitle);
+    --brand-studio: var(--default-light-brand-studio);
+    --brand-studio-hover: var(--default-light-brand-studio-hover);
+    --brand-studio-subtle: var(--default-light-brand-studio-subtle);
 
-      --green: var(--default-light-green);
-      --green-subtle: var(--default-light-green-subtle);
-      --green-subtle-hover: var(--default-light-green-subtle-hover);
-      --red: var(--default-light-red);
-      --red-subtle: var(--default-light-red-subtle);
-      --red-subtle-hover: var(--default-light-red-subtle-hover);
-      --yellow: var(--default-light-yellow);
-      --yellow-subtle: var(--default-light-yellow-subtle);
-      --yellow-subtle-hover: var(--default-light-yellow-subtle-hover);
-      --blue: var(--default-light-blue);
-      --blue-subtle: var(--default-light-blue-subtle);
-      --blue-subtle-hover: var(--default-light-blue-subtle-hover);
+    --green: var(--default-light-green);
+    --green-subtle: var(--default-light-green-subtle);
+    --green-subtle-hover: var(--default-light-green-subtle-hover);
+    --red: var(--default-light-red);
+    --red-subtle: var(--default-light-red-subtle);
+    --red-subtle-hover: var(--default-light-red-subtle-hover);
+    --yellow: var(--default-light-yellow);
+    --yellow-subtle: var(--default-light-yellow-subtle);
+    --yellow-subtle-hover: var(--default-light-yellow-subtle-hover);
+    --blue: var(--default-light-blue);
+    --blue-subtle: var(--default-light-blue-subtle);
+    --blue-subtle-hover: var(--default-light-blue-subtle-hover);
 
-      --line-select: var(--default-light-line-select);
+    --line-select: var(--default-light-line-select);
 
-      --shadow-rings-blue: var(--default-light-shadow-rings-blue);
-      --shadow-rings-gray: var(--default-light-shadow-rings-gray);
-      --shadow-float: var(--default-light-shadow-float);
-      --shadow-high: var(--default-light-shadow-high);
-      --shadow-medium: var(--default-light-shadow-medium);
-      --shadow-low: var(--default-light-shadow-low);
+    --shadow-rings-blue: var(--default-light-shadow-rings-blue);
+    --shadow-rings-gray: var(--default-light-shadow-rings-gray);
+    --shadow-float: var(--default-light-shadow-float);
+    --shadow-high: var(--default-light-shadow-high);
+    --shadow-medium: var(--default-light-shadow-medium);
+    --shadow-low: var(--default-light-shadow-low);
 
-      --onboarding-chats-img: var(--default-dark-onboarding-chats-img);
-      --bloop-head-img: var(--default-light-bloop-head-img);
-    }
+    --onboarding-chats-img: var(--default-dark-onboarding-chats-img);
+    --bloop-head-img: var(--default-light-bloop-head-img);
+  }
   @media (prefers-color-scheme: light) {
-    [data-theme="system"] {
+    body[data-theme="system"] {
       --bg-sub: var(--default-light-bg-sub);
       --bg-sub-hover: var(--default-light-bg-sub-hover);
       --bg-base: var(--default-light-bg-base);

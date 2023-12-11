@@ -5,7 +5,6 @@ import { KLetterIcon, PersonIcon } from '../../icons';
 import Dropdown from '../Dropdown';
 import { CommandBarContext } from '../../context/commandBarContext';
 import { EnvContext } from '../../context/envContext';
-import KeyboardHint from '../KeyboardHint';
 import useShortcuts from '../../hooks/useShortcuts';
 import UserDropdown from './UserDropdown';
 
