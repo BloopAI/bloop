@@ -27,7 +27,7 @@ const Header = ({ type = 'default' }: Props) => {
 
   return (
     <div
-      className="w-screen h-10 flex items-center justify-between border-b border-bg-border bg-bg-base"
+      className="w-screen h-10 flex items-center justify-between border-b border-bg-border bg-bg-base select-none"
       data-tauri-drag-region
     >
       <div className="flex h-full">

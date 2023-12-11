@@ -34,7 +34,7 @@ const CommandBar = ({}: Props) => {
 
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
-      if (e.key === 'k' && !isFocusInInput()) {
+      if (checkEventKeys(e, ['cmd', 'K'])) {
         e.stopPropagation();
         e.preventDefault();
         setIsVisible(true);

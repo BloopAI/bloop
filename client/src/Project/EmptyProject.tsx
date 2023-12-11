@@ -5,11 +5,13 @@ import { PlusSignIcon, ShapesIcon } from '../icons';
 import Button from '../components/Button';
 import { CommandBarContext } from '../context/commandBarContext';
 import { CommandBarStepEnum } from '../types/general';
+import useShortcuts from '../hooks/useShortcuts';
 
 type Props = {};
 
 const EmptyProject = ({}: Props) => {
   useTranslation();
+  const shortcut = useShortcuts(['cmd']);
   const { setIsVisible, setChosenStep } = useContext(
     CommandBarContext.Handlers,
   );
@@ -32,16 +34,21 @@ const EmptyProject = ({}: Props) => {
               <p className="body-base-b text-label-title">
                 <Trans>This project is empty</Trans>
               </p>
-              <p className="body-s-b text-label-base">
-                <Trans>
-                  Start by adding your first repository or documentation
-                  library.
+              <p className="body-s text-label-base !leading-5">
+                <Trans values={{ cmdKey: shortcut?.[0] }}>
+                  Press{' '}
+                  <span className="w-5 h-5 inline-flex items-center justify-center rounded border border-bg-border bg-bg-base shadow-low">
+                    cmdKey
+                  </span>{' '}
+                  <span className="w-5 h-5 inline-flex items-center justify-center rounded border border-bg-border bg-bg-base shadow-low">
+                    K
+                  </span>{' '}
+                  on your keyboard to open the Command bar and add a repository.
                 </Trans>
               </p>
             </div>
             <Button size="large" onClick={openCommandBar}>
-              <PlusSignIcon />
-              <Trans>Add context</Trans>
+              <Trans>Open Command Bar</Trans>
             </Button>
           </div>
         </div>

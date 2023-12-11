@@ -41,7 +41,7 @@ const ProjectHeader = ({ side }: Props) => {
 
   return (
     <div
-      className={`flex justify-between items-center h-10 border-b border-bg-border overflow-hidden ${
+      className={`flex justify-between items-center h-10 border-b border-bg-border overflow-hidden select-none ${
         side === 'right' ? 'border-l border-bg-border' : ''
       }`}
     >

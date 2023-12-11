@@ -529,7 +529,6 @@
 	"Remove from project": "Remove from project",
 	"No file selected": "No file selected",
 	"Select a file or open a new tab to display it here.": "Select a file or open a new tab to display it here.",
-	"Press <2>K</2> on your keyboard to open the Command bar.": "Press <2>K</2> on your keyboard to open the Command bar.",
 	"Toggle black theme": "Toggle black theme",
 	"Use black theme": "Use black theme",
 	"This file was not indexed by bloop. The reason for this might be that the file is to big or is in our list of excluded file types.": "This file was not indexed by bloop. The reason for this might be that the file is to big or is in our list of excluded file types.",
@@ -573,5 +572,8 @@
 	"Not a git repository": "Not a git repository",
 	"The folder you selected is not a git repository.": "The folder you selected is not a git repository.",
 	"Indexing repository": "Indexing repository",
-	"<0>repoName</0> has started indexing. You’ll receive a notification as soon as this process completes.": "<0>{{repoName}}</0> has started indexing. You’ll receive a notification as soon as this process completes."
+	"<0>repoName</0> has started indexing. You’ll receive a notification as soon as this process completes.": "<0>{{repoName}}</0> has started indexing. You’ll receive a notification as soon as this process completes.",
+	"Open Command Bar": "Open Command Bar",
+	"Press <2>cmdKey</2> <4>K</4> on your keyboard to open the Command bar.": "Press <2>{{cmdKey}}</2> <4>K</4> on your keyboard to open the Command bar.",
+	"Press <2>cmdKey</2> <4>K</4> on your keyboard to open the Command bar and add a repository.": "Press <2>{{cmdKey}}</2> <4>K</4> on your keyboard to open the Command bar and add a repository."
 }
