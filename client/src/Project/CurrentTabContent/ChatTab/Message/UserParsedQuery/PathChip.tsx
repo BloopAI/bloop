@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { FolderClosed } from '../../../../../icons';
+import { FolderIcon } from '../../../../../icons';
 import FileIcon from '../../../../../components/FileIcon';
 import { splitPath } from '../../../../../utils';
 
@@ -16,7 +16,7 @@ const PathChip = ({ path }: Props) => {
     >
       <span className="flex gap-1 px-1 py-0.5 items-center code-s">
         {isFolder ? (
-          <FolderClosed raw sizeClassName="w-3.5 h-3.5" />
+          <FolderIcon raw sizeClassName="w-3.5 h-3.5" />
         ) : (
           <FileIcon filename={path} />
         )}

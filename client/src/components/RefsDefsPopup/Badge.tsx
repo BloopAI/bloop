@@ -2,7 +2,7 @@ import { Trans } from 'react-i18next';
 import { useCallback } from 'react';
 import Tooltip from '../Tooltip';
 import { TokenInfoType } from '../../types/results';
-import { Def, Ref } from '../../icons';
+import { DefIcon, RefIcon } from '../../icons';
 import { TypeMap } from './index';
 
 type Props = {
@@ -42,12 +42,12 @@ const TooltipCodeBadge = ({
         onClick={handleClick}
       >
         {type === TypeMap.DEF ? (
-          <Def
+          <DefIcon
             sizeClassName="w-3.5 h-3.5"
             className={disabled ? 'text-label-muted' : colorMap[type]}
           />
         ) : (
-          <Ref
+          <RefIcon
             sizeClassName="w-3.5 h-3.5"
             className={disabled ? 'text-label-muted' : colorMap[type]}
           />

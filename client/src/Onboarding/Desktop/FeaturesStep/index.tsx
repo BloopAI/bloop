@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import Button from '../../../components/Button';
-import { ChatBubble, CodeStudioIcon } from '../../../icons';
+import { ChatBubblesIcon, CodeStudioIcon } from '../../../icons';
 import Feature from './Feature';
 
 type Props = {
@@ -30,7 +30,7 @@ const FeaturesStep = ({ handleNext }: Props) => {
       </div>
       <div className="flex flex-col gap-4">
         <Feature
-          icon={<ChatBubble />}
+          icon={<ChatBubblesIcon />}
           title={t('Search code in natural language')}
           description={t(
             'Ask questions about your codebases in natural language, just like you’d speak to ChatGPT. Get started by syncing a repo, then open the repo and start chatting.',

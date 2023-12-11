@@ -7,7 +7,7 @@ import {
   ReactElement,
   useRef,
 } from 'react';
-import { CheckIcon, MagnifyTool, MailIcon } from '../../icons';
+import { CheckIcon, MagnifyToolIcon, MailIcon } from '../../icons';
 import ClearButton from './ClearButton';
 import RegexButton from './RegexButton';
 
@@ -131,7 +131,8 @@ const TextInput = forwardRef(function TextInputWithRef(
               disabled ? 'text-label-muted' : 'text-label-base'
             } group-hover:text-label-title group-focus-within:text-label-title transition-all duration-150 ease-in-out`}
           >
-            {startIcon || (type === 'email' ? <MailIcon /> : <MagnifyTool />)}
+            {startIcon ||
+              (type === 'email' ? <MailIcon /> : <MagnifyToolIcon />)}
           </span>
         ) : null}
         {multiline ? (

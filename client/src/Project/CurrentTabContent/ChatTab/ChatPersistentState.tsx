@@ -3,7 +3,6 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -35,13 +34,7 @@ const ChatPersistentState = ({ tabKey }: Props) => {
   const { preferredAnswerSpeed } = useContext(ProjectContext.AnswerSpeed);
   const { setChats } = useContext(ChatsContext);
 
-  const [queryId, setQueryId] = useState('');
-
   const prevEventSource = useRef<EventSource | null>(null);
-
-  useEffect(() => {
-    setTimeout(focusInput, 500);
-  }, []);
 
   const [conversation, setConversation] = useState<ChatMessage[]>([]);
   useEffect(() => {
@@ -495,27 +488,6 @@ const ChatPersistentState = ({ tabKey }: Props) => {
       return { ...prev, [tabKey]: { ...prev[tabKey], onMessageEditCancel } };
     });
   }, [onMessageEditCancel]);
-
-  const loadingSteps = useMemo(() => {
-    return conversation[conversation.length - 1]?.author ===
-      ChatMessageAuthor.Server
-      ? [
-          ...(conversation[conversation.length - 1] as ChatMessageServer)
-            .loadingSteps,
-          ...((conversation[conversation.length - 1] as ChatMessageServer)?.text
-            ?.length
-            ? [
-                {
-                  displayText: t('Responding...'),
-                  content: { query: '' },
-                  path: '',
-                  type: 'code' as const,
-                },
-              ]
-            : []),
-        ]
-      : undefined;
-  }, [JSON.stringify(conversation[conversation.length - 1])]);
 
   return null;
 };

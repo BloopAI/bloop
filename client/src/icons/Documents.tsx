@@ -15,4 +15,4 @@ const RawIcon = (
   </svg>
 );
 
-export default IconWrapper(RawIcon, RawIcon);
+export default IconWrapper(RawIcon);

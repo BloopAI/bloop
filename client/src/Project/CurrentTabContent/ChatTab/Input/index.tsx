@@ -20,6 +20,7 @@ import { getAutocomplete } from '../../../../services/api';
 import { FileResItem, LangItem } from '../../../../types/api';
 import useKeyboardNavigation from '../../../../hooks/useKeyboardNavigation';
 import KeyboardHint from '../../../../components/KeyboardHint';
+import { focusInput } from '../../../../utils/domUtils';
 import InputCore from './InputCore';
 
 type Props = {
@@ -94,6 +95,7 @@ const ConversationInput = ({
 
   useEffect(() => {
     setHasRendered(true);
+    setTimeout(focusInput, 500);
   }, []);
 
   useEffect(() => {

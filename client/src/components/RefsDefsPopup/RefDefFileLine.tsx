@@ -1,5 +1,5 @@
 import React, { memo, useCallback } from 'react';
-import { Def, Ref } from '../../icons';
+import { DefIcon, RefIcon } from '../../icons';
 import CodeFragment from '../Code/CodeFragment';
 import { Range, TokenInfoType } from '../../types/results';
 import { TypeMap } from './index';
@@ -48,9 +48,9 @@ const RefDefFileLine = ({
       onClick={onClick}
     >
       {kind === TypeMap.DEF ? (
-        <Def sizeClassName="w-3.5 h-3.5" className="text-label-muted" />
+        <DefIcon sizeClassName="w-3.5 h-3.5" className="text-label-muted" />
       ) : (
-        <Ref sizeClassName="w-3.5 h-3.5" className="text-label-muted" />
+        <RefIcon sizeClassName="w-3.5 h-3.5" className="text-label-muted" />
       )}
       <CodeFragment
         code={snippet.data}
