@@ -698,6 +698,15 @@ h5, .h5 {
   letter-spacing: -0.15px;
 }
 
+.title-m-b {
+  font-family: 'Inter', sans-serif;
+  font-size: 1.0625rem;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 129.412%;
+  letter-spacing: -0.17px;
+}
+
 .subhead-l {
   font-family: 'Inter', sans-serif;
   font-style: normal;

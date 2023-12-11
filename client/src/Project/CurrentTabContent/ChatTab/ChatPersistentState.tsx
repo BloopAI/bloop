@@ -85,6 +85,13 @@ const ChatPersistentState = ({ tabKey }: Props) => {
     });
   }, [isLoading]);
 
+  const [isDeprecatedModalOpen, setDeprecatedModalOpen] = useState(false);
+  useEffect(() => {
+    setChats((prev) => {
+      return { ...prev, [tabKey]: { ...prev[tabKey], isDeprecatedModalOpen } };
+    });
+  }, [isDeprecatedModalOpen]);
+
   const [hideMessagesFrom, setHideMessagesFrom] = useState<null | number>(null);
   useEffect(() => {
     setChats((prev) => {
@@ -116,6 +123,10 @@ const ChatPersistentState = ({ tabKey }: Props) => {
     });
   }, [threadId]);
 
+  const closeDeprecatedModal = useCallback(() => {
+    setDeprecatedModalOpen(false);
+  }, []);
+
   useEffect(() => {
     setChats((prev) => {
       return {
@@ -127,6 +138,7 @@ const ChatPersistentState = ({ tabKey }: Props) => {
           setSelectedLines,
           setSubmittedQuery,
           setThreadId,
+          closeDeprecatedModal,
         },
       };
     });
@@ -245,7 +257,7 @@ const ChatPersistentState = ({ tabKey }: Props) => {
           eventSource.close();
           prevEventSource.current?.close();
           if (ev.data === '{"Err":"incompatible client"}') {
-            // setShowPopup(true);
+            setDeprecatedModalOpen(true);
           } else {
             setConversation((prev) => {
               const newConversation = prev.slice(0, -1);

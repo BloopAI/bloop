@@ -1,14 +1,11 @@
-import { memo, useContext, useMemo } from 'react';
-import { Trans } from 'react-i18next';
+import React, { memo, useContext, useMemo } from 'react';
 import ScrollToBottom from 'react-scroll-to-bottom';
-import { ChatMessageAuthor, ChatMessageServer } from '../../../types/general';
+import { ChatMessageServer } from '../../../types/general';
 import { ProjectContext } from '../../../context/projectContext';
-import { WarningSignIcon } from '../../../icons';
 import { ChatContext, ChatsContext } from '../../../context/chatsContext';
-import StarterMessage from './StarterMessage';
 import Input from './Input';
-import Message from './Message';
 import ScrollableContent from './ScrollableContent';
+import DeprecatedClientModal from './DeprecatedClientModal';
 
 type Props = {
   side: 'left' | 'right';
@@ -55,6 +52,10 @@ const Conversation = ({ side, tabKey }: Props) => {
         setConversation={chatData.setConversation}
         conversation={chatData.conversation}
         setSubmittedQuery={chatData.setSubmittedQuery}
+      />
+      <DeprecatedClientModal
+        isOpen={chatData.isDeprecatedModalOpen}
+        onClose={chatData.closeDeprecatedModal}
       />
     </div>
   );

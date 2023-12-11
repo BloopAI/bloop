@@ -39,7 +39,7 @@ const Modal = ({
   children,
   isVisible,
   noBg,
-  containerClassName,
+  containerClassName = '',
   customKeyHandler,
 }: PropsWithChildren<Props>) => {
   const handleKeyEvent = useCallback((e: KeyboardEvent) => {

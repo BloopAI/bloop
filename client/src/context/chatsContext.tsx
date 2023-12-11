@@ -20,6 +20,8 @@ export type ChatContext = {
   onMessageEditCancel: () => void;
   onMessageEdit: (parentQueryId: string, i: number) => void;
   setInputValueImperatively: (value: ParsedQueryType[] | string) => void;
+  isDeprecatedModalOpen: boolean;
+  closeDeprecatedModal: () => void;
 };
 
 type ContextType = {
