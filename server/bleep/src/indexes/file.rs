@@ -366,7 +366,7 @@ impl Indexer<File> {
 
     pub async fn skim_fuzzy_path_match(
         &self,
-        repo_ref: &RepoRef,
+        repo_refs: impl IntoIterator<Item = RepoRef>,
         query_str: &str,
         branch: Option<&str>,
         limit: usize,
@@ -374,10 +374,21 @@ impl Indexer<File> {
         let searcher = self.reader.searcher();
         let file_source = &self.source;
 
-        let repo_ref_term = Box::new(TermQuery::new(
-            Term::from_field_text(self.source.repo_ref, &repo_ref.to_string()),
-            IndexRecordOption::Basic,
-        ));
+        let repo_ref_terms = {
+            let term_queries = repo_refs
+                .into_iter()
+                .map(|repo_ref| {
+                    TermQuery::new(
+                        Term::from_field_text(self.source.repo_ref, &repo_ref.to_string()),
+                        IndexRecordOption::Basic,
+                    )
+                })
+                .map(|q| Box::new(q) as Box<dyn Query>)
+                .collect::<Vec<_>>();
+
+            Box::new(BooleanQuery::union(term_queries))
+        };
+
         let branch_term = branch
             .map(|b| {
                 trigrams(b)
@@ -397,7 +408,7 @@ impl Indexer<File> {
                     [
                         Some(Box::new(TermQuery::new(term, IndexRecordOption::Basic))
                             as Box<dyn Query>),
-                        Some(Box::clone(&repo_ref_term) as Box<dyn Query>),
+                        Some(Box::clone(&repo_ref_terms) as Box<dyn Query>),
                         branch_term
                             .as_ref()
                             .map(Box::clone)

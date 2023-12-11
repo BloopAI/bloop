@@ -10,8 +10,8 @@ use futures::TryStreamExt;
 
 use super::{middleware::User, repos::Repo, Error};
 
-pub mod repo;
 pub mod doc;
+pub mod repo;
 
 fn default_name() -> String {
     "New Project".into()
