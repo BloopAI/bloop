@@ -553,5 +553,12 @@
 	"Syncing": "同步",
 	"This might be because the file is too big or it has one of bloop's excluded file types.": "这可能是因为文件太大，或者它具有Bloop排除的文件类型之一。",
 	"Search your repositories using RegExp": "使用REGEXP搜索您的存储库",
-	"Files, paths or folders...": "文件，路径或文件夹..."
+	"Files, paths or folders...": "文件，路径或文件夹...",
+	"The folder you selected has multiple git repositories nested inside.": "您选择的文件夹具有嵌套在其中的多个GIT存储库。",
+	"Not a git repository": "不是git存储库",
+	"<0>repoName</0> has started indexing. You’ll receive a notification as soon as this process completes.": "<0>{{repoName}}</0>已开始索引。 此过程完成后，您将立即收到通知。",
+	"Open in GitHub": "在Github开放",
+	"Next": "下一个",
+	"Indexing repository": "索引存储库",
+	"The folder you selected is not a git repository.": "您选择的文件夹不是git存储库。"
 }

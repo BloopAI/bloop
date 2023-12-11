@@ -13,27 +13,32 @@ import { UIContextProvider } from './context/providers/UIContextProvider';
 import Settings from './Settings';
 import ProjectSettings from './ProjectSettings';
 import TabsContextProvider from './context/providers/TabsContextProvider';
+import Toaster from './Toaster';
+import ToastsContextProvider from './context/providers/ToastsContextProvider';
 
 const App = () => {
   return (
     <DndProvider backend={HTML5Backend}>
       <AnalyticsContextProvider>
-        <PersonalQuotaContextProvider>
-          <UIContextProvider>
-            <ProjectContextProvider>
-              <ReportBugModal />
-              <Onboarding />
-              <CommandBarContextProvider>
-                <Settings />
-                <ProjectSettings />
-                <CommandBar />
-                <TabsContextProvider>
-                  <Project />
-                </TabsContextProvider>
-              </CommandBarContextProvider>
-            </ProjectContextProvider>
-          </UIContextProvider>
-        </PersonalQuotaContextProvider>
+        <ToastsContextProvider>
+          <PersonalQuotaContextProvider>
+            <UIContextProvider>
+              <ProjectContextProvider>
+                <Toaster />
+                <ReportBugModal />
+                <Onboarding />
+                <CommandBarContextProvider>
+                  <Settings />
+                  <ProjectSettings />
+                  <CommandBar />
+                  <TabsContextProvider>
+                    <Project />
+                  </TabsContextProvider>
+                </CommandBarContextProvider>
+              </ProjectContextProvider>
+            </UIContextProvider>
+          </PersonalQuotaContextProvider>
+        </ToastsContextProvider>
       </AnalyticsContextProvider>
     </DndProvider>
   );

@@ -567,5 +567,11 @@
 	"Toggle regex search": "Toggle regex search",
 	"Search your repositories using RegExp": "Search your repositories using RegExp",
 	"Toggle": "Toggle",
-	"Files, paths or folders...": "Files, paths or folders..."
+	"Files, paths or folders...": "Files, paths or folders...",
+	"Folder too large": "Folder too large",
+	"The folder you selected has multiple git repositories nested inside.": "The folder you selected has multiple git repositories nested inside.",
+	"Not a git repository": "Not a git repository",
+	"The folder you selected is not a git repository.": "The folder you selected is not a git repository.",
+	"Indexing repository": "Indexing repository",
+	"<0>repoName</0> has started indexing. You’ll receive a notification as soon as this process completes.": "<0>{{repoName}}</0> has started indexing. You’ll receive a notification as soon as this process completes."
 }

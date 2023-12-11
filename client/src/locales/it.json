@@ -524,5 +524,11 @@
 	"Syncing": "Sincronizzazione",
 	"This might be because the file is too big or it has one of bloop's excluded file types.": "Ciò potrebbe essere dovuto al fatto che il file è troppo grande o ha uno dei tipi di file esclusi di Bloop.",
 	"Toggle regex search": "Attiva la ricerca Regex",
-	"Files, paths or folders...": "File, percorsi o cartelle ..."
+	"Files, paths or folders...": "File, percorsi o cartelle ...",
+	"The folder you selected has multiple git repositories nested inside.": "La cartella selezionata ha più repository GIT nidificati all'interno.",
+	"The folder you selected is not a git repository.": "La cartella selezionata non è un repository Git.",
+	"Indexing repository": "Repository di indicizzazione",
+	"<0>repoName</0> has started indexing. You’ll receive a notification as soon as this process completes.": "<0>{{repoName}}</0> ha iniziato l'indicizzazione. Riceverai una notifica non appena questo processo sarà completato.",
+	"Toggle black theme": "Attiva tema nero",
+	"Next": "Prossima"
 }

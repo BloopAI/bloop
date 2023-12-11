@@ -546,5 +546,12 @@
 	"Syncing": "同期",
 	"This might be because the file is too big or it has one of bloop's excluded file types.": "これは、ファイルが大きすぎるか、bloopの除外されたファイルタイプの1つがあるためかもしれません。",
 	"Toggle regex search": "正規表現検索を切り替えます",
-	"Files, paths or folders...": "ファイル、パス、またはフォルダー..."
+	"Files, paths or folders...": "ファイル、パス、またはフォルダー...",
+	"The folder you selected has multiple git repositories nested inside.": "選択したフォルダーには、内部にネストされている複数のgitリポジトリがあります。",
+	"Not a git repository": "Gitリポジトリではありません",
+	"<0>repoName</0> has started indexing. You’ll receive a notification as soon as this process completes.": "<0>{{repoName}}</0>はインデックス作成を開始しました。 このプロセスが完了するとすぐに通知を受け取ります。",
+	"Open in GitHub": "Githubで開きます",
+	"Next": "次",
+	"Indexing repository": "インデックスリポジトリ",
+	"The folder you selected is not a git repository.": "選択したフォルダーはGitリポジトリではありません。"
 }

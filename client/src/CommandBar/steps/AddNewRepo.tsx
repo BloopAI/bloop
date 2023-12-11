@@ -1,5 +1,5 @@
 import { memo, useCallback, useContext, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { useGlobalShortcuts } from '../../hooks/useGlobalShortcuts';
 import {
   CommandBarItemGeneralType,
@@ -12,6 +12,8 @@ import Footer from '../Footer';
 import { CommandBarContext } from '../../context/commandBarContext';
 import { DeviceContext } from '../../context/deviceContext';
 import { scanLocalRepos, syncRepo } from '../../services/api';
+import { ToastsContext } from '../../context/toastsContext';
+import SpinLoaderContainer from '../../components/Loaders/SpinnerLoader';
 
 type Props = {};
 
@@ -20,7 +22,7 @@ const AddNewRepo = ({}: Props) => {
   const globalShortcuts = useGlobalShortcuts();
   const { setChosenStep } = useContext(CommandBarContext.Handlers);
   const { homeDir, chooseFolder } = useContext(DeviceContext);
-  const [chosenFolder, setChosenFolder] = useState<string | null>(null);
+  const { addToast } = useContext(ToastsContext.Handlers);
 
   const handleBack = useCallback(() => {
     setChosenStep({ id: CommandBarStepEnum.MANAGE_REPOS });
@@ -43,8 +45,34 @@ const AddNewRepo = ({}: Props) => {
       scanLocalRepos(folder).then((data) => {
         if (data.list.length === 1) {
           syncRepo(data.list[0].ref);
+          addToast({
+            type: 'default',
+            title: t('Indexing repository'),
+            text: (
+              <Trans values={{ repoName: data.list[0].name }}>
+                <span className="text-label-base body-s-b">repoName</span> has
+                started indexing. You’ll receive a notification as soon as this
+                process completes.
+              </Trans>
+            ),
+            Icon: SpinLoaderContainer,
+          });
           handleBack();
           return;
+        } else if (!data.list.length) {
+          addToast({
+            type: 'error',
+            title: t('Not a git repository'),
+            text: t('The folder you selected is not a git repository.'),
+          });
+        } else if (data.list.length > 1) {
+          addToast({
+            type: 'error',
+            title: t('Folder too large'),
+            text: t(
+              'The folder you selected has multiple git repositories nested inside.',
+            ),
+          });
         }
       });
     }

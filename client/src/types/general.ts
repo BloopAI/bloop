@@ -523,3 +523,15 @@ export type InputValueType = {
   parsed: ParsedQueryType[];
   plain: string;
 };
+
+export type ToastType = {
+  id: string;
+  type: 'default' | 'error';
+  title: string;
+  text: string | ReactElement;
+  Icon?: (props: {
+    raw?: boolean | undefined;
+    sizeClassName?: string | undefined;
+    className?: string | undefined;
+  }) => JSX.Element;
+};
