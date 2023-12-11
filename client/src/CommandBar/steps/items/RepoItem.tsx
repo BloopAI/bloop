@@ -292,12 +292,11 @@ const RepoItem = ({
           : t('Index repository')
       }
       iconContainerClassName={
-        isInProject
-          ? 'bg-blue-subtle text-blue'
-          : status === SyncStatus.Done
+        status === SyncStatus.Done
           ? 'bg-bg-contrast text-label-contrast'
           : 'bg-bg-border'
       }
+      isWithCheckmark={!!isInProject}
       onClick={
         status === SyncStatus.Done
           ? isInProject

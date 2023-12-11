@@ -16,11 +16,13 @@ import useShortcuts from '../../hooks/useShortcuts';
 import useKeyboardNavigation from '../../hooks/useKeyboardNavigation';
 import { checkEventKeys } from '../../utils/keyboardUtils';
 import { CommandBarContext } from '../../context/commandBarContext';
+import { CheckmarkInSquareIcon } from '../../icons';
 
 type Props = CommandBarItemGeneralType & {
   isFocused?: boolean;
   i: number;
   isFirst?: boolean;
+  isWithCheckmark?: boolean;
   setFocusedIndex: Dispatch<SetStateAction<number>>;
   customRightElement?: ReactElement;
   focusedItemProps?: Record<string, any>;
@@ -43,6 +45,7 @@ const CommandBarItem = ({
   onClick,
   focusedItemProps,
   disableKeyNav,
+  isWithCheckmark,
 }: Props) => {
   const ref = useRef<HTMLButtonElement>(null);
   const shortcutKeys = useShortcuts(shortcut);
@@ -105,11 +108,17 @@ const CommandBarItem = ({
       ref={ref}
     >
       <div
-        className={`rounded-6 w-6 h-6 flex items-center justify-center ${
+        className={`rounded-6 w-6 h-6 flex items-center justify-center relative ${
           iconContainerClassName || 'bg-bg-border'
         }`}
       >
         <Icon sizeClassName="w-3.5 h-3.5" />
+        {isWithCheckmark && (
+          <CheckmarkInSquareIcon
+            sizeClassName="w-4 h-4"
+            className="text-blue bg-bg-base absolute -bottom-1.5 -right-1.5 z-10"
+          />
+        )}
       </div>
       <p className="flex-1 body-s-b">{label}</p>
       {!!shortcutKeys && (

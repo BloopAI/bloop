@@ -159,3 +159,4 @@ export { default as UnlikeIcon } from './Unlike';
 export { default as RefreshIcon } from './Refresh';
 export { default as RegexSearchIcon } from './RegexSearch';
 export { default as ColorSwitchIcon } from './ColorSwitch';
+export { default as CheckmarkInSquareIcon } from './CheckmarkInSquare';
