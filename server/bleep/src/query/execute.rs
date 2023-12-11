@@ -45,9 +45,14 @@ pub struct ApiQuery {
     /// A query written in the bloop query language
     pub q: String,
 
-    /// Optional RepoRef to constrain the search. If not provided, search all repos
-    #[serde(default)]
-    pub repo_ref: Option<RepoRef>,
+    /// Project ID.
+    // NB: We implement methods directly on this struct, which need access to the project ID
+    // associated with this request. This doesn't fit our API; we obtain the project ID via the
+    // router and not via URL query parameters. The abstraction here likely needs to be reworked a
+    // bit, as this can be improved. For now, we just add a skipped field, and manually set it
+    // after deserialization. TODO: Fix this.
+    #[serde(skip)]
+    pub project_id: i64,
 
     #[serde(default)]
     pub page: usize,
@@ -68,11 +73,11 @@ pub struct ApiQuery {
 
     /// The number of lines of context in the snippet before the search result
     #[serde(alias = "cb", default = "default_context")]
-    context_before: usize,
+    pub context_before: usize,
 
     /// The number of lines of context in the snippet after the search result
     #[serde(alias = "ca", default = "default_context")]
-    context_after: usize,
+    pub context_after: usize,
 }
 
 #[derive(Serialize)]
