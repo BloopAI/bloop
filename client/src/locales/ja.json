@@ -555,5 +555,7 @@
 	"The folder you selected is not a git repository.": "選択したフォルダーはGitリポジトリではありません。",
 	"Open Command Bar": "オープンコマンドバー",
 	"Press <2>cmdKey</2> <4>K</4> on your keyboard to open the Command bar.": "キーボードに<2>{{cmdKey}}</2> <4>K</4>を押して、コマンドバーを開きます。",
-	"Press <2>cmdKey</2> <4>K</4> on your keyboard to open the Command bar and add a repository.": "<2>{{cmdKey}}</2> <4>K</4>をキーボードに押して、コマンドバーを開き、リポジトリを追加します。"
+	"Press <2>cmdKey</2> <4>K</4> on your keyboard to open the Command bar and add a repository.": "<2>{{cmdKey}}</2> <4>K</4>をキーボードに押して、コマンドバーを開き、リポジトリを追加します。",
+	"Application theme": "アプリケーションテーマ",
+	"Change application colour theme": "アプリケーションの色のテーマを変更します"
 }

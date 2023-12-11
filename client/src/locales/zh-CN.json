@@ -562,5 +562,7 @@
 	"The folder you selected is not a git repository.": "您选择的文件夹不是git存储库。",
 	"Open Command Bar": "打开命令栏",
 	"Press <2>cmdKey</2> <4>K</4> on your keyboard to open the Command bar.": "按<2>{{cmdKey}}</2> <4>K</4>在键盘上打开命令栏。",
-	"Press <2>cmdKey</2> <4>K</4> on your keyboard to open the Command bar and add a repository.": "按<2>{{cmdKey}}</2> <4>K</4>在键盘上打开命令栏并添加存储库。"
+	"Press <2>cmdKey</2> <4>K</4> on your keyboard to open the Command bar and add a repository.": "按<2>{{cmdKey}}</2> <4>K</4>在键盘上打开命令栏并添加存储库。",
+	"Application theme": "应用主题",
+	"Change application colour theme": "更改应用程序颜色主题"
 }

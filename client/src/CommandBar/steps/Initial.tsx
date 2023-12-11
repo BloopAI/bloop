@@ -11,15 +11,12 @@ import { ProjectContext } from '../../context/projectContext';
 import {
   BugIcon,
   CogIcon,
+  ColorSwitchIcon,
   DocumentsIcon,
   DoorOutIcon,
-  MacintoshIcon,
   MagazineIcon,
   RegexIcon,
   RepositoryIcon,
-  ThemeBlackIcon,
-  ThemeDarkIcon,
-  ThemeLightIcon,
   WalletIcon,
 } from '../../icons';
 import { CommandBarContext } from '../../context/commandBarContext';
@@ -32,7 +29,6 @@ import {
   CommandBarStepEnum,
 } from '../../types/general';
 import { UIContext } from '../../context/uiContext';
-import { Theme } from '../../types';
 import { useGlobalShortcuts } from '../../hooks/useGlobalShortcuts';
 
 type Props = {};
@@ -106,49 +102,22 @@ const InitialCommandBar = ({}: Props) => {
           },
         ],
       });
-    const themeOptions = (
-      ['light', 'dark', 'black', 'system'] as Theme[]
-    ).filter((t) => t !== theme);
-    const themeMap = {
-      light: {
-        icon: ThemeLightIcon,
-        shortcut: globalShortcuts.toggleLightTheme.shortcut,
-        action: globalShortcuts.toggleLightTheme.action,
-      },
-      dark: {
-        icon: ThemeDarkIcon,
-        shortcut: globalShortcuts.toggleDarkTheme.shortcut,
-        action: globalShortcuts.toggleDarkTheme.action,
-      },
-      black: {
-        icon: ThemeBlackIcon,
-        shortcut: globalShortcuts.toggleBlackTheme.shortcut,
-        action: globalShortcuts.toggleBlackTheme.action,
-      },
-      system: {
-        icon: MacintoshIcon,
-        shortcut: globalShortcuts.toggleSystemTheme.shortcut,
-        action: globalShortcuts.toggleSystemTheme.action,
-      },
-    };
-    const themeItems: CommandBarItemGeneralType[] = themeOptions.map(
-      (theme) => ({
-        label: t(`Toggle ${theme} theme`),
-        Icon: themeMap[theme].icon,
-        id: `${theme}-theme`,
-        key: `${theme}-theme`,
-        onClick: themeMap[theme].action,
-        shortcut: themeMap[theme].shortcut,
-        footerHint: t(`Use ${theme} theme`),
+    const themeItems: CommandBarItemGeneralType[] = [
+      {
+        label: t(`Theme`),
+        Icon: ColorSwitchIcon,
+        id: CommandBarStepEnum.TOGGLE_THEME,
+        key: `theme`,
+        shortcut: globalShortcuts.toggleTheme.shortcut,
+        footerHint: t(`Change application colour theme`),
         footerBtns: [
           {
             label: t('Select'),
             shortcut: ['entr'],
-            action: themeMap[theme].action,
           },
         ],
-      }),
-    );
+      },
+    ];
     const otherCommands: CommandBarItemGeneralType[] = [
       {
         label: t(`Account settings`),

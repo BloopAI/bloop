@@ -486,6 +486,7 @@ export enum CommandBarStepEnum {
   DOCS = 'docs',
   REPO_SETTINGS = 'repo_settings',
   CREATE_PROJECT = 'create_project',
+  TOGGLE_THEME = 'toggle_theme',
 }
 
 export enum SettingSections {

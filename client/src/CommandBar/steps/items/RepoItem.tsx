@@ -10,7 +10,6 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { format } from 'date-fns';
 import {
   CommandBarStepEnum,
   RepoProvider,
@@ -32,8 +31,7 @@ import {
   TrashCanIcon,
 } from '../../../icons';
 import { DeviceContext } from '../../../context/deviceContext';
-import { getDateFnsLocale, getFileManagerName } from '../../../utils';
-import { LocaleContext } from '../../../context/localeContext';
+import { getFileManagerName } from '../../../utils';
 import Item from '../../Body/Item';
 import SpinLoaderContainer from '../../../components/Loaders/SpinnerLoader';
 import { ProjectContext } from '../../../context/projectContext';
@@ -58,12 +56,10 @@ const RepoItem = ({
   disableKeyNav,
 }: Props) => {
   const { t } = useTranslation();
-  const { locale } = useContext(LocaleContext);
   const { project, refreshCurrentProjectRepos } = useContext(
     ProjectContext.Current,
   );
   const [status, setStatus] = useState(repo.sync_status);
-  const [indexingStartedAt, setIndexingStartedAt] = useState(Date.now());
   const { apiUrl, openFolderInExplorer, os, openLink } =
     useContext(DeviceContext);
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -126,7 +122,6 @@ const RepoItem = ({
   }, [status]);
 
   const onRepoSync = useCallback(async () => {
-    setIndexingStartedAt(Date.now());
     await syncRepo(repo.ref);
     setStatus(SyncStatus.Queued);
     startEventSource();

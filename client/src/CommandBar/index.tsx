@@ -3,7 +3,6 @@ import Modal from '../components/Modal';
 import useKeyboardNavigation from '../hooks/useKeyboardNavigation';
 import { CommandBarStepEnum } from '../types/general';
 import { CommandBarContext } from '../context/commandBarContext';
-import { isFocusInInput } from '../utils/domUtils';
 import { useGlobalShortcuts } from '../hooks/useGlobalShortcuts';
 import { checkEventKeys } from '../utils/keyboardUtils';
 import Initial from './steps/Initial';
@@ -14,6 +13,7 @@ import Documentation from './steps/Documentation';
 import CreateProject from './steps/CreateProject';
 import ManageRepos from './steps/ManageRepos';
 import AddNewRepo from './steps/AddNewRepo';
+import ToggleTheme from './steps/ToggleTheme';
 
 type Props = {};
 
@@ -73,6 +73,8 @@ const CommandBar = ({}: Props) => {
         <ManageRepos />
       ) : chosenStep.id === CommandBarStepEnum.ADD_NEW_REPO ? (
         <AddNewRepo />
+      ) : chosenStep.id === CommandBarStepEnum.TOGGLE_THEME ? (
+        <ToggleTheme />
       ) : null}
     </Modal>
   );

@@ -11,7 +11,6 @@ import { ProjectContext } from '../context/projectContext';
 import { useSignOut } from './useSignOut';
 
 export const useGlobalShortcuts = () => {
-  const { setTheme } = useContext(UIContext.Theme);
   const { setChosenStep, setIsVisible } = useContext(
     CommandBarContext.Handlers,
   );
@@ -26,31 +25,13 @@ export const useGlobalShortcuts = () => {
   const { setIsRegexSearchEnabled } = useContext(ProjectContext.RegexSearch);
   const handleSignOut = useSignOut();
 
-  const toggleLightTheme = useMemo(() => {
+  const toggleTheme = useMemo(() => {
     return {
       shortcut: ['option', '1'],
-      action: () => setTheme('light'),
-    };
-  }, []);
-
-  const toggleDarkTheme = useMemo(() => {
-    return {
-      shortcut: ['option', '2'],
-      action: () => setTheme('dark'),
-    };
-  }, []);
-
-  const toggleBlackTheme = useMemo(() => {
-    return {
-      shortcut: ['option', '3'],
-      action: () => setTheme('black'),
-    };
-  }, []);
-
-  const toggleSystemTheme = useMemo(() => {
-    return {
-      shortcut: ['option', '4'],
-      action: () => setTheme('system'),
+      action: () => {
+        setChosenStep({ id: CommandBarStepEnum.TOGGLE_THEME });
+        setIsVisible(true);
+      },
     };
   }, []);
 
@@ -187,10 +168,7 @@ export const useGlobalShortcuts = () => {
   }, []);
 
   return {
-    toggleLightTheme,
-    toggleBlackTheme,
-    toggleDarkTheme,
-    toggleSystemTheme,
+    toggleTheme,
     openPrivateRepos,
     openPublicRepos,
     openLocalRepos,
