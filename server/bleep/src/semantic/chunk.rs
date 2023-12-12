@@ -8,7 +8,7 @@ use crate::text_range::{Point, TextRange};
 use clap::{builder::PossibleValue, ValueEnum};
 use serde::{Deserialize, Serialize};
 use tokenizers::Tokenizer;
-use tracing::{debug, error, warn};
+use tracing::{error, trace, warn};
 
 #[derive(Debug)]
 pub enum ChunkError {
@@ -192,7 +192,7 @@ fn add_token_range<'s>(
     }
 
     if is_noisy(&src[start_byte..end_byte]) {
-        debug!("skipping noisy chunk");
+        trace!("skipping noisy chunk");
         return;
     }
 
@@ -260,7 +260,7 @@ pub fn by_tokens<'s>(
     let max_tokens = token_bounds.end - DEDUCT_SPECIAL_TOKENS - repo_tokens;
     let max_newline_tokens = max_tokens * 3 / 4; //TODO: make this configurable
     let max_boundary_tokens = max_tokens * 7 / 8; //TODO: make this configurable
-    debug!("max tokens reduced to {max_tokens}");
+    trace!("max tokens reduced to {max_tokens}");
 
     let offsets_len = offsets.len() - 1;
     // remove the SEP token which has (0, 0) offsets for some reason

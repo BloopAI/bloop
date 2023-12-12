@@ -425,7 +425,7 @@ fn tracing_subscribe(config: &Configuration) -> bool {
                 Targets::new()
                     .with_target("bleep", LevelFilter::DEBUG)
                     .with_target("bleep::indexes::file", LevelFilter::WARN)
-                    .with_target("bleep::semantic", LevelFilter::WARN),
+                    .with_target("bleep::semantic", LevelFilter::DEBUG),
             )
     });
 
