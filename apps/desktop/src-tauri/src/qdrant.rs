@@ -79,7 +79,7 @@ where
 
             if let Err(err) = child.kill() {
                 warn!(?err, "failed to kill qdrant");
-            };
+            }
         } else if let Some(ref mut child) = self.child {
             match child.try_wait() {
                 Ok(Some(status)) if status.success() => {
@@ -111,6 +111,16 @@ where
                 Err(err) => {
                     error!(?err, "failed to monitor qdrant subprocess");
                 }
+            }
+        }
+    }
+}
+
+impl Drop for QdrantSupervisor {
+    fn drop(&mut self) {
+        if let Some(mut child) = self.child.take() {
+            if let Err(err) = child.kill() {
+                warn!(?err, "failed to kill qdrant");
             }
         }
     }
