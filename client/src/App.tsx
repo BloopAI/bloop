@@ -14,6 +14,7 @@ import { UIContextProvider } from './context/providers/UIContextProvider';
 import Settings from './Settings';
 import ProjectSettings from './ProjectSettings';
 import TabsContextProvider from './context/providers/TabsContextProvider';
+import { FileHighlightsContextProvider } from './context/providers/FileHighlightsContextProvider';
 
 const toastOptions = {
   unStyled: true,
@@ -45,9 +46,11 @@ const App = () => {
                 <Settings />
                 <ProjectSettings />
                 <CommandBar />
-                <TabsContextProvider>
-                  <Project />
-                </TabsContextProvider>
+                <FileHighlightsContextProvider>
+                  <TabsContextProvider>
+                    <Project />
+                  </TabsContextProvider>
+                </FileHighlightsContextProvider>
               </CommandBarContextProvider>
             </ProjectContextProvider>
           </UIContextProvider>

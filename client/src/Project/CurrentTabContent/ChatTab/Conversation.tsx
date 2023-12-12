@@ -23,7 +23,11 @@ const Conversation = ({ side, tabKey }: Props) => {
 
   return !chatData ? null : (
     <div className="w-full max-w-2xl mx-auto flex flex-col flex-1 overflow-auto">
-      <ScrollToBottom className="max-w-full flex flex-col overflow-auto">
+      <ScrollToBottom
+        className="max-w-full flex flex-col overflow-auto"
+        followButtonClassName="hidden"
+        initialScrollBehavior="auto"
+      >
         <ScrollableContent
           chatData={chatData}
           side={side}

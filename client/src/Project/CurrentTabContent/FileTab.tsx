@@ -3,6 +3,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
   useTransition,
@@ -26,6 +27,7 @@ import SpinLoaderContainer from '../../components/Loaders/SpinnerLoader';
 import { SyncStatus } from '../../types/general';
 import { DeviceContext } from '../../context/deviceContext';
 import { ProjectContext } from '../../context/projectContext';
+import { FileHighlightsContext } from '../../context/fileHighlightsContext';
 
 type Props = {
   repoRef: string;
@@ -55,6 +57,12 @@ const FileTab = ({
   const { refreshCurrentProjectRepos } = useContext(ProjectContext.Current);
   const eventSourceRef = useRef<EventSource | null>(null);
   const [isPending, startTransition] = useTransition();
+  const { fileHighlights, hoveredLines } = useContext(
+    FileHighlightsContext.Values,
+  );
+  const highlights = useMemo(() => {
+    return fileHighlights[path];
+  }, [path, fileHighlights]);
 
   useEffect(() => {
     setIndexRequested(false);
@@ -163,6 +171,8 @@ const FileTab = ({
             scrollToLine={scrollToLine}
             branch={branch}
             tokenRange={tokenRange}
+            highlights={highlights}
+            hoveredLines={hoveredLines}
           />
         ) : isFetched && !file ? (
           <div className="flex-1 h-full flex flex-col items-center justify-center gap-6">

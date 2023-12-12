@@ -2,6 +2,7 @@ import React, {
   Dispatch,
   MutableRefObject,
   SetStateAction,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -10,7 +11,6 @@ import React, {
 import { FileHighlightsType } from '../../types/general';
 import { highlightColors } from '../../consts/code';
 import FileIcon from '../FileIcon';
-import { ArrowOutIcon } from '../../icons';
 
 type Props = {
   onClick: () => void;
@@ -123,6 +123,18 @@ const FileChip = ({
     };
   }, [index]);
 
+  const onMouseLeave = useCallback(() => {
+    if (setHoveredLines) {
+      setHovered(false);
+    }
+  }, [setHoveredLines]);
+
+  const onMouseEnter = useCallback(() => {
+    if (setHoveredLines) {
+      setHovered(true);
+    }
+  }, [setHoveredLines]);
+
   return (
     <button
       className={`h-5 inline-flex items-center bg-bg-base rounded overflow-hidden 
@@ -131,8 +143,8 @@ const FileChip = ({
                 cursor-pointer align-middle ellipsis`}
       ref={ref}
       onClick={onClick}
-      onMouseLeave={() => (setHoveredLines ? setHovered(false) : {})}
-      onMouseEnter={() => (setHoveredLines ? setHovered(true) : {})}
+      onMouseLeave={onMouseLeave}
+      onMouseEnter={onMouseEnter}
     >
       {!!lines && (
         <span className="w-0.5 h-3.5 ml-1 rounded-px" style={lineStyle} />

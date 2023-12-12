@@ -69,9 +69,13 @@ const Project = ({}: Props) => {
         ) : (
           <RightTab onDropToRight={onDropToRight} />
         )}
-        {[...leftTabs, ...rightTabs].map((t) =>
+        {[...leftTabs, ...rightTabs].map((t, i) =>
           t.type === TabTypesEnum.CHAT ? (
-            <ChatPersistentState key={t.key} tabKey={t.key} />
+            <ChatPersistentState
+              key={t.key}
+              tabKey={t.key}
+              side={i < leftTabs.length ? 'left' : 'right'}
+            />
           ) : null,
         )}
       </ChatsContextProvider>

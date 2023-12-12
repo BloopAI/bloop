@@ -214,6 +214,7 @@ const ConversationMessage = ({
                   threadId={threadId}
                   recordId={i}
                   side={side}
+                  singleFileExplanation={singleFileExplanation}
                 />
               ) : (
                 <UserParsedQuery textQuery={text!} parsedQuery={parsedQuery} />

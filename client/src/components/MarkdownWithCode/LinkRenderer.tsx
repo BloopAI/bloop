@@ -18,7 +18,7 @@ type Props = {
   href?: string;
   children: ReactNode[];
   fileChips: MutableRefObject<never[]>;
-  hideCode?: boolean;
+  singleFileExplanation?: boolean;
   setFileHighlights: Dispatch<SetStateAction<FileHighlightsType>>;
   setHoveredLines: Dispatch<SetStateAction<[number, number] | null>>;
   recordId?: number;
@@ -30,7 +30,7 @@ const LinkRenderer = ({
   href,
   children,
   fileChips,
-  hideCode,
+  singleFileExplanation,
   setFileHighlights,
   setHoveredLines,
   recordId,
@@ -59,8 +59,10 @@ const LinkRenderer = ({
   }, [children]);
 
   const linesToUse: [number, number] | undefined = useMemo(() => {
-    return hideCode && start > -1 ? [start, end ?? start] : undefined;
-  }, [hideCode, start, end]);
+    return singleFileExplanation && start > -1
+      ? [start, end ?? start]
+      : undefined;
+  }, [singleFileExplanation, start, end]);
 
   const handleClickFile = useCallback(() => {
     if (repo && path) {

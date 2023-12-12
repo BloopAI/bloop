@@ -17,22 +17,26 @@ import {
   InputValueType,
   ParsedQueryType,
   ParsedQueryTypeEnum,
+  TabTypesEnum,
 } from '../../../types/general';
 import { conversationsCache } from '../../../services/cache';
 import { mapLoadingSteps } from '../../../mappers/conversation';
 import { focusInput } from '../../../utils/domUtils';
 import { ChatsContext } from '../../../context/chatsContext';
+import { TabsContext } from '../../../context/tabsContext';
 
 type Props = {
   tabKey: string;
+  side: 'left' | 'right';
 };
 
-const ChatPersistentState = ({ tabKey }: Props) => {
+const ChatPersistentState = ({ tabKey, side }: Props) => {
   const { t } = useTranslation();
   const { apiUrl } = useContext(DeviceContext);
   const { project } = useContext(ProjectContext.Current);
   const { preferredAnswerSpeed } = useContext(ProjectContext.AnswerSpeed);
   const { setChats } = useContext(ChatsContext);
+  const { openNewTab } = useContext(TabsContext.Handlers);
 
   const prevEventSource = useRef<EventSource | null>(null);
 
@@ -322,7 +326,7 @@ const ChatPersistentState = ({ tabKey }: Props) => {
                 conclusion: newMessage.conclusion,
                 queryId: newMessage.id,
                 responseTimestamp: newMessage.response_timestamp,
-                explainedFile: newMessage.focused_chunk?.file_path,
+                explainedFile: newMessage.focused_chunk?.repo_path,
               };
               const lastMessages: ChatMessage[] =
                 lastMessage?.author === ChatMessageAuthor.Server
@@ -332,17 +336,20 @@ const ChatPersistentState = ({ tabKey }: Props) => {
             });
             // workaround: sometimes we get [^summary]: before it is removed from response
             if (newMessage.answer?.length > 11 && !firstResultCame) {
-              setConversation((prev) => {
-                if (newMessage.focused_chunk?.file_path) {
-                  // navigateFullResult(
-                  //   newMessage.focused_chunk?.file_path,
-                  //   undefined,
-                  //   prev.length - 1,
-                  //   thread_id,
-                  // );
-                }
-                return prev;
-              });
+              if (newMessage.focused_chunk?.repo_path) {
+                openNewTab(
+                  {
+                    type: TabTypesEnum.FILE,
+                    path: newMessage.focused_chunk.repo_path.path,
+                    repoRef: newMessage.focused_chunk.repo_path.repo,
+                    scrollToLine:
+                      newMessage.focused_chunk.start_line > -1
+                        ? `${newMessage.focused_chunk.start_line}_${newMessage.focused_chunk.end_line}`
+                        : undefined,
+                  },
+                  side === 'left' ? 'right' : 'left',
+                );
+              }
               firstResultCame = true;
             }
           } else if (data.Err) {
@@ -373,10 +380,6 @@ const ChatPersistentState = ({ tabKey }: Props) => {
                       ),
               };
               if (!options) {
-                // setInputValue(
-                //   prev[prev.length - (lastMessageIsServer ? 2 : 1)]?.text ||
-                //     submittedQuery,
-                // );
                 setInputValueImperatively(
                   (
                     prev[
@@ -399,7 +402,7 @@ const ChatPersistentState = ({ tabKey }: Props) => {
         eventSource.close();
       };
     },
-    [threadId, t, queryIdToEdit, preferredAnswerSpeed],
+    [threadId, t, queryIdToEdit, preferredAnswerSpeed, openNewTab, side],
   );
 
   useEffect(() => {

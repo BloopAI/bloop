@@ -10,6 +10,8 @@ type Props = {
   isNewLine?: boolean;
   isRemovedLine?: boolean;
   shouldHighlight?: boolean;
+  hoveredBackground?: boolean;
+  highlightColor?: string | null;
 };
 
 const CodeLine = ({
@@ -22,22 +24,24 @@ const CodeLine = ({
   lineNumberToShow = lineNumber + 1,
   lineNumbersDiff,
   shouldHighlight,
+  highlightColor,
+  hoveredBackground,
 }: Props) => {
   const codeRef = useRef<HTMLTableCellElement>(null);
   const style = useMemo(
     () => ({
       borderLeft: `3px solid ${
-        shouldHighlight ? 'rgb(var(--yellow))' : 'transparent'
+        shouldHighlight ? highlightColor || 'rgb(var(--yellow))' : 'transparent'
       }`,
     }),
-    [shouldHighlight],
+    [shouldHighlight, highlightColor],
   );
 
   return (
     <div
       className={`flex w-full flex-1 transition-all duration-150 ease-in-bounce group ${
         isNewLine ? 'bg-bg-success/30' : isRemovedLine ? 'bg-bg-danger/30' : ''
-      }`}
+      } ${hoveredBackground ? 'bg-bg-base-hover' : ''}`}
       data-line-number={lineNumber}
       style={style}
     >

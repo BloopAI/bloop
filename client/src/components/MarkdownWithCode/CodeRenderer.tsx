@@ -17,7 +17,6 @@ import NewCode from './NewCode';
 type Props = {
   children: ReactNode[];
   fileChips: MutableRefObject<never[]>;
-  hideCode?: boolean;
   setFileHighlights: Dispatch<SetStateAction<FileHighlightsType>>;
   setHoveredLines: Dispatch<SetStateAction<[number, number] | null>>;
   className?: string;
@@ -33,7 +32,6 @@ const CodeRenderer = ({
   className,
   children,
   inline,
-  hideCode,
   fileChips,
   setFileHighlights,
   setHoveredLines,
@@ -119,26 +117,13 @@ const CodeRenderer = ({
       (matchType?.[1] || matchLang?.[1]) &&
       typeof children[0] === 'string' ? (
         matchType?.[1] === 'Quoted' ? (
-          hideCode ? (
-            <FileChip
-              fileName={filePath || ''}
-              filePath={filePath || ''}
-              skipIcon={false}
-              onClick={onClick}
-              lines={linesToUse}
-              fileChips={fileChips}
-              setFileHighlights={setFileHighlights}
-              setHoveredLines={setHoveredLines}
-            />
-          ) : (
-            <CodeWithBreadcrumbs
-              code={code}
-              language={matchLang?.[1] || ''}
-              filePath={filePath || ''}
-              onResultClick={onClick}
-              startLine={lines[0] ? lines[0] : null}
-            />
-          )
+          <CodeWithBreadcrumbs
+            code={code}
+            language={matchLang?.[1] || ''}
+            filePath={filePath || ''}
+            onResultClick={onClick}
+            startLine={lines[0] ? lines[0] : null}
+          />
         ) : (
           <NewCode
             code={code}

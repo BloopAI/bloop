@@ -17,8 +17,8 @@ const ScrollableContent = ({ chatData, side, projectId }: Props) => {
   const scroll = useScrollToBottom();
 
   useEffect(() => {
-    if (chatData.submittedQuery) {
-      scroll({ behavior: 'auto' });
+    if (chatData.submittedQuery.plain) {
+      scroll({ behavior: 'smooth' });
     }
   }, [chatData.submittedQuery]);
 
@@ -66,10 +66,7 @@ const ScrollableContent = ({ chatData, side, projectId }: Props) => {
             m.author === ChatMessageAuthor.Server ? m.responseTimestamp : null
           }
           singleFileExplanation={
-            m.author === ChatMessageAuthor.Server &&
-            !!m.explainedFile &&
-            // m.explainedFile === navigatedItem?.path
-            false
+            m.author === ChatMessageAuthor.Server && !!m.explainedFile
           }
         />
       ))}

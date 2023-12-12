@@ -283,7 +283,11 @@ export type ConversationType = {
   answer: string;
   paths: string[];
   response_timestamp: string;
-  focused_chunk: { file_path: string } | null;
+  focused_chunk: {
+    repo_path: { repo: string; path: string };
+    start_line: string;
+    end_line: string;
+  } | null;
 };
 
 export type CodeStudioMessageType =

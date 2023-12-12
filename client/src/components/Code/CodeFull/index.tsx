@@ -30,6 +30,11 @@ type Props = {
   scrollToLine?: string;
   branch?: string | null;
   tokenRange?: string;
+  highlights?: (
+    | { lines: [number, number]; color: string; index: number }
+    | undefined
+  )[];
+  hoveredLines?: [number, number] | null;
 };
 
 const CodeFull = ({
@@ -42,6 +47,8 @@ const CodeFull = ({
   language,
   scrollToLine,
   tokenRange,
+  highlights,
+  hoveredLines,
 }: Props) => {
   const { openNewTab } = useContext(TabsContext.Handlers);
   const [tokenInfo, setTokenInfo] = useState<TokenInfoWrapped>({
@@ -195,48 +202,80 @@ const CodeFull = ({
     }
   }, [tokenInfo]);
 
+  const renderedLines = useMemo(() => {
+    return tokens.map((line, index) => {
+      let highlightForLine = highlights
+        ?.sort((a, b) =>
+          a &&
+          b &&
+          a?.lines?.[1] - a?.lines?.[0] < b?.lines?.[1] - b?.lines?.[0]
+            ? -1
+            : 1,
+        )
+        .findIndex((h) => h && index >= h.lines[0] && index <= h.lines[1]);
+      if (highlightForLine && highlightForLine < 0) {
+        highlightForLine = undefined;
+      }
+      return (
+        <CodeLine
+          key={relativePath + '-' + index.toString()}
+          lineNumber={index}
+          showLineNumbers={true}
+          hoverEffect
+          shouldHighlight={
+            (!!scrollToIndex &&
+              index >= scrollToIndex[0] &&
+              index <= scrollToIndex[1]) ||
+            (highlights && highlightForLine !== undefined)
+          }
+          highlightColor={
+            highlights && highlightForLine !== undefined
+              ? highlights[highlightForLine]?.color
+              : undefined
+          }
+          hoveredBackground={
+            !!hoveredLines &&
+            index >= hoveredLines[0] &&
+            index <= hoveredLines[1]
+          }
+          isNewLine={
+            isDiff && (line[0]?.content === '+' || line[1]?.content === '+')
+          }
+          isRemovedLine={
+            isDiff && (line[0]?.content === '-' || line[1]?.content === '-')
+          }
+          lineNumbersDiff={
+            isDiff ? [lineNumbersRemove[index], lineNumbersAdd[index]] : null
+          }
+        >
+          {line.map((token, i) => (
+            <CodeToken
+              key={`cell-${index}-${i}`}
+              lineHoverRanges={hoverableRanges?.[index] || []}
+              token={token}
+              getHoverableContent={getHoverableContent}
+            />
+          ))}
+        </CodeLine>
+      );
+    });
+  }, [
+    tokens,
+    highlights,
+    hoveredLines,
+    relativePath,
+    scrollToIndex,
+    isDiff,
+    lineNumbersRemove,
+    lineNumbersAdd,
+    hoverableRanges,
+    getHoverableContent,
+  ]);
+
   return (
     <div className="relative">
       <pre className={`prism-code language-${lang} w-full h-full code-s`}>
-        <code>
-          {tokens.map((line, index) => {
-            return (
-              <CodeLine
-                key={relativePath + '-' + index.toString()}
-                lineNumber={index}
-                showLineNumbers={true}
-                hoverEffect
-                shouldHighlight={
-                  !!scrollToIndex &&
-                  index >= scrollToIndex[0] &&
-                  index <= scrollToIndex[1]
-                }
-                isNewLine={
-                  isDiff &&
-                  (line[0]?.content === '+' || line[1]?.content === '+')
-                }
-                isRemovedLine={
-                  isDiff &&
-                  (line[0]?.content === '-' || line[1]?.content === '-')
-                }
-                lineNumbersDiff={
-                  isDiff
-                    ? [lineNumbersRemove[index], lineNumbersAdd[index]]
-                    : null
-                }
-              >
-                {line.map((token, i) => (
-                  <CodeToken
-                    key={`cell-${index}-${i}`}
-                    lineHoverRanges={hoverableRanges?.[index] || []}
-                    token={token}
-                    getHoverableContent={getHoverableContent}
-                  />
-                ))}
-              </CodeLine>
-            );
-          })}
-        </code>
+        <code>{renderedLines}</code>
       </pre>
       {!!popupPosition && isPopupVisible && (
         <div className="absolute max-w-sm" style={popupPosition} ref={popupRef}>

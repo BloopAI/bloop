@@ -15,7 +15,7 @@ import CodeRenderer from './CodeRenderer';
 
 type Props = {
   markdown: string;
-  hideCode?: boolean;
+  singleFileExplanation?: boolean;
   recordId?: number;
   threadId?: string;
   isCodeStudio?: boolean;
@@ -24,7 +24,7 @@ type Props = {
 
 const MarkdownWithCode = ({
   markdown,
-  hideCode,
+  singleFileExplanation,
   recordId,
   threadId,
   isCodeStudio,
@@ -58,7 +58,7 @@ const MarkdownWithCode = ({
           <LinkRenderer
             href={(props.node.properties?.href as string) || props.href}
             fileChips={fileChips}
-            hideCode={hideCode}
+            singleFileExplanation={singleFileExplanation}
             setFileHighlights={setFileHighlights}
             setHoveredLines={setHoveredLines}
             recordId={recordId}
@@ -72,7 +72,6 @@ const MarkdownWithCode = ({
       code({ node, inline, className, children, ...props }: CodeProps) {
         return (
           <CodeRenderer
-            hideCode={hideCode}
             setFileHighlights={setFileHighlights}
             setHoveredLines={setHoveredLines}
             fileChips={fileChips}
@@ -89,7 +88,7 @@ const MarkdownWithCode = ({
         );
       },
     };
-  }, [hideCode]);
+  }, [singleFileExplanation]);
 
   return <ReactMarkdown components={components}>{markdown}</ReactMarkdown>;
 };
