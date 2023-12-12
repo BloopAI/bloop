@@ -148,7 +148,7 @@ const ReportBugModal = ({
             size="small"
             onClick={resetState}
           >
-            <CloseSignIcon />
+            <CloseSignIcon sizeClassName="w-3.5 h-3.5" />
           </Button>
         </div>
         <div className="flex flex-col p-3 gap-4">

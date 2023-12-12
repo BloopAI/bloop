@@ -68,7 +68,7 @@ const SearchOnPage = ({
           }
           disabled={!searchValue}
         >
-          <ChevronUpIcon />
+          <ChevronUpIcon sizeClassName="w-3.5 h-3.5" />
         </button>
         <button
           className="p-2 hover:text-label-title disabled:hover:text-label-base"
@@ -77,7 +77,7 @@ const SearchOnPage = ({
           }
           disabled={!searchValue}
         >
-          <ChevronDownIcon />
+          <ChevronDownIcon sizeClassName="w-3.5 h-3.5" />
         </button>
       </div>
     </div>

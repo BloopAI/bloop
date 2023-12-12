@@ -88,7 +88,7 @@ const BreadcrumbsCollapsed = ({ items, type }: Props) => {
             }`}
             onClick={handleToggle}
           >
-            <MoreHorizontalIcon />
+            <MoreHorizontalIcon sizeClassName="w-3.5 h-3.5" />
           </button>
         </span>
       </Tippy>

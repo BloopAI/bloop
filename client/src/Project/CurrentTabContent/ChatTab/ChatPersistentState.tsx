@@ -25,12 +25,20 @@ import { focusInput } from '../../../utils/domUtils';
 import { ChatsContext } from '../../../context/chatsContext';
 import { TabsContext } from '../../../context/tabsContext';
 
+type Options = {
+  path: string;
+  lines: [number, number];
+  repoRef: string;
+  branch?: string | null;
+};
+
 type Props = {
   tabKey: string;
+  initialQuery?: Options;
   side: 'left' | 'right';
 };
 
-const ChatPersistentState = ({ tabKey, side }: Props) => {
+const ChatPersistentState = ({ tabKey, side, initialQuery }: Props) => {
   const { t } = useTranslation();
   const { apiUrl } = useContext(DeviceContext);
   const { project } = useContext(ProjectContext.Current);
@@ -66,10 +74,29 @@ const ChatPersistentState = ({ tabKey, side }: Props) => {
     });
   }, [inputValue]);
 
-  const [submittedQuery, setSubmittedQuery] = useState<InputValueType>({
-    parsed: [],
-    plain: '',
-  });
+  const [submittedQuery, setSubmittedQuery] = useState<
+    InputValueType & { options?: Options }
+  >(
+    initialQuery
+      ? {
+          parsed: [
+            {
+              type: ParsedQueryTypeEnum.TEXT,
+              text: `#explain_${initialQuery.path}:${initialQuery.lines.join(
+                '-',
+              )}-${Date.now()}`,
+            },
+          ],
+          plain: `#explain_${initialQuery.path}:${initialQuery.lines.join(
+            '-',
+          )}-${Date.now()}`,
+          options: initialQuery,
+        }
+      : {
+          parsed: [],
+          plain: '',
+        },
+  );
   useEffect(() => {
     setChats((prev) => {
       return { ...prev, [tabKey]: { ...prev[tabKey], submittedQuery } };
@@ -184,10 +211,7 @@ const ChatPersistentState = ({ tabKey, side }: Props) => {
   }, [setInputValueImperatively]);
 
   const makeSearch = useCallback(
-    (
-      query: string,
-      options?: { filePath: string; lineStart: string; lineEnd: string },
-    ) => {
+    (query: string, options?: Options) => {
       if (!query) {
         return;
       }
@@ -198,24 +222,34 @@ const ChatPersistentState = ({ tabKey, side }: Props) => {
       setQueryIdToEdit('');
       setHideMessagesFrom(null);
       const url = `${apiUrl}/projects/${project?.id}/answer${
-        options
-          ? `/explain?relative_path=${encodeURIComponent(
-              options.filePath,
-            )}&line_start=${options.lineStart}&line_end=${options.lineEnd}`
-          : `?q=${encodeURIComponent(query)}`
-      }${
-        threadId
-          ? `&thread_id=${threadId}${
-              queryIdToEdit ? `&parent_query_id=${queryIdToEdit}` : ''
-            }`
-          : ''
-      }&answer_model=${
-        preferredAnswerSpeed === 'normal'
-          ? 'gpt-4-turbo-24k'
-          : 'gpt-3.5-turbo-finetuned'
+        options ? `/explain` : ``
       }`;
-      console.log(url);
-      const eventSource = new EventSource(url);
+      const queryParams: Record<string, string> = {
+        answer_model:
+          preferredAnswerSpeed === 'normal'
+            ? 'gpt-4-turbo-24k'
+            : 'gpt-3.5-turbo-finetuned',
+      };
+      if (threadId) {
+        queryParams.thread_id = threadId;
+        if (queryIdToEdit) {
+          queryParams.parent_query_id = queryIdToEdit;
+        }
+      }
+      if (options) {
+        queryParams.relative_path = options.path;
+        queryParams.repo_ref = options.repoRef;
+        if (options.branch) {
+          queryParams.branch = options.branch;
+        }
+        queryParams.line_start = options.lines[0].toString();
+        queryParams.line_end = options.lines[1].toString();
+      } else {
+        queryParams.q = query;
+      }
+      const fullUrl = url + '?' + new URLSearchParams(queryParams).toString();
+      console.log(fullUrl);
+      const eventSource = new EventSource(fullUrl);
       prevEventSource.current = eventSource;
       setSelectedLines(null);
       let firstResultCame: boolean;
@@ -411,16 +445,11 @@ const ChatPersistentState = ({ tabKey, side }: Props) => {
     }
     let userQuery = submittedQuery.plain;
     let userQueryParsed = submittedQuery.parsed;
-    let options = undefined;
+    const options = submittedQuery.options;
     if (submittedQuery.plain.startsWith('#explain_')) {
       const [prefix, ending] = submittedQuery.plain.split(':');
       const [lineStart, lineEnd] = ending.split('-');
       const filePath = prefix.slice(9);
-      options = {
-        filePath,
-        lineStart,
-        lineEnd,
-      };
       userQuery = t(
         `Explain the purpose of the file {{filePath}}, from lines {{lineStart}} - {{lineEnd}}`,
         {
@@ -431,15 +460,19 @@ const ChatPersistentState = ({ tabKey, side }: Props) => {
       );
       userQueryParsed = [{ type: ParsedQueryTypeEnum.TEXT, text: userQuery }];
     }
-    setConversation((prev) => [
-      ...prev,
-      {
-        author: ChatMessageAuthor.User,
-        text: userQuery,
-        parsedQuery: userQueryParsed,
-        isLoading: false,
-      },
-    ]);
+    setConversation((prev) =>
+      prev.length === 1 && submittedQuery.options
+        ? prev
+        : [
+            ...prev,
+            {
+              author: ChatMessageAuthor.User,
+              text: userQuery,
+              parsedQuery: userQueryParsed,
+              isLoading: false,
+            },
+          ],
+    );
     makeSearch(userQuery, options);
   }, [submittedQuery]);
 

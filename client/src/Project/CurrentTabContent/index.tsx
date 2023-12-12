@@ -58,6 +58,7 @@ const CurrentTabContent = ({ side, onDrop, shouldStretch }: Props) => {
             noBorder={side === 'left'}
             branch={tab.branch}
             tokenRange={tab.tokenRange}
+            side={side}
           />
         ) : tab?.type === TabTypesEnum.CHAT ? (
           <ChatTab

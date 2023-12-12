@@ -57,7 +57,7 @@ const DeprecatedClientModal = ({ isOpen, onClose }: Props) => {
             onlyIcon
             title={t('Close')}
           >
-            <CloseSignIcon />
+            <CloseSignIcon sizeClassName="w-3.5 h-3.5" />
           </Button>
         </div>
       </div>

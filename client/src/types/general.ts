@@ -108,6 +108,12 @@ export type ChatTabType = {
   key: string;
   threadId?: string;
   name?: string;
+  initialQuery?: {
+    path: string;
+    lines: [number, number];
+    repoRef: string;
+    branch?: string | null;
+  };
 };
 
 export type TabType = FileTabType | ChatTabType;

@@ -34,7 +34,7 @@ const HeaderRightPart = ({}: Props) => {
             <img src={envConfig.github_user?.avatar_url} alt="avatar" />
           </div>
         ) : (
-          <PersonIcon />
+          <PersonIcon sizeClassName="w-3.5 h-3.5" />
         )}
       </Dropdown>
     </div>

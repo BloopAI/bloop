@@ -45,7 +45,7 @@ const Header = ({ type = 'default' }: Props) => {
               variant="tertiary"
               size="small"
             >
-              <ArrowLeftIcon />
+              <ArrowLeftIcon sizeClassName="w-5 h-5" />
             </Button>
             <p className="body-mini-b text-label-title">
               <Trans>Account settings</Trans>
@@ -60,7 +60,7 @@ const Header = ({ type = 'default' }: Props) => {
               variant="tertiary"
               size="small"
             >
-              <ArrowLeftIcon />
+              <ArrowLeftIcon sizeClassName="w-5 h-5" />
             </Button>
             <p className="body-mini-b text-label-title">
               {project?.name || 'Default project'}

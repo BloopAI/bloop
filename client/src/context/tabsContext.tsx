@@ -12,7 +12,15 @@ type HandlersContextType = {
           scrollToLine?: string;
           tokenRange?: string;
         }
-      | { type: TabTypesEnum.CHAT },
+      | {
+          type: TabTypesEnum.CHAT;
+          initialQuery?: {
+            path: string;
+            lines: [number, number];
+            repoRef: string;
+            branch?: string | null;
+          };
+        },
     forceSide?: 'left' | 'right',
   ) => void;
   closeTab: (key: string, side: 'left' | 'right') => void;

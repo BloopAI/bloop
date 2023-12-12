@@ -30,14 +30,14 @@ const FeaturesStep = ({ handleNext }: Props) => {
       </div>
       <div className="flex flex-col gap-4">
         <Feature
-          icon={<ChatBubblesIcon />}
+          icon={<ChatBubblesIcon sizeClassName="w-5 h-5" />}
           title={t('Search code in natural language')}
           description={t(
             'Ask questions about your codebases in natural language, just like you’d speak to ChatGPT. Get started by syncing a repo, then open the repo and start chatting.',
           )}
         />
         <Feature
-          icon={<CodeStudioIcon />}
+          icon={<CodeStudioIcon sizeClassName="w-5 h-5" />}
           title={t('Generate code using AI')}
           description={t(
             'Code studio helps you write scripts, create unit tests, debug issues or generate anything else you can think of using AI! Sync a repo, then create a code studio project.',

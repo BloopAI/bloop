@@ -37,7 +37,15 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
             branch?: string | null;
             tokenRange?: string;
           }
-        | { type: TabTypesEnum.CHAT },
+        | {
+            type: TabTypesEnum.CHAT;
+            initialQuery?: {
+              path: string;
+              lines: [number, number];
+              repoRef: string;
+              branch?: string | null;
+            };
+          },
       forceSide?: 'left' | 'right',
     ) => {
       const setTabsAction =
@@ -63,6 +71,7 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
             : {
                 type: TabTypesEnum.CHAT,
                 key: Date.now().toString(),
+                initialQuery: data.initialQuery,
               };
         setActiveTabAction(newTab);
         const previousTab = prev.find((t) => t.key === newTab.key);

@@ -132,7 +132,11 @@ const TextInput = forwardRef(function TextInputWithRef(
             } group-hover:text-label-title group-focus-within:text-label-title transition-all duration-150 ease-in-out`}
           >
             {startIcon ||
-              (type === 'email' ? <MailIcon /> : <MagnifyToolIcon />)}
+              (type === 'email' ? (
+                <MailIcon sizeClassName="w-3.5 h-3.5" />
+              ) : (
+                <MagnifyToolIcon sizeClassName="w-3.5 h-3.5" />
+              ))}
           </span>
         ) : null}
         {multiline ? (
@@ -194,7 +198,7 @@ const TextInput = forwardRef(function TextInputWithRef(
             className="w-5 mr-2.5 flex items-center group-focus-within:hidden text-bg-success right-0
           top-1/2 -translate-y-1/2 absolute"
           >
-            <CheckIcon />
+            <CheckIcon sizeClassName="w-5 h-5" />
           </span>
         ) : null}
         {endIcon}
