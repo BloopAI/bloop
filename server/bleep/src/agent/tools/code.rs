@@ -16,6 +16,8 @@ impl Agent {
         const CODE_SEARCH_LIMIT: u64 = 10;
         const MINIMUM_RESULTS: usize = CODE_SEARCH_LIMIT as usize / 2;
 
+        let mut symbols: Vec<String> = Vec::new();
+
         self.update(Update::StartStep(SearchStep::Code {
             query: query.clone(),
             response: String::new(),
@@ -82,7 +84,16 @@ impl Agent {
         });
 
         let response = futures::future::join_all(response)
-            .await
+            .await;
+
+        let symbols = response.iter().enumerate()
+        .flat_map(|(i, c)| {
+            c.metadata.iter().enumerate().map(|(j, m)| format!("{}: {}", j, m.name.clone())).collect::<Vec<String>>()
+        }).collect::<Vec<_>>().join("\n");
+
+        print!("{}", symbols);
+
+        let response = response
             .into_iter()
             .map(|c| {
                 // adding paths with alias
