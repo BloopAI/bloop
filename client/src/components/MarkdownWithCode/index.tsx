@@ -56,7 +56,7 @@ const MarkdownWithCode = ({
       ) {
         return (
           <LinkRenderer
-            href={props.href}
+            href={(props.node.properties?.href as string) || props.href}
             fileChips={fileChips}
             hideCode={hideCode}
             setFileHighlights={setFileHighlights}

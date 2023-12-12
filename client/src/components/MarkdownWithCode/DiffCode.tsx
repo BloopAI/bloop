@@ -10,10 +10,9 @@ import { MessageResultModify } from '../../types/general';
 
 type Props = {
   data: MessageResultModify['Modify'];
-  repoName: string;
 };
 
-const DiffCode = ({ data, repoName }: Props) => {
+const DiffCode = ({ data }: Props) => {
   const [showRaw, setShowRaw] = useState(false);
   // const { openFileModal } = useContext(FileModalContext);
 
@@ -46,7 +45,6 @@ const DiffCode = ({ data, repoName }: Props) => {
           <FileIcon filename={data.path} />
           <BreadcrumbsPathContainer
             path={data.path}
-            repo={repoName}
             onClick={onBreadcrumbClick}
           />
         </div>

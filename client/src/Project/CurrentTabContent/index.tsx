@@ -53,7 +53,6 @@ const CurrentTabContent = ({ side, onDrop, shouldStretch }: Props) => {
           <FileTab
             key={tab.key}
             path={tab.path}
-            repoName={tab.repoName}
             repoRef={tab.repoRef}
             scrollToLine={tab.scrollToLine}
             noBorder={side === 'left'}

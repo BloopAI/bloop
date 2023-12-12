@@ -1,25 +1,26 @@
 import React, { useCallback } from 'react';
 import { ArrowOutIcon, FolderIcon } from '../../icons';
-import { search } from '../../services/api';
-import { buildRepoQuery } from '../../utils';
-import { Directory } from '../../types/api';
+import { getFolderContent } from '../../services/api';
 import OverflowTracker from '../OverflowTracker';
 import RepoEntry from '../../Project/LeftSidebar/NavPanel/RepoEntry';
 
 type Props = {
   onClick: () => void;
   path: string;
-  repoName?: string;
+  repoRef?: string;
 };
 
-const FolderChip = ({ onClick, path, repoName }: Props) => {
+const FolderChip = ({ onClick, path, repoRef }: Props) => {
   const fetchFiles = useCallback(
     async (path?: string) => {
-      const resp = await search(buildRepoQuery(repoName, path));
-      if (!resp.data?.[0]?.data) {
+      if (!repoRef) {
         return [];
       }
-      return (resp.data[0].data as Directory)?.entries.sort((a, b) => {
+      const resp = await getFolderContent(repoRef, path);
+      if (!resp.entries?.length) {
+        return [];
+      }
+      return resp?.entries.sort((a, b) => {
         if ((a.entry_data === 'Directory') === (b.entry_data === 'Directory')) {
           return a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1;
         } else {
@@ -27,7 +28,7 @@ const FolderChip = ({ onClick, path, repoName }: Props) => {
         }
       });
     },
-    [repoName],
+    [repoRef],
   );
 
   return (
@@ -60,8 +61,7 @@ const FolderChip = ({ onClick, path, repoName }: Props) => {
             fullPath={path}
             defaultOpen
             indexed
-            repoRef={''}
-            repoName={''}
+            repoRef={repoRef || ''}
             lastIndex={''}
           />
         </OverflowTracker>

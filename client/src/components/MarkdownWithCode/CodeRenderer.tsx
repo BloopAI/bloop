@@ -5,16 +5,17 @@ import {
   ReactNode,
   SetStateAction,
   useCallback,
+  useContext,
   useMemo,
 } from 'react';
-import { FileHighlightsType } from '../../types/general';
+import { FileHighlightsType, TabTypesEnum } from '../../types/general';
 import FileChip from '../Chips/FileChip';
+import { TabsContext } from '../../context/tabsContext';
 import CodeWithBreadcrumbs from './CodeWithBreadcrumbs';
 import NewCode from './NewCode';
 
 type Props = {
   children: ReactNode[];
-  repoName?: string;
   fileChips: MutableRefObject<never[]>;
   hideCode?: boolean;
   setFileHighlights: Dispatch<SetStateAction<FileHighlightsType>>;
@@ -36,13 +37,13 @@ const CodeRenderer = ({
   fileChips,
   setFileHighlights,
   setHoveredLines,
-  repoName,
   propsJSON,
   recordId,
   threadId,
   isCodeStudio,
   side,
 }: Props) => {
+  const { openNewTab } = useContext(TabsContext.Handlers);
   const matchLang = useMemo(
     () =>
       /lang:(\w+)/.exec(className || '') ||
@@ -94,9 +95,23 @@ const CodeRenderer = ({
     [lines],
   );
 
-  const handleChipClick = useCallback(() => {
-    // updateScrollToIndex(`${lines[0]}_${lines[1] ?? lines[0]}`);
-  }, [lines]);
+  const onClick = useCallback(
+    (path?: string, linesToGo?: string) => {
+      openNewTab(
+        {
+          type: TabTypesEnum.FILE,
+          path: path || filePath,
+          repoRef,
+          scrollToLine:
+            linesToGo || lines
+              ? `${lines[0]}_${lines[1] ?? lines[0]}`
+              : undefined,
+        },
+        side === 'left' ? 'right' : 'left',
+      );
+    },
+    [openNewTab, filePath, repoRef, lines, side],
+  );
 
   return (
     <>
@@ -109,7 +124,7 @@ const CodeRenderer = ({
               fileName={filePath || ''}
               filePath={filePath || ''}
               skipIcon={false}
-              onClick={handleChipClick}
+              onClick={onClick}
               lines={linesToUse}
               fileChips={fileChips}
               setFileHighlights={setFileHighlights}
@@ -120,16 +135,8 @@ const CodeRenderer = ({
               code={code}
               language={matchLang?.[1] || ''}
               filePath={filePath || ''}
-              onResultClick={(path, lines) => {
-                // navigateFullResult(
-                //   path,
-                //   lines ? { scrollToLine: lines } : undefined,
-                //   recordId,
-                //   threadId,
-                // );
-              }}
+              onResultClick={onClick}
               startLine={lines[0] ? lines[0] : null}
-              repoName={repoName}
             />
           )
         ) : (

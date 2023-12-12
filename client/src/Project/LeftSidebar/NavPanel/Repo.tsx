@@ -10,9 +10,9 @@ import React, {
   MouseEvent,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Directory, DirectoryEntry } from '../../../types/api';
-import { search } from '../../../services/api';
-import { buildRepoQuery, splitPath } from '../../../utils';
+import { DirectoryEntry } from '../../../types/api';
+import { getFolderContent } from '../../../services/api';
+import { splitPath } from '../../../utils';
 import GitHubIcon from '../../../icons/GitHubIcon';
 import Dropdown from '../../../components/Dropdown';
 import {
@@ -25,7 +25,6 @@ import RepoEntry from './RepoEntry';
 import RepoDropdown from './RepoDropdown';
 
 type Props = {
-  repoName: string;
   repoRef: string;
   setExpanded: Dispatch<SetStateAction<number>>;
   isExpanded: boolean;
@@ -41,7 +40,6 @@ type Props = {
 const reactRoot = document.getElementById('root')!;
 
 const RepoNav = ({
-  repoName,
   repoRef,
   i,
   isExpanded,
@@ -59,11 +57,11 @@ const RepoNav = ({
 
   const fetchFiles = useCallback(
     async (path?: string) => {
-      const resp = await search(buildRepoQuery(repoName, path, branch));
-      if (!resp.data?.[0]?.data) {
+      const resp = await getFolderContent(repoRef, path, branch);
+      if (!resp.entries) {
         return [];
       }
-      return (resp.data[0].data as Directory)?.entries.sort((a, b) => {
+      return resp?.entries.sort((a, b) => {
         if ((a.entry_data === 'Directory') === (b.entry_data === 'Directory')) {
           return a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1;
         } else {
@@ -71,7 +69,7 @@ const RepoNav = ({
         }
       });
     },
-    [repoName, branch],
+    [repoRef, branch],
   );
 
   const refetchParentFolder = useCallback(() => {
@@ -124,7 +122,7 @@ const RepoNav = ({
         )}
         <div className="flex items-center gap-1 ellipsis body-s-b flex-1">
           <p className="text-label-title ellipsis">
-            {splitPath(repoName).pop()}
+            {splitPath(repoRef).pop()}
           </p>
           {isExpanded && (
             <>
@@ -174,7 +172,6 @@ const RepoNav = ({
             fetchFiles={fetchFiles}
             fullPath={f.name}
             repoRef={repoRef}
-            repoName={repoName}
             currentPath={currentPath}
             lastIndex={lastIndex}
             branch={branch}

@@ -10,7 +10,6 @@ import CodeToken from '../../../../components/Code/CodeToken';
 type Props = {
   path: string;
   repoRef: string;
-  repoName: string;
   lineStart: number;
   lineEnd: number;
   code: string;
@@ -23,7 +22,6 @@ const noOp = () => {};
 const CodeLine = ({
   path,
   repoRef,
-  repoName,
   lineStart,
   lineEnd,
   code,
@@ -37,10 +35,9 @@ const CodeLine = ({
       type: TabTypesEnum.FILE,
       path,
       repoRef,
-      repoName,
       scrollToLine: `${lineStart}_${lineEnd}`,
     });
-  }, [path, lineEnd, lineStart, repoName, repoRef, openNewTab]);
+  }, [path, lineEnd, lineStart, repoRef, openNewTab]);
 
   const lang = useMemo(
     () => getPrismLanguage(language) || 'plaintext',

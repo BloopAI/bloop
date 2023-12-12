@@ -15,6 +15,7 @@ export const mapLoadingSteps = (
       return s.content.paths.map((pa) => ({
         ...s,
         path: pa.path || '',
+        repo: pa.repo,
         displayText:
           t(`Reading`) +
           ' ' +

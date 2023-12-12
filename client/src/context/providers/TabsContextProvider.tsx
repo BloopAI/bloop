@@ -33,7 +33,6 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
             type: TabTypesEnum.FILE;
             path: string;
             repoRef: string;
-            repoName: string;
             scrollToLine?: string;
             branch?: string | null;
             tokenRange?: string;
@@ -51,11 +50,10 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
           : setActiveRightTab;
       setTabsAction((prev) => {
         const newTab: FileTabType | ChatTabType =
-          data.type === TabTypesEnum.FILE && data.path && data.repoRef
+          data.type === TabTypesEnum.FILE
             ? {
                 path: data.path,
                 repoRef: data.repoRef,
-                repoName: data.repoName,
                 key: `${data.repoRef}-${data.path}`,
                 scrollToLine: data.scrollToLine,
                 branch: data.branch,

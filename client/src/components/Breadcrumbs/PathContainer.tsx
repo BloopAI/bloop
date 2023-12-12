@@ -11,7 +11,6 @@ type BProps = React.ComponentProps<typeof Breadcrumbs>;
 
 type Props = {
   path: string;
-  repo: string;
   onClick?: (path: string, fileType?: FileTreeFileType) => void;
   shouldGoToFile?: boolean;
   nonInteractive?: boolean;
@@ -22,7 +21,6 @@ type Props = {
 const BreadcrumbsPathContainer = ({
   path,
   onClick,
-  repo,
   shouldGoToFile,
   allowOverflow,
   scrollContainerRef,
@@ -51,7 +49,7 @@ const BreadcrumbsPathContainer = ({
         // navigateFullResult(path);
       }
     });
-  }, [path, shouldGoToFile, onClick, repo]);
+  }, [path, shouldGoToFile, onClick]);
 
   return (
     <div

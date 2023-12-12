@@ -64,7 +64,6 @@ const AutocompleteMenuItem = ({
           snippets={snippets}
           language={item.language}
           filePath={item.relativePath}
-          repoName={item.repoName}
           collapsed={false}
           repoRef={item.repoRef}
         />

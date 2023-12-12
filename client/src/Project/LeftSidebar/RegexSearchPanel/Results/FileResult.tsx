@@ -8,7 +8,6 @@ import useKeyboardNavigation from '../../../../hooks/useKeyboardNavigation';
 
 type Props = {
   relative_path: RepoFileNameItem;
-  repo_name: string;
   repo_ref: string;
   is_dir: boolean;
   isFocused: boolean;
@@ -18,7 +17,6 @@ type Props = {
 const FileResult = ({
   relative_path,
   repo_ref,
-  repo_name,
   is_dir,
   isFocused,
   isFirst,
@@ -41,13 +39,12 @@ const FileResult = ({
           openNewTab({
             type: TabTypesEnum.FILE,
             path: relative_path.text,
-            repoName: repo_name,
             repoRef: repo_ref,
           });
         }
       }
     },
-    [repo_name, repo_ref, relative_path, is_dir, openNewTab],
+    [repo_ref, relative_path, is_dir, openNewTab],
   );
   useKeyboardNavigation(handleKeyEvent, !isFocused);
 
@@ -58,10 +55,9 @@ const FileResult = ({
     openNewTab({
       type: TabTypesEnum.FILE,
       path: relative_path.text,
-      repoName: repo_name,
       repoRef: repo_ref,
     });
-  }, [relative_path, repo_ref, repo_name, is_dir, openNewTab]);
+  }, [relative_path, repo_ref, is_dir, openNewTab]);
   return (
     <div
       className={`flex items-center w-max gap-3 body-mini text-label-title h-7 flex-shrink-0 cursor-pointer  ${

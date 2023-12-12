@@ -45,7 +45,6 @@ const getTailPosition = (
 type Props = {
   placement: TippyProps['placement'];
   data: TokenInfoWrapped;
-  repoName: string;
   onRefDefClick: (
     lineNum: number,
     filePath: string,
@@ -63,7 +62,6 @@ export const TypeMap = {
 const RefsDefsPopup = ({
   placement,
   data,
-  repoName,
   onRefDefClick,
   language,
   relativePath,
@@ -147,7 +145,6 @@ const RefsDefsPopup = ({
                 onRefDefClick={onRefDefClick}
                 data={item.data}
                 file={item.file}
-                repoName={repoName}
                 language={language}
                 key={item.file + i}
                 relativePath={relativePath}

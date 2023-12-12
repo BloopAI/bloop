@@ -47,9 +47,6 @@ const NavPanel = ({}: Props) => {
           setExpanded={setExpanded}
           isExpanded={expanded === i}
           i={i}
-          repoName={
-            r.repo.provider === RepoProvider.Local ? r.repo.name : r.repo.ref
-          }
           repoRef={r.repo.ref}
           branch={r.branch}
           lastIndex={r.repo.last_index}

@@ -39,7 +39,7 @@ const LinkRenderer = ({
 }: Props) => {
   const { openNewTab } = useContext(TabsContext.Handlers);
   const [filePath, lines] = useMemo(() => href?.split('#') || [], [href]);
-  const [repo, path] = useMemo(() => href?.split(':') || [], [filePath]);
+  const [repo, path] = useMemo(() => filePath?.split(':') || [], [filePath]);
   const [start, end] = useMemo(
     () => lines?.split('-').map((l) => Number(l.slice(1))) || [],
     [lines],
@@ -63,17 +63,18 @@ const LinkRenderer = ({
   }, [hideCode, start, end]);
 
   const handleClickFile = useCallback(() => {
-    // openNewTab(
-    //   {
-    //     type: TabTypesEnum.FILE,
-    //     repoName,
-    //     repoRef,
-    //     path: filePath,
-    //     scrollToLine: `${start}_${end ?? start}`,
-    //   },
-    //   side === 'left' ? 'right' : 'left',
-    // );
-  }, [hideCode, start, end, path, recordId, threadId, side]);
+    if (repo && path) {
+      openNewTab(
+        {
+          type: TabTypesEnum.FILE,
+          repoRef: repo,
+          path,
+          scrollToLine: `${start}_${end ?? start}`,
+        },
+        side === 'left' ? 'right' : 'left',
+      );
+    }
+  }, [start, end, path, repo, side]);
 
   const handleClickFolder = useCallback(() => {
     // if (repoName) {
@@ -84,7 +85,7 @@ const LinkRenderer = ({
   return (
     <>
       {filePath.endsWith('/') ? (
-        <FolderChip onClick={handleClickFolder} path={path} repoName={repo} />
+        <FolderChip onClick={handleClickFolder} path={path} repoRef={repo} />
       ) : (
         <FileChip
           fileName={fileName || path || ''}

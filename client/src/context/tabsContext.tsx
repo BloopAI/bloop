@@ -8,7 +8,6 @@ type HandlersContextType = {
           type: TabTypesEnum.FILE;
           path: string;
           repoRef: string;
-          repoName: string;
           branch?: string | null;
           scrollToLine?: string;
           tokenRange?: string;

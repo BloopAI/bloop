@@ -16,7 +16,6 @@ import CodeLine from './CodeLine';
 
 type Props = {
   relative_path: string;
-  repo_name: string;
   repo_ref: string;
   lang: string;
   snippets: SnippetItem[];
@@ -26,7 +25,6 @@ type Props = {
 
 const CodeResult = ({
   relative_path,
-  repo_name,
   repo_ref,
   lang,
   snippets,
@@ -54,13 +52,12 @@ const CodeResult = ({
         openNewTab({
           type: TabTypesEnum.FILE,
           path: relative_path,
-          repoName: repo_name,
           repoRef: repo_ref,
           scrollToLine: `${snippets[0].line_range.start}_${snippets[0].line_range.end}`,
         });
       }
     },
-    [repo_name, repo_ref, relative_path, openNewTab],
+    [repo_ref, relative_path, openNewTab],
   );
   useKeyboardNavigation(handleKeyEvent, !isFocused);
 
@@ -68,10 +65,9 @@ const CodeResult = ({
     openNewTab({
       type: TabTypesEnum.FILE,
       path: relative_path,
-      repoName: repo_name,
       repoRef: repo_ref,
     });
-  }, [repo_name, repo_ref, relative_path, openNewTab]);
+  }, [repo_ref, relative_path, openNewTab]);
 
   return (
     <div className="relative flex flex-col">
@@ -106,7 +102,6 @@ const CodeResult = ({
                 path={relative_path}
                 language={lang}
                 repoRef={repo_ref}
-                repoName={repo_name}
                 lineStart={s.line_range.start}
                 lineEnd={s.line_range.end}
                 highlights={s.highlights}

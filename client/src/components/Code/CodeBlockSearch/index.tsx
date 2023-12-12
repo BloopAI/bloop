@@ -12,7 +12,6 @@ type Props = {
   language: string;
   filePath: string;
   branch?: string;
-  repoName: string;
   repoRef: string;
   collapsed?: boolean;
   onClick?: ResultClick;
@@ -34,7 +33,6 @@ const CodeBlockSearch = ({
   filePath,
   collapsed,
   onClick,
-  repoName,
   repoRef,
   hideDropdown,
   hideMatchCounter,
@@ -46,7 +44,7 @@ const CodeBlockSearch = ({
     (startLine?: number, endLine?: number) => {
       if (!document.getSelection()?.toString()) {
         onClick?.(
-          repoName,
+          repoRef,
           filePath,
           startLine !== undefined && endLine !== undefined
             ? [startLine, endLine]
@@ -54,7 +52,7 @@ const CodeBlockSearch = ({
         );
       }
     },
-    [onClick, repoName, filePath],
+    [onClick, repoRef, filePath],
   );
 
   const totalMatches = useMemo(() => {
@@ -136,7 +134,6 @@ const CodeBlockSearch = ({
           <FileIcon filename={filePath} />
           <BreadcrumbsPathContainer
             path={filePath}
-            repo={repoName}
             onClick={onBreadcrumbClick}
           />
         </div>

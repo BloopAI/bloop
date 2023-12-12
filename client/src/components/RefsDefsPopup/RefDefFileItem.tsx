@@ -8,7 +8,6 @@ import RefDefFileLine from './RefDefFileLine';
 
 type Props = {
   file: string;
-  repoName: string;
   data: RefDefDataItem[];
   onRefDefClick: (
     lineNum: number,
@@ -22,7 +21,6 @@ type Props = {
 
 const RefDefFileItem = ({
   file,
-  repoName,
   data,
   onRefDefClick,
   language,
@@ -64,7 +62,6 @@ const RefDefFileItem = ({
           ) : (
             <BreadcrumbsPathContainer
               path={file}
-              repo={repoName}
               activeStyle="secondary"
               separator="›"
             />

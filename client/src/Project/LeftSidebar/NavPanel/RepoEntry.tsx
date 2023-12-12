@@ -21,7 +21,6 @@ type Props = {
   defaultOpen?: boolean;
   indexed: boolean;
   repoRef: string;
-  repoName: string;
   lastIndex: string;
   currentPath?: string;
   branch?: string | null;
@@ -37,7 +36,6 @@ const RepoEntry = ({
   defaultOpen,
   indexed,
   repoRef,
-  repoName,
   lastIndex,
   branch,
 }: Props) => {
@@ -87,11 +85,10 @@ const RepoEntry = ({
         type: TabTypesEnum.FILE,
         path: fullPath,
         repoRef,
-        repoName,
         branch,
       });
     }
-  }, [isDirectory, fullPath, openNewTab, repoRef, repoName, branch]);
+  }, [isDirectory, fullPath, openNewTab, repoRef, branch]);
 
   return (
     <div
@@ -173,7 +170,6 @@ const RepoEntry = ({
                   : true
               }
               repoRef={repoRef}
-              repoName={repoName}
               lastIndex={lastIndex}
               currentPath={currentPath}
               branch={branch}

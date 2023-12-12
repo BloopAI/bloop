@@ -1,4 +1,4 @@
-import { memo, useCallback, useContext, useState } from 'react';
+import { memo, useCallback, useContext, useEffect, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
 import {
@@ -22,11 +22,12 @@ import SpinLoaderContainer from '../../../../components/Loaders/SpinnerLoader';
 import {
   getPlainFromStorage,
   LOADING_STEPS_SHOWN_KEY,
+  savePlainToStorage,
 } from '../../../../services/storage';
 import { LocaleContext } from '../../../../context/localeContext';
-import FileChip from '../../../../components/Chips/FileChip';
 import { upvoteAnswer } from '../../../../services/api';
 import UserParsedQuery from './UserParsedQuery';
+import LoadingStep from './LoadingStep';
 
 type Props = {
   author: ChatMessageAuthor;
@@ -75,6 +76,13 @@ const ConversationMessage = ({
       ? !!Number(getPlainFromStorage(LOADING_STEPS_SHOWN_KEY))
       : true,
   );
+
+  useEffect(() => {
+    savePlainToStorage(
+      LOADING_STEPS_SHOWN_KEY,
+      isLoadingStepsShown ? '1' : '0',
+    );
+  }, [isLoadingStepsShown]);
 
   const toggleStepsShown = useCallback(() => {
     setLoadingStepsShown((prev) => !prev);
@@ -195,24 +203,7 @@ const ConversationMessage = ({
                 }}
               >
                 {loadingSteps.map((s, i) => (
-                  <div
-                    className="flex gap-2 body-s text-label-base items-center"
-                    key={i}
-                  >
-                    <span>
-                      {s.type === 'proc' ? t('Reading ') : s.displayText}
-                    </span>
-                    {s.type === 'proc' ? (
-                      <FileChip
-                        onClick={() =>
-                          // navigateFullResult(s.path, undefined, i, threadId)
-                          {}
-                        }
-                        fileName={s.path.split('/').pop() || ''}
-                        filePath={s.path || ''}
-                      />
-                    ) : null}
-                  </div>
+                  <LoadingStep {...s} key={i} side={side} />
                 ))}
               </div>
             )}

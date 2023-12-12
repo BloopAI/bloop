@@ -42,7 +42,11 @@ const LeftSidebar = ({}: Props) => {
           </div>
         </Dropdown>
       </div>
-      {isRegexSearchEnabled ? <RegexSearchPanel /> : <NavPanel />}
+      {isRegexSearchEnabled ? (
+        <RegexSearchPanel projectId={project?.id} />
+      ) : (
+        <NavPanel />
+      )}
       <div
         ref={dividerRef}
         className="absolute top-0 right-0 transform group translate-x-1/2 w-2.5 h-full bottom-0 cursor-col-resize flex-shrink-0 z-10"

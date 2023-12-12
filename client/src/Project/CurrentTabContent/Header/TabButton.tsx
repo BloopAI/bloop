@@ -26,10 +26,12 @@ type Props = TabType & {
   moveTab: (i: number, j: number) => void;
   i: number;
   repoRef?: string;
-  repoName?: string;
   path?: string;
   threadId?: string;
   name?: string;
+  branch?: string | null;
+  scrollToLine?: string;
+  tokenRange?: string;
 };
 
 const TabButton = ({
@@ -43,8 +45,10 @@ const TabButton = ({
   side,
   moveTab,
   isOnlyTab,
-  repoName,
   i,
+  branch,
+  scrollToLine,
+  tokenRange,
 }: Props) => {
   const { t } = useTranslation();
   const { closeTab, setActiveLeftTab, setActiveRightTab, setFocusedPanel } =
@@ -105,7 +109,17 @@ const TabButton = ({
         id: tabKey,
         index: i,
         // @ts-ignore
-        t: { key: tabKey, repoRef, repoName, path, type, threadId, name },
+        t: {
+          key: tabKey,
+          repoRef: repoRef!,
+          path: path!,
+          type,
+          threadId,
+          name,
+          branch,
+          scrollToLine,
+          tokenRange,
+        },
         side,
       };
     },
@@ -126,9 +140,19 @@ const TabButton = ({
   const handleClick = useCallback(() => {
     const setAction = side === 'left' ? setActiveLeftTab : setActiveRightTab;
     // @ts-ignore
-    setAction({ path, repoRef, repoName, key: tabKey, type, threadId, name });
+    setAction({
+      path,
+      repoRef,
+      key: tabKey,
+      type,
+      threadId,
+      name,
+      branch,
+      scrollToLine,
+      tokenRange,
+    });
     setFocusedPanel(side);
-  }, [path, repoRef, tabKey, side, repoName]);
+  }, [path, repoRef, tabKey, side, branch, scrollToLine, tokenRange]);
 
   return (
     <a

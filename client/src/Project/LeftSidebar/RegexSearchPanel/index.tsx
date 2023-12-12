@@ -28,7 +28,9 @@ import CodeResult from './Results/CodeResult';
 import RepoResult from './Results/RepoResult';
 import FileResult from './Results/FileResult';
 
-type Props = {};
+type Props = {
+  projectId?: string;
+};
 
 // const getAutocompleteThrottled = throttle(
 //   async (
@@ -44,7 +46,7 @@ type Props = {};
 
 type ResultType = CodeItem | RepoItem | FileResItem | DirectoryItem | FileItem;
 
-const RegexSearchPanel = ({}: Props) => {
+const RegexSearchPanel = ({ projectId }: Props) => {
   const { t } = useTranslation();
   const [inputValue, setInputValue] = useState('');
   // const [options, setOptions] = useState<SuggestionType[]>([]);
@@ -101,7 +103,6 @@ const RegexSearchPanel = ({}: Props) => {
   //           openNewTab({
   //             type: TabTypesEnum.FILE,
   //             branch: null,
-  //             repoName: state.selectedItem.repoName,
   //             repoRef: state.selectedItem.repoRef,
   //             path: state.selectedItem.relativePath,
   //           });
@@ -135,18 +136,20 @@ const RegexSearchPanel = ({}: Props) => {
   const onSubmit = useCallback(
     async (e: FormEvent) => {
       e.preventDefault();
-      const data = await search(inputValue);
-      const newResults: Record<string, ResultType[]> = {};
-      data.data.forEach((d) => {
-        if (!newResults[d.data.repo_ref]) {
-          newResults[d.data.repo_ref] = [d];
-        } else {
-          newResults[d.data.repo_ref].push(d);
-        }
-      });
-      setResults(newResults);
-      setResultsRaw(data.data);
-      // closeMenu();
+      if (projectId) {
+        const data = await search(projectId, inputValue);
+        const newResults: Record<string, ResultType[]> = {};
+        data.data.forEach((d) => {
+          if (!newResults[d.data.repo_ref]) {
+            newResults[d.data.repo_ref] = [d];
+          } else {
+            newResults[d.data.repo_ref].push(d);
+          }
+        });
+        setResults(newResults);
+        setResultsRaw(data.data);
+        // closeMenu();
+      }
     },
     [inputValue],
   );

@@ -3,6 +3,7 @@ import {
   AllConversationsResponse,
   CodeStudioType,
   ConversationType,
+  Directory,
   DocPageType,
   DocSectionType,
   DocShortType,
@@ -68,13 +69,14 @@ export const initApi = (serverUrl = '', isSelfServe?: boolean) => {
 };
 
 export const search = (
+  projectId: string,
   q: string,
   page: number = 0,
   page_size: number = 5,
   global_regex: boolean = false,
 ): Promise<SearchResponse> => {
   return http
-    .get('/q', {
+    .get(`/projects/${projectId}/q`, {
       params: {
         q: `${q} global_regex:${global_regex}`,
         page_size,
@@ -101,19 +103,33 @@ export const searchFiles = (
     .then((r) => r.data);
 };
 
-export const getFileLines = (
+export const getFileContent = (
   repo_ref: string,
   path: string,
-  line_start: number,
-  line_end: number,
+  branch?: string | null,
 ): Promise<FileResponse> => {
   return http
     .get(`/file`, {
       params: {
         repo_ref,
         path,
-        line_start,
-        line_end,
+        ...(branch ? { branch } : {}),
+      },
+    })
+    .then((r) => r.data);
+};
+
+export const getFolderContent = (
+  repo_ref: string,
+  path?: string,
+  branch?: string | null,
+): Promise<Directory> => {
+  return http
+    .get(`/folder`, {
+      params: {
+        repo_ref,
+        path: path || '',
+        ...(branch ? { branch } : {}),
       },
     })
     .then((r) => r.data);
@@ -134,13 +150,17 @@ export const nlSearch = (
 };
 
 export const getHoverables = async (
-  path: string,
-  repoId: string,
-  branch?: string,
+  relative_path: string,
+  repo_ref: string,
+  branch?: string | null,
 ): Promise<HoverablesResponse> => {
   try {
     const { data } = await http.get('/hoverable', {
-      params: { relative_path: path, repo_ref: repoId, branch },
+      params: {
+        relative_path,
+        repo_ref,
+        ...(branch ? { branch } : {}),
+      },
     });
     return data;
   } catch (e) {

@@ -5,18 +5,19 @@ import React, {
   useEffect,
   useRef,
   useState,
+  useTransition,
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import {
   forceFileToBeIndexed,
+  getFileContent,
   getHoverables,
-  search,
 } from '../../services/api';
-import { buildRepoQuery, splitPath } from '../../utils';
+import { splitPath } from '../../utils';
 import FileIcon from '../../components/FileIcon';
 import Button from '../../components/Button';
 import { EyeCutIcon, MoreHorizontalIcon } from '../../icons';
-import { File } from '../../types/api';
+import { FileResponse } from '../../types/api';
 import { mapRanges } from '../../mappers/results';
 import { Range } from '../../types/results';
 import CodeFull from '../../components/Code/CodeFull';
@@ -27,7 +28,6 @@ import { DeviceContext } from '../../context/deviceContext';
 import { ProjectContext } from '../../context/projectContext';
 
 type Props = {
-  repoName: string;
   repoRef: string;
   path: string;
   scrollToLine?: string;
@@ -37,7 +37,6 @@ type Props = {
 };
 
 const FileTab = ({
-  repoName,
   path,
   noBorder,
   repoRef,
@@ -46,39 +45,40 @@ const FileTab = ({
   tokenRange,
 }: Props) => {
   const { t } = useTranslation();
-  const [file, setFile] = useState<
-    (File & { hoverableRanges?: Record<number, Range[]> }) | null
-  >(null);
+  const [file, setFile] = useState<FileResponse | null>(null);
+  const [hoverableRanges, setHoverableRanges] = useState<
+    Record<number, Range[]> | undefined
+  >(undefined);
   const [indexRequested, setIndexRequested] = useState(false);
+  const [isFetched, setIsFetched] = useState(false);
   const { apiUrl } = useContext(DeviceContext);
   const { refreshCurrentProjectRepos } = useContext(ProjectContext.Current);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     setIndexRequested(false);
-  }, [repoName, path, repoRef]);
+  }, [path, repoRef]);
 
   const refetchFile = useCallback(() => {
-    search(buildRepoQuery(repoName, path, branch)).then((resp) => {
-      const item = resp?.data?.[0]?.data as File;
-      if (!item) {
-        return;
-      }
-      setFile(item);
-      if (item.indexed) {
-        getHoverables(
-          item.relative_path,
-          item.repo_ref,
-          // selectedBranch ? selectedBranch : undefined,
-        ).then((data) => {
-          setFile((prevState) => ({
-            ...prevState!,
-            hoverableRanges: mapRanges(data.ranges),
-          }));
+    getFileContent(repoRef, path, branch)
+      .then((resp) => {
+        if (!resp) {
+          return;
+        }
+        startTransition(() => {
+          setFile(resp);
         });
-      }
-    });
-  }, [repoName, path, branch]);
+        // if (item.indexed) {
+        getHoverables(path, repoRef, branch).then((data) => {
+          setHoverableRanges(mapRanges(data.ranges));
+        });
+        // }
+      })
+      .finally(() => {
+        setIsFetched(true);
+      });
+  }, [repoRef, path, branch]);
 
   useEffect(() => {
     refetchFile();
@@ -153,19 +153,18 @@ const FileTab = ({
       <div className="flex-1 h-full max-w-full pl-4 py-4 overflow-auto">
         {file?.lang === 'jupyter notebook' ? (
           <IpynbRenderer data={file.contents} />
-        ) : file?.indexed ? (
+        ) : file ? (
           <CodeFull
             code={file.contents}
             language={file.lang}
-            repoRef={file.repo_ref}
-            relativePath={file.relative_path}
-            hoverableRanges={file.hoverableRanges}
-            repoName={file.repo_name}
+            repoRef={repoRef}
+            relativePath={path}
+            hoverableRanges={hoverableRanges}
             scrollToLine={scrollToLine}
             branch={branch}
             tokenRange={tokenRange}
           />
-        ) : !!file && !file.indexed ? (
+        ) : isFetched && !file ? (
           <div className="flex-1 h-full flex flex-col items-center justify-center gap-6">
             <div className="w-15 h-15 flex items-center justify-center rounded-xl border border-bg-divider">
               <EyeCutIcon sizeClassName="w-5 h-5" />

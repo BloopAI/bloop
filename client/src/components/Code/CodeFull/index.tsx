@@ -26,7 +26,6 @@ type Props = {
   hoverableRanges?: Record<number, Range[]>;
   relativePath: string;
   repoRef: string;
-  repoName: string;
   isDiff?: boolean;
   scrollToLine?: string;
   branch?: string | null;
@@ -37,7 +36,6 @@ const CodeFull = ({
   code,
   isDiff,
   hoverableRanges,
-  repoName,
   repoRef,
   relativePath,
   branch,
@@ -167,13 +165,12 @@ const CodeFull = ({
         type: TabTypesEnum.FILE,
         path: filePath,
         repoRef,
-        repoName,
         branch,
         scrollToLine: `${lineNum}_${lineNum}`,
         tokenRange,
       });
     },
-    [openNewTab],
+    [openNewTab, repoRef, branch],
   );
   useEffect(() => {
     if (tokenInfo.tokenRange) {
@@ -246,7 +243,6 @@ const CodeFull = ({
           <RefsDefsPopup
             placement={popupPosition.right ? 'bottom-end' : 'bottom-start'}
             data={tokenInfo}
-            repoName={repoName}
             onRefDefClick={handleRefsDefsClick}
             language={language}
             relativePath={relativePath}

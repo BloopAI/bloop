@@ -7,7 +7,6 @@ import CopyButton from './CopyButton';
 
 type Props = {
   filePath: string;
-  repoName?: string;
   onResultClick: (path: string, lines?: string) => void;
   startLine: number | null;
   language: string;
@@ -16,7 +15,6 @@ type Props = {
 
 const CodeWithBreadcrumbs = ({
   filePath,
-  repoName,
   onResultClick,
   startLine,
   language,
@@ -57,7 +55,6 @@ const CodeWithBreadcrumbs = ({
           <FileIcon filename={filePath} />
           <BreadcrumbsPathContainer
             path={filePath}
-            repo={repoName || ''}
             onClick={onBreadcrumbClick}
           />
           <CopyButton code={code} isInHeader />
