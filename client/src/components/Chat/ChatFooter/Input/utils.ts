@@ -16,7 +16,9 @@ export const mapEditorContentToInputValue = (
   const getType = (type: string) => (type === 'dir' ? 'path' : type);
   const newValue = inputState
     .map((s) =>
-      s.type === 'mention' ? `${getType(s.attrs.type)}:${s.attrs.id}` : s.text,
+      s.type === 'mention'
+        ? `${getType(s.attrs.type)}:${s.attrs.id}`
+        : s.text.replaceAll(String.fromCharCode(160), ' '),
     )
     .join('');
   const newValueParsed = inputState.map((s) =>
