@@ -16,7 +16,7 @@ use qdrant_client::{
 use futures::{stream, StreamExt, TryStreamExt};
 use rayon::prelude::*;
 use thiserror::Error;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info, trace, warn};
 
 pub mod chunk;
 pub mod embedder;
@@ -593,7 +593,7 @@ impl Semantic {
         .into_iter()
         .collect::<anyhow::Result<Vec<_>>>()?;
 
-        tracing::trace!(?parsed_queries, "performing qdrant batch search");
+        trace!(?parsed_queries, "performing qdrant batch search");
 
         let result = self
             .batch_search_with(
@@ -605,7 +605,7 @@ impl Semantic {
             )
             .await;
 
-        tracing::trace!(?result, "qdrant batch search returned");
+        trace!(?result, "qdrant batch search returned");
 
         let results = result?
             .into_iter()
@@ -640,7 +640,7 @@ impl Semantic {
             MIN_CHUNK_TOKENS..self.config.max_chunk_tokens,
             chunk::OverlapStrategy::default(),
         );
-        debug!(chunk_count = chunks.len(), "found chunks");
+        trace!(chunk_count = chunks.len(), "found chunks");
 
         chunks.into_par_iter().map(move |chunk| {
             let data = format!("{repo_name}\t{relative_path}\n{}", chunk.data);
