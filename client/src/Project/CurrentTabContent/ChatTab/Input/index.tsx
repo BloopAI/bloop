@@ -22,6 +22,7 @@ import useKeyboardNavigation from '../../../../hooks/useKeyboardNavigation';
 import KeyboardHint from '../../../../components/KeyboardHint';
 import { focusInput } from '../../../../utils/domUtils';
 import InputCore from './InputCore';
+import { mapEditorContentToInputValue } from './utils';
 
 type Props = {
   value?: { parsed: ParsedQueryType[]; plain: string };
@@ -122,26 +123,7 @@ const ConversationInput = ({
   );
 
   const onChangeInput = useCallback((inputState: InputEditorContent[]) => {
-    const newValue = inputState
-      .map((s) =>
-        s.type === 'mention' ? `${s.attrs.type}:${s.attrs.id}` : s.text,
-      )
-      .join('');
-    const newValueParsed = inputState.map((s) =>
-      s.type === 'mention'
-        ? {
-            type:
-              s.attrs.type === 'lang'
-                ? ParsedQueryTypeEnum.LANG
-                : ParsedQueryTypeEnum.PATH,
-            text: s.attrs.id,
-          }
-        : { type: ParsedQueryTypeEnum.TEXT, text: s.text },
-    );
-    setInputValue({
-      plain: newValue,
-      parsed: newValueParsed,
-    });
+    setInputValue(mapEditorContentToInputValue(inputState));
   }, []);
 
   const onSubmitButtonClicked = useCallback(() => {
