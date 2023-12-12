@@ -9,16 +9,15 @@ export function addMentionNodes(nodes: OrderedMap<NodeSpec>) {
     mention: mentionNode,
   });
 }
-
 export const mapEditorContentToInputValue = (
   inputState: InputEditorContent[],
 ) => {
-  const getType = (type: string) => (type === 'dir' ? 'path' : type);
+  const getType = (type: string) => (type === 'lang' ? 'lang' : 'path');
   const newValue = inputState
     .map((s) =>
       s.type === 'mention'
         ? `${getType(s.attrs.type)}:${s.attrs.id}`
-        : s.text.replaceAll(String.fromCharCode(160), ' '),
+        : s.text.replace(new RegExp(String.fromCharCode(160), 'g'), ' '),
     )
     .join('');
   const newValueParsed = inputState.map((s) =>
