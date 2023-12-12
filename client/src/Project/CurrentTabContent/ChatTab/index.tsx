@@ -1,17 +1,46 @@
-import React, { memo } from 'react';
+import React, { memo, useCallback, useContext, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import Button from '../../../components/Button';
 import { ChatBubblesIcon, MoreHorizontalIcon } from '../../../icons';
+import Dropdown from '../../../components/Dropdown';
+import { checkEventKeys } from '../../../utils/keyboardUtils';
+import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
+import { TabsContext } from '../../../context/tabsContext';
 import Conversation from './Conversation';
+import ActionsDropdown from './ActionsDropdown';
 
 type Props = {
   noBorder?: boolean;
   side: 'left' | 'right';
   tabKey: string;
+  handleMoveToAnotherSide: () => void;
 };
 
-const ChatTab = ({ noBorder, side, tabKey }: Props) => {
+const ChatTab = ({
+  noBorder,
+  side,
+  tabKey,
+  handleMoveToAnotherSide,
+}: Props) => {
   const { t } = useTranslation();
+  const { focusedPanel } = useContext(TabsContext.All);
+
+  const dropdownComponentProps = useMemo(() => {
+    return {
+      handleMoveToAnotherSide,
+    };
+  }, [handleMoveToAnotherSide]);
+
+  const handleKeyEvent = useCallback(
+    (e: KeyboardEvent) => {
+      if (checkEventKeys(e, ['cmd', ']'])) {
+        handleMoveToAnotherSide();
+      }
+    },
+    [handleMoveToAnotherSide],
+  );
+  useKeyboardNavigation(handleKeyEvent, focusedPanel !== side);
+
   return (
     <div
       className={`flex flex-col flex-1 h-full overflow-auto ${
@@ -26,14 +55,21 @@ const ChatTab = ({ noBorder, side, tabKey }: Props) => {
           />
           New chat
         </div>
-        <Button
-          variant="tertiary"
-          size="mini"
-          onlyIcon
-          title={t('More actions')}
+        <Dropdown
+          DropdownComponent={ActionsDropdown}
+          dropdownComponentProps={dropdownComponentProps}
+          appendTo={document.body}
+          dropdownPlacement="bottom-end"
         >
-          <MoreHorizontalIcon sizeClassName="w-3.5 h-3.5" />
-        </Button>
+          <Button
+            variant="tertiary"
+            size="mini"
+            onlyIcon
+            title={t('More actions')}
+          >
+            <MoreHorizontalIcon sizeClassName="w-3.5 h-3.5" />
+          </Button>
+        </Dropdown>
       </div>
       <div className="flex-1 flex flex-col max-w-full px-4 pt-4 overflow-auto">
         <Conversation side={side} tabKey={tabKey} />

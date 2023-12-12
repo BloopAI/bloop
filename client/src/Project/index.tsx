@@ -26,7 +26,7 @@ const Project = ({}: Props) => {
     setRightTabs,
   } = useContext(TabsContext.Handlers);
   const { isDragging } = useDragLayer((monitor) => ({
-    isDragging: !!monitor.isDragging(),
+    isDragging: monitor.isDragging(),
   }));
 
   const onDropToRight = useCallback((tab: TabType) => {
@@ -61,13 +61,21 @@ const Project = ({}: Props) => {
     <div className="w-screen h-screen flex relative overflow-hidden">
       <LeftSidebar />
       <ChatsContextProvider>
-        <CurrentTabContent side="left" onDrop={onDropToLeft} shouldStretch />
+        <CurrentTabContent
+          side="left"
+          onDrop={onDropToLeft}
+          moveToAnotherSide={onDropToRight}
+          shouldStretch
+        />
         {!rightTabs.length ? (
           isDragging ? (
             <DropTarget onDrop={onDropToRight} />
           ) : null
         ) : (
-          <RightTab onDropToRight={onDropToRight} />
+          <RightTab
+            onDropToRight={onDropToRight}
+            moveToAnotherSide={onDropToLeft}
+          />
         )}
         {[...leftTabs, ...rightTabs].map((t, i) =>
           t.type === TabTypesEnum.CHAT ? (

@@ -42,6 +42,7 @@ type Props = {
   noBorder?: boolean;
   branch?: string | null;
   side: 'left' | 'right';
+  handleMoveToAnotherSide: () => void;
 };
 
 const FileTab = ({
@@ -52,6 +53,7 @@ const FileTab = ({
   branch,
   side,
   tokenRange,
+  handleMoveToAnotherSide,
 }: Props) => {
   const { t } = useTranslation();
   const [file, setFile] = useState<FileResponse | null>(null);
@@ -170,9 +172,11 @@ const FileTab = ({
     (e: KeyboardEvent) => {
       if (checkEventKeys(e, ['cmd', 'E'])) {
         handleExplain();
+      } else if (checkEventKeys(e, ['cmd', ']'])) {
+        handleMoveToAnotherSide();
       }
     },
-    [handleExplain],
+    [handleExplain, handleMoveToAnotherSide],
   );
   useKeyboardNavigation(
     handleKeyEvent,
@@ -182,8 +186,9 @@ const FileTab = ({
   const dropdownComponentProps = useMemo(() => {
     return {
       handleExplain,
+      handleMoveToAnotherSide,
     };
-  }, [handleExplain]);
+  }, [handleExplain, handleMoveToAnotherSide]);
 
   return (
     <div

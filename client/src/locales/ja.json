@@ -559,5 +559,6 @@
 	"Application theme": "アプリケーションテーマ",
 	"Change application colour theme": "アプリケーションの色のテーマを変更します",
 	"How fast or precise bloop's answers will be.": "Bloopの答えがどれだけ速くまたは正確になるか。",
-	"Explain file": "ファイルを説明します"
+	"Explain file": "ファイルを説明します",
+	"Open in split view": "スプリットビューで開きます"
 }

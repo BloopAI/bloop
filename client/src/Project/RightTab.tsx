@@ -6,9 +6,10 @@ import CurrentTabContent from './CurrentTabContent';
 
 type Props = {
   onDropToRight: (tab: TabType) => void;
+  moveToAnotherSide: (tab: TabType) => void;
 };
 
-const RightTab = ({ onDropToRight }: Props) => {
+const RightTab = ({ onDropToRight, moveToAnotherSide }: Props) => {
   const { panelRef, dividerRef } = useResizeableWidth(
     false,
     RIGHT_SIDEBAR_WIDTH_KEY,
@@ -25,7 +26,11 @@ const RightTab = ({ onDropToRight }: Props) => {
       >
         <div className="mx-auto w-0.5 h-full bg-bg-border group-hover:bg-brand-default" />
       </div>
-      <CurrentTabContent side="right" onDrop={onDropToRight} />
+      <CurrentTabContent
+        side="right"
+        onDrop={onDropToRight}
+        moveToAnotherSide={moveToAnotherSide}
+      />
     </div>
   );
 };

@@ -12,10 +12,16 @@ import ChatTab from './ChatTab';
 type Props = {
   side: 'left' | 'right';
   onDrop: (t: TabType) => void;
+  moveToAnotherSide: (t: TabType) => void;
   shouldStretch?: boolean;
 };
 
-const CurrentTabContent = ({ side, onDrop, shouldStretch }: Props) => {
+const CurrentTabContent = ({
+  side,
+  onDrop,
+  shouldStretch,
+  moveToAnotherSide,
+}: Props) => {
   const { tab } = useContext(
     TabsContext[side === 'left' ? 'CurrentLeft' : 'CurrentRight'],
   );
@@ -29,8 +35,8 @@ const CurrentTabContent = ({ side, onDrop, shouldStretch }: Props) => {
         onDrop(item.t);
       },
       collect: (monitor) => ({
-        isOver: !!monitor.isOver(),
-        canDrop: !!monitor.canDrop(),
+        isOver: monitor.isOver(),
+        canDrop: monitor.canDrop(),
       }),
     }),
     [onDrop],
@@ -39,6 +45,12 @@ const CurrentTabContent = ({ side, onDrop, shouldStretch }: Props) => {
   const focusPanel = useCallback(() => {
     setFocusedPanel(side);
   }, [side]);
+
+  const handleMoveToAnotherSide = useCallback(() => {
+    if (tab) {
+      moveToAnotherSide(tab);
+    }
+  }, [moveToAnotherSide, tab]);
 
   return (
     <div
@@ -59,6 +71,7 @@ const CurrentTabContent = ({ side, onDrop, shouldStretch }: Props) => {
             branch={tab.branch}
             tokenRange={tab.tokenRange}
             side={side}
+            handleMoveToAnotherSide={handleMoveToAnotherSide}
           />
         ) : tab?.type === TabTypesEnum.CHAT ? (
           <ChatTab
@@ -66,6 +79,7 @@ const CurrentTabContent = ({ side, onDrop, shouldStretch }: Props) => {
             side={side}
             tabKey={tab.key}
             key={tab.key}
+            handleMoveToAnotherSide={handleMoveToAnotherSide}
           />
         ) : (
           <EmptyTab />

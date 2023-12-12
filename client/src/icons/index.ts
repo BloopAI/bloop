@@ -24,6 +24,7 @@ export { default as DocumentsIcon } from './Documents';
 export { default as DoorOutIcon } from './DoorOut';
 export { default as EyeCutIcon } from './EyeCut';
 export { default as FolderIcon } from './Folder';
+export { default as FileWithSparksIcon } from './FileWithSparks';
 export { default as GitHubLogo } from './GitHubIcon';
 export { default as GlobeIcon } from './Globe';
 export { default as HardDriveIcon } from './HardDrive';
