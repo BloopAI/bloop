@@ -19,7 +19,7 @@ import {
   ParsedQueryTypeEnum,
 } from '../../../../types/general';
 import { getMentionsPlugin } from './mentionPlugin';
-import { addMentionNodes } from './utils';
+import { addMentionNodes, mapEditorContentToInputValue } from './utils';
 import { placeholderPlugin } from './placeholderPlugin';
 
 const schema = new Schema({
@@ -125,25 +125,7 @@ const InputCore = ({
           if (!parts) {
             return false;
           }
-          onSubmit?.({
-            parsed:
-              parts?.map((s: InputEditorContent) =>
-                s.type === 'mention'
-                  ? {
-                      type:
-                        s.attrs.type === 'lang'
-                          ? ParsedQueryTypeEnum.LANG
-                          : ParsedQueryTypeEnum.PATH,
-                      text: s.attrs.id,
-                    }
-                  : { type: ParsedQueryTypeEnum.TEXT, text: s.text },
-              ) || [],
-            plain: parts
-              ?.map((s: InputEditorContent) =>
-                s.type === 'mention' ? `${s.attrs.type}:${s.attrs.id}` : s.text,
-              )
-              .join(''),
-          });
+          onSubmit?.(mapEditorContentToInputValue(parts));
           return true;
         },
         'Ctrl-Enter': baseKeymap.Enter,

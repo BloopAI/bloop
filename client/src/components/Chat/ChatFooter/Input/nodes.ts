@@ -18,6 +18,10 @@ export const mentionNode: NodeSpec = {
   draggable: false,
 
   toDOM: (node) => {
+    const isDir =
+      node.attrs.type === 'dir' ||
+      node.attrs.display.endsWith('/') ||
+      node.attrs.display.endsWith('\\');
     const folderIcon = document.createElement('span');
     folderIcon.innerHTML = `<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path
@@ -36,7 +40,7 @@ export const mentionNode: NodeSpec = {
         class:
           'prosemirror-tag-node inline-flex gap-1.5 items-center align-bottom bg-chat-bg-border-hover rounded px-1',
       },
-      node.attrs.type === 'dir'
+      isDir
         ? folderIcon
         : [
             'span',
@@ -53,7 +57,7 @@ export const mentionNode: NodeSpec = {
           ],
       node.attrs.type === 'lang'
         ? node.attrs.display
-        : node.attrs.type === 'dir'
+        : isDir
         ? splitPath(node.attrs.display).slice(-2)[0]
         : splitPath(node.attrs.display).pop(),
     ];

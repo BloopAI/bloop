@@ -10,11 +10,7 @@ import { Trans, useTranslation } from 'react-i18next';
 import { FeatherSelected, QuillIcon, SendIcon, Sparkles } from '../../../icons';
 import ClearButton from '../../ClearButton';
 import Tooltip from '../../Tooltip';
-import {
-  ChatLoadingStep,
-  ParsedQueryType,
-  ParsedQueryTypeEnum,
-} from '../../../types/general';
+import { ChatLoadingStep, ParsedQueryType } from '../../../types/general';
 import LiteLoader from '../../Loaders/LiteLoader';
 import { UIContext } from '../../../context/uiContext';
 import { DeviceContext } from '../../../context/deviceContext';
@@ -24,6 +20,7 @@ import { FileResItem, LangItem } from '../../../types/api';
 import { InputEditorContent } from '../../../utils';
 import InputLoader from './InputLoader';
 import InputCore from './Input/InputCore';
+import { mapEditorContentToInputValue } from './Input/utils';
 
 type Props = {
   value?: { parsed: ParsedQueryType[]; plain: string };
@@ -130,26 +127,7 @@ const NLInput = ({
   );
 
   const onChangeInput = useCallback((inputState: InputEditorContent[]) => {
-    const newValue = inputState
-      .map((s) =>
-        s.type === 'mention' ? `${s.attrs.type}:${s.attrs.id}` : s.text,
-      )
-      .join('');
-    const newValueParsed = inputState.map((s) =>
-      s.type === 'mention'
-        ? {
-            type:
-              s.attrs.type === 'lang'
-                ? ParsedQueryTypeEnum.LANG
-                : ParsedQueryTypeEnum.PATH,
-            text: s.attrs.id,
-          }
-        : { type: ParsedQueryTypeEnum.TEXT, text: s.text },
-    );
-    setInputValue({
-      plain: newValue,
-      parsed: newValueParsed,
-    });
+    setInputValue(mapEditorContentToInputValue(inputState));
   }, []);
 
   const onSubmitButtonClicked = useCallback(() => {
