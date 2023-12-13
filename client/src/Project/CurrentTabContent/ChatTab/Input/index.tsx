@@ -14,10 +14,9 @@ import {
   ChatMessageServer,
   InputEditorContent,
   ParsedQueryType,
-  ParsedQueryTypeEnum,
 } from '../../../../types/general';
 import { getAutocomplete } from '../../../../services/api';
-import { FileResItem, LangItem } from '../../../../types/api';
+import { FileResItem, LangItem, RepoItem } from '../../../../types/api';
 import useKeyboardNavigation from '../../../../hooks/useKeyboardNavigation';
 import KeyboardHint from '../../../../components/KeyboardHint';
 import { focusInput } from '../../../../utils/domUtils';
@@ -49,7 +48,7 @@ type Props = {
 type SuggestionType = {
   id: string;
   display: string;
-  type: 'file' | 'dir' | 'lang';
+  type: 'file' | 'dir' | 'lang' | 'repo';
   isFirst: boolean;
 };
 
@@ -170,6 +169,31 @@ const ConversationInput = ({
     [],
   );
 
+  const getDataRepo = useCallback(
+    async (
+      search: string,
+      // callback: (a: { id: string; display: string }[]) => void,
+    ) => {
+      const respRepo = await getAutocomplete(
+        `repo:${search}&content=false&path=false&file=false`,
+      );
+      const repoResults = respRepo.data
+        .filter((d): d is RepoItem => d.kind === 'repository_result')
+        .map((d) => d.data);
+      const results: SuggestionType[] = [];
+      repoResults.forEach((rr, i) => {
+        results.push({
+          id: rr.name.text.replace('github.com/', ''),
+          display: rr.name.text.replace('github.com/', ''),
+          type: 'repo',
+          isFirst: i === 0,
+        });
+      });
+      return results;
+    },
+    [],
+  );
+
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
       if (
@@ -198,6 +222,7 @@ const ConversationInput = ({
         <InputCore
           getDataLang={getDataLang}
           getDataPath={getDataPath}
+          getDataRepo={getDataRepo}
           initialValue={initialValue}
           onChange={onChangeInput}
           onSubmit={onSubmit}

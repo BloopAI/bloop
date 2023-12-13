@@ -15,7 +15,8 @@ export function addMentionNodes(nodes: OrderedMap<NodeSpec>) {
 export const mapEditorContentToInputValue = (
   inputState: InputEditorContent[],
 ) => {
-  const getType = (type: string) => (type === 'lang' ? 'lang' : 'path');
+  const getType = (type: string) =>
+    type === 'lang' || type === 'repo' ? type : 'path';
   const newValue = inputState
     .map((s) =>
       s.type === 'mention'
@@ -29,6 +30,8 @@ export const mapEditorContentToInputValue = (
           type:
             s.attrs.type === 'lang'
               ? ParsedQueryTypeEnum.LANG
+              : s.attrs.type === 'repo'
+              ? ParsedQueryTypeEnum.REPO
               : ParsedQueryTypeEnum.PATH,
           text: s.attrs.id,
         }

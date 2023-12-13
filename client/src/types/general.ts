@@ -151,6 +151,7 @@ export enum ChatMessageAuthor {
 
 export enum ParsedQueryTypeEnum {
   TEXT = 'text',
+  REPO = 'repo',
   PATH = 'path',
   LANG = 'lang',
   BRANCH = 'branch',
@@ -515,7 +516,7 @@ type InputEditorTextContent = {
 type InputEditorMentionContent = {
   type: 'mention';
   attrs: {
-    type: 'lang' | 'path';
+    type: 'lang' | 'dir' | 'file' | 'repo';
     id: string;
     display: string;
   };

@@ -253,7 +253,9 @@ export type ConversationType = {
   search_steps: SearchStepType[];
   query: {
     raw_query: string;
-    repos: [];
+    repos: {
+      Plain: { start: number; end: number; content: string };
+    }[];
     paths: {
       Plain: { start: number; end: number; content: string };
     }[];

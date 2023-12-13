@@ -182,7 +182,9 @@ const ChatPersistentState = ({ tabKey, side, initialQuery }: Props) => {
                 },
               ]
             : value
-                .filter((pq) => ['path', 'lang', 'text'].includes(pq.type))
+                .filter((pq) =>
+                  ['path', 'lang', 'text', 'repo'].includes(pq.type),
+                )
                 .map((pq) =>
                   pq.type === 'text'
                     ? { type: 'text', text: pq.text }

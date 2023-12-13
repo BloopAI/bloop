@@ -30,6 +30,18 @@ export const mentionNode: NodeSpec = {
     />
   </svg>`;
     folderIcon.className = 'w-4 h-4 flex-shrink-0';
+
+    const repoIcon = document.createElement('span');
+    repoIcon.innerHTML = `<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path
+      fill-rule="evenodd"
+      clip-rule="evenodd"
+      d="M4.6665 1.33301C3.56193 1.33301 2.6665 2.22844 2.6665 3.33301V12.6663C2.6665 13.7709 3.56193 14.6663 4.6665 14.6663H12.6665C13.0347 14.6663 13.3332 14.3679 13.3332 13.9997V1.99967C13.3332 1.63148 13.0347 1.33301 12.6665 1.33301H4.6665ZM4.6665 11.9997H11.9998V13.333H4.6665C4.29831 13.333 3.99984 13.0345 3.99984 12.6663C3.99984 12.2982 4.29831 11.9997 4.6665 11.9997Z"
+      fill="currentColor"
+    />
+  </svg>`;
+    repoIcon.className = 'w-4 h-4 flex-shrink-0';
+
     return [
       'span',
       {
@@ -42,6 +54,8 @@ export const mentionNode: NodeSpec = {
       },
       isDir
         ? folderIcon
+        : node.attrs.type === 'repo'
+        ? repoIcon
         : [
             'span',
             {
