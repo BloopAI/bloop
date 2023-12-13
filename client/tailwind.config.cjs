@@ -52,6 +52,7 @@ module.exports = {
         "danger-300": "#FB7185",
         "warning-100": "#F0A892",
         "warning-300": "#ED6E47",
+        "warning-300/12": "rgba(237,110,71, 0.12)",
         sky: '#0EA4E9',
         violet: '#8B5CF6',
         pink: '#EC4899',

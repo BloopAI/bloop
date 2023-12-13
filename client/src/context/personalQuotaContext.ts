@@ -7,6 +7,7 @@ type ContextType = {
     allowed: number;
   };
   isSubscribed: boolean;
+  isPastDue: boolean;
   hasCheckedQuota: boolean;
   resetAt: string;
 };
@@ -19,6 +20,7 @@ export const PersonalQuotaContext = {
       allowed: 10,
     },
     isSubscribed: false,
+    isPastDue: false,
     hasCheckedQuota: false,
     resetAt: new Date().toISOString(),
   }),
