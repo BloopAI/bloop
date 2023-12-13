@@ -1,4 +1,7 @@
-use axum::{extract::Path, Extension, Json};
+use axum::{
+    extract::{Path, Query},
+    Extension, Json,
+};
 
 use crate::{
     repo::RepoRef,
@@ -103,7 +106,7 @@ pub async fn delete(
     app: Extension<Application>,
     user: Extension<User>,
     Path(project_id): Path<i64>,
-    Json(Delete { repo_ref }): Json<Delete>,
+    Query(Delete { repo_ref }): Query<Delete>,
 ) -> webserver::Result<()> {
     let user_id = user
         .username()
