@@ -141,9 +141,34 @@ impl Agent {
                     })
                     .collect::<Vec<_>>()
             })
-            .collect::<Vec<_>>();
+            .filter(|c| c.len()>0).collect::<Vec<_>>();
+        
+        fn filter_extra_chunks(c: Vec<CodeChunk>) -> CodeChunk {
+            if c.len() == 1 {
+                c.get(0).unwrap().clone()
+            }else{
+                c.get(0).unwrap().clone()
+            }
+        } 
+        let extra_chunks = extra_chunks.iter().map(
+            |x| filter_extra_chunks(x.to_vec())
+        ).map(
+            |x| CodeChunk {
+                path: x.path.clone(),
+                alias: self.get_path_alias(&x.path),
+                snippet: x.snippet,
+                start_line: x.start_line,
+                end_line: x.end_line,
+                start_byte: 0 as usize,
+                end_byte: 0 as usize,
+            }
+        ).collect::<Vec<_>>();
 
-        dbg!("{}", extra_chunks);
+        
+
+        dbg!("{}", extra_chunks.clone());
+
+        chunks.extend(extra_chunks);
 
         let response = chunks.clone()
             .into_iter()
