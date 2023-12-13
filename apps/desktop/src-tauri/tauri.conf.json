@@ -95,7 +95,7 @@
     },
     "windows": [
       {
-        "fullscreen": true,
+        "fullscreen": false,
         "height": 900,
         "resizable": true,
         "title": "bloop",
