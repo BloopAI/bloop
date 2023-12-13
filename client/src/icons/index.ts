@@ -15,6 +15,7 @@ export { default as Clipboard } from './Clipboard';
 export { default as CloseSignIcon } from './CloseSign';
 export { default as CloseSignInCircleIcon } from './CloseSignInCircle';
 export { default as CodeIcon } from './Code';
+export { default as CodeLineWithSparkleIcon } from './CodeLineWithSparkle';
 export { default as CodeStudioIcon } from './CodeStudio';
 export { default as CogIcon } from './Cog';
 export { default as ColorSwitchIcon } from './ColorSwitch';

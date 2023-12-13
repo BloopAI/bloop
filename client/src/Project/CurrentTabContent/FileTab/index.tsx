@@ -167,7 +167,7 @@ const FileTab = ({
       },
       side === 'left' ? 'right' : 'left',
     );
-  }, [path, repoRef, branch, linesNumber, side]);
+  }, [path, repoRef, branch, linesNumber, side, openNewTab]);
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
       if (checkEventKeys(e, ['cmd', 'E'])) {
@@ -232,6 +232,7 @@ const FileTab = ({
             tokenRange={tokenRange}
             highlights={highlights}
             hoveredLines={hoveredLines}
+            side={side}
           />
         ) : isFetched && !file ? (
           <div className="flex-1 h-full flex flex-col items-center justify-center gap-6">

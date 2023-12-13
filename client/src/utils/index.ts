@@ -311,6 +311,26 @@ export const calculatePopupPositionInsideContainer = (
   return { top, left };
 };
 
+function getLineNumber(element: HTMLElement | null) {
+  while (element) {
+    if (element?.dataset?.['line-number']) {
+      return element.dataset['line-number'];
+    }
+    element = element.parentElement;
+  }
+  return null;
+}
+
+export function getSelectionLines(element: HTMLElement): null | number {
+  if (!element) {
+    return null;
+  }
+
+  const lineNumber = getLineNumber(element);
+
+  return lineNumber ? Number(lineNumber) : null;
+}
+
 export const escapeHtml = (unsafe: string) => {
   return unsafe
     .replaceAll('&', '&amp;')

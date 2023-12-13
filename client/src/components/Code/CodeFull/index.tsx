@@ -18,7 +18,12 @@ import { TabsContext } from '../../../context/tabsContext';
 import { TabTypesEnum } from '../../../types/general';
 import { useOnClickOutside } from '../../../hooks/useOnClickOutsideHook';
 import RefsDefsPopup from '../../RefsDefsPopup';
+import {
+  calculatePopupPositionInsideContainer,
+  getSelectionLines,
+} from '../../../utils';
 import CodeToken from './Token';
+import SelectionPopup from './SelectionPopup';
 
 type Props = {
   code: string;
@@ -35,6 +40,7 @@ type Props = {
     | undefined
   )[];
   hoveredLines?: [number, number] | null;
+  side: 'left' | 'right';
 };
 
 const CodeFull = ({
@@ -49,6 +55,7 @@ const CodeFull = ({
   tokenRange,
   highlights,
   hoveredLines,
+  side,
 }: Props) => {
   const { openNewTab } = useContext(TabsContext.Handlers);
   const [tokenInfo, setTokenInfo] = useState<TokenInfoWrapped>({
@@ -59,7 +66,12 @@ const CodeFull = ({
     lineNumber: -1,
   });
   const popupRef = useRef<HTMLDivElement>(null);
+  const codeRef = useRef<HTMLPreElement>(null);
   const [isPopupVisible, setPopupVisible] = useState(false);
+  const [selectionPopupData, setSelectionPopupData] = useState<{
+    position: { top: number; left: number };
+    selectedLines: [number, number];
+  } | null>(null);
   const [popupPosition, setPopupPosition] = useState<{
     top: number;
     left?: number;
@@ -202,6 +214,67 @@ const CodeFull = ({
     }
   }, [tokenInfo]);
 
+  useEffect(() => {
+    setPopupPosition(null);
+  }, []);
+
+  useEffect(() => {
+    const handleWindowMouseUp = (e: MouseEvent) => {
+      const { clientY, clientX } = e;
+
+      setTimeout(() => {
+        const selection = window.getSelection();
+        const text = selection?.toString();
+        if (selection && text) {
+          if (!codeRef.current) {
+            return null;
+          }
+          const containerRect = codeRef.current?.getBoundingClientRect();
+          const position = calculatePopupPositionInsideContainer(
+            clientY,
+            clientX,
+            containerRect,
+          );
+          const range = selection.getRangeAt(0);
+          const startLine =
+            getSelectionLines(range.startContainer as HTMLElement) || 0;
+          const endLine = getSelectionLines(range.endContainer as HTMLElement);
+          console.log('position', position, [startLine, endLine]);
+          if (endLine !== null) {
+            setSelectionPopupData({
+              position,
+              selectedLines: [startLine, endLine],
+            });
+          }
+        } else {
+          setSelectionPopupData(null);
+        }
+      }, 50);
+    };
+
+    const handleScroll = () => {
+      setSelectionPopupData(null);
+    };
+
+    codeRef.current?.addEventListener('mouseup', handleWindowMouseUp);
+    codeRef.current?.parentElement?.parentElement?.addEventListener(
+      'scroll',
+      handleScroll,
+    );
+
+    return () => {
+      codeRef.current?.removeEventListener('mouseup', handleWindowMouseUp);
+      codeRef.current?.parentElement?.parentElement?.removeEventListener(
+        'scroll',
+        handleScroll,
+      );
+    };
+  }, []);
+
+  const closeSelectionPopup = useCallback(() => {
+    setSelectionPopupData(null);
+  }, []);
+
   const renderedLines = useMemo(() => {
     return tokens.map((line, index) => {
       let highlightForLine = highlights
@@ -274,7 +347,10 @@ const CodeFull = ({
 
   return (
     <div className="relative">
-      <pre className={`prism-code language-${lang} w-full h-full code-s`}>
+      <pre
+        className={`prism-code language-${lang} w-full h-full code-s`}
+        ref={codeRef}
+      >
         <code>{renderedLines}</code>
       </pre>
       {!!popupPosition && isPopupVisible && (
@@ -288,6 +364,15 @@ const CodeFull = ({
           />
         </div>
       )}
+      <SelectionPopup
+        closePopup={closeSelectionPopup}
+        path={relativePath}
+        repoRef={repoRef}
+        branch={branch}
+        side={side}
+        selectedLines={selectionPopupData?.selectedLines}
+        popupPosition={selectionPopupData?.position}
+      />
     </div>
   );
 };
