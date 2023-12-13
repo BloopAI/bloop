@@ -96,84 +96,71 @@ impl Agent {
             })
         }).collect::<Vec<_>>();
 
-        let user_query = self.exchanges.iter().rev().take(1).collect::<Vec<_>>().get(0).unwrap().query.raw_query.clone();
-
         let contents = contents.iter().map(|x| self.get_file_content(&x.file));
-
-        let contents: Vec<crate::indexes::reader::ContentDocument> = futures::future::join_all(contents)
+ 
+       let contents: Vec<crate::indexes::reader::ContentDocument> = futures::future::join_all(contents)
             .await
             .into_iter()
             .map(|x| x.unwrap().unwrap())
             .collect::<Vec<_>>();
 
-        let extra_chunks: Vec<Vec<CodeChunk>> = response
+        let user_query = self.exchanges.iter().rev().take(1).collect::<Vec<_>>().get(0).unwrap().query.raw_query.clone();
+
+        let mut i = -1;
+
+        let symbols= response
             .iter()
             .map(|c| {
                 c.metadata
                     .iter()
-                    .flat_map(|s| {
-                        s.file_symbols
-                            .iter()
-                            .flat_map(|f_s| {
-                                f_s.data
-                                    .iter()
-                                    .map(|occ| {
-                                        let filename = f_s.file.clone();
-                                        let content = contents
-                                            .iter()
-                                            .find(|x| x.relative_path == filename)
-                                            .unwrap().content.lines().collect::<Vec<_>>();
-                                        let n_lines = content.len();
-                                        let chunk_content =
-                                            content[occ.range.start.line
-                                                ..(occ.range.end.line + 10).min(n_lines)].to_vec()
-                                                .join("\n");
-                                        CodeChunk {
-                                            path: filename,
-                                            alias: 0,
-                                            snippet: chunk_content,
-                                            start_line: occ.range.start.line as usize,
-                                            end_line: (occ.range.end.line + 10).min(n_lines)
-                                                as usize,
-                                            start_byte: 0 as usize,
-                                            end_byte: 0 as usize,
-                                        }
-                                    })
-                                    .collect::<Vec<_>>()
-                            })
-                            .collect::<Vec<_>>()
-                    })
+                    .map(|s| {i = i +1; (i, s.name.clone())})
                     .collect::<Vec<_>>()
             })
             .collect::<Vec<_>>();
 
+        let index= self.filter_chunks(&user_query, response, symbols).await.unwrap();
+
+        
+
+        // let extra_chunks = metadata.iter().filter(|x| x.name == name).flat_map(|x|
+        
+        // {
+        //     x.file_symbols.iter().flat_map(|f_s| 
+        //         {
+        //             f_s.data.iter().map(|occ| {
+        //                 let filename = f_s.file.clone();
+        //                 let content = contents
+        //                                         .iter()
+        //                                             .find(|x| x.relative_path == filename)
+        //                                             .unwrap().content.lines().collect::<Vec<_>>();
+        //                 let n_lines = content.len();
+        //                                         let chunk_content =
+        //                                             content[occ.range.start.line
+        //                                                 ..(occ.range.end.line + 10).min(n_lines)].to_vec()
+        //                                                 .join("\n");
+        //                                         CodeChunk {
+        //                                             path: filename,
+        //                                             alias: 0,
+        //                                             snippet: chunk_content,
+        //                                             start_line: occ.range.start.line as usize,
+        //                                             end_line: (occ.range.end.line + 10).min(n_lines)
+        //                                                 as usize,
+        //                                             start_byte: 0 as usize,
+        //                                             end_byte: 0 as usize,
+        //                                         }
+    
+        //             }).collect::<Vec<_>>()
+                    
+        //         }
+        //     ).collect::<Vec<_>>()
+        // }
+        //  ).collect::<Vec<_>>();
+        
+        // dbg!("{}", extra_chunks);
+        
+
             
         
-        
-        let extra_chunks = extra_chunks.iter().zip(chunks.iter())
-        .filter(|(x, _)| x.len()>0)
-        .map(
-            |(extra, original)| self.filter_chunks(&user_query, extra.to_vec(), original.clone())
-        );
-        
-        let extra_chunks = futures::future::join_all(extra_chunks).await.into_iter().map(|x| x.unwrap())
-        .map(
-            |x| CodeChunk {
-                path: x.path.clone(),
-                alias: self.get_path_alias(&x.path),
-                snippet: x.snippet,
-                start_line: x.start_line,
-                end_line: x.end_line,
-                start_byte: 0 as usize,
-                end_byte: 0 as usize,
-            }
-        ).collect::<Vec<_>>();
-
-        
-
-        dbg!("{}", extra_chunks.clone());
-
-        chunks.extend(extra_chunks);
 
         let response = chunks.clone()
             .into_iter()
@@ -228,27 +215,35 @@ impl Agent {
         Ok(documents)
     }
 
-    async fn filter_chunks(&self, query: &str, chunks: Vec<CodeChunk>, original: CodeChunk) -> Result<CodeChunk> {
+    async fn filter_chunks(&self, query: &str, chunks: Vec<ChunkRefDef>, symbols: Vec<Vec<(i32, String)>>) -> Result<usize> {
         
-        let chunks_string = chunks.iter().enumerate()
-        .map(|(i, c)| format!("{}: {}\n\n{}", i, c.path, c.snippet)).collect::<Vec<_>>().join("\n\n"); 
+        let chunks_string = chunks.iter()
+        .zip(symbols.iter())
+        .filter(|(_, s)| s.len()> 0)
+        .map(|(c, s)| {
+            let symbols_string = s.iter().map(|(i, name)| format!("{}: {}", i, name)).collect::<Vec<_>>().join("\n"); 
+
+            format!("Path:{}\n\n{}\n\nSymbols:\n\n{}", c.chunk.path, c.chunk.snippet, symbols_string)
+        })
+        .collect::<Vec<_>>().join("\n\n"); 
+
         let prompt = vec![llm_gateway::api::Message::user(
-            format!("Additional snippets:\n{}\n\nInstruction: Given the above additional snippets and the following query and main snippet select the additional snippet which contains code that will complement the most the main snippet to help the most to answer the query. Answer using the additional snippet alias (integer defined before the path). Answer only with a function.\n\nMain snippet: {}\n\nQuery:{}\n\nWhat is the most complementary additional snippet?", chunks_string.as_str(), original.snippet, query).as_str()
+            format!("Snippets:\n\n{}\n\nInstruction: Above there are some code chunks and some symbols extracted from the chunks. Your job is to select the most relevant symbol to the user query. Do not answer with the siymbol name, use the symbol key/alias.\n\nQuery:{}", chunks_string.as_str(),  query).as_str()
         )];
 
         let filter_function = serde_json::from_value::<Vec<llm_gateway::api::Function>>(serde_json::json!([
             {
                 "name": "filter",
-                "description":  "Select the chunk most likely to contain information to answer the query",
+                "description":  "Select the symbol most likely to contain information to answer the query",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "chunk": {
+                        "symbol": {
                             "type": "integer",
                             "description": "The chunk alias"
                         }
                     },
-                    "required": ["chunk"]
+                    "required": ["symbol"]
                 }
             }])
         )
@@ -279,7 +274,7 @@ impl Agent {
                 },
             )
             .await
-            .unwrap_or(FunctionCall{name: Some("filter".to_string()), arguments: "{\"chunk\": 0}".to_string()});
+            .unwrap_or(FunctionCall{name: Some("filter".to_string()), arguments: "{\"symbol\": 0}".to_string()});
 
         dbg!("{}", response.clone());
 
@@ -289,14 +284,25 @@ impl Agent {
             Action::deserialize_gpt(&response).unwrap();
 
         let selected_chunk = match action {
-            Action::Filter { chunk: x } => x,
+            Action::Filter { symbol: x } => x,
             _ => 0
         };
 
+
+        // let output = chunks.into_iter()
+        // .zip(symbols.into_iter())
+        // .filter(|(_, s)| s.len()> 0)
+        // .flat_map(|(c, s)| {
+        //     s.into_iter().map(|(i, name)| (i, name.clone(), c.metadata)
+        // ).collect::<Vec<_>>() 
+
+            
+        // })
+        // .find(|(i,_,_)| i.clone() as usize == selected_chunk).unwrap(); 
         
         
 
-        Ok(chunks.get(selected_chunk).unwrap().clone())
+        Ok(selected_chunk)
     }
     
 
