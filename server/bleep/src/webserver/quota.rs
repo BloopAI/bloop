@@ -13,6 +13,8 @@ pub struct QuotaResponse {
     used: u32,
     allowed: u32,
     reset_at: DateTime<Utc>,
+    #[serde(rename = "isPastDue")]
+    is_past_due: bool,
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]
