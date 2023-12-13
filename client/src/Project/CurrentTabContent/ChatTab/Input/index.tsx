@@ -183,7 +183,7 @@ const ConversationInput = ({
       const results: SuggestionType[] = [];
       repoResults.forEach((rr, i) => {
         results.push({
-          id: rr.name.text.replace('github.com/', ''),
+          id: rr.name.text,
           display: rr.name.text.replace('github.com/', ''),
           type: 'repo',
           isFirst: i === 0,
