@@ -22,13 +22,13 @@ impl Agent {
         }))
         .await?;
 
-        let repos = self.repo_refs.clone();
+        let relevant_repos = self.relevant_repos();
 
         let mut results = self
             .semantic_search(AgentSemanticSearchParams {
                 query: Literal::from(&query.to_string()),
                 paths: vec![],
-                repos: repos.clone(),
+                repos: relevant_repos.clone(),
                 semantic_params: SemanticSearchParams {
                     limit: CODE_SEARCH_LIMIT,
                     offset: 0,
@@ -50,7 +50,7 @@ impl Agent {
                     .semantic_search(AgentSemanticSearchParams {
                         query: hyde_doc,
                         paths: vec![],
-                        repos,
+                        repos: relevant_repos,
                         semantic_params: SemanticSearchParams {
                             limit: CODE_SEARCH_LIMIT,
                             offset: 0,
