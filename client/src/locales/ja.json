@@ -429,5 +429,6 @@
 	"Cloning": "クローニング",
 	"Directories": "ディレクトリ",
 	"Languages": "言語",
-	"Generating answer...": "答えを生成します..."
+	"Generating answer...": "答えを生成します...",
+	"Your subscription has expired. Please update your payment details to avoid being unsubscribed.": "あなたのサブスクリプションが期限切れになりました。 登録解除されないように、支払いの詳細を更新してください。"
 }
