@@ -16,7 +16,6 @@ impl Agent {
         const CODE_SEARCH_LIMIT: u64 = 10;
         const MINIMUM_RESULTS: usize = CODE_SEARCH_LIMIT as usize / 2;
 
-        let mut symbols: Vec<String> = Vec::new();
 
         self.update(Update::StartStep(SearchStep::Code {
             query: query.clone(),
@@ -83,51 +82,70 @@ impl Agent {
             )
         });
 
-        let response = futures::future::join_all(response)
-            .await;
+        let response: Vec<ChunkRefDef> = futures::future::join_all(response).await;
 
-        let symbols = response.iter().enumerate()
-        .flat_map(|(i, c)| {
-            c.metadata.iter().enumerate().map(|(j, m)| format!("{}: {}", j, m.name.clone())).collect::<Vec<String>>()
-        }).collect::<Vec<_>>().join("\n");
+        let contents = response.iter().flat_map(|c| {
+            c.metadata.iter().flat_map(|s| {
+                let contents = s
+                    .file_symbols
+                    .iter()
+                    .map(|e_c| self.get_file_content(&e_c.file));
+                contents
+            })
+        });
 
-        print!("{}", symbols);
+        let contents: Vec<crate::indexes::reader::ContentDocument> = futures::future::join_all(contents)
+            .await
+            .into_iter()
+            .map(|x| x.unwrap().unwrap())
+            .collect::<Vec<_>>();
+
+        let extra_chunks: Vec<Vec<CodeChunk>> = response
+            .iter()
+            .map(|c| {
+                c.metadata
+                    .iter()
+                    .flat_map(|s| {
+                        s.file_symbols
+                            .iter()
+                            .flat_map(|f_s| {
+                                f_s.data
+                                    .iter()
+                                    .map(|occ| {
+                                        let filename = f_s.file.clone();
+                                        let content = contents
+                                            .iter()
+                                            .find(|x| x.relative_path == filename)
+                                            .unwrap();
+                                        let n_lines = content.content.lines().count();
+                                        let chunk_content =
+                                            content.content[(occ.range.start.line - 3).max(0)
+                                                ..(occ.range.end.line + 10).min(n_lines)]
+                                                .to_string();
+                                        CodeChunk {
+                                            path: filename,
+                                            alias: 0,
+                                            snippet: chunk_content,
+                                            start_line: (occ.range.start.line - 3).max(0) as usize,
+                                            end_line: (occ.range.end.line + 10).min(n_lines)
+                                                as usize,
+                                            start_byte: 0 as usize,
+                                            end_byte: 0 as usize,
+                                        }
+                                    })
+                                    .collect::<Vec<_>>()
+                            })
+                            .collect::<Vec<_>>()
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+
+        dbg!("{}", extra_chunks);
 
         let response = response
             .into_iter()
-            .map(|c| {
-                // adding paths with alias
-                let metadata = c
-                    .metadata
-                    .iter()
-                    .map(|m| RefDefMetadata {
-                        name: m.name.clone(),
-                        file_symbols: crate::agent::exchange::RefDef {
-                            refs: m.file_symbols.refs.clone(),
-                            defs: m.file_symbols.defs.clone(),
-                            alias_refs: Some(
-                                m.file_symbols
-                                    .refs
-                                    .iter()
-                                    .map(|x| self.get_path_alias(x))
-                                    .collect::<Vec<_>>(),
-                            ),
-                            alias_defs: Some(
-                                m.file_symbols
-                                    .defs
-                                    .iter()
-                                    .map(|x| self.get_path_alias(x))
-                                    .collect::<Vec<_>>(),
-                            ),
-                        },
-                    })
-                    .collect::<Vec<_>>();
-                ChunkRefDef {
-                    chunk: c.chunk,
-                    metadata: metadata,
-                }
-            })
-            .map(|c| c.to_string())
+            .map(|c| c.chunk.to_string())
             .collect::<Vec<_>>()
             .join("\n\n");
 
