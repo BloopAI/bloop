@@ -86,13 +86,15 @@ impl Agent {
 
         let contents = response.iter().flat_map(|c| {
             c.metadata.iter().flat_map(|s| {
-                let contents = s
+                 s
                     .file_symbols
                     .iter()
-                    .map(|e_c| self.get_file_content(&e_c.file));
-                contents
+                    .map(|e_c| e_c)
+                
             })
-        });
+        }).collect::<Vec<_>>();
+
+        let contents = contents.iter().map(|x| self.get_file_content(&x.file));
 
         let contents: Vec<crate::indexes::reader::ContentDocument> = futures::future::join_all(contents)
             .await
@@ -116,12 +118,12 @@ impl Agent {
                                         let content = contents
                                             .iter()
                                             .find(|x| x.relative_path == filename)
-                                            .unwrap();
-                                        let n_lines = content.content.lines().count();
+                                            .unwrap().content.lines().collect::<Vec<_>>();
+                                        let n_lines = content.len();
                                         let chunk_content =
-                                            content.content[(occ.range.start.line - 3).max(0)
-                                                ..(occ.range.end.line + 10).min(n_lines)]
-                                                .to_string();
+                                            content[(occ.range.start.line - 3).max(0)
+                                                ..(occ.range.end.line + 10).min(n_lines)].to_vec()
+                                                .join("\n");
                                         CodeChunk {
                                             path: filename,
                                             alias: 0,
@@ -143,9 +145,9 @@ impl Agent {
 
         dbg!("{}", extra_chunks);
 
-        let response = response
+        let response = chunks.clone()
             .into_iter()
-            .map(|c| c.chunk.to_string())
+            .map(|c| c.to_string())
             .collect::<Vec<_>>()
             .join("\n\n");
 
