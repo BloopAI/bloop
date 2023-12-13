@@ -13,10 +13,7 @@ use crate::{
     query::{parser, stopwords::remove_stopwords},
     repo::RepoRef,
     semantic,
-    webserver::{
-        conversation::{self, Conversation, ConversationId},
-        middleware::User,
-    },
+    webserver::{conversation::Conversation, middleware::User},
     Application,
 };
 
@@ -202,6 +199,20 @@ impl Agent {
             let i = self.paths().count();
             self.last_exchange_mut().paths.push(repo_path.clone());
             i
+        }
+    }
+
+    fn relevant_repos(&self) -> Vec<RepoRef> {
+        let query_repos = self.last_exchange().query.repos().collect::<Vec<_>>();
+
+        if query_repos.is_empty() {
+            self.repo_refs.clone()
+        } else {
+            self.repo_refs
+                .iter()
+                .filter(|r| query_repos.contains(&r.indexed_name().into()))
+                .cloned()
+                .collect()
         }
     }
 
