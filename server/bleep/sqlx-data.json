@@ -244,24 +244,6 @@
     },
     "query": "SELECT pr.repo_ref, pr.branch\n            FROM project_repos pr\n            INNER JOIN projects p ON p.id = pr.project_id AND p.user_id = ?"
   },
-  "1e8cdc6e2b23d18be0a15b2b79cb7f834d78ad942b29b448be57c0fdfab81d40": {
-    "describe": {
-      "columns": [
-        {
-          "name": "project_id",
-          "ordinal": 0,
-          "type_info": "Int64"
-        }
-      ],
-      "nullable": [
-        true
-      ],
-      "parameters": {
-        "Right": 2
-      }
-    },
-    "query": "DELETE FROM conversations\n            WHERE thread_id = ? AND EXISTS (\n                SELECT p.id\n                FROM projects p\n                WHERE p.id = project_id AND p.user_id = ?\n            )\n            RETURNING project_id"
-  },
   "26065ed9dd0dfa42b8b943726d85425d0b45b2cafcceb9887ea626040bef9264": {
     "describe": {
       "columns": [
@@ -1425,6 +1407,16 @@
       }
     },
     "query": "\n            SELECT id, name, url, description, favicon, modified_at, index_status\n            FROM docs \n            WHERE name LIKE $1 OR description LIKE $1 OR url LIKE $1\n            LIMIT ?\n            "
+  },
+  "e9757c76de272638fb9738bf229d0b91285ae4cd9824ca6a16175ccdc4373efb": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "DELETE FROM conversations\n            WHERE thread_id = ? AND EXISTS (\n                SELECT p.id\n                FROM projects p\n                WHERE p.id = project_id AND p.user_id = ?\n            )"
   },
   "ebdb202965998c4e29727dca19a60c82b2a4574530858e29bf6584c8b6e1f32b": {
     "describe": {

@@ -103,7 +103,7 @@ pub(super) async fn answer(
         Some(conversation_id) => {
             Conversation::load(&app.sql, user_id, project_id, conversation_id).await?
         }
-        None => Conversation::new(),
+        None => Conversation::new(project_id),
     };
 
     let Answer {
@@ -447,7 +447,7 @@ pub async fn explain(
         snippet,
     });
 
-    let mut conversation = Conversation::new();
+    let mut conversation = Conversation::new(project_id);
     conversation.exchanges.push(exchange);
 
     let action = Action::Answer { paths: vec![0] };
