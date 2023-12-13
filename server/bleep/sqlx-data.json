@@ -1408,6 +1408,24 @@
     },
     "query": "\n            SELECT id, name, url, description, favicon, modified_at, index_status\n            FROM docs \n            WHERE name LIKE $1 OR description LIKE $1 OR url LIKE $1\n            LIMIT ?\n            "
   },
+  "e352cd10053f43e1e586da8a933868b5329fb1468292769587f130d7bc8f6ca3": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        }
+      ],
+      "nullable": [
+        true
+      ],
+      "parameters": {
+        "Right": 3
+      }
+    },
+    "query": "UPDATE project_repos\n        SET branch = ?\n        WHERE project_id = ? AND repo_ref = ?\n        RETURNING id"
+  },
   "e9757c76de272638fb9738bf229d0b91285ae4cd9824ca6a16175ccdc4373efb": {
     "describe": {
       "columns": [],
