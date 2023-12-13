@@ -1,13 +1,15 @@
 use anyhow::Result;
 use tracing::{debug, info, instrument, trace};
+use futures::{TryStreamExt};
+
 
 use crate::{
     agent::{
         exchange::{ChunkRefDef, CodeChunk, RefDefMetadata, SearchStep, Update},
-        prompts, Agent,
+        prompts, Agent, Action,
     },
     analytics::EventData,
-    llm_gateway,
+    llm_gateway::{self, api::FunctionCall},
 };
 
 impl Agent {
@@ -94,6 +96,8 @@ impl Agent {
             })
         }).collect::<Vec<_>>();
 
+        let user_query = self.exchanges.iter().rev().take(1).collect::<Vec<_>>().get(0).unwrap().query.raw_query.clone();
+
         let contents = contents.iter().map(|x| self.get_file_content(&x.file));
 
         let contents: Vec<crate::indexes::reader::ContentDocument> = futures::future::join_all(contents)
@@ -121,14 +125,14 @@ impl Agent {
                                             .unwrap().content.lines().collect::<Vec<_>>();
                                         let n_lines = content.len();
                                         let chunk_content =
-                                            content[(occ.range.start.line - 3).max(0)
+                                            content[occ.range.start.line
                                                 ..(occ.range.end.line + 10).min(n_lines)].to_vec()
                                                 .join("\n");
                                         CodeChunk {
                                             path: filename,
                                             alias: 0,
                                             snippet: chunk_content,
-                                            start_line: (occ.range.start.line - 3).max(0) as usize,
+                                            start_line: occ.range.start.line as usize,
                                             end_line: (occ.range.end.line + 10).min(n_lines)
                                                 as usize,
                                             start_byte: 0 as usize,
@@ -141,18 +145,19 @@ impl Agent {
                     })
                     .collect::<Vec<_>>()
             })
-            .filter(|c| c.len()>0).collect::<Vec<_>>();
+            .collect::<Vec<_>>();
+
+            
         
-        fn filter_extra_chunks(c: Vec<CodeChunk>) -> CodeChunk {
-            if c.len() == 1 {
-                c.get(0).unwrap().clone()
-            }else{
-                c.get(0).unwrap().clone()
-            }
-        } 
-        let extra_chunks = extra_chunks.iter().map(
-            |x| filter_extra_chunks(x.to_vec())
-        ).map(
+        
+        let extra_chunks = extra_chunks.iter().zip(chunks.iter())
+        .filter(|(x, _)| x.len()>0)
+        .map(
+            |(extra, original)| self.filter_chunks(&user_query, extra.to_vec(), original.clone())
+        );
+        
+        let extra_chunks = futures::future::join_all(extra_chunks).await.into_iter().map(|x| x.unwrap())
+        .map(
             |x| CodeChunk {
                 path: x.path.clone(),
                 alias: self.get_path_alias(&x.path),
@@ -222,4 +227,79 @@ impl Agent {
 
         Ok(documents)
     }
+
+    async fn filter_chunks(&self, query: &str, chunks: Vec<CodeChunk>, original: CodeChunk) -> Result<CodeChunk> {
+        
+        let chunks_string = chunks.iter().enumerate()
+        .map(|(i, c)| format!("{}: {}\n\n{}", i, c.path, c.snippet)).collect::<Vec<_>>().join("\n\n"); 
+        let prompt = vec![llm_gateway::api::Message::user(
+            format!("Additional snippets:\n{}\n\nInstruction: Given the above additional snippets and the following query and main snippet select the additional snippet which contains code that will complement the most the main snippet to help the most to answer the query. Answer using the additional snippet alias (integer defined before the path). Answer only with a function.\n\nMain snippet: {}\n\nQuery:{}\n\nWhat is the most complementary additional snippet?", chunks_string.as_str(), original.snippet, query).as_str()
+        )];
+
+        let filter_function = serde_json::from_value::<Vec<llm_gateway::api::Function>>(serde_json::json!([
+            {
+                "name": "filter",
+                "description":  "Select the chunk most likely to contain information to answer the query",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "chunk": {
+                            "type": "integer",
+                            "description": "The chunk alias"
+                        }
+                    },
+                    "required": ["chunk"]
+                }
+            }])
+        )
+        .unwrap();
+
+        let response = self
+            .llm_gateway
+            .clone()
+            .model("gpt-3.5-turbo-0613")
+            .temperature(0.0)
+            .chat_stream(&prompt, Some(&filter_function))
+            .await?
+            .try_fold(
+                llm_gateway::api::FunctionCall::default(),
+                |acc: FunctionCall, e: String| async move {
+                    let e: FunctionCall = serde_json::from_str(&e).map_err(|err| {
+                        tracing::error!(
+                            "Failed to deserialize to FunctionCall: {:?}. Error: {:?}",
+                            e,
+                            err
+                        );
+                        err
+                    })?;
+                    Ok(FunctionCall {
+                        name: acc.name.or(e.name),
+                        arguments: acc.arguments + &e.arguments,
+                    })
+                },
+            )
+            .await
+            .unwrap_or(FunctionCall{name: Some("filter".to_string()), arguments: "{\"chunk\": 0}".to_string()});
+
+        dbg!("{}", response.clone());
+
+        //let function_response: FunctionCall = serde_json::from_str(response.as_str()).unwrap_or(FunctionCall{name: Some("filter".to_string()), arguments: "{\"chunk\": 0}".to_string()});
+
+        let action =
+            Action::deserialize_gpt(&response).unwrap();
+
+        let selected_chunk = match action {
+            Action::Filter { chunk: x } => x,
+            _ => 0
+        };
+
+        
+        
+
+        Ok(chunks.get(selected_chunk).unwrap().clone())
+    }
+    
+
+    
+
 }

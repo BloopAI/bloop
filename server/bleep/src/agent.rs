@@ -205,6 +205,7 @@ impl Agent {
             Action::Symbol { symbol, path } => self.symbol_search(symbol, path).await?,
             Action::Code { query } => self.code_search(query).await?,
             Action::Proc { query, paths } => self.process_files(query, paths).await?,
+            Action::Filter {chunk} => " ".to_string(),
         };
 
         if self.last_exchange().search_steps.len() >= MAX_STEPS {
@@ -557,6 +558,9 @@ pub enum Action {
         query: String,
         paths: Vec<usize>,
     },
+    Filter{
+        chunk: usize
+    }
 }
 
 impl Action {
