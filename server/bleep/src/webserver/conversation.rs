@@ -22,13 +22,15 @@ use crate::{
 pub struct Conversation {
     pub exchanges: Vec<Exchange>,
     pub thread_id: Uuid,
+    pub project_id: i64,
 }
 
 impl Conversation {
-    pub fn new() -> Self {
+    pub fn new(project_id: i64) -> Self {
         Self {
             exchanges: Vec::new(),
             thread_id: Uuid::new_v4(),
+            project_id,
         }
     }
 
@@ -36,20 +38,18 @@ impl Conversation {
         let mut transaction = db.begin().await?;
 
         // Delete the old conversation for simplicity. This also deletes all its messages.
-        let project_id = sqlx::query! {
+        sqlx::query! {
             "DELETE FROM conversations
             WHERE thread_id = ? AND EXISTS (
                 SELECT p.id
                 FROM projects p
                 WHERE p.id = project_id AND p.user_id = ?
-            )
-            RETURNING project_id",
+            )",
             self.thread_id,
             user_id,
         }
-        .fetch_one(&mut transaction)
-        .await
-        .map(|r| r.project_id)?;
+        .execute(&mut transaction)
+        .await?;
 
         let title = self
             .exchanges
@@ -59,15 +59,17 @@ impl Conversation {
             .context("couldn't find conversation title")?;
 
         let exchanges = serde_json::to_string(&self.exchanges)?;
+        let thread_id = self.thread_id.to_string();
+
         sqlx::query! {
             "INSERT INTO conversations (
                 thread_id, title, exchanges, project_id, created_at
             )
             VALUES (?, ?, ?, ?, strftime('%s', 'now'))",
-            self.thread_id,
+            thread_id,
             title,
             exchanges,
-            project_id,
+            self.project_id,
         }
         .execute(&mut transaction)
         .await?;
@@ -101,6 +103,7 @@ impl Conversation {
         Ok(Self {
             exchanges,
             thread_id: row.thread_id.parse().map_err(Error::internal)?,
+            project_id,
         })
     }
 }
