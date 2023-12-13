@@ -93,10 +93,17 @@ pub async fn add(
     .map_err(Error::internal)
 }
 
+#[derive(serde::Deserialize)]
+pub struct Delete {
+    #[serde(rename = "ref")]
+    repo_ref: String,
+}
+
 pub async fn delete(
     app: Extension<Application>,
     user: Extension<User>,
-    Path((project_id, repo_ref)): Path<(i64, String)>,
+    Path(project_id): Path<i64>,
+    Json(Delete { repo_ref }): Json<Delete>,
 ) -> webserver::Result<()> {
     let user_id = user
         .username()
@@ -119,4 +126,46 @@ pub async fn delete(
     .await?
     .map(|_| ())
     .ok_or_else(|| Error::not_found("project repo not found"))
+}
+
+#[derive(serde::Deserialize)]
+pub struct Put {
+    #[serde(rename = "ref")]
+    repo_ref: String,
+    branch: Option<String>,
+}
+
+pub async fn put(
+    app: Extension<Application>,
+    user: Extension<User>,
+    Path(project_id): Path<i64>,
+    Json(params): Json<Put>,
+) -> webserver::Result<()> {
+    let user_id = user
+        .username()
+        .ok_or_else(webserver::no_user_id)?
+        .to_string();
+
+    sqlx::query! {
+        "SELECT id FROM projects WHERE id = ? AND user_id = ?",
+        project_id,
+        user_id,
+    }
+    .fetch_optional(&*app.sql)
+    .await?
+    .ok_or_else(|| Error::not_found("project not found"))?;
+
+    sqlx::query! {
+        "UPDATE project_repos
+        SET branch = ?
+        WHERE project_id = ? AND repo_ref = ?
+        RETURNING id",
+        params.branch,
+        project_id,
+        params.repo_ref,
+    }
+    .fetch_optional(&*app.sql)
+    .await?
+    .map(|_| ())
+    .ok_or_else(|| Error::not_found("association between project ID and repo ref not found"))
 }
