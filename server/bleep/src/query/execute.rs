@@ -548,7 +548,7 @@ impl ExecuteQuery for RepoReader {
             .iter()
             .filter(|q| self.query_matches(q))
             .filter_map(|q| {
-                let regex_str = q.path.as_ref()?.regex_str();
+                let regex_str = q.repo.as_ref()?.regex_str();
                 let case_insensitive = !q.is_case_sensitive();
                 let regex = RegexBuilder::new(&regex_str)
                     .case_insensitive(case_insensitive)
