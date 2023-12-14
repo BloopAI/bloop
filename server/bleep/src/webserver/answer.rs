@@ -14,6 +14,8 @@ use reqwest::StatusCode;
 use serde_json::json;
 use tracing::{debug, error, info, warn};
 
+use super::conversation::ConversationId;
+
 use super::middleware::User;
 use crate::{
     agent::{
@@ -98,6 +100,8 @@ pub(super) async fn answer(
         None => Conversation::new(project_id),
     };
 
+    let conversation_id = conversation.store(&app.sql, user_id).await?;
+
     let Answer {
         parent_exchange_id,
         q,
@@ -141,6 +145,7 @@ pub(super) async fn answer(
         query_id,
         project_id,
         conversation,
+        conversation_id,
         action,
     }
     .execute()
@@ -155,6 +160,7 @@ struct AgentExecutor {
     query_id: uuid::Uuid,
     project_id: i64,
     conversation: Conversation,
+    conversation_id: i64,
     action: Action,
 }
 
@@ -243,7 +249,8 @@ impl AgentExecutor {
 
         let initial_message = json!({
             "thread_id": self.conversation.thread_id.to_string(),
-            "query_id": self.query_id
+            "query_id": self.query_id,
+            "conversation_id": self.conversation_id,
         });
 
         // let project: Project = serde_json::from_str(&self.params.project).unwrap();
@@ -439,6 +446,9 @@ pub async fn explain(
     let mut conversation = Conversation::new(project_id);
     conversation.exchanges.push(exchange);
 
+    let user_id = user.username().ok_or_else(super::no_user_id)?;
+    let conversation_id = conversation.store(&app.sql, user_id).await?;
+
     let action = Action::Answer { paths: vec![0] };
 
     AgentExecutor {
@@ -448,6 +458,7 @@ pub async fn explain(
         query_id,
         project_id,
         conversation,
+        conversation_id,
         action,
     }
     .execute()
