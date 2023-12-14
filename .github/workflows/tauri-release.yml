@@ -131,6 +131,7 @@ jobs:
 
       - uses: tauri-apps/tauri-action@cb58ba3f65bd456ee564376585a8400bf0b71f47
         env:
+          NODE_OPTIONS: "--max-old-space-size=4096"
           ORT_LIB_LOCATION: ${{ github.workspace }}/lib/${{ matrix.target }}/onnxruntime
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ENABLE_CODE_SIGNING: ${{ secrets.APPLE_CERTIFICATE }}
