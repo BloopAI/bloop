@@ -106,36 +106,6 @@
     },
     "query": "SELECT context, messages FROM studio_snapshots WHERE id = ?"
   },
-  "08e9cd261503f6d2d286d60b97036cae69d58b12c96897f341f4e5eb3dc68dc9": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id!",
-          "ordinal": 0,
-          "type_info": "Int64"
-        },
-        {
-          "name": "created_at",
-          "ordinal": 1,
-          "type_info": "Int64"
-        },
-        {
-          "name": "title",
-          "ordinal": 2,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        true,
-        false,
-        false
-      ],
-      "parameters": {
-        "Right": 2
-      }
-    },
-    "query": "SELECT c.id as 'id!', c.created_at, c.title FROM conversations c JOIN projects p ON p.id = c.project_id AND p.user_id = ? WHERE p.id = ?\n        ORDER BY c.created_at DESC"
-  },
   "0b7aa6a8c243ac8ca79f52a5ef370ccce954b3635ce5e70a6e80732472a916f2": {
     "describe": {
       "columns": [
@@ -481,6 +451,42 @@
       }
     },
     "query": "SELECT cache_hash FROM file_cache WHERE repo_ref = ?"
+  },
+  "4a7ef503bb663992c6bf6567324e9bacbca61e9c03e23ba24a2773d7efa68043": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id!",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "thread_id",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 2,
+          "type_info": "Int64"
+        },
+        {
+          "name": "title",
+          "ordinal": 3,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        true,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "SELECT c.id as 'id!', c.thread_id, c.created_at, c.title FROM conversations c JOIN projects p ON p.id = c.project_id AND p.user_id = ? WHERE p.id = ?\n        ORDER BY c.created_at DESC"
   },
   "4aacc9795c1a466afdc7c5cedcdf1a6b67652a7ddcdee0399e67024e087d75a9": {
     "describe": {

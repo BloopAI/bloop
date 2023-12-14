@@ -6,7 +6,7 @@ use axum::{
 };
 use chrono::NaiveDateTime;
 use reqwest::StatusCode;
-use std::fmt;
+use std::{fmt, mem};
 use tracing::info;
 use uuid::Uuid;
 
@@ -18,10 +18,11 @@ use crate::{
     Application,
 };
 
-#[derive(Clone)]
+#[derive(Clone, serde::Serialize)]
 pub struct Conversation {
     pub exchanges: Vec<Exchange>,
     pub thread_id: Uuid,
+    #[serde(skip)]
     pub project_id: i64,
 }
 
@@ -116,8 +117,9 @@ pub struct ConversationId {
 }
 
 #[derive(serde::Serialize)]
-pub struct ConversationPreview {
+pub struct ListItem {
     pub id: i64,
+    pub thread_id: String,
     pub created_at: i64,
     pub title: String,
 }
@@ -126,15 +128,15 @@ pub(in crate::webserver) async fn list(
     Extension(user): Extension<User>,
     State(app): State<Application>,
     Path(project_id): Path<i64>,
-) -> webserver::Result<impl IntoResponse> {
+) -> webserver::Result<Json<Vec<ListItem>>> {
     let db = app.sql.as_ref();
     let user_id = user
         .username()
         .ok_or_else(|| Error::user("missing user ID"))?;
 
-    let conversations = sqlx::query_as! {
-        ConversationPreview,
-        "SELECT c.id as 'id!', c.created_at, c.title \
+    sqlx::query_as! {
+        ListItem,
+        "SELECT c.id as 'id!', c.thread_id, c.created_at, c.title \
         FROM conversations c \
         JOIN projects p ON p.id = c.project_id AND p.user_id = ? \
         WHERE p.id = ?
@@ -144,9 +146,8 @@ pub(in crate::webserver) async fn list(
     }
     .fetch_all(db)
     .await
-    .map_err(Error::internal)?;
-
-    Ok(Json(conversations))
+    .map(Json)
+    .map_err(Error::internal)
 }
 
 pub(in crate::webserver) async fn delete(
@@ -186,17 +187,15 @@ pub(in crate::webserver) async fn get(
     Extension(user): Extension<User>,
     Path((project_id, conversation_id)): Path<(i64, i64)>,
     State(app): State<Application>,
-) -> webserver::Result<impl IntoResponse> {
+) -> webserver::Result<Json<Conversation>> {
     let user_id = user.username().ok_or_else(super::no_user_id)?;
 
-    let exchanges = Conversation::load(&app.sql, user_id, project_id, conversation_id)
-        .await?
-        .exchanges;
+    let mut conversation =
+        Conversation::load(&app.sql, user_id, project_id, conversation_id).await?;
 
-    let exchanges = exchanges
-        .into_iter()
-        .map(|ex| ex.compressed())
-        .collect::<Vec<_>>();
+    for ex in &mut conversation.exchanges {
+        *ex = mem::take(ex).compressed();
+    }
 
-    Ok(Json(exchanges))
+    Ok(Json(conversation))
 }

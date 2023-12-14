@@ -14,8 +14,6 @@ use reqwest::StatusCode;
 use serde_json::json;
 use tracing::{debug, error, info, warn};
 
-use super::conversation::ConversationId;
-
 use super::middleware::User;
 use crate::{
     agent::{
