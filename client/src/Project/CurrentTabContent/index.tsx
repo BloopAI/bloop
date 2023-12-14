@@ -79,6 +79,7 @@ const CurrentTabContent = ({
             side={side}
             tabKey={tab.key}
             key={tab.key}
+            title={tab.title}
             handleMoveToAnotherSide={handleMoveToAnotherSide}
           />
         ) : (

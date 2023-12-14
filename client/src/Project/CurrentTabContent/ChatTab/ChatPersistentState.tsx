@@ -20,10 +20,11 @@ import {
   TabTypesEnum,
 } from '../../../types/general';
 import { conversationsCache } from '../../../services/cache';
-import { mapLoadingSteps } from '../../../mappers/conversation';
+import { mapLoadingSteps, mapUserQuery } from '../../../mappers/conversation';
 import { focusInput } from '../../../utils/domUtils';
 import { ChatsContext } from '../../../context/chatsContext';
 import { TabsContext } from '../../../context/tabsContext';
+import { getConversation } from '../../../services/api';
 
 type Options = {
   path: string;
@@ -34,17 +35,25 @@ type Options = {
 
 type Props = {
   tabKey: string;
+  conversationId?: string;
   initialQuery?: Options;
   side: 'left' | 'right';
 };
 
-const ChatPersistentState = ({ tabKey, side, initialQuery }: Props) => {
+const ChatPersistentState = ({
+  tabKey,
+  side,
+  initialQuery,
+  conversationId,
+}: Props) => {
   const { t } = useTranslation();
   const { apiUrl } = useContext(DeviceContext);
-  const { project } = useContext(ProjectContext.Current);
+  const { project, refreshCurrentProjectConversations } = useContext(
+    ProjectContext.Current,
+  );
   const { preferredAnswerSpeed } = useContext(ProjectContext.AnswerSpeed);
   const { setChats } = useContext(ChatsContext);
-  const { openNewTab } = useContext(TabsContext.Handlers);
+  const { openNewTab, updateTabTitle } = useContext(TabsContext.Handlers);
 
   const prevEventSource = useRef<EventSource | null>(null);
 
@@ -343,6 +352,7 @@ const ChatPersistentState = ({ tabKey, side, initialQuery }: Props) => {
             };
             return [...newConversation, lastMessage];
           });
+          refreshCurrentProjectConversations();
           setTimeout(() => focusInput(), 100);
           return;
         }
@@ -462,8 +472,11 @@ const ChatPersistentState = ({ tabKey, side, initialQuery }: Props) => {
       );
       userQueryParsed = [{ type: ParsedQueryTypeEnum.TEXT, text: userQuery }];
     }
-    setConversation((prev) =>
-      prev.length === 1 && submittedQuery.options
+    setConversation((prev) => {
+      if (!prev.length) {
+        updateTabTitle(tabKey, userQuery, side);
+      }
+      return prev.length === 1 && submittedQuery.options
         ? prev
         : [
             ...prev,
@@ -473,8 +486,8 @@ const ChatPersistentState = ({ tabKey, side, initialQuery }: Props) => {
               parsedQuery: userQueryParsed,
               isLoading: false,
             },
-          ],
-    );
+          ];
+    });
     makeSearch(userQuery, options);
   }, [submittedQuery]);
 
@@ -526,6 +539,37 @@ const ChatPersistentState = ({ tabKey, side, initialQuery }: Props) => {
       return { ...prev, [tabKey]: { ...prev[tabKey], onMessageEditCancel } };
     });
   }, [onMessageEditCancel]);
+
+  useEffect(() => {
+    if (conversationId && project?.id) {
+      getConversation(project.id, conversationId).then((resp) => {
+        // todo: add thread_id
+        const conv: ChatMessage[] = [];
+        resp.forEach((m) => {
+          // @ts-ignore
+          const userQuery = m.search_steps.find((s) => s.type === 'QUERY');
+          const parsedQuery = mapUserQuery(m);
+          conv.push({
+            author: ChatMessageAuthor.User,
+            text: m.query.raw_query || userQuery?.content?.query || '',
+            parsedQuery,
+            isFromHistory: true,
+          });
+          conv.push({
+            author: ChatMessageAuthor.Server,
+            isLoading: false,
+            loadingSteps: mapLoadingSteps(m.search_steps, t),
+            text: m.answer,
+            conclusion: m.conclusion,
+            queryId: m.id,
+            responseTimestamp: m.response_timestamp,
+            explainedFile: m.focused_chunk?.repo_path.path,
+          });
+        });
+        setConversation(conv);
+      });
+    }
+  }, [conversationId, project?.id]);
 
   return null;
 };

@@ -82,6 +82,7 @@ const Project = ({}: Props) => {
             <ChatPersistentState
               key={t.key}
               tabKey={t.key}
+              conversationId={t.conversationId}
               initialQuery={t.initialQuery}
               side={i < leftTabs.length ? 'left' : 'right'}
             />

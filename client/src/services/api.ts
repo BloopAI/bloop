@@ -293,17 +293,18 @@ export const getProjectConversations = (
 
 export const getConversation = (
   projectId: string,
-  thread_id: string,
+  conversationId: string,
 ): Promise<ConversationType[]> =>
   http
-    .get(`/projects/${projectId}/conversations/${thread_id}`)
+    .get(`/projects/${projectId}/conversations/${conversationId}`)
     .then((r) => r.data);
 
 export const deleteConversation = (
-  thread_id: string,
-): Promise<ConversationType> =>
+  projectId: string,
+  conversationId: string,
+): Promise<void> =>
   http
-    .delete(`/answer/conversations`, { params: { thread_id } })
+    .delete(`/projects/${projectId}/conversations/${conversationId}`)
     .then((r) => r.data);
 
 export const upvoteAnswer = (

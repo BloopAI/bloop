@@ -14,6 +14,8 @@ type HandlersContextType = {
         }
       | {
           type: TabTypesEnum.CHAT;
+          conversationId?: string;
+          title?: string;
           initialQuery?: {
             path: string;
             lines: [number, number];
@@ -29,6 +31,11 @@ type HandlersContextType = {
   setFocusedPanel: (panel: 'left' | 'right') => void;
   setLeftTabs: Dispatch<SetStateAction<TabType[]>>;
   setRightTabs: Dispatch<SetStateAction<TabType[]>>;
+  updateTabTitle: (
+    tabKey: string,
+    newTitle: string,
+    side: 'left' | 'right',
+  ) => void;
 };
 
 export const TabsContext = {
@@ -40,6 +47,7 @@ export const TabsContext = {
     setFocusedPanel: (panel: 'left' | 'right') => {},
     setLeftTabs: () => {},
     setRightTabs: () => {},
+    updateTabTitle: () => {},
   }),
   All: createContext<{
     leftTabs: TabType[];

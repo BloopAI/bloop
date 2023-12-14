@@ -14,11 +14,13 @@ type Props = {
   side: 'left' | 'right';
   tabKey: string;
   handleMoveToAnotherSide: () => void;
+  title?: string;
 };
 
 const ChatTab = ({
   noBorder,
   side,
+  title,
   tabKey,
   handleMoveToAnotherSide,
 }: Props) => {
@@ -53,7 +55,7 @@ const ChatTab = ({
             sizeClassName="w-4 h-4"
             className="text-brand-default"
           />
-          New chat
+          {title || t('New chat')}
         </div>
         <Dropdown
           DropdownComponent={ActionsDropdown}

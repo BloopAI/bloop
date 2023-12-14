@@ -225,11 +225,13 @@ export interface TokenInfoResponse {
   }[];
 }
 
-export type AllConversationsResponse = {
+export type ConversationShortType = {
   created_at: number;
-  thread_id: string;
+  id: string;
   title: string;
-}[];
+};
+
+export type AllConversationsResponse = ConversationShortType[];
 
 type ProcStep = {
   type: 'proc';
@@ -401,9 +403,5 @@ export type ProjectShortType = {
 
 export type ProjectFullType = ProjectShortType & {
   repos: { repo: RepoType; branch: string }[];
-  conversations: {
-    created_at: number;
-    thread_id: string;
-    title: string;
-  }[];
+  conversations: ConversationShortType[];
 };

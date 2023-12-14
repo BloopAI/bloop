@@ -39,6 +39,8 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
           }
         | {
             type: TabTypesEnum.CHAT;
+            conversationId?: string;
+            title?: string;
             initialQuery?: {
               path: string;
               lines: [number, number];
@@ -72,6 +74,8 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
                 type: TabTypesEnum.CHAT,
                 key: Date.now().toString(),
                 initialQuery: data.initialQuery,
+                conversationId: data.conversationId,
+                title: data.title,
               };
         setActiveTabAction(newTab);
         const previousTab = prev.find((t) => t.key === newTab.key);
@@ -130,6 +134,23 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
     });
   }, []);
 
+  const updateTabTitle = useCallback(
+    (tabKey: string, newTitle: string, side: 'left' | 'right') => {
+      const setTabsAction = side === 'left' ? setLeftTabs : setRightTabs;
+      const setActiveTabAction =
+        side === 'left' ? setActiveLeftTab : setActiveRightTab;
+      setTabsAction((prevTabs) => {
+        const newTabs = [...prevTabs];
+        const oldTabIndex = prevTabs.findIndex((t) => t.key === tabKey);
+        const newTab = { ...newTabs[oldTabIndex], title: newTitle };
+        newTabs[oldTabIndex] = newTab;
+        setActiveTabAction(newTab);
+        return newTabs;
+      });
+    },
+    [],
+  );
+
   useEffect(() => {
     if (isReposLoaded && project?.repos) {
       const checkIfTabShouldClose = (tab: TabType | null) =>
@@ -151,8 +172,9 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
       setFocusedPanel,
       setLeftTabs,
       setRightTabs,
+      updateTabTitle,
     }),
-    [closeTab, openNewTab],
+    [closeTab, openNewTab, updateTabTitle],
   );
 
   const allContextValue = useMemo(

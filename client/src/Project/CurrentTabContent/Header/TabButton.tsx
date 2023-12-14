@@ -27,8 +27,7 @@ type Props = TabType & {
   i: number;
   repoRef?: string;
   path?: string;
-  threadId?: string;
-  name?: string;
+  title?: string;
   branch?: string | null;
   scrollToLine?: string;
   tokenRange?: string;
@@ -39,9 +38,8 @@ const TabButton = ({
   tabKey,
   repoRef,
   path,
-  threadId,
   type,
-  name,
+  title,
   side,
   moveTab,
   isOnlyTab,
@@ -114,8 +112,7 @@ const TabButton = ({
           repoRef: repoRef!,
           path: path!,
           type,
-          threadId,
-          name,
+          title,
           branch,
           scrollToLine,
           tokenRange,
@@ -145,14 +142,13 @@ const TabButton = ({
       repoRef,
       key: tabKey,
       type,
-      threadId,
-      name,
+      title,
       branch,
       scrollToLine,
       tokenRange,
     });
     setFocusedPanel(side);
-  }, [path, repoRef, tabKey, side, branch, scrollToLine, tokenRange]);
+  }, [path, repoRef, tabKey, side, branch, scrollToLine, tokenRange, title]);
 
   return (
     <a
@@ -181,7 +177,9 @@ const TabButton = ({
           isActive ? 'text-label-title' : 'text-label-muted'
         } transition duration-75 ease-in-out`}
       >
-        {type === TabTypesEnum.FILE ? splitPath(path).pop() : 'New chat'}
+        {type === TabTypesEnum.FILE
+          ? splitPath(path).pop()
+          : title || t('New chat')}
       </p>
       <Button
         variant="ghost"

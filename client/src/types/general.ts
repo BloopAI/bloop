@@ -106,8 +106,8 @@ export type FileTabType = {
 export type ChatTabType = {
   type: TabTypesEnum.CHAT;
   key: string;
-  threadId?: string;
-  name?: string;
+  conversationId?: string;
+  title?: string;
   initialQuery?: {
     path: string;
     lines: [number, number];

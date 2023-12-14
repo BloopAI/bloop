@@ -108,6 +108,7 @@ const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
       isReposLoaded,
       setCurrentProjectId,
       refreshCurrentProjectRepos,
+      refreshCurrentProjectConversations,
       refreshCurrentProject,
     }),
     [project, isReposLoaded],

@@ -560,5 +560,8 @@
 	"Change application colour theme": "アプリケーションの色のテーマを変更します",
 	"How fast or precise bloop's answers will be.": "Bloopの答えがどれだけ速くまたは正確になるか。",
 	"Explain file": "ファイルを説明します",
-	"Open in split view": "スプリットビューで開きます"
+	"Open in split view": "スプリットビューで開きます",
+	"Chat conversations": "チャット会話",
+	"New chat": "新しいチャット",
+	"Delete all conversations": "すべての会話を削除します"
 }

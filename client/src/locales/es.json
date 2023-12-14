@@ -574,5 +574,8 @@
 	"Change application colour theme": "Cambiar el tema del color de la aplicación",
 	"How fast or precise bloop's answers will be.": "¿Qué tan rápidas o precisas serán las respuestas de Bloop?",
 	"Explain file": "Explicar archivo",
-	"Open in split view": "Abrir en vista dividida"
+	"Open in split view": "Abrir en vista dividida",
+	"Chat conversations": "Conversaciones de chat",
+	"New chat": "Nueva conversación",
+	"Delete all conversations": "Eliminar todas las conversaciones"
 }

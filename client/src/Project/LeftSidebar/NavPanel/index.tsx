@@ -1,8 +1,9 @@
 import { memo, useContext, useEffect, useMemo, useState } from 'react';
 import { ProjectContext } from '../../../context/projectContext';
-import { RepoProvider, TabTypesEnum } from '../../../types/general';
+import { TabTypesEnum } from '../../../types/general';
 import { TabsContext } from '../../../context/tabsContext';
 import RepoNav from './Repo';
+import ConversationsNav from './Conversations';
 
 type Props = {};
 
@@ -40,13 +41,19 @@ const NavPanel = ({}: Props) => {
 
   return (
     <div className="flex flex-col h-full flex-1 overflow-auto">
+      {!!project?.conversations.length && (
+        <ConversationsNav
+          setExpanded={setExpanded}
+          isExpanded={expanded === 0}
+        />
+      )}
       {project?.repos.map((r, i) => (
         <RepoNav
           projectId={project?.id}
           key={r.repo.ref}
           setExpanded={setExpanded}
-          isExpanded={expanded === i}
-          i={i}
+          isExpanded={expanded === i + (!!project?.conversations ? 1 : 0)}
+          i={i + (!!project?.conversations ? 1 : 0)}
           repoRef={r.repo.ref}
           branch={r.branch}
           lastIndex={r.repo.last_index}
