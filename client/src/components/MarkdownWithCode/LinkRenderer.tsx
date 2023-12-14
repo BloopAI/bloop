@@ -12,6 +12,7 @@ import {
 import { FileHighlightsType, TabTypesEnum } from '../../types/general';
 import { TabsContext } from '../../context/tabsContext';
 import FileChip from '../Chips/FileChip';
+import { splitPath } from '../../utils';
 import FolderChip from './FolderChip';
 
 type Props = {
@@ -54,6 +55,10 @@ const LinkRenderer = ({
       if (child?.props && typeof child.props.children?.[0] === 'string') {
         f = child.props.children?.[0];
       }
+    }
+    // if the link is of type repo_ref:file_path.ext
+    if (new RegExp('.*/.*:.*').test(f)) {
+      f = splitPath(f).pop() || f;
     }
     return f;
   }, [children]);
