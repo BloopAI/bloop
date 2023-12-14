@@ -6,6 +6,7 @@ use axum::{
     },
 };
 use futures::stream::{Stream, StreamExt};
+use tokio_stream::wrappers::ReceiverStream;
 use tracing::error;
 
 use crate::{
@@ -71,18 +72,26 @@ pub async fn sync(
             DocEvent::new("sync").with_payload("url", &params.url),
         )
     });
-    Sse::new(Box::pin(
-        app.indexes
-            .doc
-            .clone()
-            .sync(params.url)
-            .await
-            .map(|result| {
-                Ok(Event::default()
-                    .json_data(result.as_ref().map_err(ToString::to_string))
-                    .unwrap())
-            }),
-    ))
+
+    let (tx, rx) = tokio::sync::mpsc::channel(100);
+
+    tokio::spawn(async move {
+        let stream = app.indexes.doc.clone().sync(params.url).await;
+
+        futures::pin_mut!(stream);
+
+        while let Some(t) = stream.next().await {
+            // We intentionally ignore errors so that this stream is consumed in the background,
+            // regardless of whether the receiver still exists.
+            let _ = tx.send(t);
+        }
+    });
+
+    Sse::new(Box::pin(ReceiverStream::new(rx).map(|result| {
+        Ok(Event::default()
+            .json_data(result.as_ref().map_err(ToString::to_string))
+            .unwrap())
+    })))
     .keep_alive(KeepAlive::default())
 }
 
