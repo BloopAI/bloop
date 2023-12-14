@@ -8,9 +8,15 @@ type Props = {
   isInHeader?: boolean;
   code: string;
   className?: string;
+  btnVariant?: 'tertiary' | 'secondary';
 };
 
-const CopyButton = ({ isInHeader, code, className }: Props) => {
+const CopyButton = ({
+  isInHeader,
+  code,
+  className,
+  btnVariant = 'secondary',
+}: Props) => {
   const { t } = useTranslation();
   const [codeCopied, setCodeCopied] = useState(false);
 
@@ -35,7 +41,7 @@ const CopyButton = ({ isInHeader, code, className }: Props) => {
       } ${className}`}
     >
       <Button
-        variant="secondary"
+        variant={btnVariant}
         size={isInHeader ? 'mini' : 'small'}
         onClick={onClick}
         onlyIcon

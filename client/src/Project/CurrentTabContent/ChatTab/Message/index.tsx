@@ -26,6 +26,7 @@ import {
 } from '../../../../services/storage';
 import { LocaleContext } from '../../../../context/localeContext';
 import { upvoteAnswer } from '../../../../services/api';
+import CopyButton from '../../../../components/MarkdownWithCode/CopyButton';
 import UserParsedQuery from './UserParsedQuery';
 import LoadingStep from './LoadingStep';
 
@@ -91,10 +92,6 @@ const ConversationMessage = ({
   const handleEdit = useCallback(() => {
     onMessageEdit(queryId, i);
   }, [onMessageEdit, queryId, i]);
-
-  const handleCopy = useCallback(() => {
-    copyToClipboard(text);
-  }, [text]);
 
   const handleUpvote = useCallback(() => {
     setIsUpvote(true);
@@ -256,15 +253,7 @@ const ConversationMessage = ({
                 </>
               )
             )}
-            <Button
-              variant="tertiary"
-              size="mini"
-              onlyIcon
-              title={t('Copy message')}
-              onClick={handleCopy}
-            >
-              <CopyTextIcon sizeClassName="w-3.5 h-3.5" />
-            </Button>
+            <CopyButton code={text} isInHeader btnVariant="tertiary" />
           </div>
         </>
       )}
