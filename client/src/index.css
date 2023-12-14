@@ -1206,7 +1206,7 @@ img.ProseMirror-separator {
 }
 
 .suggestion-item-active .suggestion-item {
-  @apply bg-bg-base-hover
+  @apply bg-bg-selected
 }
 /* prose mirror editor end */
 
