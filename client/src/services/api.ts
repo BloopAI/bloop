@@ -484,5 +484,13 @@ export const addRepoToProject = (
     .then((r) => r.data);
 export const removeRepoFromProject = (id: string, repoRef: string) =>
   http
-    .delete(`/projects/${id}/repos/${encodeURIComponent(repoRef)}`)
+    .delete(`/projects/${id}/repos/`, { params: { ref: repoRef } })
+    .then((r) => r.data);
+export const changeRepoBranch = (
+  id: string,
+  repoRef: string,
+  branch?: string | null,
+) =>
+  http
+    .put(`/projects/${id}/repos/`, { ref: repoRef, branch: branch || '' })
     .then((r) => r.data);

@@ -19,6 +19,7 @@ import {
   TrashCanIcon,
 } from '../../../icons';
 import {
+  changeRepoBranch,
   indexRepoBranch,
   removeRepoFromProject,
   syncRepo,
@@ -179,10 +180,10 @@ const RepoDropdown = ({
   }, [notSyncedBranches, search]);
 
   const switchToBranch = useCallback(
-    (branch: string, e?: MouseEvent) => {
+    async (branch: string, e?: MouseEvent) => {
       e?.stopPropagation();
-      // addRepoToProject(projectId, repoRef, branch);
-      // refreshCurrentProjectRepos();
+      await changeRepoBranch(projectId, repoRef, branch);
+      refreshCurrentProjectRepos();
     },
     [projectId, repoRef],
   );
@@ -207,11 +208,11 @@ const RepoDropdown = ({
             label={t('Branches')}
             icon={<BranchIcon sizeClassName="w-4 h-4" />}
             customRightElement={
-              <span className="body-s text-label-muted">
-                {selectedBranch}
+              <span className="body-s text-label-muted overflow-hidden flex items-center gap-2">
+                <span className="ellipsis">{selectedBranch}</span>
                 <ArrowTriangleBottomIcon
                   sizeClassName="w-2 h-2"
-                  className={`ml-2 ${
+                  className={`${
                     isBranchesOpen ? 'rotate-180' : 'rotate-0'
                   } transition-transform duration-150 ease-in-out`}
                 />

@@ -49,7 +49,7 @@ const RepoEntry = ({
 
   const refetchFolderFiles = useCallback(() => {
     fetchFiles(fullPath).then(setSubItems);
-  }, [fullPath]);
+  }, [fullPath, fetchFiles]);
 
   useEffect(() => {
     if (currentPath && currentPath.startsWith(fullPath)) {
@@ -72,10 +72,10 @@ const RepoEntry = ({
   }, [lastIndex]);
 
   useEffect(() => {
-    if (isDirectory && isOpen && !subItems) {
-      fetchFiles(fullPath).then(setSubItems);
+    if (isDirectory && isOpen) {
+      refetchFolderFiles();
     }
-  }, [isOpen, isDirectory, subItems, refetchFolderFiles]);
+  }, [isOpen, isDirectory, refetchFolderFiles]);
 
   const handleClick = useCallback(() => {
     if (isDirectory) {

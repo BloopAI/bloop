@@ -84,7 +84,7 @@ const SectionItem = ({
       <span className="flex items-center gap-2 h-full overflow-hidden">
         {icon}
         <span
-          className="flex-1 flex flex-col gap-1"
+          className="flex-1 flex flex-col gap-1 ellipsis"
           title={typeof label === 'string' ? label : undefined}
         >
           <span className="body-s text-label-title ellipsis">{label}</span>

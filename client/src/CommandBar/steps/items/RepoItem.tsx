@@ -156,6 +156,7 @@ const RepoItem = ({
   const handleCancelSync = useCallback(() => {
     cancelSync(repo.ref);
     setStatus(SyncStatus.Cancelled);
+    eventSourceRef.current?.close();
   }, [repo.ref]);
 
   const isIndexing = useMemo(() => {
@@ -189,7 +190,7 @@ const RepoItem = ({
         key: 'stop_indexing',
       });
     }
-    if (repo.sync_status === SyncStatus.Done) {
+    if (status === SyncStatus.Done || status === SyncStatus.Cancelled) {
       dropdownItems1.push(
         isInProject
           ? {
@@ -266,7 +267,7 @@ const RepoItem = ({
     handleAddToProject,
     handleRemoveFromProject,
     handleCancelSync,
-    repo.sync_status,
+    status,
     repo.provider,
     isIndexing,
     handleOpenInFinder,
@@ -292,7 +293,7 @@ const RepoItem = ({
           : t('Index repository')
       }
       iconContainerClassName={
-        status === SyncStatus.Done
+        status === SyncStatus.Done || status === SyncStatus.Cancelled
           ? 'bg-bg-contrast text-label-contrast'
           : 'bg-bg-border'
       }
@@ -307,7 +308,7 @@ const RepoItem = ({
           : onRepoSync
       }
       footerBtns={
-        status === SyncStatus.Done
+        status === SyncStatus.Done || status === SyncStatus.Cancelled
           ? [
               {
                 label: isInProject

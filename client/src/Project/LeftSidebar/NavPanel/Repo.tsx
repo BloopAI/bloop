@@ -74,7 +74,7 @@ const RepoNav = ({
 
   const refetchParentFolder = useCallback(() => {
     fetchFiles().then(setFiles);
-  }, []);
+  }, [fetchFiles]);
 
   useEffect(() => {
     refetchParentFolder();
@@ -120,10 +120,8 @@ const RepoNav = ({
         ) : (
           <HardDriveIcon sizeClassName="w-3.5 h-3.5" />
         )}
-        <div className="flex items-center gap-1 ellipsis body-s-b flex-1">
-          <p className="text-label-title ellipsis">
-            {splitPath(repoRef).pop()}
-          </p>
+        <p className="flex items-center gap-1 body-s-b flex-1 ellipsis">
+          <span className="text-label-title">{splitPath(repoRef).pop()}</span>
           {isExpanded && (
             <>
               <span className="text-label-muted">/</span>
@@ -133,7 +131,7 @@ const RepoNav = ({
               </span>
             </>
           )}
-        </div>
+        </p>
         {isExpanded && (
           <div onClick={noPropagate}>
             <Dropdown
