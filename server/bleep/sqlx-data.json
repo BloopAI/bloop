@@ -106,6 +106,16 @@
     },
     "query": "SELECT context, messages FROM studio_snapshots WHERE id = ?"
   },
+  "0905057375a1d628fd57d3cc8ac5f9664711df0fcc886beb7ae14f661d121dfe": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 5
+      }
+    },
+    "query": "INSERT INTO conversations (\n                    id, thread_id, title, exchanges, project_id, created_at\n                )\n                VALUES (?, ?, ?, ?, ?, strftime('%s', 'now'))"
+  },
   "0b7aa6a8c243ac8ca79f52a5ef370ccce954b3635ce5e70a6e80732472a916f2": {
     "describe": {
       "columns": [
@@ -517,6 +527,24 @@
       }
     },
     "query": "INSERT INTO query_log (raw_query) VALUES (?)"
+  },
+  "4f8ac5ae1005cb9f30a211b05dbb803586cb3cc8991687b9e1f8fcbed308ff29": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 4
+      }
+    },
+    "query": "INSERT INTO conversations (\n                    thread_id, title, exchanges, project_id, created_at\n                )\n                VALUES (?, ?, ?, ?, strftime('%s', 'now'))\n                RETURNING id"
   },
   "5128142bf657cfde043a1b53834d40980caa3e9ae5fd6f4d7f30d89be512f105": {
     "describe": {
@@ -988,16 +1016,6 @@
     },
     "query": "DELETE FROM project_docs\n        WHERE project_id = $1 AND doc_id = $2 AND EXISTS (\n            SELECT id\n            FROM projects\n            WHERE id = $1 AND user_id = $3\n        )\n        RETURNING id"
   },
-  "834600ffd689d32c250771a3118d24fa93e71a6690b14703fe0b7feda05d53b6": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Right": 4
-      }
-    },
-    "query": "INSERT INTO conversations (\n                thread_id, title, exchanges, project_id, created_at\n            )\n            VALUES (?, ?, ?, ?, strftime('%s', 'now'))"
-  },
   "881aa78dfa3cd1bc3aa7a6edb8281aec5a972c1f53607d25c4e1f6d03cd3faef": {
     "describe": {
       "columns": [],
@@ -1232,6 +1250,24 @@
     },
     "query": "INSERT INTO chunk_cache (chunk_hash, file_hash, branches, repo_ref) VALUES (?, ?, ?, ?)"
   },
+  "bdc5bead3461cb22ac8882b2e01fca9c3aa15db524a9e8bd897cd2b5d5769c55": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        }
+      ],
+      "nullable": [
+        true
+      ],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "DELETE FROM conversations\n            WHERE thread_id = ? AND EXISTS (\n                SELECT p.id\n                FROM projects p\n                WHERE p.id = project_id AND p.user_id = ?\n            )\n            RETURNING id"
+  },
   "c1b0276926023df7e91a219e7720b0f5ade8d1b13de577dce4d78d31075a497b": {
     "describe": {
       "columns": [
@@ -1431,16 +1467,6 @@
       }
     },
     "query": "UPDATE project_repos\n        SET branch = ?\n        WHERE project_id = ? AND repo_ref = ?\n        RETURNING id"
-  },
-  "e9757c76de272638fb9738bf229d0b91285ae4cd9824ca6a16175ccdc4373efb": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Right": 2
-      }
-    },
-    "query": "DELETE FROM conversations\n            WHERE thread_id = ? AND EXISTS (\n                SELECT p.id\n                FROM projects p\n                WHERE p.id = project_id AND p.user_id = ?\n            )"
   },
   "ebdb202965998c4e29727dca19a60c82b2a4574530858e29bf6584c8b6e1f32b": {
     "describe": {

@@ -35,49 +35,71 @@ impl Conversation {
         }
     }
 
-    pub async fn store(&self, db: &SqlDb, user_id: &str) -> Result<()> {
+    pub async fn store(&self, db: &SqlDb, user_id: &str) -> Result<i64> {
         let mut transaction = db.begin().await?;
 
+        let thread_id = self.thread_id.to_string();
+
         // Delete the old conversation for simplicity. This also deletes all its messages.
-        sqlx::query! {
+        let id = sqlx::query! {
             "DELETE FROM conversations
             WHERE thread_id = ? AND EXISTS (
                 SELECT p.id
                 FROM projects p
                 WHERE p.id = project_id AND p.user_id = ?
-            )",
-            self.thread_id,
+            )
+            RETURNING id",
+            thread_id,
             user_id,
         }
-        .execute(&mut transaction)
-        .await?;
+        .fetch_optional(&mut transaction)
+        .await?
+        .map(|row| row.id.unwrap());
 
         let title = self
             .exchanges
             .first()
             .and_then(|list| list.query())
             .and_then(|q| q.split('\n').next().map(|s| s.to_string()))
-            .context("couldn't find conversation title")?;
+            .unwrap_or_else(|| "New Conversation".to_owned());
 
         let exchanges = serde_json::to_string(&self.exchanges)?;
-        let thread_id = self.thread_id.to_string();
 
-        sqlx::query! {
-            "INSERT INTO conversations (
-                thread_id, title, exchanges, project_id, created_at
-            )
-            VALUES (?, ?, ?, ?, strftime('%s', 'now'))",
-            thread_id,
-            title,
-            exchanges,
-            self.project_id,
-        }
-        .execute(&mut transaction)
-        .await?;
+        let id = if let Some(id) = id {
+            sqlx::query! {
+                "INSERT INTO conversations (
+                    id, thread_id, title, exchanges, project_id, created_at
+                )
+                VALUES (?, ?, ?, ?, ?, strftime('%s', 'now'))",
+                id,
+                thread_id,
+                title,
+                exchanges,
+                self.project_id,
+            }
+            .execute(&mut transaction)
+            .await?;
+            id
+        } else {
+            sqlx::query! {
+                "INSERT INTO conversations (
+                    thread_id, title, exchanges, project_id, created_at
+                )
+                VALUES (?, ?, ?, ?, strftime('%s', 'now'))
+                RETURNING id",
+                thread_id,
+                title,
+                exchanges,
+                self.project_id,
+            }
+            .fetch_one(&mut transaction)
+            .await?
+            .id
+        };
 
         transaction.commit().await?;
 
-        Ok(())
+        Ok(id)
     }
 
     pub async fn load(
