@@ -1,11 +1,4 @@
-import {
-  Dispatch,
-  memo,
-  SetStateAction,
-  useContext,
-  useEffect,
-  useState,
-} from 'react';
+import { memo, useCallback, useContext, useEffect, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { ChatBubblesIcon } from '../../../icons';
 import { TutorialQuestionType } from '../../../types/api';
@@ -25,13 +18,37 @@ const StarterMessage = ({
   const [tutorials, setTutorials] = useState<TutorialQuestionType[]>([]);
   const { project } = useContext(ProjectContext.Current);
 
-  useEffect(() => {
+  const getDiverseTutorials = useCallback(async () => {
     if (project?.repos.length) {
-      getTutorialQuestions(project.repos[0].repo.ref).then((resp) =>
-        setTutorials(resp.questions),
-      );
+      const tutorials = [];
+      let tutorialsPerRepo = Math.floor(10 / project.repos.length);
+      let remainingTutorials = 10;
+
+      for (const repo of project.repos) {
+        const repoTutorials = await getTutorialQuestions(repo.repo.ref);
+
+        const tutorialsToAdd = Math.min(
+          tutorialsPerRepo,
+          repoTutorials.questions.length,
+          remainingTutorials,
+        );
+
+        tutorials.push(...repoTutorials.questions.slice(0, tutorialsToAdd));
+
+        remainingTutorials -= tutorialsToAdd;
+
+        if (remainingTutorials <= 0) {
+          break;
+        }
+      }
+
+      setTutorials(tutorials);
     }
   }, [project?.repos]);
+
+  useEffect(() => {
+    getDiverseTutorials();
+  }, [getDiverseTutorials]);
 
   return (
     <div className="flex items-start gap-5 rounded-md p-4">
