@@ -2,7 +2,6 @@ use crate::query::parser::SemanticQuery;
 use std::fmt;
 
 use chrono::prelude::{DateTime, Utc};
-use rand::seq::SliceRandom;
 
 /// A continually updated conversation exchange.
 ///
@@ -59,25 +58,10 @@ impl Exchange {
             Update::Article(full_text) => {
                 *self.answer.get_or_insert_with(String::new) = full_text;
             }
-            Update::Conclude(conclusion) => {
-                self.response_timestamp = Some(Utc::now());
-                self.conclusion = Some(conclusion);
-            }
             Update::Focus(chunk) => {
                 self.focused_chunk = Some(chunk);
             }
-            Update::Cancel => {
-                let conclusion = [
-                    "The article wasn't completed. See what's available",
-                    "Your article stopped before completion. Check out the available content",
-                    "The content stopped generating early. Review the initial response",
-                ]
-                .choose(&mut rand::thread_rng())
-                .copied()
-                .unwrap()
-                .to_owned();
-
-                self.conclusion = Some(conclusion);
+            Update::SetTimestamp => {
                 self.response_timestamp = Some(Utc::now());
             }
         }
@@ -88,14 +72,11 @@ impl Exchange {
         self.query.target().map(|q| q.to_string())
     }
 
-    /// Get the answer and conclusion associated with this exchange, if a conclusion has been made.
+    /// Get the answer associated with this exchange.
     ///
-    /// This returns a tuple of `(full_text, conclusion)`.
-    pub fn answer(&self) -> Option<(&str, &str)> {
-        match (&self.answer, &self.conclusion) {
-            (Some(answer), Some(conclusion)) => Some((answer.as_str(), conclusion.as_str())),
-            _ => None,
-        }
+    /// This returns a tuple of `full_text`.
+    pub fn answer(&self) -> Option<&str> {
+        return self.answer.as_deref();
     }
 
     /// Return a copy of this exchange, with all function call responses redacted.
@@ -203,7 +184,6 @@ pub enum Update {
     StartStep(SearchStep),
     ReplaceStep(SearchStep),
     Article(String),
-    Conclude(String),
     Focus(FocusedChunk),
-    Cancel,
+    SetTimestamp,
 }

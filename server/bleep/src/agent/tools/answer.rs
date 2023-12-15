@@ -2,7 +2,6 @@ use std::{collections::HashMap, mem, ops::Range, pin::pin};
 
 use anyhow::{anyhow, Context, Result};
 use futures::StreamExt;
-use rand::{rngs::OsRng, seq::SliceRandom};
 use tracing::{debug, info, instrument, trace};
 
 use crate::{
@@ -77,32 +76,15 @@ impl Agent {
             let fragment = fragment?;
             response += &fragment;
 
-            let (article, summary) = transcoder::decode(&response);
+            let article = transcoder::decode(&response);
             self.update(Update::Article(article)).await?;
-
-            if let Some(summary) = summary {
-                self.update(Update::Conclude(summary)).await?;
-            }
         }
 
-        // We re-decode one final time to catch cases where `summary` is `None`, and to log the
-        // output as a trace.
-        let (article, summary) = transcoder::decode(&response);
-        let summary = summary.unwrap_or_else(|| {
-            [
-                "I hope that was useful, can I help with anything else?",
-                "Is there anything else I can help you with?",
-                "Can I help you with anything else?",
-            ]
-            .choose(&mut OsRng)
-            .copied()
-            .unwrap()
-            .to_owned()
-        });
+        if let Some(article) = self.last_exchange().answer() {
+            trace!(%article, "generated answer");
+        }
 
-        trace!(%article, "generated answer");
-
-        self.update(Update::Conclude(summary)).await?;
+        self.update(Update::SetTimestamp).await?;
 
         self.track_query(
             EventData::output_stage("answer_article")
@@ -223,10 +205,8 @@ impl Agent {
                     content: q,
                 });
 
-                let conclusion = e.answer().map(|(answer, conclusion)| {
-                    let encoded =
-                        transcoder::encode_summarized(answer, Some(conclusion), "gpt-4-0613")
-                            .unwrap();
+                let conclusion = e.answer().map(|answer| {
+                    let encoded = transcoder::encode_summarized(answer, "gpt-4-0613").unwrap();
 
                     llm_gateway::api::Message::PlainText {
                         role: "assistant".to_owned(),

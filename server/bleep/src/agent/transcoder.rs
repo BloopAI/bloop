@@ -15,8 +15,8 @@ use tiktoken_rs::CoreBPE;
 
 /// Decode an article.
 ///
-/// If successful, this returns a tuple of `(body, conclusion)`.
-pub fn decode(llm_message: &str) -> (String, Option<String>) {
+/// If successful, this returns `body`.
+pub fn decode(llm_message: &str) -> String {
     let sanitized = sanitize(llm_message);
     let markdown = xml_for_each(&sanitized, |code| xml_to_markdown(code).ok());
 
@@ -40,71 +40,13 @@ pub fn decode(llm_message: &str) -> (String, Option<String>) {
             .replace("\n\n<!-- end list -->", "")
     };
 
-    // `comrak` will not recognize footnote definitions unless they have been referenced at least
-    // once. To ensure our potential summary appears in the parse tree, we prepend the entire
-    // response with a sentinel reference to the footnote. After parsing, we look for that
-    // footnote and immediately remove (detach) it from the root node. This ensures that our
-    // artifical reference does not appear in the output.
+    let root = comrak::parse_document(&arena, &markdown, &options);
 
-    let document = format!("[^summary]\n\n{markdown}");
-    let root = comrak::parse_document(&arena, &document, &options);
-    let mut children = root.children();
-    // Detach the sentinel footnote reference.
-    children.next().unwrap().detach();
-
-    for block in children {
+    for block in root.children() {
         offset_embedded_link_ranges(block, -1);
-
-        match &block.data.borrow().value {
-            NodeValue::Paragraph => {
-                // Store our reconstructed markdown summary here, if it is found
-                let mut buf: Option<String> = None;
-
-                for child in block.children() {
-                    // NB: We have to store this here due to more `comrak` quirks. Because `comrak`
-                    // uses an arena-based API with `RefCell`s, we cannot both mutably borrow its
-                    // inner data and also immutably generate a string from the outer container.
-                    // So, we generate the string ahead of time in case we need it.
-                    let child_text = comrak_to_string(child);
-
-                    match &mut child.data.borrow_mut().value {
-                        NodeValue::Text(s) if s.contains("[^summary]:") && buf.is_none() => {
-                            let (l, r) = s.split_once("[^summary]:").unwrap();
-
-                            buf = Some(r.trim_start().to_owned());
-                            *s = l.trim_end().to_owned();
-                        }
-
-                        _ => {
-                            if let Some(buf) = buf.as_mut() {
-                                child.detach();
-                                *buf += &child_text;
-                                buf.push(' ');
-                            }
-                        }
-                    }
-                }
-
-                if let Some(conclusion) = buf {
-                    return (comrak_to_string(root), Some(conclusion.trim().to_owned()));
-                }
-            }
-
-            NodeValue::FootnoteDefinition(def) if def.name == "summary" => (),
-            _ => continue,
-        };
-
-        if let Some(first_child) = block.children().next() {
-            if let NodeValue::Paragraph = &first_child.data.borrow().value {
-                // We detach the summary from the main text, so that it does not end up in the final
-                // article output.
-                block.detach();
-                return (comrak_to_string(root), Some(comrak_to_string(first_child)));
-            }
-        }
     }
 
-    (comrak_to_string(root), None)
+    comrak_to_string(root)
 }
 
 /// Offset line ranges in embedded links by a specific value.
@@ -159,7 +101,7 @@ fn offset_embedded_link_ranges<'a>(element: &'a comrak::nodes::AstNode<'a>, offs
     }
 }
 
-pub fn encode(markdown: &str, conclusion: Option<&str>) -> String {
+pub fn encode(markdown: &str) -> String {
     let arena = comrak::Arena::new();
     let mut options = comrak::ComrakOptions::default();
     options.extension.footnotes = true;
@@ -235,28 +177,18 @@ pub fn encode(markdown: &str, conclusion: Option<&str>) -> String {
 
     let mut out = Vec::<u8>::new();
     comrak::format_commonmark(root, &options, &mut out).unwrap();
-    let body = String::from_utf8_lossy(&out).trim().to_owned();
-
-    if let Some(conclusion) = conclusion {
-        body + "\n\n[^summary]: " + conclusion
-    } else {
-        body
-    }
+    String::from_utf8_lossy(&out).trim().to_owned()
 }
 
-pub fn encode_summarized(markdown: &str, conclusion: Option<&str>, model: &str) -> Result<String> {
-    let article = xml_for_each(&encode(markdown, conclusion), |xml| {
-        try_trim_code_xml(xml).ok()
-    });
+pub fn encode_summarized(markdown: &str, model: &str) -> Result<String> {
+    let article = xml_for_each(&encode(markdown), |xml| try_trim_code_xml(xml).ok());
     let bpe = tiktoken_rs::get_bpe_from_model(model)?;
     Ok(limit_tokens(&article, bpe, 500).to_owned())
 }
 
 fn sanitize(article: &str) -> String {
     let sanitized = xml_for_each(article, |code| Some(fixup_xml_code(code).into_owned()));
-    regex!("<!--.*?-->")
-        .replace_all(&sanitized, "")
-        .replace("\n\n[^summary]:\n", "\n\n[^summary]: ")
+    regex!("<!--.*?-->").replace_all(&sanitized, "").into()
 }
 
 fn fixup_xml_code(xml: &str) -> Cow<str> {
@@ -804,8 +736,7 @@ fn foo<T>(t: T) -> bool {
 
 These should result in base64-encoded XML output, while maintaining the rest of the markdown article.";
 
-        let (body, conclusion) = decode(input);
-        assert_eq!(None, conclusion);
+        let body = decode(input);
         assert_eq!(expected, body);
     }
 
@@ -831,9 +762,7 @@ compiler.literal(schema.name, |q| q.repo.clone());
 let compiled_query = compiler.compile(queries, tantivy_index);
 ```";
 
-        let (body, conclusion) = decode(input);
-
-        assert_eq!(None, conclusion);
+        let body = decode(input);
         assert_eq!(expected, body);
     }
 
@@ -863,8 +792,7 @@ compiler.literal(schema.name, |q| q.repo.clone());
 let compiled_query = compiler.compile(queries, tantivy_index);
 ```";
 
-        let (body, conclusion) = decode(input);
-        assert_eq!(None, conclusion);
+        let body = decode(input);
         assert_eq!(expected, body);
     }
 
@@ -893,8 +821,7 @@ compiler.literal(schema.name, |q| q.repo.clone());
 let compiled_query =
 ```";
 
-        let (body, conclusion) = decode(input);
-        assert_eq!(None, conclusion);
+        let body = decode(input);
         assert_eq!(expected, body);
     }
 
@@ -923,85 +850,8 @@ compiler.literal(schema.name, |q| q.repo.clone());
 let compiled_query = compiler.compile(queries, tantivy_index);
 ```";
 
-        let (body, conclusion) = decode(input);
-        assert_eq!(None, conclusion);
+        let body = decode(input);
         assert_eq!(expected, body);
-    }
-
-    #[test]
-    fn test_decode_with_summary_and_xml() {
-        let input = "Bug reports are sent to the endpoint `https://api.bloop.ai/bug_reports` via a POST request. This is done in the function [`saveBugReport`](client/src/services/api.ts#L168-L172) in the file `client/src/services/api.ts`.
-
-Here is the relevant code:
-<QuotedCode>
-<Code>
-export const saveBugReport = (report: {
-  email: string;
-  name: string;
-  text: string;
-  unique_id: string;
-}) => axios.post(`${DB_API}/bug_reports`, report).then((r) => r.data);
-</Code>
-<Language>TypeScript</Language>
-<Path>client/src/services/api.ts</Path>
-<StartLine>168</StartLine>
-<EndLine>172</EndLine>
-</QuotedCode>
-
-[^summary]: Bug reports are sent to the endpoint `https://api.bloop.ai/bug_reports` via a POST request in the `saveBugReport` function.";
-        let (article, summary) = decode(input);
-
-        let expected_article = "Bug reports are sent to the endpoint `https://api.bloop.ai/bug_reports` via a POST request. This is done in the function [`saveBugReport`](client/src/services/api.ts#L167-L171) in the file `client/src/services/api.ts`.
-
-Here is the relevant code:
-
-``` type:Quoted,lang:TypeScript,path:client/src/services/api.ts,lines:167-171
-export const saveBugReport = (report: {
-  email: string;
-  name: string;
-  text: string;
-  unique_id: string;
-}) => axios.post(`${DB_API}/bug_reports`, report).then((r) => r.data);
-```";
-
-        let expected_summary = "Bug reports are sent to the endpoint `https://api.bloop.ai/bug_reports` via a POST request in the `saveBugReport` function.";
-
-        assert_eq!(expected_article, article);
-        assert_eq!(expected_summary, summary.unwrap());
-    }
-
-    #[test]
-    fn test_decode() {
-        let (body, summary) = decode(
-            r#"Hello world
-
-[^summary]: This is an example summary, with **bold text**."#,
-        );
-
-        assert_eq!(body, "Hello world");
-        assert_eq!(
-            summary.unwrap(),
-            "This is an example summary, with **bold text**."
-        );
-
-        let (body, summary) = decode(
-            r#"Hello world.
-
-Goodbye world.
-
-Hello again, world.
-
-[^summary]: This is an example summary, with **bold text**."#,
-        );
-
-        assert_eq!(
-            body,
-            "Hello world.\n\nGoodbye world.\n\nHello again, world."
-        );
-        assert_eq!(
-            summary.unwrap(),
-            "This is an example summary, with **bold text**."
-        );
     }
 
     #[test]
@@ -1047,11 +897,9 @@ fn main() {
 }
 </Code>
 <Language>Rust</Language>
-</GeneratedCode>
+</GeneratedCode>";
 
-[^summary]: Test **summary**.";
-
-        let encoded = encode(input, Some("Test **summary**."));
+        let encoded = encode(input);
 
         assert_eq!(expected, encoded);
     }
@@ -1082,11 +930,9 @@ fn main() {
 
 Bar.
 
+";
 
-
-[^summary]: Test **summary**.";
-
-        let encoded = encode_summarized(input, Some("Test **summary**."), "gpt-4-0613").unwrap();
+        let encoded = encode_summarized(input, "gpt-4-0613").unwrap();
 
         assert_eq!(expected, encoded);
     }
@@ -1127,9 +973,7 @@ fn main() {
 
 quux";
 
-        let (body, conclusion) = decode(&sanitize(input));
-
-        assert_eq!(None, conclusion);
+        let body = decode(&sanitize(input));
         assert_eq!(expected, body);
     }
 
@@ -1147,39 +991,6 @@ quux";
         assert_eq!(limit_tokens("fn 🚨() {}", bpe.clone(), 4), "fn 🚨");
         assert_eq!(limit_tokens("fn 🚨() {}", bpe.clone(), 5), "fn 🚨()");
         assert_eq!(limit_tokens("fn 🚨() {}", bpe, 6), "fn 🚨() {}");
-    }
-
-    #[test]
-    fn test_mid_block_summary() {
-        // We test a line with `[^summary]: ..` in the middle. This is not valid markdown but the
-        // LLM generates this sometimes anyway. There is nuance here, because we can *only* do this
-        // if a `Text` child node in a top-level `Paragraph` contains the string `[^summary]:`. To
-        // ensure the code doesn't break on that substring being contained elsewhere, we include
-        // the same string in the middle of a code block, as a test.
-
-        let input = "Dummy code block:
-
-<GeneratedCode>
-<Code>
-println!(\"[^summary]: dummy\");
-</Code>
-<Language>Rust</Language>
-</GeneratedCode>
-
-Foo *bar* `[^summary]: allow this, it is in code quotes` quux. [^summary]: Baz fred **thud** corge.\n\n";
-
-        let expected = "Dummy code block:
-
-``` type:Generated,lang:Rust,path:,lines:0-0
-println!(\"[^summary]: dummy\");
-```
-
-Foo *bar* `[^summary]: allow this, it is in code quotes` quux.";
-
-        let (body, conclusion) = decode(input);
-
-        assert_eq!(expected, body);
-        assert_eq!("Baz fred **thud** corge.", conclusion.unwrap());
     }
 
     #[test]
@@ -1259,9 +1070,7 @@ func sendSlackMessage(org string) error {
 <Path>cmd/worker/slack.go</Path>
 <StartLine>14</StartLine>
 <EndLine>41</EndLine>
-</QuotedCode>
-
-[^summary]: The code in `cmd/worker/slack.go` is a Go program that sends a message to a Slack channel using a webhook URL. The `sendSlackMessage` function constructs a message about a new organization, creates an HTTP POST request with this message, and sends it to the Slack webhook URL."#;
+</QuotedCode>"#;
 
         let expected_body = r#"The code in [`cmd/worker/slack.go`](cmd/worker/slack.go#L0-L41) is a Go program that sends a message to a Slack channel using a webhook URL.
 
@@ -1322,12 +1131,8 @@ func sendSlackMessage(org string) error {
 }
 ```"#;
 
-        let expected_conclusion = r#"The code in `cmd/worker/slack.go` is a Go program that sends a message to a Slack channel using a webhook URL. The `sendSlackMessage` function constructs a message about a new organization, creates an HTTP POST request with this message, and sends it to the Slack webhook URL."#;
-
-        let (body, conclusion) = decode(input);
-
+        let body = decode(input);
         assert_eq!(expected_body, body);
-        assert_eq!(expected_conclusion, conclusion.unwrap());
     }
 
     #[test]
@@ -1342,10 +1147,9 @@ func sendSlackMessage(org string) error {
 - Fred [thud](thud.rs#L0-L9) corge.
 - Grault [garply](waldo.rs#L0-L9) plugh.";
 
-        let (body, conclusion) = decode(input);
+        let body = decode(input);
 
         assert_eq!(expected, body);
-        assert_eq!(None, conclusion);
     }
 
     #[test]
@@ -1363,7 +1167,7 @@ func sendSlackMessage(org string) error {
 - Fred [thud](thud.rs#L1-L10) corge.
 - Grault [garply](waldo.rs#L1-L10) plugh.";
 
-        assert_eq!(expected, encode(input, None));
+        assert_eq!(expected, encode(input));
     }
 
     #[test]
@@ -1376,9 +1180,7 @@ func sendSlackMessage(org string) error {
 - A [`StatefulSet`](helm/bloop/templates/qdrant-statefulset.yaml#L1-L145) for the Qdrant service
 - A [`Job`](helm/bloop/templates/notification-job.yaml#L1-L25) for sending notifications
 
-The Helm chart's configurable values are defined in the [`values.yaml`](helm/bloop/values.yaml#L1-L201) file.
-
-[^summary]: Yes, this project is deployable on Kubernetes. It includes a Helm chart with definitions for various Kubernetes resources such as Deployments, Services, PersistentVolumeClaims, StatefulSets, and Jobs.";
+The Helm chart's configurable values are defined in the [`values.yaml`](helm/bloop/values.yaml#L1-L201) file.";
 
         let expected_body = "Yes, this project is deployable on Kubernetes. The project contains a Helm chart located in the [`helm/bloop/`](helm/bloop/) directory. This chart includes various Kubernetes resource definitions such as:
 
@@ -1390,31 +1192,8 @@ The Helm chart's configurable values are defined in the [`values.yaml`](helm/blo
 
 The Helm chart's configurable values are defined in the [`values.yaml`](helm/bloop/values.yaml#L0-L200) file.";
 
-        let expected_conclusion = "Yes, this project is deployable on Kubernetes. It includes a Helm chart with definitions for various Kubernetes resources such as Deployments, Services, PersistentVolumeClaims, StatefulSets, and Jobs.";
-
-        let (body, conclusion) = decode(input);
-
+        let body = decode(input);
         assert_eq!(expected_body, body);
-        assert_eq!(expected_conclusion, conclusion.unwrap());
-    }
-
-    #[test]
-    fn test_malformed_summary() {
-        let input = "Foo bar.
-
-[^summary]:
-Baz quux.";
-
-        let (body, conclusion) = decode(input);
-
-        let arena = comrak::Arena::new();
-        let mut options = comrak::ComrakOptions::default();
-        options.extension.footnotes = true;
-
-        dbg!(comrak::parse_document(&arena, input, &options));
-
-        assert_eq!("Foo bar.", body);
-        assert_eq!("Baz quux.", conclusion.unwrap());
     }
 
     #[test]
@@ -1440,10 +1219,8 @@ Another paragraph.";
 
 Another paragraph.";
 
-        let (body, conclusion) = decode(input);
-
+        let body = decode(input);
         assert_eq!(expected, body);
-        assert_eq!(None, conclusion);
     }
 
     #[test]
@@ -1476,10 +1253,8 @@ fn main() {
 
 Another paragraph.";
 
-        let (body, conclusion) = decode(input);
-
+        let body = decode(input);
         assert_eq!(expected, body);
-        assert_eq!(None, conclusion);
     }
 
     #[test]
@@ -1517,10 +1292,8 @@ fn foo() -> i32 {
 
 Another paragraph.";
 
-        let (body, conclusion) = decode(input);
-
+        let body = decode(input);
         assert_eq!(expected, body);
-        assert_eq!(None, conclusion);
     }
 
     #[test]
@@ -1566,9 +1339,7 @@ fn foo() -> i32 {
 
 Another paragraph.";
 
-        let (body, conclusion) = decode(input);
-
+        let body = decode(input);
         assert_eq!(expected, body);
-        assert_eq!(None, conclusion);
     }
 }
