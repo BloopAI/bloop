@@ -6,32 +6,52 @@ import Dropdown from '../../../components/Dropdown';
 import { checkEventKeys } from '../../../utils/keyboardUtils';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
 import { TabsContext } from '../../../context/tabsContext';
+import { ChatTabType } from '../../../types/general';
+import { ProjectContext } from '../../../context/projectContext';
 import Conversation from './Conversation';
 import ActionsDropdown from './ActionsDropdown';
 
-type Props = {
+type Props = ChatTabType & {
   noBorder?: boolean;
   side: 'left' | 'right';
   tabKey: string;
   handleMoveToAnotherSide: () => void;
-  title?: string;
 };
 
 const ChatTab = ({
   noBorder,
   side,
   title,
+  conversationId,
   tabKey,
   handleMoveToAnotherSide,
 }: Props) => {
   const { t } = useTranslation();
   const { focusedPanel } = useContext(TabsContext.All);
+  const { closeTab } = useContext(TabsContext.Handlers);
+  const { project, refreshCurrentProjectConversations } = useContext(
+    ProjectContext.Current,
+  );
 
   const dropdownComponentProps = useMemo(() => {
     return {
       handleMoveToAnotherSide,
+      conversationId,
+      projectId: project?.id,
+      tabKey,
+      closeTab,
+      refreshCurrentProjectConversations,
+      side,
     };
-  }, [handleMoveToAnotherSide]);
+  }, [
+    handleMoveToAnotherSide,
+    conversationId,
+    closeTab,
+    project?.id,
+    tabKey,
+    refreshCurrentProjectConversations,
+    side,
+  ]);
 
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {

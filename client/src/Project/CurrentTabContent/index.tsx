@@ -75,11 +75,11 @@ const CurrentTabContent = ({
           />
         ) : tab?.type === TabTypesEnum.CHAT ? (
           <ChatTab
+            {...tab}
             noBorder={side === 'left'}
             side={side}
             tabKey={tab.key}
             key={tab.key}
-            title={tab.title}
             handleMoveToAnotherSide={handleMoveToAnotherSide}
           />
         ) : (

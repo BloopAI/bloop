@@ -577,5 +577,6 @@
 	"Open in split view": "Abrir en vista dividida",
 	"Chat conversations": "Conversaciones de chat",
 	"New chat": "Nueva conversación",
-	"Delete all conversations": "Eliminar todas las conversaciones"
+	"Delete all conversations": "Eliminar todas las conversaciones",
+	"Delete conversation": "Eliminar la conversación"
 }

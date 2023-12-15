@@ -1,5 +1,5 @@
 import flatten from 'lodash.flatten';
-import { ConversationType, SearchStepType } from '../types/api';
+import { ConversationExchangeType, SearchStepType } from '../types/api';
 import {
   ChatLoadingStep,
   ParsedQueryType,
@@ -31,7 +31,7 @@ export const mapLoadingSteps = (
   return flatten(arr);
 };
 
-const mapQueryParts = (query: ConversationType['query']) => {
+const mapQueryParts = (query: ConversationExchangeType['query']) => {
   const array: {
     type: ParsedQueryTypeEnum;
     start: number;
@@ -39,7 +39,12 @@ const mapQueryParts = (query: ConversationType['query']) => {
     text: string;
   }[] = [];
   (
-    ['paths', 'langs', 'repos', 'branch'] as (keyof ConversationType['query'])[]
+    [
+      'paths',
+      'langs',
+      'repos',
+      'branch',
+    ] as (keyof ConversationExchangeType['query'])[]
   ).forEach((key) => {
     array.push(
       // @ts-ignore
@@ -54,7 +59,9 @@ const mapQueryParts = (query: ConversationType['query']) => {
   return array;
 };
 
-export const mapUserQuery = (m: ConversationType): ParsedQueryType[] => {
+export const mapUserQuery = (
+  m: ConversationExchangeType,
+): ParsedQueryType[] => {
   const parsedQuery = [];
   const parts = mapQueryParts(m.query).sort((a, b) => a.start - b.start);
   let currentIndex = 0;

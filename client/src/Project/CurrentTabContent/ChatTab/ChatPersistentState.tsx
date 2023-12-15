@@ -44,7 +44,7 @@ const ChatPersistentState = ({
   tabKey,
   side,
   initialQuery,
-  conversationId,
+  conversationId: convId,
 }: Props) => {
   const { t } = useTranslation();
   const { apiUrl } = useContext(DeviceContext);
@@ -53,7 +53,7 @@ const ChatPersistentState = ({
   );
   const { preferredAnswerSpeed } = useContext(ProjectContext.AnswerSpeed);
   const { setChats } = useContext(ChatsContext);
-  const { openNewTab, updateTabTitle } = useContext(TabsContext.Handlers);
+  const { openNewTab, updateTabProperty } = useContext(TabsContext.Handlers);
 
   const prevEventSource = useRef<EventSource | null>(null);
 
@@ -157,6 +157,13 @@ const ChatPersistentState = ({
     });
   }, [threadId]);
 
+  const [conversationId, setConversationId] = useState('');
+  useEffect(() => {
+    setChats((prev) => {
+      return { ...prev, [tabKey]: { ...prev[tabKey], conversationId } };
+    });
+  }, [conversationId]);
+
   const closeDeprecatedModal = useCallback(() => {
     setDeprecatedModalOpen(false);
   }, []);
@@ -241,8 +248,8 @@ const ChatPersistentState = ({
             ? 'gpt-4'
             : 'gpt-3.5-turbo-finetuned',
       };
-      if (threadId) {
-        queryParams.thread_id = threadId;
+      if (conversationId) {
+        queryParams.conversation_id = conversationId;
         if (queryIdToEdit) {
           queryParams.parent_query_id = queryIdToEdit;
         }
@@ -294,7 +301,7 @@ const ChatPersistentState = ({
           return [...newConversation, lastMessage];
         });
       };
-      let thread_id = '';
+      let conversation_id = '';
       eventSource.onmessage = (ev) => {
         console.log(ev.data);
         if (
@@ -336,8 +343,17 @@ const ChatPersistentState = ({
         i++;
         if (i === 0) {
           const data = JSON.parse(ev.data);
-          thread_id = data.thread_id;
+          conversation_id = data.conversation_id;
           setThreadId(data.thread_id);
+          setConversationId(data.conversation_id);
+          if (conversation.length < 2) {
+            updateTabProperty(
+              tabKey,
+              'conversationId',
+              data.conversation_id,
+              side,
+            );
+          }
           return;
         }
         if (ev.data === '[DONE]') {
@@ -360,7 +376,7 @@ const ChatPersistentState = ({
           const data = JSON.parse(ev.data);
           if (data.Ok) {
             const newMessage = data.Ok;
-            conversationsCache[thread_id] = undefined; // clear cache on new answer
+            conversationsCache[conversation_id] = undefined; // clear cache on new answer
             setConversation((prev) => {
               const newConversation = prev?.slice(0, -1) || [];
               const lastMessage = prev?.slice(-1)[0];
@@ -448,7 +464,7 @@ const ChatPersistentState = ({
         eventSource.close();
       };
     },
-    [threadId, t, queryIdToEdit, preferredAnswerSpeed, openNewTab, side],
+    [conversationId, t, queryIdToEdit, preferredAnswerSpeed, openNewTab, side],
   );
 
   useEffect(() => {
@@ -474,7 +490,7 @@ const ChatPersistentState = ({
     }
     setConversation((prev) => {
       if (!prev.length) {
-        updateTabTitle(tabKey, userQuery, side);
+        updateTabProperty(tabKey, 'title', userQuery, side);
       }
       return prev.length === 1 && submittedQuery.options
         ? prev
@@ -541,11 +557,10 @@ const ChatPersistentState = ({
   }, [onMessageEditCancel]);
 
   useEffect(() => {
-    if (conversationId && project?.id) {
-      getConversation(project.id, conversationId).then((resp) => {
-        // todo: add thread_id
+    if (convId && project?.id) {
+      getConversation(project.id, convId).then((resp) => {
         const conv: ChatMessage[] = [];
-        resp.forEach((m) => {
+        resp.exchanges.forEach((m) => {
           // @ts-ignore
           const userQuery = m.search_steps.find((s) => s.type === 'QUERY');
           const parsedQuery = mapUserQuery(m);
@@ -567,9 +582,11 @@ const ChatPersistentState = ({
           });
         });
         setConversation(conv);
+        setThreadId(resp.thread_id);
+        setConversationId(convId);
       });
     }
-  }, [conversationId, project?.id]);
+  }, [convId, project?.id]);
 
   return null;
 };

@@ -134,15 +134,20 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
     });
   }, []);
 
-  const updateTabTitle = useCallback(
-    (tabKey: string, newTitle: string, side: 'left' | 'right') => {
+  const updateTabProperty = useCallback(
+    (
+      tabKey: string,
+      objectKey: keyof ChatTabType,
+      newValue: string,
+      side: 'left' | 'right',
+    ) => {
       const setTabsAction = side === 'left' ? setLeftTabs : setRightTabs;
       const setActiveTabAction =
         side === 'left' ? setActiveLeftTab : setActiveRightTab;
       setTabsAction((prevTabs) => {
         const newTabs = [...prevTabs];
         const oldTabIndex = prevTabs.findIndex((t) => t.key === tabKey);
-        const newTab = { ...newTabs[oldTabIndex], title: newTitle };
+        const newTab = { ...newTabs[oldTabIndex], [objectKey]: newValue };
         newTabs[oldTabIndex] = newTab;
         setActiveTabAction(newTab);
         return newTabs;
@@ -172,9 +177,9 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
       setFocusedPanel,
       setLeftTabs,
       setRightTabs,
-      updateTabTitle,
+      updateTabProperty,
     }),
-    [closeTab, openNewTab, updateTabTitle],
+    [closeTab, openNewTab, updateTabProperty],
   );
 
   const allContextValue = useMemo(

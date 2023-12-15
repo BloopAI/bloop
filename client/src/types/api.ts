@@ -229,6 +229,7 @@ export type ConversationShortType = {
   created_at: number;
   id: string;
   title: string;
+  thread_id: string;
 };
 
 export type AllConversationsResponse = ConversationShortType[];
@@ -251,6 +252,11 @@ type PathStep = {
 export type SearchStepType = ProcStep | CodeStep | PathStep;
 
 export type ConversationType = {
+  thread_id: string;
+  exchanges: ConversationExchangeType[];
+};
+
+export type ConversationExchangeType = {
   id: string;
   search_steps: SearchStepType[];
   query: {

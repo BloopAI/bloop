@@ -2,6 +2,7 @@ import axios, { AxiosInstance, GenericAbortSignal } from 'axios';
 import {
   AllConversationsResponse,
   CodeStudioType,
+  ConversationExchangeType,
   ConversationType,
   Directory,
   DocPageType,
@@ -294,7 +295,7 @@ export const getProjectConversations = (
 export const getConversation = (
   projectId: string,
   conversationId: string,
-): Promise<ConversationType[]> =>
+): Promise<ConversationType> =>
   http
     .get(`/projects/${projectId}/conversations/${conversationId}`)
     .then((r) => r.data);
@@ -312,7 +313,7 @@ export const upvoteAnswer = (
   thread_id: string,
   query_id: string,
   feedback: { type: 'positive' } | { type: 'negative'; feedback: string },
-): Promise<ConversationType> =>
+): Promise<ConversationExchangeType> =>
   http
     .post(`/projects/${projectId}/answer/vote`, {
       thread_id,

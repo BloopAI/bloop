@@ -1,28 +1,9 @@
 import { createContext, Dispatch, SetStateAction } from 'react';
-import { TabType, TabTypesEnum } from '../types/general';
+import { ChatTabType, FileTabType, TabType } from '../types/general';
 
 type HandlersContextType = {
   openNewTab: (
-    data:
-      | {
-          type: TabTypesEnum.FILE;
-          path: string;
-          repoRef: string;
-          branch?: string | null;
-          scrollToLine?: string;
-          tokenRange?: string;
-        }
-      | {
-          type: TabTypesEnum.CHAT;
-          conversationId?: string;
-          title?: string;
-          initialQuery?: {
-            path: string;
-            lines: [number, number];
-            repoRef: string;
-            branch?: string | null;
-          };
-        },
+    data: Omit<FileTabType, 'key'> | Omit<ChatTabType, 'key'>,
     forceSide?: 'left' | 'right',
   ) => void;
   closeTab: (key: string, side: 'left' | 'right') => void;
@@ -31,9 +12,10 @@ type HandlersContextType = {
   setFocusedPanel: (panel: 'left' | 'right') => void;
   setLeftTabs: Dispatch<SetStateAction<TabType[]>>;
   setRightTabs: Dispatch<SetStateAction<TabType[]>>;
-  updateTabTitle: (
+  updateTabProperty: (
     tabKey: string,
-    newTitle: string,
+    objectKey: keyof ChatTabType,
+    newValue: string,
     side: 'left' | 'right',
   ) => void;
 };
@@ -47,7 +29,7 @@ export const TabsContext = {
     setFocusedPanel: (panel: 'left' | 'right') => {},
     setLeftTabs: () => {},
     setRightTabs: () => {},
-    updateTabTitle: () => {},
+    updateTabProperty: () => {},
   }),
   All: createContext<{
     leftTabs: TabType[];
