@@ -110,11 +110,11 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         )
         .route(
             "/projects/:project_id/conversations",
-            get(conversation::list).delete(conversation::delete),
+            get(conversation::list),
         )
         .route(
             "/projects/:project_id/conversations/:conversation_id",
-            get(conversation::get),
+            get(conversation::get).delete(conversation::delete),
         )
         .route("/projects/:project_id/q", get(query::handle))
         .route("/projects/:project_id/search/path", get(search::fuzzy_path))
