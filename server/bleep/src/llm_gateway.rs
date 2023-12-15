@@ -112,6 +112,21 @@ pub mod api {
 
         #[error("incorrect configuration")]
         BadConfiguration,
+
+        #[error("failed to call quota API")]
+        QuotaCallFailed,
+
+        #[error("exceeded quota")]
+        ExceededQuota,
+
+        #[error("quota API was not set")]
+        QuotaApiNotSet,
+
+        #[error("called quota API with no authorization")]
+        UnauthorizedQuotaCall,
+
+        #[error("waiting for the next token took longer than allowed")]
+        TokenDelayTooLarge,
     }
 
     pub type Result = std::result::Result<String, Error>;
