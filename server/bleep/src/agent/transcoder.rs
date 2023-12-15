@@ -41,6 +41,11 @@ pub fn decode(llm_message: &str) -> String {
     };
 
     let root = comrak::parse_document(&arena, &markdown, &options);
+
+    for block in root.children() {
+        offset_embedded_link_ranges(block, -1);
+    }
+
     comrak_to_string(root)
 }
 
@@ -925,8 +930,6 @@ fn main() {
 
 Bar.
 
-
-
 ";
 
         let encoded = encode_summarized(input, "gpt-4-0613").unwrap();
@@ -1177,9 +1180,7 @@ func sendSlackMessage(org string) error {
 - A [`StatefulSet`](helm/bloop/templates/qdrant-statefulset.yaml#L1-L145) for the Qdrant service
 - A [`Job`](helm/bloop/templates/notification-job.yaml#L1-L25) for sending notifications
 
-The Helm chart's configurable values are defined in the [`values.yaml`](helm/bloop/values.yaml#L1-L201) file.
-
-[^summary]: Yes, this project is deployable on Kubernetes. It includes a Helm chart with definitions for various Kubernetes resources such as Deployments, Services, PersistentVolumeClaims, StatefulSets, and Jobs.";
+The Helm chart's configurable values are defined in the [`values.yaml`](helm/bloop/values.yaml#L1-L201) file.";
 
         let expected_body = "Yes, this project is deployable on Kubernetes. The project contains a Helm chart located in the [`helm/bloop/`](helm/bloop/) directory. This chart includes various Kubernetes resource definitions such as:
 
@@ -1189,9 +1190,7 @@ The Helm chart's configurable values are defined in the [`values.yaml`](helm/blo
 - A [`StatefulSet`](helm/bloop/templates/qdrant-statefulset.yaml#L0-L144) for the Qdrant service
 - A [`Job`](helm/bloop/templates/notification-job.yaml#L0-L24) for sending notifications
 
-The Helm chart's configurable values are defined in the [`values.yaml`](helm/bloop/values.yaml#L0-L200) file.
-
-[^summary]: Yes, this project is deployable on Kubernetes. It includes a Helm chart with definitions for various Kubernetes resources such as Deployments, Services, PersistentVolumeClaims, StatefulSets, and Jobs.";
+The Helm chart's configurable values are defined in the [`values.yaml`](helm/bloop/values.yaml#L0-L200) file.";
 
         let body = decode(input);
         assert_eq!(expected_body, body);
