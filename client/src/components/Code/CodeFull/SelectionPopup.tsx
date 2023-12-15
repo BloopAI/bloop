@@ -2,10 +2,11 @@ import { memo, useCallback, useContext, MouseEvent } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Trans } from 'react-i18next';
 import { DeviceContext } from '../../../context/deviceContext';
-import { CodeLineWithSparkleIcon } from '../../../icons';
+import { CodeLineWithSparkleIcon, LinkChainIcon } from '../../../icons';
 import { TabTypesEnum } from '../../../types/general';
 import { TabsContext } from '../../../context/tabsContext';
 import Button from '../../Button';
+import { copyToClipboard } from '../../../utils';
 
 type Props = {
   popupPosition?: {
@@ -58,6 +59,19 @@ const SelectionPopup = ({
     [path, repoRef, branch, selectedLines, side, closePopup],
   );
 
+  const handleCopyLink = useCallback(
+    (e: MouseEvent) => {
+      e.stopPropagation();
+      if (selectedLines) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('scrollToLine', selectedLines.join('_'));
+        copyToClipboard(url.toString());
+      }
+      closePopup?.();
+    },
+    [selectedLines],
+  );
+
   return (
     <AnimatePresence>
       {popupPosition && (
@@ -81,27 +95,12 @@ const SelectionPopup = ({
             {/*  </button>*/}
             {/*) : (*/}
             {/*  <>*/}
-            {/*{isSelfServe && (*/}
-            {/*  <button*/}
-            {/*    onClick={(e) => {*/}
-            {/*      e.stopPropagation();*/}
-            {/*      setPopupPosition(null);*/}
-            {/*      const url = new URL(window.location.href);*/}
-            {/*      url.searchParams.set(*/}
-            {/*        'scrollToLine',*/}
-            {/*        `${currentSelection[0][0]}_${currentSelection[1][0]}`,*/}
-            {/*      );*/}
-            {/*      copyToClipboard(url.toString());*/}
-            {/*      closePopup?.();*/}
-            {/*    }}*/}
-            {/*    className="h-8 flex items-center justify-center gap-1 px-2 hover:bg-bg-base-hover border-r border-bg-border caption text-label-title"*/}
-            {/*  >*/}
-            {/*    <div className="w-4 h-4">*/}
-            {/*      <Clipboard raw />*/}
-            {/*    </div>*/}
-            {/*    <Trans>Copy link</Trans>*/}
-            {/*  </button>*/}
-            {/*)}*/}
+            {isSelfServe && (
+              <Button variant="tertiary" size="mini" onClick={handleCopyLink}>
+                <LinkChainIcon sizeClassName="w-3.5 h-3.5" />
+                <Trans>Copy link</Trans>
+              </Button>
+            )}
             <Button variant="tertiary" size="mini" onClick={handleExplain}>
               <CodeLineWithSparkleIcon sizeClassName="w-3.5 h-3.5" />
               <Trans>Explain</Trans>

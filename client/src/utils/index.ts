@@ -313,8 +313,8 @@ export const calculatePopupPositionInsideContainer = (
 
 function getLineNumber(element: HTMLElement | null) {
   while (element) {
-    if (element?.dataset?.['line-number']) {
-      return element.dataset['line-number'];
+    if (element?.dataset?.['line-number'] || element?.dataset?.lineNumber) {
+      return element.dataset['line-number'] || element.dataset.lineNumber;
     }
     element = element.parentElement;
   }
