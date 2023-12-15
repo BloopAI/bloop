@@ -15,11 +15,13 @@ import {
   TabTypesEnum,
 } from '../../types/general';
 import { ProjectContext } from '../projectContext';
+import { CommandBarContext } from '../commandBarContext';
 
 type Props = {};
 
 const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
   const { project, isReposLoaded } = useContext(ProjectContext.Current);
+  const { setFocusedTabItems } = useContext(CommandBarContext.Handlers);
   const [leftTabs, setLeftTabs] = useState<TabType[]>([]);
   const [rightTabs, setRightTabs] = useState<TabType[]>([]);
   const [activeLeftTab, setActiveLeftTab] = useState<TabType | null>(null);
@@ -109,6 +111,13 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
       setFocusedPanel('left');
     }
   }, [rightTabs]);
+
+  useEffect(() => {
+    const activeTab = focusedPanel === 'left' ? activeLeftTab : activeRightTab;
+    if (!activeTab) {
+      setFocusedTabItems([]);
+    }
+  }, [focusedPanel, activeLeftTab, activeRightTab]);
 
   const closeTab = useCallback((key: string, side: 'left' | 'right') => {
     const setTabsAction = side === 'left' ? setLeftTabs : setRightTabs;

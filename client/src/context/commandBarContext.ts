@@ -3,7 +3,6 @@ import {
   CommandBarActiveStepType,
   CommandBarItemInvisibleType,
   CommandBarItemGeneralType,
-  CommandBarItemType,
   CommandBarStepEnum,
 } from '../types/general';
 
@@ -24,6 +23,7 @@ type HandlersContext = {
     }>
   >;
   setIsVisible: Dispatch<SetStateAction<boolean>>;
+  setFocusedTabItems: Dispatch<SetStateAction<CommandBarItemGeneralType[]>>;
 };
 
 type GeneralContextType = {
@@ -38,6 +38,7 @@ export const CommandBarContext = {
     setChosenStep: () => {},
     setFocusedItem: () => {},
     setIsVisible: () => {},
+    setFocusedTabItems: () => {},
   }),
   General: createContext<GeneralContextType>({
     isVisible: false,
@@ -46,5 +47,8 @@ export const CommandBarContext = {
     chosenStep: {
       id: CommandBarStepEnum.INITIAL,
     },
+  }),
+  FocusedTab: createContext<{ items: CommandBarItemGeneralType[] }>({
+    items: [],
   }),
 };

@@ -36,6 +36,7 @@ type Props = {};
 const InitialCommandBar = ({}: Props) => {
   const { t } = useTranslation();
   const { setIsVisible } = useContext(CommandBarContext.Handlers);
+  const { items: tabItems } = useContext(CommandBarContext.FocusedTab);
   const { projects } = useContext(ProjectContext.All);
   const { setCurrentProjectId, project } = useContext(ProjectContext.Current);
   const { theme } = useContext(UIContext.Theme);
@@ -218,26 +219,37 @@ const InitialCommandBar = ({}: Props) => {
     ];
     const commandsItems = [...themeItems, ...otherCommands];
     return [
+      ...(tabItems.length
+        ? [
+            {
+              items: tabItems,
+              itemsOffset: 0,
+              // label: t('Manage context'),
+              key: 'tab-items',
+            },
+          ]
+        : []),
       {
         items: contextItems,
-        itemsOffset: 0,
+        itemsOffset: tabItems.length,
         label: t('Manage context'),
         key: 'context-items',
       },
       {
         items: projectItems,
-        itemsOffset: contextItems.length,
+        itemsOffset: tabItems.length + contextItems.length,
         label: t('Recent projects'),
         key: 'recent-projects',
       },
       {
         items: commandsItems,
-        itemsOffset: contextItems.length + projectItems.length,
+        itemsOffset:
+          tabItems.length + contextItems.length + projectItems.length,
         label: t('Commands'),
         key: 'general-commands',
       },
     ];
-  }, [t, projects, project, theme, globalShortcuts]);
+  }, [t, projects, project, theme, globalShortcuts, tabItems]);
 
   const sectionsToShow = useMemo(() => {
     if (!inputValue) {

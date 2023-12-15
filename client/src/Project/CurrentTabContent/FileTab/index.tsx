@@ -17,7 +17,12 @@ import {
 import { splitPath } from '../../../utils';
 import FileIcon from '../../../components/FileIcon';
 import Button from '../../../components/Button';
-import { EyeCutIcon, MoreHorizontalIcon } from '../../../icons';
+import {
+  EyeCutIcon,
+  FileWithSparksIcon,
+  MoreHorizontalIcon,
+  SplitViewIcon,
+} from '../../../icons';
 import { FileResponse } from '../../../types/api';
 import { mapRanges } from '../../../mappers/results';
 import { Range } from '../../../types/results';
@@ -32,6 +37,8 @@ import Dropdown from '../../../components/Dropdown';
 import { TabsContext } from '../../../context/tabsContext';
 import { checkEventKeys } from '../../../utils/keyboardUtils';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
+import { CommandBarContext } from '../../../context/commandBarContext';
+import { openInSplitViewShortcut } from '../../../consts/commandBar';
 import ActionsDropdown from './ActionsDropdown';
 
 type Props = {
@@ -44,6 +51,8 @@ type Props = {
   side: 'left' | 'right';
   handleMoveToAnotherSide: () => void;
 };
+
+export const explainFileShortcut = ['cmd', 'E'];
 
 const FileTab = ({
   path,
@@ -63,6 +72,9 @@ const FileTab = ({
   const [indexRequested, setIndexRequested] = useState(false);
   const [isFetched, setIsFetched] = useState(false);
   const { apiUrl } = useContext(DeviceContext);
+  const { setFocusedTabItems, setIsVisible } = useContext(
+    CommandBarContext.Handlers,
+  );
   const { refreshCurrentProjectRepos } = useContext(ProjectContext.Current);
   const eventSourceRef = useRef<EventSource | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -170,9 +182,9 @@ const FileTab = ({
   }, [path, repoRef, branch, linesNumber, side, openNewTab]);
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
-      if (checkEventKeys(e, ['cmd', 'E'])) {
+      if (checkEventKeys(e, explainFileShortcut)) {
         handleExplain();
-      } else if (checkEventKeys(e, ['cmd', ']'])) {
+      } else if (checkEventKeys(e, openInSplitViewShortcut)) {
         handleMoveToAnotherSide();
       }
     },
@@ -182,6 +194,45 @@ const FileTab = ({
     handleKeyEvent,
     !file?.contents || focusedPanel !== side,
   );
+
+  useEffect(() => {
+    if (focusedPanel === side && file?.contents) {
+      setFocusedTabItems([
+        {
+          label: t('Explain file'),
+          Icon: FileWithSparksIcon,
+          id: 'explain_file',
+          key: 'explain_file',
+          onClick: () => {
+            handleExplain();
+            setIsVisible(false);
+          },
+          shortcut: explainFileShortcut,
+          footerHint: '',
+          footerBtns: [{ label: t('Explain'), shortcut: ['entr'] }],
+        },
+        {
+          label: t('Open in split view'),
+          Icon: SplitViewIcon,
+          id: 'split_view',
+          key: 'split_view',
+          onClick: () => {
+            handleMoveToAnotherSide();
+            setIsVisible(false);
+          },
+          shortcut: openInSplitViewShortcut,
+          footerHint: '',
+          footerBtns: [{ label: t('Move'), shortcut: ['entr'] }],
+        },
+      ]);
+    }
+  }, [
+    focusedPanel,
+    side,
+    file?.contents,
+    handleExplain,
+    handleMoveToAnotherSide,
+  ]);
 
   const dropdownComponentProps = useMemo(() => {
     return {

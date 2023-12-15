@@ -17,6 +17,9 @@ const CommandBarContextProvider = ({ children }: PropsWithChildren<Props>) => {
   const [chosenStep, setChosenStep] = useState<CommandBarActiveStepType>({
     id: CommandBarStepEnum.INITIAL,
   });
+  const [focusedTabItems, setFocusedTabItems] = useState<
+    CommandBarItemGeneralType[]
+  >([]);
 
   const currentStepContextValue = useMemo(() => ({ chosenStep }), [chosenStep]);
 
@@ -31,6 +34,7 @@ const CommandBarContextProvider = ({ children }: PropsWithChildren<Props>) => {
       setFocusedItem,
       setChosenStep,
       setIsVisible,
+      setFocusedTabItems,
     };
   }, []);
 
@@ -40,6 +44,13 @@ const CommandBarContextProvider = ({ children }: PropsWithChildren<Props>) => {
     };
   }, [isVisible]);
 
+  const tabContextValue = useMemo(
+    () => ({
+      items: focusedTabItems,
+    }),
+    [focusedTabItems],
+  );
+
   return (
     <CommandBarContext.Handlers.Provider value={handlersContextValue}>
       <CommandBarContext.General.Provider value={generalContextValue}>
@@ -47,7 +58,9 @@ const CommandBarContextProvider = ({ children }: PropsWithChildren<Props>) => {
           <CommandBarContext.FooterValues.Provider
             value={footerValuesContextValue}
           >
-            {children}
+            <CommandBarContext.FocusedTab.Provider value={tabContextValue}>
+              {children}
+            </CommandBarContext.FocusedTab.Provider>
           </CommandBarContext.FooterValues.Provider>
         </CommandBarContext.CurrentStep.Provider>
       </CommandBarContext.General.Provider>

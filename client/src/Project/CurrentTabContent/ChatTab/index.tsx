@@ -1,13 +1,25 @@
-import React, { memo, useCallback, useContext, useMemo } from 'react';
+import React, {
+  memo,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import Button from '../../../components/Button';
-import { ChatBubblesIcon, MoreHorizontalIcon } from '../../../icons';
+import {
+  ChatBubblesIcon,
+  MoreHorizontalIcon,
+  SplitViewIcon,
+} from '../../../icons';
 import Dropdown from '../../../components/Dropdown';
 import { checkEventKeys } from '../../../utils/keyboardUtils';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
 import { TabsContext } from '../../../context/tabsContext';
 import { ChatTabType } from '../../../types/general';
 import { ProjectContext } from '../../../context/projectContext';
+import { CommandBarContext } from '../../../context/commandBarContext';
+import { openInSplitViewShortcut } from '../../../consts/commandBar';
 import Conversation from './Conversation';
 import ActionsDropdown from './ActionsDropdown';
 
@@ -29,6 +41,9 @@ const ChatTab = ({
   const { t } = useTranslation();
   const { focusedPanel } = useContext(TabsContext.All);
   const { closeTab } = useContext(TabsContext.Handlers);
+  const { setFocusedTabItems, setIsVisible } = useContext(
+    CommandBarContext.Handlers,
+  );
   const { project, refreshCurrentProjectConversations } = useContext(
     ProjectContext.Current,
   );
@@ -62,6 +77,26 @@ const ChatTab = ({
     [handleMoveToAnotherSide],
   );
   useKeyboardNavigation(handleKeyEvent, focusedPanel !== side);
+
+  useEffect(() => {
+    if (focusedPanel === side) {
+      setFocusedTabItems([
+        {
+          label: t('Open in split view'),
+          Icon: SplitViewIcon,
+          id: 'split_view',
+          key: 'split_view',
+          onClick: () => {
+            handleMoveToAnotherSide();
+            setIsVisible(false);
+          },
+          shortcut: openInSplitViewShortcut,
+          footerHint: '',
+          footerBtns: [{ label: t('Move'), shortcut: ['entr'] }],
+        },
+      ]);
+    }
+  }, [focusedPanel, side, handleMoveToAnotherSide]);
 
   return (
     <div

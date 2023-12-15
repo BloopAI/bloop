@@ -34,7 +34,7 @@ const NavPanel = ({}: Props) => {
         (r) => r.repo.ref === currentlyFocusedTab.repoRef,
       );
       if (repoIndex !== undefined && repoIndex > -1) {
-        setExpanded(repoIndex);
+        setExpanded(repoIndex + (!!project?.conversations ? 1 : 0));
       }
     }
   }, [currentlyFocusedTab]);
