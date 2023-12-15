@@ -61,7 +61,7 @@ impl Exchange {
             Update::Focus(chunk) => {
                 self.focused_chunk = Some(chunk);
             }
-            Update::Cancel => {
+            Update::SetTimestamp => {
                 self.response_timestamp = Some(Utc::now());
             }
         }
@@ -185,5 +185,5 @@ pub enum Update {
     ReplaceStep(SearchStep),
     Article(String),
     Focus(FocusedChunk),
-    Cancel,
+    SetTimestamp,
 }

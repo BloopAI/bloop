@@ -91,7 +91,7 @@ impl Drop for Agent {
                             .with_payload("message", "request panicked"),
                     );
                 } else {
-                    self.last_exchange_mut().apply_update(Update::Cancel);
+                    self.last_exchange_mut().apply_update(Update::SetTimestamp);
 
                     self.track_query(
                         EventData::output_stage("cancelled")

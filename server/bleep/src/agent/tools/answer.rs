@@ -77,9 +77,14 @@ impl Agent {
             response += &fragment;
 
             let article = transcoder::decode(&response);
-            trace!(%article, "generated answer");
             self.update(Update::Article(article)).await?;
         }
+
+        if let Some(article) = self.last_exchange().answer() {
+            trace!(%article, "generated answer");
+        }
+
+        self.update(Update::SetTimestamp).await?;
 
         self.track_query(
             EventData::output_stage("answer_article")
