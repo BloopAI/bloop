@@ -7,6 +7,7 @@ import {
   useMemo,
   useState,
 } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { TabsContext } from '../tabsContext';
 import {
   ChatTabType,
@@ -20,13 +21,19 @@ import { CommandBarContext } from '../commandBarContext';
 type Props = {};
 
 const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
-  const { project, isReposLoaded } = useContext(ProjectContext.Current);
+  const {
+    project,
+    isReposLoaded,
+    isLoading: isLoadingProjects,
+  } = useContext(ProjectContext.Current);
   const { setFocusedTabItems } = useContext(CommandBarContext.Handlers);
   const [leftTabs, setLeftTabs] = useState<TabType[]>([]);
   const [rightTabs, setRightTabs] = useState<TabType[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [activeLeftTab, setActiveLeftTab] = useState<TabType | null>(null);
   const [activeRightTab, setActiveRightTab] = useState<TabType | null>(null);
   const [focusedPanel, setFocusedPanel] = useState<'left' | 'right'>('left');
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const openNewTab = useCallback(
     (
@@ -113,11 +120,71 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
   }, [rightTabs]);
 
   useEffect(() => {
-    const activeTab = focusedPanel === 'left' ? activeLeftTab : activeRightTab;
-    if (!activeTab) {
-      setFocusedTabItems([]);
+    if (!isLoadingProjects && !isLoading) {
+      const activeTab =
+        focusedPanel === 'left' ? activeLeftTab : activeRightTab;
+      if (!activeTab) {
+        setFocusedTabItems([]);
+        setSearchParams('', { replace: true });
+      } else {
+        const newParams: Record<string, string> = {};
+        if (activeTab.type === TabTypesEnum.FILE) {
+          newParams.path = activeTab.path;
+          newParams.repoRef = activeTab.repoRef;
+          if (activeTab.branch) {
+            newParams.branch = activeTab.branch;
+          }
+          if (activeTab.scrollToLine) {
+            newParams.scrollToLine = activeTab.scrollToLine;
+          }
+          if (activeTab.tokenRange) {
+            newParams.tokenRange = activeTab.tokenRange;
+          }
+        } else if (activeTab.type === TabTypesEnum.CHAT) {
+          if (activeTab.conversationId) {
+            newParams.conversationId = activeTab.conversationId;
+          }
+          if (activeTab.title) {
+            newParams.title = activeTab.title;
+          }
+        }
+        setSearchParams(newParams, { replace: true });
+      }
     }
-  }, [focusedPanel, activeLeftTab, activeRightTab]);
+  }, [
+    focusedPanel,
+    activeLeftTab,
+    activeRightTab,
+    isLoadingProjects,
+    isLoading,
+  ]);
+
+  useEffect(() => {
+    if (!isLoadingProjects) {
+      const path = searchParams.get('path');
+      const conversationId = searchParams.get('conversationId');
+      if (!activeLeftTab && (path || conversationId)) {
+        const repoRef = searchParams.get('repoRef');
+        if (path && repoRef) {
+          openNewTab({
+            type: TabTypesEnum.FILE,
+            path,
+            repoRef,
+            branch: searchParams.get('branch'),
+            scrollToLine: searchParams.get('scrollToLine') || undefined,
+            tokenRange: searchParams.get('tokenRange') || undefined,
+          });
+        } else if (conversationId) {
+          openNewTab({
+            type: TabTypesEnum.CHAT,
+            conversationId,
+            title: searchParams.get('title') || undefined,
+          });
+        }
+      }
+      setIsLoading(false);
+    }
+  }, [isLoadingProjects]);
 
   const closeTab = useCallback((key: string, side: 'left' | 'right') => {
     const setTabsAction = side === 'left' ? setLeftTabs : setRightTabs;
@@ -166,7 +233,7 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
   );
 
   useEffect(() => {
-    if (isReposLoaded && project?.repos) {
+    if (isReposLoaded && project?.repos && !isLoading && !isLoadingProjects) {
       const checkIfTabShouldClose = (tab: TabType | null) =>
         tab?.type === TabTypesEnum.FILE &&
         !project.repos.find((r) => r.repo.ref === tab.repoRef);
@@ -175,7 +242,7 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
       setLeftTabs((prev) => prev.filter((t) => !checkIfTabShouldClose(t)));
       setRightTabs((prev) => prev.filter((t) => !checkIfTabShouldClose(t)));
     }
-  }, [isReposLoaded, project?.repos]);
+  }, [isReposLoaded, project?.repos, isLoading, isLoadingProjects]);
 
   const handlersContextValue = useMemo(
     () => ({

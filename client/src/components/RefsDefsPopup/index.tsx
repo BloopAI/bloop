@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { TippyProps } from '@tippyjs/react';
 import { Trans, useTranslation } from 'react-i18next';
 import { TokenInfoType, TokenInfoWrapped } from '../../types/results';
@@ -70,6 +70,10 @@ const RefsDefsPopup = ({
   const [filters, setFilters] = useState<TokenInfoType>(
     !data.data?.definitions?.length ? TypeMap.REF : TypeMap.DEF,
   );
+
+  useEffect(() => {
+    setFilters(!data.data?.definitions?.length ? TypeMap.REF : TypeMap.DEF);
+  }, [data.data]);
 
   const toggleFilter = useCallback((type: TokenInfoType) => {
     setFilters(type);

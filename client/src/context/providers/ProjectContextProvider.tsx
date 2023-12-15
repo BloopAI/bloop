@@ -8,6 +8,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ProjectContext } from '../projectContext';
 import {
   ANSWER_SPEED_KEY,
@@ -40,6 +41,9 @@ const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
   const [preferredAnswerSpeed, setPreferredAnswerSpeed] = useState<
     'normal' | 'fast'
   >((getPlainFromStorage(ANSWER_SPEED_KEY) as 'normal') || 'normal');
+  const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     savePlainToStorage(ANSWER_SPEED_KEY, preferredAnswerSpeed);
@@ -57,11 +61,47 @@ const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
     });
   }, [currentProjectId]);
 
+  useEffect(() => {
+    if (
+      currentProjectId &&
+      !isLoading &&
+      location.pathname !== `/project/${currentProjectId}`
+    ) {
+      navigate(`/project/${currentProjectId}`);
+    }
+  }, [currentProjectId]);
+
+  useEffect(() => {
+    setIsReposLoaded(false);
+  }, [currentProjectId]);
+
+  useEffect(() => {
+    if (location.pathname === '/') {
+      setIsLoading(false);
+      return;
+    }
+    if (isLoading && projects?.length) {
+      const firstPart = decodeURIComponent(
+        location.pathname.slice(1).split('/')[1],
+      );
+      const proj = projects.find((p) => p.id.toString() === firstPart);
+      if (proj) {
+        setCurrentProjectId(proj.id);
+      }
+      setIsLoading(false);
+    }
+  }, [projects, isLoading]);
+
   const refreshCurrentProject = useCallback(() => {
     if (currentProjectId) {
       getProject(currentProjectId)
         .then((p) => {
-          setProject({ ...p, repos: [], conversations: [] });
+          setProject((prev) => ({
+            ...prev,
+            ...p,
+            repos: prev?.repos || [],
+            conversations: prev?.conversations || [],
+          }));
           refreshCurrentProjectRepos();
           refreshCurrentProjectConversations();
         })
@@ -110,8 +150,9 @@ const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
       refreshCurrentProjectRepos,
       refreshCurrentProjectConversations,
       refreshCurrentProject,
+      isLoading,
     }),
-    [project, isReposLoaded],
+    [project, isReposLoaded, isLoading],
   );
 
   const allValue = useMemo(

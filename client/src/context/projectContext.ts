@@ -5,6 +5,7 @@ export const ProjectContext = {
   Current: createContext<{
     project: ProjectFullType | null;
     isReposLoaded: boolean;
+    isLoading: boolean;
     setCurrentProjectId: (id: string) => void;
     refreshCurrentProject: () => void;
     refreshCurrentProjectRepos: () => void;
@@ -12,6 +13,7 @@ export const ProjectContext = {
   }>({
     project: null,
     isReposLoaded: false,
+    isLoading: true,
     setCurrentProjectId: (id: string) => {},
     refreshCurrentProject: () => {},
     refreshCurrentProjectRepos: () => {},
