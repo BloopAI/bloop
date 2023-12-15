@@ -181,7 +181,7 @@ async fn create_indexes(collection_name: &str, qdrant: &QdrantClient) -> anyhow:
     let text_fields = &["repo_ref", "content_hash", "branches", "relative_path"];
     for field in text_fields {
         qdrant
-            .create_field_index(collection_name, field, FieldType::Text, None, None)
+            .create_field_index(collection_name, field, FieldType::Keyword, None, None)
             .await?;
     }
 
@@ -775,7 +775,7 @@ fn build_conditions(query: &SemanticQuery<'_>) -> Vec<qdrant_client::qdrant::Con
     let path_filter = {
         let conditions = query
             .paths()
-            .map(|r| make_kv_text_filter("relative_path", r.as_ref()).into())
+            .map(|r| make_kv_keyword_filter("relative_path", r.as_ref()).into())
             .collect::<Vec<_>>();
         if conditions.is_empty() {
             None
@@ -786,6 +786,7 @@ fn build_conditions(query: &SemanticQuery<'_>) -> Vec<qdrant_client::qdrant::Con
             })
         }
     };
+
 
     let lang_filter = {
         let conditions = query

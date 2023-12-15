@@ -280,7 +280,7 @@ impl ChunkRefDef {
 
                         m
                     })
-                    .filter(|x| (x.file_symbols.len() < 5)) // &&
+                    .filter(|x| (x.file_symbols.len() < 5) && (x.file_symbols.len() < 5)) // &&
                     .collect::<Vec<_>>();
                 metadata.sort_by(|a, b| a.name.cmp(&b.name));
                 metadata.dedup_by(|a, b| a.name == b.name);

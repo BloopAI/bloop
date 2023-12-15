@@ -1,12 +1,11 @@
 use anyhow::Result;
+use futures::TryStreamExt;
 use tracing::{debug, info, instrument, trace};
-use futures::{TryStreamExt};
-
 
 use crate::{
     agent::{
         exchange::{ChunkRefDef, CodeChunk, RefDefMetadata, SearchStep, Update},
-        prompts, Agent, Action,
+        prompts, Action, Agent,
     },
     analytics::EventData,
     llm_gateway::{self, api::FunctionCall},
@@ -17,7 +16,6 @@ impl Agent {
     pub async fn code_search(&mut self, query: &String) -> Result<String> {
         const CODE_SEARCH_LIMIT: u64 = 10;
         const MINIMUM_RESULTS: usize = CODE_SEARCH_LIMIT as usize / 2;
-
 
         self.update(Update::StartStep(SearchStep::Code {
             query: query.clone(),
@@ -86,81 +84,117 @@ impl Agent {
 
         let response: Vec<ChunkRefDef> = futures::future::join_all(response).await;
 
-        let contents = response.iter().flat_map(|c| {
-            c.metadata.iter().flat_map(|s| {
-                 s
-                    .file_symbols
+        let contents = response
+            .iter()
+            .flat_map(|c| {
+                c.metadata
                     .iter()
-                    .map(|e_c| e_c)
-                
+                    .flat_map(|s| s.file_symbols.iter().map(|e_c| e_c))
             })
-        }).collect::<Vec<_>>();
-
-        let contents = contents.iter().map(|x| self.get_file_content(&x.file));
- 
-       let contents: Vec<crate::indexes::reader::ContentDocument> = futures::future::join_all(contents)
-            .await
-            .into_iter()
-            .map(|x| x.unwrap().unwrap())
             .collect::<Vec<_>>();
 
-        let user_query = self.exchanges.iter().rev().take(1).collect::<Vec<_>>().get(0).unwrap().query.raw_query.clone();
+        let contents = contents.iter().map(|x| self.get_file_content(&x.file));
+
+        let contents: Vec<crate::indexes::reader::ContentDocument> =
+            futures::future::join_all(contents)
+                .await
+                .into_iter()
+                .map(|x| x.unwrap().unwrap())
+                .collect::<Vec<_>>();
+
+        let user_query = self
+            .exchanges
+            .iter()
+            .rev()
+            .take(1)
+            .collect::<Vec<_>>()
+            .get(0)
+            .unwrap()
+            .query
+            .raw_query
+            .clone();
 
         let mut i = -1;
 
-        let symbols= response
-            .iter()
+        let symbols = response
+            .into_iter()
             .map(|c| {
-                c.metadata
+                (
+                    c.chunk,
+                    c.metadata
+                        .into_iter()
+                        .map(|s| {
+                            i = i + 1;
+                            (i, s)
+                        })
+                        .collect::<Vec<_>>(),
+                )
+            })
+            .collect::<Vec<_>>();
+
+        let selected_symbol = self.filter_symbols(&user_query, symbols).await.unwrap();
+
+        let extra_chunks = selected_symbol
+            .file_symbols
+            .iter()
+            .map(|f_s| {
+                let filename = f_s.file.clone();
+                let content = contents
                     .iter()
-                    .map(|s| {i = i +1; (i, s.name.clone())})
+                    .find(|x| x.relative_path == filename)
+                    .unwrap()
+                    .content
+                    .lines()
+                    .collect::<Vec<_>>();
+
+                let n_lines = content.len();
+
+                f_s.data
+                    .iter()
+                    .map(|occ| {
+                        let chunk_content = content
+                            [occ.range.start.line..(occ.range.end.line + 10).min(n_lines)]
+                            .to_vec()
+                            .join("\n");
+                        CodeChunk {
+                            path: filename.clone(),
+                            alias: 0,
+                            snippet: chunk_content,
+                            start_line: occ.range.start.line as usize,
+                            end_line: (occ.range.end.line + 10).min(n_lines) as usize,
+                            start_byte: 0 as usize,
+                            end_byte: 0 as usize,
+                        }
+                    })
                     .collect::<Vec<_>>()
             })
             .collect::<Vec<_>>();
 
-        let index= self.filter_chunks(&user_query, response, symbols).await.unwrap();
+        //dbg!("{}", extra_chunks);
 
-        
-
-        // let extra_chunks = metadata.iter().filter(|x| x.name == name).flat_map(|x|
-        
-        // {
-        //     x.file_symbols.iter().flat_map(|f_s| 
-        //         {
-        //             f_s.data.iter().map(|occ| {
-        //                 let filename = f_s.file.clone();
-        //                 let content = contents
-        //                                         .iter()
-        //                                             .find(|x| x.relative_path == filename)
-        //                                             .unwrap().content.lines().collect::<Vec<_>>();
-        //                 let n_lines = content.len();
-        //                                         let chunk_content =
-        //                                             content[occ.range.start.line
-        //                                                 ..(occ.range.end.line + 10).min(n_lines)].to_vec()
-        //                                                 .join("\n");
-        //                                         CodeChunk {
-        //                                             path: filename,
-        //                                             alias: 0,
-        //                                             snippet: chunk_content,
-        //                                             start_line: occ.range.start.line as usize,
-        //                                             end_line: (occ.range.end.line + 10).min(n_lines)
-        //                                                 as usize,
-        //                                             start_byte: 0 as usize,
-        //                                             end_byte: 0 as usize,
-        //                                         }
-    
-        //             }).collect::<Vec<_>>()
-                    
-        //         }
-        //     ).collect::<Vec<_>>()
-        // }
-        //  ).collect::<Vec<_>>();
-        
-        // dbg!("{}", extra_chunks);
-        
-
-            
-        
+        let extra_chunks = extra_chunks
+            .iter()
+            .flatten()
+            .take(3)
+            .map(|c| {
+                let chunk = CodeChunk {
+                    path: c.path.clone(),
+                    alias: self.get_path_alias(c.path.as_str()),
+                    snippet: c.snippet.clone(),
+                    start_line: c.start_line,
+                    end_line: c.end_line,
+                    start_byte: 0 as usize,
+                    end_byte: 0 as usize,
+                };
+                self.exchanges
+                    .last_mut()
+                    .unwrap()
+                    .code_chunks
+                    .push(chunk.clone());
+                chunk
+            })
+            .collect::<Vec<_>>();
+        chunks.extend(extra_chunks);
 
         let response = chunks.clone()
             .into_iter()
@@ -215,17 +249,30 @@ impl Agent {
         Ok(documents)
     }
 
-    async fn filter_chunks(&self, query: &str, chunks: Vec<ChunkRefDef>, symbols: Vec<Vec<(i32, String)>>) -> Result<usize> {
-        
-        let chunks_string = chunks.iter()
-        .zip(symbols.iter())
-        .filter(|(_, s)| s.len()> 0)
-        .map(|(c, s)| {
-            let symbols_string = s.iter().map(|(i, name)| format!("{}: {}", i, name)).collect::<Vec<_>>().join("\n"); 
+    async fn filter_symbols(
+        &self,
+        query: &str,
+        symbols: Vec<(CodeChunk, Vec<(i32, RefDefMetadata)>)>,
+    ) -> Result<RefDefMetadata> {
+        let chunks_string = symbols
+            .iter()
+            .filter(|(_, s)| s.len() > 0)
+            .map(|(c, s)| {
+                let symbols_string = s
+                    .iter()
+                    .map(|(i, refdef)| format!("{}: {}", i, refdef.name))
+                    .collect::<Vec<_>>()
+                    .join("\n");
 
-            format!("Path:{}\n\n{}\n\nSymbols:\n\n{}", c.chunk.path, c.chunk.snippet, symbols_string)
-        })
-        .collect::<Vec<_>>().join("\n\n"); 
+                format!(
+                    "Path:{}\n\n{}\n\nSymbols:\n\n{}",
+                    c.path.clone(),
+                    c.snippet.clone(),
+                    symbols_string
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n\n");
 
         let prompt = vec![llm_gateway::api::Message::user(
             format!("Snippets:\n\n{}\n\nInstruction: Above there are some code chunks and some symbols extracted from the chunks. Your job is to select the most relevant symbol to the user query. Do not answer with the siymbol name, use the symbol key/alias.\n\nQuery:{}", chunks_string.as_str(),  query).as_str()
@@ -274,38 +321,28 @@ impl Agent {
                 },
             )
             .await
-            .unwrap_or(FunctionCall{name: Some("filter".to_string()), arguments: "{\"symbol\": 0}".to_string()});
+            .unwrap_or(FunctionCall {
+                name: Some("filter".to_string()),
+                arguments: "{\"symbol\": 0}".to_string(),
+            });
 
         dbg!("{}", response.clone());
 
         //let function_response: FunctionCall = serde_json::from_str(response.as_str()).unwrap_or(FunctionCall{name: Some("filter".to_string()), arguments: "{\"chunk\": 0}".to_string()});
 
-        let action =
-            Action::deserialize_gpt(&response).unwrap();
+        let action = Action::deserialize_gpt(&response).unwrap();
 
         let selected_chunk = match action {
             Action::Filter { symbol: x } => x,
-            _ => 0
+            _ => 0,
         };
 
+        let output = symbols
+            .into_iter()
+            .flat_map(|(c, s)| s)
+            .find(|(i, _)| i.clone() == selected_chunk as i32)
+            .unwrap();
 
-        // let output = chunks.into_iter()
-        // .zip(symbols.into_iter())
-        // .filter(|(_, s)| s.len()> 0)
-        // .flat_map(|(c, s)| {
-        //     s.into_iter().map(|(i, name)| (i, name.clone(), c.metadata)
-        // ).collect::<Vec<_>>() 
-
-            
-        // })
-        // .find(|(i,_,_)| i.clone() as usize == selected_chunk).unwrap(); 
-        
-        
-
-        Ok(selected_chunk)
+        Ok(output.1)
     }
-    
-
-    
-
 }

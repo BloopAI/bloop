@@ -30,24 +30,6 @@ pub fn functions(add_proc: bool) -> serde_json::Value {
                 }
             },
             {
-                "name": "symbol",
-                "description": "Find symbol definitions and references including code snippets. Symbols can be a function, struct, class, method or variable. Call this only when you have seen code with the symbol, after calling proc or code. Using this tool makes sure that the answer is as complete as possible.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "symbol": {
-                            "type": "string",
-                            "description": "The name of the symbol (function, struct, class, method or variable) to look for. Example: 'file_name', 'RankingClass', 'formPayload'..."
-                        },
-                        "path": {
-                            "type": "integer",
-                            "description": "The index of the path containing the symbol."
-                        }
-                    },
-                    "required": ["symbol"]
-                }
-            },
-            {
                 "name": "none",
                 "description": "Call this to answer the user. Call this only when you have enough information to answer the user's query.",
                 "parameters": {
@@ -118,8 +100,6 @@ pub fn system<'a>(paths: impl IntoIterator<Item = &'a str>) -> String {
 - DO NOT assume the structure of the codebase, or the existence of files or folders
 - Your queries to functions.code or functions.path should be significantly different to previous queries
 - Call functions.none with paths that you are confident will help answer the user's query, include paths containing the information needed for a complete answer including definitions and references
-- function.code returns code snippets and also references to key symbols in the Metadata section below the snippet.
-- The Metadata section contains path indices for where the symbol is defined or referenced, use it to make the answer more complete.
 - If the user query is general (e.g. 'What does this do?', 'What is this repo?') look for READMEs, documentation and entry points in the code (main files, index files, api files etc.)
 - If the user is referring to, or asking for, information that is in your history, call functions.none
 - If after attempting to gather information you are still unsure how to answer the query, call functions.none
