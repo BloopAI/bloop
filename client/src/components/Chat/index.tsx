@@ -130,7 +130,7 @@ const Chat = () => {
           : ''
       }&answer_model=${
         preferredAnswerSpeed === 'normal'
-          ? 'gpt-4-turbo-24k'
+          ? 'gpt-4'
           : 'gpt-3.5-turbo-finetuned'
       }`;
       console.log(url);
