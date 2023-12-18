@@ -124,7 +124,7 @@ const ChatTab = ({
           </Button>
         </Dropdown>
       </div>
-      <div className="flex-1 flex flex-col max-w-full px-4 pt-4 overflow-auto">
+      <div className="flex-1 flex flex-col max-w-full px-4 overflow-auto">
         <Conversation side={side} tabKey={tabKey} />
       </div>
     </div>

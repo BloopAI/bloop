@@ -135,7 +135,7 @@ const CodeLine = ({
       onClick={onClick}
     >
       <CodeIcon sizeClassName="w-3.5 h-3.5" />
-      <p className={`code-mini prism-code language-${lang}`}>
+      <p className={`code-mini prism-code language-${lang} ellipsis`}>
         {(lineToRender || tokensMap[0]).tokens.map((token, index) => (
           <CodeToken
             key={index}

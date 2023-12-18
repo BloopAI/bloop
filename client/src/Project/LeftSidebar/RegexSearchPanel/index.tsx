@@ -220,7 +220,7 @@ const RegexSearchPanel = ({ projectId }: Props) => {
       {/*  highlightedIndex={highlightedIndex}*/}
       {/*/>*/}
       {!!Object.keys(results).length && (
-        <ul className="flex-1 flex flex-col overflow-auto">
+        <ul className="flex-1 flex flex-col overflow-y-auto">
           {Object.keys(results).map((repoRef, repoIndex, array) => (
             <li key={repoRef} className="relative flex flex-col">
               <span className="absolute top-10 bottom-0 left-5 w-px bg-bg-border" />
