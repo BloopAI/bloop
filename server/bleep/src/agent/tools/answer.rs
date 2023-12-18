@@ -385,8 +385,8 @@ impl Agent {
                 snippet: trimmed_snippet.to_string(),
                 start_line: chunk.start_line,
                 end_line: (chunk.start_line + num_trimmed_lines).saturating_sub(1),
-                start_byte: chunk.start_byte as usize,
-                end_byte: chunk.end_byte as usize,
+                start_byte: chunk.start_byte,
+                end_byte: chunk.end_byte,
             }]
         } else {
             code_chunks

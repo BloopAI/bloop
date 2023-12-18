@@ -84,7 +84,7 @@ impl Agent {
                     })
                     .filter(|metadata| {
                         (metadata.file_symbols.len() < MAX_NUMBER_REF_DEF)
-                            && (metadata.file_symbols.len() > 0)
+                            && (!metadata.file_symbols.is_empty())
                     }) // &&
                     .collect::<Vec<_>>();
                 metadata.sort_by(|a, b| a.name.cmp(&b.name));
@@ -135,11 +135,10 @@ impl Agent {
                             path: filename.clone(),
                             alias: 0,
                             snippet: chunk_content,
-                            start_line: occurrence.range.start.line as usize,
-                            end_line: (occurrence.range.end.line + NUMBER_CHUNK_LINES).min(n_lines)
-                                as usize,
-                            start_byte: 0 as usize,
-                            end_byte: 0 as usize,
+                            start_line: occurrence.range.start.line,
+                            end_line: (occurrence.range.end.line + NUMBER_CHUNK_LINES).min(n_lines),
+                            start_byte: 0,
+                            end_byte: 0,
                         }
                     })
                     .collect::<Vec<_>>()
@@ -164,7 +163,7 @@ impl Agent {
                         .metadata
                         .into_iter()
                         .map(|symbol| {
-                            i = i + 1;
+                            i += 1;
                             (i, symbol)
                         })
                         .collect::<Vec<_>>(),
@@ -172,7 +171,7 @@ impl Agent {
             })
             .collect::<Vec<_>>();
         if i == -1 {
-            return Err(SymbolError::SymbolListEmptyError);
+            return Err(SymbolError::ListEmpty);
         }
 
         // Classifier
@@ -180,7 +179,7 @@ impl Agent {
         // context
         let chunks_string = symbols
             .iter()
-            .filter(|(_, s)| s.len() > 0)
+            .filter(|(_, s)| !s.is_empty())
             .map(|(c, s)| {
                 let symbols_string = s
                     .iter()
@@ -239,23 +238,22 @@ impl Agent {
                 Ok(argument) => argument,
                 Err(_e) => {
                     warn!("Cannot deserialize: {:?}", llm_response);
-                    return Err(SymbolError::DeserializeFilterError);
+                    return Err(SymbolError::DeserializeFilter);
                 }
             };
 
         let selected_symbol = filter_argument.symbol;
 
         // finding symbol metadata
-        let output = match symbols
+        match symbols
             .into_iter()
             .flat_map(|(_, symbol_with_alias)| symbol_with_alias)
-            .find(|(alias, _)| alias.clone() == selected_symbol as i32)
+            .find(|(alias, _)| *alias == selected_symbol as i32)
         {
             Some((_alias, symbol_metadata)) => Ok(symbol_metadata),
-            _ => Err(SymbolError::SymbolOutOfBoundsError),
-        };
+            _ => Err(SymbolError::OutOfBounds),
+        }
 
-        output
     }
 
     pub async fn get_ref_def_extra_chunks(&mut self, chunks: Vec<CodeChunk>) -> Vec<CodeChunk> {
@@ -296,8 +294,8 @@ impl Agent {
                     snippet: c.snippet.clone(),
                     start_line: c.start_line,
                     end_line: c.end_line,
-                    start_byte: 0 as usize,
-                    end_byte: 0 as usize,
+                    start_byte: 0,
+                    end_byte: 0,
                 };
                 self.exchanges
                     .last_mut()
@@ -317,7 +315,7 @@ impl Agent {
     ) -> Result<FunctionCall, anyhow::Error> {
         let messages = vec![llm_gateway::api::Message::user(prompt.as_str())];
 
-        let response = self
+        self
             .llm_gateway
             .clone()
             .model("gpt-3.5-turbo-0613")
@@ -341,8 +339,7 @@ impl Agent {
                     })
                 },
             )
-            .await;
-        response
+            .await
     }
 }
 
@@ -358,9 +355,9 @@ struct Filter {
 #[derive(thiserror::Error, Debug)]
 pub enum SymbolError {
     #[error("No symbol retrieved in the provided chunks")]
-    SymbolListEmptyError,
+    ListEmpty,
     #[error("Cannot deserialize llm function call arguments")]
-    DeserializeFilterError,
+    DeserializeFilter,
     #[error("Selected symbol out of bounds")]
-    SymbolOutOfBoundsError,
+    OutOfBounds,
 }

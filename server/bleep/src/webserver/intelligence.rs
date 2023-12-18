@@ -56,7 +56,7 @@ pub(super) async fn handle(
 
     match result {
         Ok(response) => Ok(json(response)),
-        Err(err) => Err(err.into()),
+        Err(err) => Err(err),
     }
 }
 
