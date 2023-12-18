@@ -280,7 +280,14 @@ const InitialCommandBar = ({}: Props) => {
         i.label.toLowerCase().includes(inputValue.toLowerCase()),
       );
       if (newItems.length) {
-        newSections.push({ ...s, items: newItems });
+        newSections.push({
+          ...s,
+          items: newItems,
+          itemsOffset: newSections[newSections.length - 1]
+            ? newSections[newSections.length - 1].items.length +
+              newSections[newSections.length - 1].itemsOffset
+            : 0,
+        });
       }
     });
     return newSections;

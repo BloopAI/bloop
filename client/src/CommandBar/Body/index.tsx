@@ -1,4 +1,4 @@
-import { memo, useCallback, useState } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import { CommandBarSectionType } from '../../types/general';
 import useKeyboardNavigation from '../../hooks/useKeyboardNavigation';
 import Section from './Section';
@@ -10,6 +10,10 @@ type Props = {
 
 const CommandBarBody = ({ sections, disableKeyNav }: Props) => {
   const [focusedIndex, setFocusedIndex] = useState(0);
+
+  useEffect(() => {
+    setFocusedIndex(0);
+  }, [sections]);
 
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
