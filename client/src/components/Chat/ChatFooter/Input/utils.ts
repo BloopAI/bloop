@@ -17,7 +17,9 @@ export const mapEditorContentToInputValue = (
     .map((s) =>
       s.type === 'mention'
         ? `${getType(s.attrs.type)}:${s.attrs.id}`
-        : s.text.replace(new RegExp(String.fromCharCode(160), 'g'), ' '),
+        : s.type === 'text'
+        ? s.text?.replace(new RegExp(String.fromCharCode(160), 'g'), ' ')
+        : '',
     )
     .join('');
   const newValueParsed = inputState.map((s) =>
