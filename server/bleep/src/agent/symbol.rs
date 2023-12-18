@@ -253,7 +253,6 @@ impl Agent {
             Some((_alias, symbol_metadata)) => Ok(symbol_metadata),
             _ => Err(SymbolError::OutOfBounds),
         }
-
     }
 
     pub async fn get_ref_def_extra_chunks(&mut self, chunks: Vec<CodeChunk>) -> Vec<CodeChunk> {
@@ -315,8 +314,7 @@ impl Agent {
     ) -> Result<FunctionCall, anyhow::Error> {
         let messages = vec![llm_gateway::api::Message::user(prompt.as_str())];
 
-        self
-            .llm_gateway
+        self.llm_gateway
             .clone()
             .model("gpt-3.5-turbo-0613")
             .temperature(0.0)
