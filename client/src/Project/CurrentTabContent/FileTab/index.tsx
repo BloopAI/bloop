@@ -39,6 +39,7 @@ import { checkEventKeys } from '../../../utils/keyboardUtils';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
 import { CommandBarContext } from '../../../context/commandBarContext';
 import { openInSplitViewShortcut } from '../../../consts/commandBar';
+import BreadcrumbsPathContainer from '../../../components/Breadcrumbs/PathContainer';
 import ActionsDropdown from './ActionsDropdown';
 
 type Props = {
@@ -244,7 +245,11 @@ const FileTab = ({
       <div className="w-full h-10 px-4 flex justify-between items-center flex-shrink-0 border-b border-bg-border bg-bg-sub">
         <div className="flex items-center gap-3 body-s text-label-title ellipsis">
           <FileIcon filename={path} noMargin />
-          {splitPath(path).slice(-2).join('/')}
+          <BreadcrumbsPathContainer
+            path={path}
+            repoRef={repoRef}
+            nonInteractive
+          />
         </div>
         <Dropdown
           DropdownComponent={ActionsDropdown}
