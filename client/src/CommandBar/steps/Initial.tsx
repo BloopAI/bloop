@@ -36,7 +36,7 @@ type Props = {};
 const InitialCommandBar = ({}: Props) => {
   const { t } = useTranslation();
   const { setIsVisible } = useContext(CommandBarContext.Handlers);
-  const { items: tabItems } = useContext(CommandBarContext.FocusedTab);
+  const { tabItems, newTabItems } = useContext(CommandBarContext.FocusedTab);
   const { projects } = useContext(ProjectContext.All);
   const { setCurrentProjectId, project } = useContext(ProjectContext.Current);
   const { theme } = useContext(UIContext.Theme);
@@ -79,12 +79,11 @@ const InitialCommandBar = ({}: Props) => {
               : t(`Switch to`) + ' ' + p.name,
           footerBtns:
             project?.id === p.id
-              ? [{ label: t('Manage'), shortcut: ['entr'], action: () => {} }]
+              ? [{ label: t('Manage'), shortcut: ['entr'] }]
               : [
                   {
                     label: t('Open'),
                     shortcut: ['entr'],
-                    action: () => switchProject(p.id),
                   },
                 ],
         }),
@@ -132,7 +131,6 @@ const InitialCommandBar = ({}: Props) => {
           {
             label: t('Open'),
             shortcut: ['entr'],
-            action: globalShortcuts.openSettings.action,
           },
         ],
       },
@@ -148,7 +146,6 @@ const InitialCommandBar = ({}: Props) => {
           {
             label: t('Open'),
             shortcut: ['entr'],
-            action: globalShortcuts.openSubscriptionSettings.action,
           },
         ],
       },
@@ -164,7 +161,6 @@ const InitialCommandBar = ({}: Props) => {
           {
             label: t('Open'),
             shortcut: ['entr'],
-            action: globalShortcuts.openAppDocs.action,
           },
         ],
       },
@@ -180,7 +176,6 @@ const InitialCommandBar = ({}: Props) => {
           {
             label: t('Open'),
             shortcut: ['entr'],
-            action: globalShortcuts.reportABug.action,
           },
         ],
       },
@@ -196,7 +191,6 @@ const InitialCommandBar = ({}: Props) => {
           {
             label: t('Sign out'),
             shortcut: ['entr'],
-            action: globalShortcuts.signOut.action,
           },
         ],
       },
@@ -212,44 +206,54 @@ const InitialCommandBar = ({}: Props) => {
           {
             label: t('Toggle'),
             shortcut: ['entr'],
-            action: globalShortcuts.toggleRegex.action,
           },
         ],
       },
     ];
     const commandsItems = [...themeItems, ...otherCommands];
     return [
+      ...(newTabItems.length
+        ? [
+            {
+              items: newTabItems,
+              itemsOffset: 0,
+              key: 'new-tab-items',
+            },
+          ]
+        : []),
       ...(tabItems.length
         ? [
             {
               items: tabItems,
-              itemsOffset: 0,
-              // label: t('Manage context'),
+              itemsOffset: newTabItems.length,
               key: 'tab-items',
             },
           ]
         : []),
       {
         items: contextItems,
-        itemsOffset: tabItems.length,
+        itemsOffset: newTabItems.length + tabItems.length,
         label: t('Manage context'),
         key: 'context-items',
       },
       {
         items: projectItems,
-        itemsOffset: tabItems.length + contextItems.length,
+        itemsOffset: newTabItems.length + tabItems.length + contextItems.length,
         label: t('Recent projects'),
         key: 'recent-projects',
       },
       {
         items: commandsItems,
         itemsOffset:
-          tabItems.length + contextItems.length + projectItems.length,
+          newTabItems.length +
+          tabItems.length +
+          contextItems.length +
+          projectItems.length,
         label: t('Commands'),
         key: 'general-commands',
       },
     ];
-  }, [t, projects, project, theme, globalShortcuts, tabItems]);
+  }, [t, projects, project, theme, globalShortcuts, tabItems, newTabItems]);
 
   const sectionsToShow = useMemo(() => {
     if (!inputValue) {
@@ -258,7 +262,7 @@ const InitialCommandBar = ({}: Props) => {
     const newSections: CommandBarSectionType[] = [];
     initialSections.forEach((s) => {
       const newItems = s.items.filter((i) =>
-        i.label.toLowerCase().startsWith(inputValue.toLowerCase()),
+        i.label.toLowerCase().includes(inputValue.toLowerCase()),
       );
       if (newItems.length) {
         newSections.push({ ...s, items: newItems });

@@ -440,6 +440,7 @@ export type CommandBarItemGeneralType = {
   key: string;
   parent?: CommandBarStepType;
   footerHint: string | ReactElement;
+  closeOnClick?: boolean;
   footerBtns: {
     label: string;
     shortcut?: string[];

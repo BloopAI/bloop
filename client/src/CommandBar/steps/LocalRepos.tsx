@@ -88,7 +88,6 @@ const LocalRepos = ({}: Props) => {
             {
               label: t('Select folder'),
               shortcut: ['entr'],
-              action: enterAddMode,
             },
           ],
           key: 'add',

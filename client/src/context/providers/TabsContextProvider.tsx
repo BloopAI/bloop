@@ -8,6 +8,7 @@ import {
   useState,
 } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { TabsContext } from '../tabsContext';
 import {
   ChatTabType,
@@ -17,16 +18,20 @@ import {
 } from '../../types/general';
 import { ProjectContext } from '../projectContext';
 import { CommandBarContext } from '../commandBarContext';
+import { ChatBubblesIcon } from '../../icons';
 
 type Props = {};
 
 const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
+  const { t } = useTranslation();
   const {
     project,
     isReposLoaded,
     isLoading: isLoadingProjects,
   } = useContext(ProjectContext.Current);
-  const { setFocusedTabItems } = useContext(CommandBarContext.Handlers);
+  const { setFocusedTabItems, setNewTabItems } = useContext(
+    CommandBarContext.Handlers,
+  );
   const [leftTabs, setLeftTabs] = useState<TabType[]>([]);
   const [rightTabs, setRightTabs] = useState<TabType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -118,6 +123,31 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
       setFocusedPanel('left');
     }
   }, [rightTabs]);
+
+  useEffect(() => {
+    setNewTabItems([
+      {
+        label: t('New chat'),
+        Icon: ChatBubblesIcon,
+        id: 'new chat',
+        key: 'new_chat',
+        onClick: () => openNewTab({ type: TabTypesEnum.CHAT }),
+        shortcut: ['option', 'N'],
+        closeOnClick: true,
+        footerHint: '',
+        footerBtns: [
+          {
+            label: t('Open'),
+            shortcut: ['entr'],
+          },
+        ],
+      },
+    ]);
+
+    return () => {
+      setNewTabItems([]);
+    };
+  }, [openNewTab]);
 
   useEffect(() => {
     if (!isLoadingProjects && !isLoading) {

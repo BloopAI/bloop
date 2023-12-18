@@ -41,9 +41,7 @@ const ChatTab = ({
   const { t } = useTranslation();
   const { focusedPanel } = useContext(TabsContext.All);
   const { closeTab } = useContext(TabsContext.Handlers);
-  const { setFocusedTabItems, setIsVisible } = useContext(
-    CommandBarContext.Handlers,
-  );
+  const { setFocusedTabItems } = useContext(CommandBarContext.Handlers);
   const { project, refreshCurrentProjectConversations } = useContext(
     ProjectContext.Current,
   );
@@ -86,10 +84,8 @@ const ChatTab = ({
           Icon: SplitViewIcon,
           id: 'split_view',
           key: 'split_view',
-          onClick: () => {
-            handleMoveToAnotherSide();
-            setIsVisible(false);
-          },
+          onClick: handleMoveToAnotherSide,
+          closeOnClick: true,
           shortcut: openInSplitViewShortcut,
           footerHint: '',
           footerBtns: [{ label: t('Move'), shortcut: ['entr'] }],

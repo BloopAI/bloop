@@ -46,10 +46,11 @@ const CommandBarItem = ({
   focusedItemProps,
   disableKeyNav,
   isWithCheckmark,
+  closeOnClick,
 }: Props) => {
   const ref = useRef<HTMLButtonElement>(null);
   const shortcutKeys = useShortcuts(shortcut);
-  const { setFocusedItem, setChosenStep } = useContext(
+  const { setFocusedItem, setChosenStep, setIsVisible } = useContext(
     CommandBarContext.Handlers,
   );
 
@@ -71,10 +72,13 @@ const CommandBarItem = ({
   const handleClick = useCallback(() => {
     if (onClick) {
       onClick();
+      if (closeOnClick) {
+        setIsVisible(false);
+      }
     } else {
       setChosenStep({ id: id as CommandBarStepEnum });
     }
-  }, [id, onClick]);
+  }, [id, onClick, closeOnClick]);
 
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {

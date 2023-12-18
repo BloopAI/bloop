@@ -104,9 +104,7 @@ const AddNewRepo = ({}: Props) => {
         key: 'local',
         shortcut: globalShortcuts.openLocalRepos.shortcut,
         footerHint: '',
-        footerBtns: [
-          { label: t('Next'), shortcut: ['entr'], action: handleChooseFolder },
-        ],
+        footerBtns: [{ label: t('Next'), shortcut: ['entr'] }],
       },
     ];
     return [

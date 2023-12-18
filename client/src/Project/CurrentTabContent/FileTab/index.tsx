@@ -72,9 +72,7 @@ const FileTab = ({
   const [indexRequested, setIndexRequested] = useState(false);
   const [isFetched, setIsFetched] = useState(false);
   const { apiUrl } = useContext(DeviceContext);
-  const { setFocusedTabItems, setIsVisible } = useContext(
-    CommandBarContext.Handlers,
-  );
+  const { setFocusedTabItems } = useContext(CommandBarContext.Handlers);
   const { refreshCurrentProjectRepos } = useContext(ProjectContext.Current);
   const eventSourceRef = useRef<EventSource | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -203,10 +201,8 @@ const FileTab = ({
           Icon: FileWithSparksIcon,
           id: 'explain_file',
           key: 'explain_file',
-          onClick: () => {
-            handleExplain();
-            setIsVisible(false);
-          },
+          onClick: handleExplain,
+          closeOnClick: true,
           shortcut: explainFileShortcut,
           footerHint: '',
           footerBtns: [{ label: t('Explain'), shortcut: ['entr'] }],
@@ -216,10 +212,8 @@ const FileTab = ({
           Icon: SplitViewIcon,
           id: 'split_view',
           key: 'split_view',
-          onClick: () => {
-            handleMoveToAnotherSide();
-            setIsVisible(false);
-          },
+          onClick: handleMoveToAnotherSide,
+          closeOnClick: true,
           shortcut: openInSplitViewShortcut,
           footerHint: '',
           footerBtns: [{ label: t('Move'), shortcut: ['entr'] }],

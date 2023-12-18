@@ -9,7 +9,7 @@ type Props = {
 };
 
 const ProjectHeader = ({ side }: Props) => {
-  const { leftTabs, rightTabs } = useContext(TabsContext.All);
+  const { leftTabs, rightTabs, focusedPanel } = useContext(TabsContext.All);
   const { tab } = useContext(
     TabsContext[side === 'left' ? 'CurrentLeft' : 'CurrentRight'],
   );
@@ -22,18 +22,10 @@ const ProjectHeader = ({ side }: Props) => {
     (dragIndex: number, hoverIndex: number) => {
       const action = side === 'left' ? setLeftTabs : setRightTabs;
       action((prevTabs) => {
-        console.log('prevTabs', prevTabs);
         const newTabs = JSON.parse(JSON.stringify(prevTabs));
         newTabs.splice(dragIndex, 1);
         newTabs.splice(hoverIndex, 0, prevTabs[dragIndex]);
-        console.log('newTabs', newTabs);
         return newTabs;
-        // return update(prevTabs, {
-        //   $splice: [
-        //     [dragIndex, 1],
-        //     [hoverIndex, 0, prevTabs[dragIndex]],
-        //   ],
-        // })
       });
     },
     [side],
@@ -59,7 +51,11 @@ const ProjectHeader = ({ side }: Props) => {
           />
         ))}
         {!!tabs.length && <div className="h-3 w-px bg-bg-border mx-1" />}
-        <AddTabButton tabsLength={tabs.length} side={side} />
+        <AddTabButton
+          tabsLength={tabs.length}
+          side={side}
+          focusedPanel={focusedPanel}
+        />
       </div>
       {(side === 'right' || !rightTabs.length) && (
         <div className="border-l border-bg-border h-full">

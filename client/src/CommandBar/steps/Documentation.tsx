@@ -56,7 +56,6 @@ const Documentation = ({}: Props) => {
             {
               label: t('Add'),
               shortcut: ['entr'],
-              action: enterAddMode,
             },
           ],
           key: 'add',

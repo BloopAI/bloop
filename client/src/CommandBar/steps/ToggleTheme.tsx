@@ -47,7 +47,6 @@ const ToggleTheme = ({}: Props) => {
         {
           label: t('Toggle'),
           shortcut: ['entr'],
-          action: () => setTheme(th),
         },
       ],
     }));

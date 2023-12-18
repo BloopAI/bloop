@@ -24,6 +24,7 @@ type HandlersContext = {
   >;
   setIsVisible: Dispatch<SetStateAction<boolean>>;
   setFocusedTabItems: Dispatch<SetStateAction<CommandBarItemGeneralType[]>>;
+  setNewTabItems: Dispatch<SetStateAction<CommandBarItemGeneralType[]>>;
 };
 
 type GeneralContextType = {
@@ -39,6 +40,7 @@ export const CommandBarContext = {
     setFocusedItem: () => {},
     setIsVisible: () => {},
     setFocusedTabItems: () => {},
+    setNewTabItems: () => {},
   }),
   General: createContext<GeneralContextType>({
     isVisible: false,
@@ -48,7 +50,11 @@ export const CommandBarContext = {
       id: CommandBarStepEnum.INITIAL,
     },
   }),
-  FocusedTab: createContext<{ items: CommandBarItemGeneralType[] }>({
-    items: [],
+  FocusedTab: createContext<{
+    tabItems: CommandBarItemGeneralType[];
+    newTabItems: CommandBarItemGeneralType[];
+  }>({
+    tabItems: [],
+    newTabItems: [],
   }),
 };
