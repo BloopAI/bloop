@@ -21,6 +21,10 @@ import {
   MoreHorizontalIcon,
 } from '../../../icons';
 import Button from '../../../components/Button';
+import { SyncStatus } from '../../../types/general';
+import SpinLoaderContainer from '../../../components/Loaders/SpinnerLoader';
+import Tooltip from '../../../components/Tooltip';
+import { repoStatusMap } from '../../../consts/general';
 import RepoEntry from './RepoEntry';
 import RepoDropdown from './RepoDropdown';
 
@@ -35,6 +39,7 @@ type Props = {
   branch: string;
   allBranches: { name: string; last_commit_unix_secs: number }[];
   indexedBranches: string[];
+  indexingData?: { status: SyncStatus; percentage?: string; branch?: string };
 };
 
 const reactRoot = document.getElementById('root')!;
@@ -50,6 +55,7 @@ const RepoNav = ({
   projectId,
   lastIndex,
   currentPath,
+  indexingData,
 }: Props) => {
   const { t } = useTranslation();
   const [files, setFiles] = useState<DirectoryEntry[]>([]);
@@ -105,8 +111,19 @@ const RepoNav = ({
     e?.stopPropagation();
   }, []);
 
+  const isIndexing = useMemo(() => {
+    if (!indexingData) {
+      return false;
+    }
+    return [
+      SyncStatus.Indexing,
+      SyncStatus.Syncing,
+      SyncStatus.Queued,
+    ].includes(indexingData.status);
+  }, [indexingData]);
+
   return (
-    <div className="select-none" ref={containerRef}>
+    <div className="select-none flex-shrink-0" ref={containerRef}>
       <span
         role="button"
         tabIndex={0}
@@ -115,7 +132,19 @@ const RepoNav = ({
         }`}
         onClick={toggleExpanded}
       >
-        {repoRef.startsWith('github.com') ? (
+        {isIndexing && indexingData ? (
+          <Tooltip
+            text={`${t(repoStatusMap[indexingData.status].text)}${
+              indexingData?.percentage ? ` · ${indexingData?.percentage}%` : ''
+            }`}
+            placement="bottom-start"
+          >
+            <SpinLoaderContainer
+              sizeClassName="w-3.5 h-3.5"
+              colorClassName="text-blue"
+            />
+          </Tooltip>
+        ) : repoRef.startsWith('github.com') ? (
           <GitHubIcon sizeClassName="w-3.5 h-3.5" />
         ) : (
           <HardDriveIcon sizeClassName="w-3.5 h-3.5" />

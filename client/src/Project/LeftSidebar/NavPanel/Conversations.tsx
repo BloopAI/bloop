@@ -47,7 +47,10 @@ const ConversationsNav = ({ isExpanded, setExpanded }: Props) => {
   }, []);
 
   return (
-    <div className="select-none overflow-hidden w-full" ref={containerRef}>
+    <div
+      className="select-none overflow-hidden w-full flex-shrink-0"
+      ref={containerRef}
+    >
       <span
         role="button"
         tabIndex={0}
