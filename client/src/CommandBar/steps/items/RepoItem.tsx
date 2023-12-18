@@ -46,6 +46,19 @@ type Props = {
   disableKeyNav?: boolean;
 };
 
+export const STATUS_MAP = {
+  [SyncStatus.Error]: { text: 'Error', color: 'bg-red-500' },
+  [SyncStatus.Removed]: { text: 'Removed', color: 'bg-red-500' },
+  [SyncStatus.Uninitialized]: { text: 'Not synced', color: 'bg-bg-shade' },
+  [SyncStatus.Queued]: { text: 'Queued...', color: 'bg-bg-shade' },
+  [SyncStatus.Cancelled]: { text: 'Cancelled', color: 'bg-bg-shade' },
+  [SyncStatus.Cancelling]: { text: 'Cancelling...', color: 'bg-yellow' },
+  [SyncStatus.Indexing]: { text: 'Indexing', color: 'bg-yellow' },
+  [SyncStatus.Syncing]: { text: 'Cloning', color: 'bg-yellow' },
+  [SyncStatus.Done]: { text: 'Last updated ', color: 'bg-green-500' },
+  [SyncStatus.RemoteRemoved]: { text: 'Remote removed ', color: 'bg-red-500' },
+};
+
 const RepoItem = ({
   repo,
   isFirst,
@@ -60,6 +73,7 @@ const RepoItem = ({
     ProjectContext.Current,
   );
   const [status, setStatus] = useState(repo.sync_status);
+  const [indexingPercent, setIndexingPercent] = useState<null | number>(null);
   const { apiUrl, openFolderInExplorer, os, openLink } =
     useContext(DeviceContext);
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -75,23 +89,22 @@ const RepoItem = ({
     eventSourceRef.current.onmessage = (ev) => {
       try {
         const data = JSON.parse(ev.data);
-        if (data.ev?.status_change && data.ref === repo.ref) {
-          setStatus(data.ev?.status_change);
-          if (data.ev?.status_change === SyncStatus.Done) {
-            eventSourceRef.current?.close();
-            eventSourceRef.current = null;
-            refetchRepos();
+        if (data.ref === repo.ref) {
+          if (data.ev?.status_change) {
+            setStatus(data.ev?.status_change);
+            if (data.ev?.status_change === SyncStatus.Done) {
+              eventSourceRef.current?.close();
+              eventSourceRef.current = null;
+              refetchRepos();
+            }
+          }
+          if (
+            Number.isInteger(data.ev?.index_percent) ||
+            data.ev?.index_percent === null
+          ) {
+            setIndexingPercent(data.ev.index_percent);
           }
         }
-        // if (
-        //   Number.isInteger(data.ev?.index_percent) ||
-        //   data.ev?.index_percent === null
-        // ) {
-        //   setCurrentlySyncingRepos((prev) => ({
-        //     ...prev,
-        //     [data.ref]: data.ev.index_percent,
-        //   }));
-        // }
       } catch {
         eventSourceRef.current?.close();
         eventSourceRef.current = null;
@@ -338,7 +351,10 @@ const RepoItem = ({
       }
       customRightElement={
         isIndexing ? (
-          <p className="body-mini-b text-label-link">{t('Indexing...')}</p>
+          <p className="body-mini-b text-label-link">
+            {t(STATUS_MAP[status].text)}
+            {indexingPercent !== null && `· ${indexingPercent}%`}
+          </p>
         ) : undefined
       }
       focusedItemProps={focusedItemProps}
