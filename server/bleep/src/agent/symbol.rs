@@ -220,16 +220,19 @@ impl Agent {
         )
         .unwrap();
 
-        let llm_response = self
-            .llm_with_function_call(prompt, filter_function)
-            .await
-            .unwrap_or({
-                warn!("Symbol classfier llm call failed, picking the first symbol.");
+        let llm_response = match self.llm_with_function_call(prompt, filter_function).await {
+            Ok(llm_response) => llm_response,
+            Err(e) => {
+                warn!(
+                    "Symbol classifier llm call failed, picking the first symbol: {}",
+                    e
+                );
                 FunctionCall {
                     name: Some("filter".to_string()),
                     arguments: "{\"symbol\": 0}".to_string(),
                 }
-            });
+            }
+        };
 
         let filter_argument: Filter =
             match serde_json::from_str(llm_response.clone().arguments.as_str()) {
@@ -247,10 +250,10 @@ impl Agent {
             .into_iter()
             .flat_map(|(_, symbol_with_alias)| symbol_with_alias)
             .find(|(alias, _)| alias.clone() == selected_symbol as i32)
-            {
-                Some((_alias, symbol_metadata)) => Ok(symbol_metadata),
-                _ => Err(SymbolError::SymbolOutOfBoundsError)
-            };
+        {
+            Some((_alias, symbol_metadata)) => Ok(symbol_metadata),
+            _ => Err(SymbolError::SymbolOutOfBoundsError),
+        };
 
         output
     }
