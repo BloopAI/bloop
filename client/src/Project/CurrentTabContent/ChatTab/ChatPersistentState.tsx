@@ -557,7 +557,8 @@ const ChatPersistentState = ({
   }, [onMessageEditCancel]);
 
   useEffect(() => {
-    if (convId && project?.id) {
+    // if it was open from history and not updated from sse message
+    if (convId && project?.id && !conversation.length) {
       getConversation(project.id, convId).then((resp) => {
         const conv: ChatMessage[] = [];
         resp.exchanges.forEach((m) => {
