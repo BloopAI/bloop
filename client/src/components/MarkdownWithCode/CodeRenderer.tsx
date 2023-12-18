@@ -1,29 +1,14 @@
-import {
-  Dispatch,
-  memo,
-  MutableRefObject,
-  ReactNode,
-  SetStateAction,
-  useCallback,
-  useContext,
-  useMemo,
-} from 'react';
-import { FileHighlightsType, TabTypesEnum } from '../../types/general';
-import FileChip from '../Chips/FileChip';
+import { memo, ReactNode, useCallback, useContext, useMemo } from 'react';
+import { TabTypesEnum } from '../../types/general';
 import { TabsContext } from '../../context/tabsContext';
 import CodeWithBreadcrumbs from './CodeWithBreadcrumbs';
 import NewCode from './NewCode';
 
 type Props = {
   children: ReactNode[];
-  fileChips: MutableRefObject<never[]>;
-  setFileHighlights: Dispatch<SetStateAction<FileHighlightsType>>;
-  setHoveredLines: Dispatch<SetStateAction<[number, number] | null>>;
   className?: string;
   propsJSON: string;
   inline?: boolean;
-  recordId?: number;
-  threadId?: string;
   isCodeStudio?: boolean;
   side: 'left' | 'right';
 };
@@ -32,12 +17,7 @@ const CodeRenderer = ({
   className,
   children,
   inline,
-  fileChips,
-  setFileHighlights,
-  setHoveredLines,
   propsJSON,
-  recordId,
-  threadId,
   isCodeStudio,
   side,
 }: Props) => {
@@ -86,11 +66,6 @@ const CodeRenderer = ({
         />
       ) : null,
     [children],
-  );
-
-  const linesToUse: [number, number] | undefined = useMemo(
-    () => [lines[0], lines[1] ?? lines[0]],
-    [lines],
   );
 
   const onClick = useCallback(

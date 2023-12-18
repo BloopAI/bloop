@@ -22,8 +22,6 @@ type Props = {
   singleFileExplanation?: boolean;
   setFileHighlights: Dispatch<SetStateAction<FileHighlightsType>>;
   setHoveredLines: Dispatch<SetStateAction<[number, number] | null>>;
-  recordId?: number;
-  threadId?: string;
   side: 'left' | 'right';
 };
 
@@ -34,8 +32,6 @@ const LinkRenderer = ({
   singleFileExplanation,
   setFileHighlights,
   setHoveredLines,
-  recordId,
-  threadId,
   side,
 }: Props) => {
   const { openNewTab } = useContext(TabsContext.Handlers);

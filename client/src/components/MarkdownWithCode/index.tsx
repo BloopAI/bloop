@@ -16,8 +16,6 @@ import CodeRenderer from './CodeRenderer';
 type Props = {
   markdown: string;
   singleFileExplanation?: boolean;
-  recordId?: number;
-  threadId?: string;
   isCodeStudio?: boolean;
   side: 'left' | 'right';
 };
@@ -25,8 +23,6 @@ type Props = {
 const MarkdownWithCode = ({
   markdown,
   singleFileExplanation,
-  recordId,
-  threadId,
   isCodeStudio,
   side,
 }: Props) => {
@@ -61,8 +57,6 @@ const MarkdownWithCode = ({
             singleFileExplanation={singleFileExplanation}
             setFileHighlights={setFileHighlights}
             setHoveredLines={setHoveredLines}
-            recordId={recordId}
-            threadId={threadId}
             side={side}
           >
             {props.children}
@@ -72,14 +66,9 @@ const MarkdownWithCode = ({
       code({ node, inline, className, children, ...props }: CodeProps) {
         return (
           <CodeRenderer
-            setFileHighlights={setFileHighlights}
-            setHoveredLines={setHoveredLines}
-            fileChips={fileChips}
             inline={inline}
             className={className}
             propsJSON={JSON.stringify(props)}
-            recordId={recordId}
-            threadId={threadId}
             isCodeStudio={isCodeStudio}
             side={side}
           >

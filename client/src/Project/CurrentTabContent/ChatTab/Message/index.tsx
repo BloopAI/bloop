@@ -11,13 +11,12 @@ import MarkdownWithCode from '../../../../components/MarkdownWithCode';
 import Button from '../../../../components/Button';
 import {
   CheckListIcon,
-  CopyTextIcon,
   LikeIcon,
   PencilIcon,
   UnlikeIcon,
   WarningSignIcon,
 } from '../../../../icons';
-import { copyToClipboard, getDateFnsLocale } from '../../../../utils';
+import { getDateFnsLocale } from '../../../../utils';
 import SpinLoaderContainer from '../../../../components/Loaders/SpinnerLoader';
 import {
   getPlainFromStorage,
@@ -38,7 +37,6 @@ type Props = {
   threadId: string;
   queryId: string;
   responseTimestamp: string | null;
-  isHistory?: boolean;
   showInlineFeedback: boolean;
   isLoading?: boolean;
   loadingSteps?: ChatLoadingStep[];
@@ -57,7 +55,6 @@ const ConversationMessage = ({
   queryId,
   onMessageEdit,
   singleFileExplanation,
-  isHistory,
   threadId,
   isLoading,
   loadingSteps,
@@ -208,8 +205,6 @@ const ConversationMessage = ({
               {author === ChatMessageAuthor.Server ? (
                 <MarkdownWithCode
                   markdown={text!}
-                  threadId={threadId}
-                  recordId={i}
                   side={side}
                   singleFileExplanation={singleFileExplanation}
                 />

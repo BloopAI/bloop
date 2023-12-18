@@ -66,14 +66,25 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
           },
       forceSide?: 'left' | 'right',
     ) => {
+      let sideForNewTab =
+        (!forceSide && focusedPanel === 'left') || forceSide === 'left'
+          ? 'left'
+          : 'right';
+      if (
+        data.type === TabTypesEnum.FILE &&
+        leftTabs.length === 1 &&
+        leftTabs[0].type === TabTypesEnum.CHAT &&
+        !rightTabs.length
+      ) {
+        sideForNewTab = 'left';
+        setRightTabs(leftTabs);
+        setActiveRightTab(leftTabs[0]);
+        setLeftTabs(() => []);
+      }
       const setTabsAction =
-        (!forceSide && focusedPanel === 'left') || forceSide === 'left'
-          ? setLeftTabs
-          : setRightTabs;
+        sideForNewTab === 'left' ? setLeftTabs : setRightTabs;
       const setActiveTabAction =
-        (!forceSide && focusedPanel === 'left') || forceSide === 'left'
-          ? setActiveLeftTab
-          : setActiveRightTab;
+        sideForNewTab === 'left' ? setActiveLeftTab : setActiveRightTab;
       setTabsAction((prev) => {
         const newTab: FileTabType | ChatTabType =
           data.type === TabTypesEnum.FILE
@@ -117,7 +128,7 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
         return prev;
       });
     },
-    [focusedPanel, leftTabs],
+    [focusedPanel, leftTabs, rightTabs],
   );
 
   useEffect(() => {
