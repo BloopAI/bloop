@@ -135,7 +135,7 @@ fn run_command(command: &Path, qdrant_dir: &Path, stdout: &Path, stderr: &Path) 
     let stderr_logs_file = File::create(stderr).unwrap();
 
     match getrlimit(Resource::RLIMIT_NOFILE) {
-        Ok((current_soft, current_hard)) if current_hard < 2048 => {
+        Ok((current_soft, current_hard)) if current_hard < 10000 => {
             if let Err(err) = setrlimit(Resource::RLIMIT_NOFILE, 10000, 10000) {
                 error!(
                     ?err,
