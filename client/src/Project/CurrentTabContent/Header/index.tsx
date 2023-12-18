@@ -37,7 +37,10 @@ const ProjectHeader = ({ side }: Props) => {
         side === 'right' ? 'border-l border-bg-border' : ''
       }`}
     >
-      <div className="flex pl-4 pr-2 items-center gap-1 flex-1 h-full overflow-auto fade-right">
+      <div
+        className="flex pl-4 pr-2 items-center gap-1 flex-1 h-full overflow-auto fade-right"
+        data-tauri-drag-region
+      >
         {tabs.map(({ key, ...t }, i) => (
           <TabButton
             key={key}
