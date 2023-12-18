@@ -27,6 +27,7 @@ type Props = {
 type OnlyIconProps = {
   onlyIcon: true;
   title: string;
+  shortcut?: string[];
   tooltipPlacement?: TippyProps['placement'];
 };
 
@@ -34,6 +35,7 @@ type TextBtnProps = {
   onlyIcon?: false;
   tooltipPlacement?: never;
   title?: string;
+  shortcut?: string[];
 };
 
 const variantStylesMap = {
@@ -117,6 +119,7 @@ const Button = forwardRef<
       title,
       tooltipPlacement,
       type = 'button',
+      shortcut,
       ...rest
     },
     ref,
@@ -131,7 +134,7 @@ const Button = forwardRef<
       [variant, className, size, onlyIcon],
     );
     return (onlyIcon && !rest.disabled) || title ? (
-      <Tooltip text={title} placement={tooltipPlacement}>
+      <Tooltip text={title} placement={tooltipPlacement} shortcut={shortcut}>
         <button {...rest} type={type} ref={ref} className={buttonClassName}>
           {children}
         </button>
