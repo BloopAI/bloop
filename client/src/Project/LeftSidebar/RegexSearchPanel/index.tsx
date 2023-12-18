@@ -24,6 +24,7 @@ import {
 import GitHubIcon from '../../../icons/GitHubIcon';
 import { splitPath } from '../../../utils';
 import { ProjectContext } from '../../../context/projectContext';
+import { CommandBarContext } from '../../../context/commandBarContext';
 import CodeResult from './Results/CodeResult';
 import RepoResult from './Results/RepoResult';
 import FileResult from './Results/FileResult';
@@ -54,6 +55,7 @@ const RegexSearchPanel = ({ projectId }: Props) => {
   const [resultsRaw, setResultsRaw] = useState<ResultType[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const { setIsRegexSearchEnabled } = useContext(ProjectContext.RegexSearch);
+  const { isVisible } = useContext(CommandBarContext.General);
   const [focusedIndex, setFocusedIndex] = useState(-1);
 
   const onChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
@@ -176,7 +178,7 @@ const RegexSearchPanel = ({ projectId }: Props) => {
     },
     [resultsRaw],
   );
-  useKeyboardNavigation(handleKeyEvent);
+  useKeyboardNavigation(handleKeyEvent, isVisible);
 
   return (
     <div className="flex flex-col h-full flex-1 overflow-auto">
@@ -197,6 +199,7 @@ const RegexSearchPanel = ({ projectId }: Props) => {
           type="search"
           autoCorrect="off"
           autoComplete="off"
+          ref={inputRef}
         />
         <Button
           variant="danger"
