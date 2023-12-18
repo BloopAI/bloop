@@ -15,6 +15,7 @@ import {
   DocumentsIcon,
   DoorOutIcon,
   MagazineIcon,
+  PlusSignIcon,
   RegexIcon,
   RepositoryIcon,
   WalletIcon,
@@ -62,6 +63,20 @@ const InitialCommandBar = ({}: Props) => {
         shortcut: globalShortcuts.openManageRepos.shortcut,
         footerHint: '',
         footerBtns: [{ label: t('Manage'), shortcut: ['entr'] }],
+      },
+      {
+        label: t('Add new repository'),
+        Icon: PlusSignIcon,
+        id: CommandBarStepEnum.ADD_NEW_REPO,
+        shortcut: ['cmd', 'A'],
+        footerHint: '',
+        footerBtns: [
+          {
+            label: t('Add'),
+            shortcut: ['entr'],
+          },
+        ],
+        key: 'add-repo',
       },
     ];
     const projectItems: CommandBarItemGeneralType[] = projects
