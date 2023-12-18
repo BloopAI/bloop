@@ -148,10 +148,11 @@ const RepoItem = ({
     openLink('https://' + repo.ref);
   }, [openLink, repo.ref]);
 
-  const handleRemoveFromProject = useCallback(async () => {
+  const handleRemoveFromProject = useCallback(() => {
     if (project?.id) {
-      await removeRepoFromProject(project.id, repo.ref);
-      refreshCurrentProjectRepos();
+      return removeRepoFromProject(project.id, repo.ref).finally(() => {
+        refreshCurrentProjectRepos();
+      });
     }
   }, [repo]);
 
