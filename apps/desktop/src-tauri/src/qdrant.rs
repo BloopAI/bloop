@@ -129,28 +129,19 @@ impl Drop for QdrantSupervisor {
 #[cfg(unix)]
 fn run_command(command: &Path, qdrant_dir: &Path, stdout: &Path, stderr: &Path) -> Child {
     use nix::sys::resource::{getrlimit, setrlimit, Resource};
-    use tracing::info;
 
-    let rlimit_threshold = 10000; // Minimum rlimit value
     let logs_file = File::create(stdout).unwrap();
     let stderr_logs_file = File::create(stderr).unwrap();
 
     match getrlimit(Resource::RLIMIT_NOFILE) {
-        Ok((current_soft, current_hard))
-            if (current_hard < rlimit_threshold || current_soft < rlimit_threshold) =>
-        {
-            let new_soft = current_soft.max(rlimit_threshold);
-            let new_hard = current_hard.max(rlimit_threshold);
-
-            if let Err(err) = setrlimit(Resource::RLIMIT_NOFILE, new_soft, new_hard) {
+        Ok((current_soft, current_hard)) => {
+            let new_soft = current_hard.min(10000);
+            if let Err(err) = setrlimit(Resource::RLIMIT_NOFILE, new_soft, current_hard) {
                 error!(
                     ?err,
-                    new_soft, new_hard, current_soft, current_hard, "failed to set rlimit/nofile"
+                    new_soft, current_soft, current_hard, "failed to set rlimit/nofile"
                 );
             }
-        }
-        Ok((current_soft, current_hard)) => {
-            info!(current_soft, current_hard, "no change to rlimit needed");
         }
         Err(err) => {
             error!(?err, "failed to get rlimit/nofile");
