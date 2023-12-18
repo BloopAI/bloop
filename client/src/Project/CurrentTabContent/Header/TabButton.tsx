@@ -33,6 +33,8 @@ type Props = TabType & {
   tokenRange?: string;
 };
 
+const closeTabShortcut = ['cmd', 'W'];
+
 const TabButton = ({
   isActive,
   tabKey,
@@ -185,7 +187,8 @@ const TabButton = ({
         variant="ghost"
         size="mini"
         onlyIcon
-        title={t('Close')}
+        title={t('Close tab')}
+        shortcut={isActive ? closeTabShortcut : undefined}
         className={`opacity-0 group-hover:opacity-100 ${
           isActive ? 'opacity-100' : ''
         }`}

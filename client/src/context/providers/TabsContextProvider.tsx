@@ -19,6 +19,8 @@ import {
 import { ProjectContext } from '../projectContext';
 import { CommandBarContext } from '../commandBarContext';
 import { ChatBubblesIcon } from '../../icons';
+import { checkEventKeys } from '../../utils/keyboardUtils';
+import useKeyboardNavigation from '../../hooks/useKeyboardNavigation';
 
 type Props = {};
 
@@ -287,6 +289,23 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
     }),
     [closeTab, openNewTab, updateTabProperty],
   );
+
+  const handleKeyEvent = useCallback(
+    (e: KeyboardEvent) => {
+      if (checkEventKeys(e, ['cmd', 'W'])) {
+        e.preventDefault();
+        e.stopPropagation();
+        closeTab(
+          focusedPanel === 'right' && activeRightTab?.key
+            ? activeRightTab.key
+            : activeLeftTab?.key || '',
+          focusedPanel,
+        );
+      }
+    },
+    [closeTab, focusedPanel, activeLeftTab, activeRightTab],
+  );
+  useKeyboardNavigation(handleKeyEvent);
 
   const allContextValue = useMemo(
     () => ({
