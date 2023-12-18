@@ -410,7 +410,10 @@ impl Doc {
         //
         // - if this is a sync job: this rolls back to before the sync started
         // - if this is a resync job: this rolls back to before the old copy was deleted
-        self.index_writer.lock().await.rollback();
+        match self.index_writer.lock().await.rollback() {
+            Ok(_) => info!(%id, "successfully cancelled sync job"),
+            Err(e) => error!(%id, %e, "tantivy rollback failed"),
+        };
 
         Ok(id)
     }
@@ -530,17 +533,35 @@ impl Doc {
         Ok(indexed)
     }
 
-    /// List a synced doc source by id
+    /// List a doc source by id.
+    ///
+    /// This doc-source could be in the sync-queue, if it is syncing/resyncing,
+    /// or in the sqlite db if it has been indexed completely
     pub async fn list_one(&self, id: i64) -> Result<SqlRecord, Error> {
-        let record = sqlx::query!(
+        let queued_item = self
+            .index_queue
+            .read()
+            .await
+            .iter()
+            .find(|job| job.id == id)
+            .map(|job| SqlRecord {
+                id: job.id,
+                url: job.url.clone(),
+                name: job.name.clone(),
+                favicon: job.favicon.clone(),
+                description: job.description.clone(),
+                index_status: STATUS_INDEXING.to_owned(),
+                modified_at: chrono::Utc::now().naive_local(),
+            });
+
+        let indexed_item = sqlx::query!(
             "SELECT id, index_status, name, url, favicon, description, modified_at FROM docs WHERE id = ?",
             id
         )
         .fetch_one(&*self.sql)
         .await
-        .map_err(|_| Error::InvalidDocId(id))?;
-
-        Ok(SqlRecord {
+        .ok()
+        .map(|record| SqlRecord {
             id: record.id,
             name: record.name,
             index_status: record.index_status,
@@ -548,7 +569,11 @@ impl Doc {
             favicon: record.favicon,
             url: record.url,
             modified_at: record.modified_at,
-        })
+        });
+
+        Ok(queued_item
+            .or(indexed_item)
+            .ok_or(Error::InvalidDocId(id))?)
     }
 
     /// Search for doc source by title
@@ -898,11 +923,10 @@ impl Doc {
             futures::future::join_all(handles).await;
 
             trace!(%id, url = doc_source.as_str(), "commiting doc-provider to index");
-            self.index_writer.lock().await.commit();
-            // match index_writer.lock().await.commit() {
-            //     Ok(_) => info!(%id, url = doc_source.as_str(), "index complete"),
-            //     Err(e) => error!(%id, url = doc_source.as_str(), %e, "tantivy commit failed"),
-            // }
+            match self.index_writer.lock().await.commit() {
+                Ok(_) => info!(%id, url = doc_source.as_str(), "index complete"),
+                Err(e) => error!(%id, url = doc_source.as_str(), %e, "tantivy commit failed"),
+            }
 
             yield Progress::Done(id);
         }
