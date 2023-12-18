@@ -31,6 +31,10 @@ pub struct Doc {
 
 struct SyncHandle {
     id: i64,
+    url: String,
+    name: Option<String>,
+    favicon: Option<String>,
+    description: Option<String>,
     join_handle: tokio::task::JoinHandle<()>,
     progress_stream: tokio::sync::watch::Receiver<Progress>,
 }
@@ -147,6 +151,12 @@ impl Doc {
     where
         &'a mut E: sqlx::Executor<'a, Database = sqlx::Sqlite>,
     {
+        let mut index_queue = self.index_queue.write().await;
+        let sync_handle = index_queue
+            .iter_mut()
+            .find(|job| job.id == id)
+            .ok_or(Error::InvalidDocId(id))?;
+        sync_handle.name = Some(title.to_string());
         sqlx::query! {
             "UPDATE docs SET name = ? WHERE id = ?",
             title,
@@ -271,19 +281,24 @@ impl Doc {
         .execute(&mut transaction)
         .await?
         .last_insert_rowid();
-        let (tx, rx) = tokio::sync::watch::channel(Progress::Init(id));
 
+        let (tx, rx) = tokio::sync::watch::channel(Progress::Init(id));
         let self_ = self.clone();
+        let url_ = url.clone();
         let join_handle = tokio::task::spawn(async move {
             self_
-                .begin_sync_job(id, url, tx, Arc::clone(&index_writer), transaction)
-                .await;
+                .begin_sync_job(id, url_, tx, Arc::clone(&index_writer), transaction)
+                .await; // TODO: handle err
             ()
         });
 
         let mut lock = self.index_queue.write().await;
         lock.push(SyncHandle {
             id,
+            url: url.to_string(),
+            name: None,
+            favicon: None,
+            description: None,
             join_handle,
             progress_stream: rx,
         });
@@ -323,7 +338,7 @@ impl Doc {
                         .await;
                 };
             }
-            tx.send(progress);
+            let _ = tx.send(progress); // TODO: log err here
         }
 
         // scraped doc, but no pages
@@ -381,39 +396,66 @@ impl Doc {
         let mut lock = self.index_queue.write().await;
         lock.retain(|handle| handle.id != id);
 
+        // bring tantivy back to last saved state
+        //
+        // - if this is a sync job: this rolls back to before the sync started
+        // - if this is a resync job: this rolls back to before the old copy was deleted
+        self.index_writer()?.rollback();
+
         Ok(id)
     }
 
     /// Update documentation in the index - this will rescrape the entire website
-    pub async fn resync(self, id: i64) -> impl Stream<Item = Result<Progress, Error>> {
-        try_stream! {
-            let url = sqlx::query!("SELECT url FROM docs WHERE id = ?", id)
-                .fetch_optional(&*self.sql)
-                .await?
-                .ok_or(Error::InvalidDocId(id))?
-                .url;
-            let url = url::Url::parse(&url).map_err(|e| Error::UrlParse(url, e))?;
+    ///
+    /// We may only resync ids that are persisted to the sql db, this ensures that resync cannot
+    /// be called on a currently syncing job
+    pub async fn resync(self, id: i64) -> Result<i64, Error> {
+        let record = sqlx::query!(
+            "SELECT id, index_status, name, url, favicon, description, modified_at FROM docs WHERE id = ?",
+            id
+        )
+        .fetch_one(&*self.sql)
+        .await
+        .map_err(|_| Error::InvalidDocId(id))?;
 
-            // delete old docs from tantivy
-            self.index_writer()?
-                .delete_term(Term::from_field_i64(self.section_schema.doc_id, id));
-            self.index_writer()?.commit()?;
+        let url =
+            url::Url::parse(&record.url).map_err(|e| Error::UrlParse(record.url.clone(), e))?;
 
-            sqlx::query! {
-                "UPDATE docs SET modified_at = datetime('now') WHERE id = ?",
-                id,
-            }
-            .execute(&*self.sql)
-            .await?;
+        // delete old docs from tantivy
+        self.index_writer()?
+            .delete_term(Term::from_field_i64(self.section_schema.doc_id, id));
 
-            let index_writer = Arc::new(Mutex::new(self.index_writer()?));
-
-            let stream = self
-                .insert_into_tantivy(id, url, Arc::clone(&index_writer));
-            for await progress in stream {
-                yield progress;
-            }
+        sqlx::query! {
+            "UPDATE docs SET modified_at = datetime('now') WHERE id = ?",
+            id,
         }
+        .execute(&*self.sql)
+        .await?;
+
+        let index_writer = Arc::new(Mutex::new(self.index_writer()?));
+        let (tx, rx) = tokio::sync::watch::channel(Progress::Init(id));
+        let transaction = self.sql.begin().await?;
+        let self_ = self.clone();
+        let url_ = url.clone();
+        let join_handle = tokio::task::spawn(async move {
+            self_
+                .begin_sync_job(id, url_, tx, Arc::clone(&index_writer), transaction)
+                .await; // TODO: handle err
+            ()
+        });
+
+        let mut lock = self.index_queue.write().await;
+        lock.push(SyncHandle {
+            id,
+            url: url.to_string(),
+            name: record.name.clone(),
+            favicon: record.favicon.clone(),
+            description: record.description.clone(),
+            join_handle,
+            progress_stream: rx,
+        });
+
+        Ok(id)
     }
 
     /// Remove this doc source from tantivy and sqlite
@@ -435,7 +477,7 @@ impl Doc {
 
     /// List all synced doc sources
     pub async fn list(&self) -> Result<Vec<SqlRecord>, Error> {
-        Ok(sqlx::query!(
+        let mut indexed = sqlx::query!(
             "SELECT id, index_status, name, url, favicon, description, modified_at FROM docs"
         )
         .fetch_all(&*self.sql)
@@ -450,7 +492,23 @@ impl Doc {
             url: record.url,
             modified_at: record.modified_at,
         })
-        .collect::<Vec<_>>())
+        .collect::<Vec<_>>();
+
+        let index_queue = self.index_queue.read().await;
+        let syncing = index_queue.iter().map(|job| SqlRecord {
+            id: job.id,
+            url: job.url.clone(),
+            name: job.name.clone(),
+            favicon: job.favicon.clone(),
+            description: job.description.clone(),
+            index_status: STATUS_INDEXING.to_owned(),
+            modified_at: chrono::Utc::now().naive_local(),
+        });
+
+        indexed.extend(syncing);
+        indexed.sort_by_key(|record| record.id);
+
+        Ok(indexed)
     }
 
     /// List a synced doc source by id
