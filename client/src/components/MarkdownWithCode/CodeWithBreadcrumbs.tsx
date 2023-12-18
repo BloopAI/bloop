@@ -11,6 +11,7 @@ type Props = {
   startLine: number | null;
   language: string;
   code: string;
+  repoRef?: string;
 };
 
 const CodeWithBreadcrumbs = ({
@@ -19,6 +20,7 @@ const CodeWithBreadcrumbs = ({
   startLine,
   language,
   code,
+  repoRef,
 }: Props) => {
   const handleResultClick = useCallback(
     (e: MouseEvent) => {
@@ -55,6 +57,7 @@ const CodeWithBreadcrumbs = ({
           <FileIcon filename={filePath} />
           <BreadcrumbsPathContainer
             path={filePath}
+            repoRef={repoRef}
             onClick={onBreadcrumbClick}
           />
           <CopyButton code={code} isInHeader />

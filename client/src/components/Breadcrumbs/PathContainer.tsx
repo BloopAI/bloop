@@ -2,6 +2,7 @@ import React, { memo, useMemo } from 'react';
 import {
   breadcrumbsItemPath,
   isWindowsPath,
+  splitPath,
   splitPathForBreadcrumbs,
 } from '../../utils';
 import { FileTreeFileType } from '../../types';
@@ -11,6 +12,7 @@ type BProps = React.ComponentProps<typeof Breadcrumbs>;
 
 type Props = {
   path: string;
+  repoRef?: string;
   onClick?: (path: string, fileType?: FileTreeFileType) => void;
   shouldGoToFile?: boolean;
   nonInteractive?: boolean;
@@ -24,10 +26,11 @@ const BreadcrumbsPathContainer = ({
   shouldGoToFile,
   allowOverflow,
   scrollContainerRef,
+  repoRef,
   ...rest
 }: Props) => {
   const pathParts: PathParts[] = useMemo(() => {
-    return splitPathForBreadcrumbs(path, (e, item, index, pParts) => {
+    const pieces = splitPathForBreadcrumbs(path, (e, item, index, pParts) => {
       if (onClick) {
         e?.stopPropagation();
       }
@@ -49,7 +52,11 @@ const BreadcrumbsPathContainer = ({
         // navigateFullResult(path);
       }
     });
-  }, [path, shouldGoToFile, onClick]);
+    if (repoRef) {
+      pieces.unshift({ label: splitPath(repoRef).pop() || '' });
+    }
+    return pieces;
+  }, [path, shouldGoToFile, onClick, repoRef]);
 
   return (
     <div

@@ -8,7 +8,7 @@ const EmptyTab = ({}: Props) => {
   useTranslation();
   const shortcut = useShortcuts(['cmd']);
   return (
-    <div className="flex-1 h-full flex flex-col items-center justify-center gap-6">
+    <div className="flex-1 h-full flex flex-col items-center justify-center gap-6 select-none cursor-default">
       <div className="w-15 h-15 flex items-center justify-center rounded-xl border border-bg-divider">
         <img alt="bloop" className="w-6 h-6 bloop-head-img" />
       </div>

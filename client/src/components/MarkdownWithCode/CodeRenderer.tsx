@@ -119,6 +119,7 @@ const CodeRenderer = ({
         matchType?.[1] === 'Quoted' ? (
           <CodeWithBreadcrumbs
             code={code}
+            repoRef={repoRef}
             language={matchLang?.[1] || ''}
             filePath={filePath || ''}
             onResultClick={onClick}
