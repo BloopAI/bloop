@@ -131,19 +131,21 @@ fn run_command(command: &Path, qdrant_dir: &Path, stdout: &Path, stderr: &Path) 
     use nix::sys::resource::{getrlimit, setrlimit, Resource};
     use tracing::info;
 
+    let rlimit_threshold = 10000; // Minimum rlimit value
     let logs_file = File::create(stdout).unwrap();
     let stderr_logs_file = File::create(stderr).unwrap();
 
     match getrlimit(Resource::RLIMIT_NOFILE) {
-        Ok((current_soft, current_hard)) if current_hard < 10000 => {
-            if let Err(err) = setrlimit(Resource::RLIMIT_NOFILE, 10000, 10000) {
+        Ok((current_soft, current_hard))
+            if (current_hard < rlimit_threshold || current_soft < rlimit_threshold) =>
+        {
+            let new_soft = current_soft.max(rlimit_threshold);
+            let new_hard = current_hard.max(rlimit_threshold);
+
+            if let Err(err) = setrlimit(Resource::RLIMIT_NOFILE, new_soft, new_hard) {
                 error!(
                     ?err,
-                    new_soft = 10000,
-                    new_hard = 10000,
-                    current_soft,
-                    current_hard,
-                    "failed to set rlimit/nofile"
+                    new_soft, new_hard, current_soft, current_hard, "failed to set rlimit/nofile"
                 );
             }
         }
