@@ -126,7 +126,12 @@ const CodeLine = ({
   }, [tokens, lineStart]);
 
   const lineToRender = useMemo(() => {
-    return tokensMap.find((l) => !!l.tokens.find((t) => t.highlight));
+    const ltr = tokensMap.find((l) => !!l.tokens.find((t) => t.highlight));
+    const firstHighlightIndex = ltr?.tokens.findIndex((t) => t.highlight) || 0;
+    if (ltr) {
+      ltr.tokens = ltr.tokens.slice(Math.max(firstHighlightIndex - 2, 0));
+    }
+    return ltr;
   }, [tokensMap]);
 
   return (
