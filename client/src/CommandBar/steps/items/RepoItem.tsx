@@ -128,14 +128,15 @@ const RepoItem = ({
     startEventSource();
   }, [repo.ref]);
 
-  const handleAddToProject = useCallback(async () => {
+  const handleAddToProject = useCallback(() => {
     if (project?.id) {
-      await addRepoToProject(
+      return addRepoToProject(
         project.id,
         repo.ref,
         repo.branch_filter?.select?.[0],
-      );
-      refreshCurrentProjectRepos();
+      ).finally(() => {
+        refreshCurrentProjectRepos();
+      });
     }
   }, [repo]);
 
