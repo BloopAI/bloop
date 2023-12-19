@@ -4,8 +4,8 @@ import { ResolvedPos } from 'prosemirror-model';
 
 export function getRegexp(mentionTrigger: string, allowSpace?: boolean) {
   return allowSpace
-    ? new RegExp('(^|\\s)' + mentionTrigger + '([\\w-\\+]*\\s?[\\w-\\+]*)$')
-    : new RegExp('(^|\\s)' + mentionTrigger + '([\\w-\\+]*)$');
+    ? new RegExp('(^|\\s)' + mentionTrigger + '([\\w-\\+]*\\s?[\\w-\\+.]*)$')
+    : new RegExp('(^|\\s)' + mentionTrigger + '([\\w-\\+.]*)$');
 }
 
 const insertAfterSelect = String.fromCharCode(160);
