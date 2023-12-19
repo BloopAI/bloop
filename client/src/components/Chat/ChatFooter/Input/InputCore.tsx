@@ -15,10 +15,7 @@ import { schema as basicSchema } from 'prosemirror-schema-basic';
 import * as icons from 'file-icons-js';
 import { useTranslation } from 'react-i18next';
 import { getFileExtensionForLang, InputEditorContent } from '../../../../utils';
-import {
-  ParsedQueryType,
-  ParsedQueryTypeEnum,
-} from '../../../../types/general';
+import { ParsedQueryType } from '../../../../types/general';
 import { getMentionsPlugin } from './mentionPlugin';
 import { addMentionNodes, mapEditorContentToInputValue } from './utils';
 import { placeholderPlugin } from './placeholderPlugin';
