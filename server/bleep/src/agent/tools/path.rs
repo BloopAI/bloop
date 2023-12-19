@@ -34,7 +34,7 @@ impl Agent {
         // If there are no lexical results, perform a semantic search.
         if paths.is_empty() {
             let semantic_paths = self
-                .semantic_search(query.into(), vec![], 30, 0, 0.0, true)
+                .semantic_search(query.into(), vec![], 30, 0, 0.0, true, false)
                 .await?
                 .into_iter()
                 .map(|chunk| chunk.relative_path)

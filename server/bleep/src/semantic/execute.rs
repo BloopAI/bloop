@@ -24,6 +24,7 @@ pub async fn execute(
             ((params.page + 1) * params.page_size) as u64,
             0.0,
             false,
+            false,
         )
         .await?;
 

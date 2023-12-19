@@ -31,7 +31,7 @@ impl Agent {
         .await?;
 
         let results = self
-            .semantic_search(query.into(), paths.clone(), 10, 0, 0.0, true)
+            .semantic_search(query.into(), paths.clone(), 10, 0, 0.0, true, true)
             .await?;
 
         let mut chunks = results

@@ -23,7 +23,7 @@ impl Agent {
         .await?;
 
         let mut results = self
-            .semantic_search(query.into(), vec![], CODE_SEARCH_LIMIT, 0, 0.3, true)
+            .semantic_search(query.into(), vec![], CODE_SEARCH_LIMIT, 0, 0.3, true, false)
             .await?;
 
         debug!("returned {} results", results.len());
@@ -35,7 +35,7 @@ impl Agent {
             if !hyde_docs.is_empty() {
                 let hyde_doc = hyde_docs.first().unwrap().into();
                 let hyde_results = self
-                    .semantic_search(hyde_doc, vec![], CODE_SEARCH_LIMIT, 0, 0.3, true)
+                    .semantic_search(hyde_doc, vec![], CODE_SEARCH_LIMIT, 0, 0.3, true, false)
                     .await?;
 
                 debug!("returned {} HyDE results", results.len());

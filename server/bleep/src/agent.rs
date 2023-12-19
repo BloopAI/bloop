@@ -340,6 +340,7 @@ impl Agent {
         Ok(history)
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn semantic_search(
         &self,
         query: parser::Literal<'_>,
@@ -348,6 +349,7 @@ impl Agent {
         offset: u64,
         threshold: f32,
         retrieve_more: bool,
+        exact: bool,
     ) -> Result<Vec<semantic::Payload>> {
         let paths_set = paths
             .into_iter()
@@ -394,7 +396,7 @@ impl Agent {
         debug!(?query, %self.thread_id, "executing semantic query");
         self.app
             .semantic
-            .search(&query, limit, offset, threshold, retrieve_more)
+            .search(&query, limit, offset, threshold, retrieve_more, exact)
             .await
     }
 
@@ -406,6 +408,7 @@ impl Agent {
         offset: u64,
         threshold: f32,
         retrieve_more: bool,
+        exact: bool,
     ) -> Result<Vec<semantic::Payload>> {
         let queries = queries
             .iter()
@@ -421,7 +424,14 @@ impl Agent {
         debug!(?queries, %self.thread_id, "executing semantic query");
         self.app
             .semantic
-            .batch_search(queries.as_slice(), limit, offset, threshold, retrieve_more)
+            .batch_search(
+                queries.as_slice(),
+                limit,
+                offset,
+                threshold,
+                retrieve_more,
+                exact,
+            )
             .await
     }
 
