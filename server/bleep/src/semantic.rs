@@ -1,6 +1,6 @@
 use std::{borrow::Cow, collections::HashMap, env, path::Path, sync::Arc};
 
-use crate::{query::parser::SemanticQuery, Configuration};
+use crate::{query::parser::SemanticQuery, repo::RepoRef, Configuration};
 
 use anyhow::bail;
 use qdrant_client::{
@@ -479,7 +479,7 @@ impl Semantic {
         &'a self,
         file_cache_key: String,
         repo_name: &'a str,
-        repo_ref: &'a str,
+        repo_ref: &'a RepoRef,
         relative_path: &'a str,
         buffer: &'a str,
         lang_str: &'a str,
@@ -501,7 +501,7 @@ impl Semantic {
             let data = format!("{repo_name}\t{relative_path}\n{}", chunk.data);
             let payload = Payload {
                 repo_name: repo_name.to_owned(),
-                repo_ref: repo_ref.parse().unwrap(),
+                repo_ref: repo_ref.clone(),
                 relative_path: relative_path.to_owned(),
                 content_hash: file_cache_key.to_string(),
                 text: chunk.data.to_owned(),

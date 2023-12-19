@@ -415,7 +415,7 @@ impl<'a> FileCache {
             .chunks_for_buffer(
                 cache_keys.semantic().into(),
                 repo_name,
-                &repo_ref.to_string(),
+                &repo_ref,
                 relative_path,
                 buffer,
                 lang_str,

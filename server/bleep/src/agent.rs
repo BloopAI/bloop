@@ -59,7 +59,7 @@ impl Project {
     }
 
     pub fn repos(&self) -> impl Iterator<Item = String> + '_ {
-        self.0.iter().map(|r| r.display_name())
+        self.0.iter().map(|r| r.indexed_name())
     }
 }
 

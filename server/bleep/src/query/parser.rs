@@ -601,6 +601,7 @@ pub fn parse_nl(query: &str) -> Result<SemanticQuery<'_>, ParseError> {
         match pair.as_rule() {
             Rule::repo => {
                 let item = Literal::from(pair.into_inner().next().unwrap());
+                extend_query(&item);
                 repos.push(item);
             }
             Rule::path => {
