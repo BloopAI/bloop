@@ -340,7 +340,6 @@ impl Agent {
         Ok(history)
     }
 
-    #[allow(clippy::too_many_arguments)]
     async fn semantic_search(
         &self,
         query: parser::Literal<'_>,
