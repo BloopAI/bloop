@@ -52,33 +52,15 @@ pub(super) async fn handle(
     Query(payload): Query<TokenInfoRequest>,
     Extension(indexes): Extension<Arc<Indexes>>,
 ) -> Result<impl IntoResponse> {
-    let result = inner_handle(payload, indexes).await;
-
-    match result {
-        Ok(response) => Ok(json(response)),
-        Err(err) => Err(err),
-    }
-}
-
-pub async fn inner_handle(
-    payload: TokenInfoRequest,
-    indexes: Arc<Indexes>,
-) -> Result<TokenInfoResponse> {
     let repo_ref = payload.repo_ref.parse::<RepoRef>().map_err(Error::user)?;
 
-    let token = Token {
-        relative_path: payload.relative_path.as_str(),
-        start_byte: payload.start,
-        end_byte: payload.end,
-    };
-
-    let source_document = indexes
+    let source_doc = indexes
         .file
         .by_path(&repo_ref, &payload.relative_path, payload.branch.as_deref())
         .await
         .map_err(Error::user)?
         .ok_or_else(|| Error::user("path not found").with_status(StatusCode::NOT_FOUND))?;
-    let lang = source_document.lang.as_deref();
+    let lang = source_doc.lang.as_deref();
     let all_docs = {
         let associated_langs = match lang.map(TSLanguage::from_id) {
             Some(Language::Supported(config)) => config.language_ids,
@@ -94,33 +76,11 @@ pub async fn inner_handle(
             .await
     };
 
-    let source_document_idx = all_docs
-        .iter()
-        .position(|doc| doc.relative_path == payload.relative_path)
-        .ok_or(Error::internal("invalid language"))?;
-
-    let ctx = CodeNavigationContext {
-        token,
-        all_docs: &all_docs,
-        source_document_idx,
-    };
-
-    let data = ctx.token_info();
-    if data.is_empty() {
-        let response = search_nav(
-            Arc::clone(&indexes),
-            &repo_ref,
-            ctx.active_token_text(),
-            ctx.active_token_range(),
-            payload.branch.as_deref(),
-            &source_document,
-        )
+    let symbols = get_token_info(payload, &repo_ref, indexes, &source_doc, &all_docs)
         .await
-        .map(TokenInfoResponse::new)?;
-        Ok(response)
-    } else {
-        Ok(TokenInfoResponse { data })
-    }
+        .map_err(Error::internal)?;
+
+    Ok(json(TokenInfoResponse::new(symbols)))
 }
 
 /// The request made to the `related-files` endpoint.
@@ -347,6 +307,44 @@ pub(super) async fn token_value(
     Ok(json(TokenValueResponse { range, content }))
 }
 
+pub async fn get_token_info(
+    params: TokenInfoRequest,
+    repo_ref: &RepoRef,
+    indexes: Arc<Indexes>,
+    source_doc: &ContentDocument,
+    all_docs: &Vec<ContentDocument>,
+) -> anyhow::Result<Vec<FileSymbols>> {
+    let source_document_idx = all_docs
+        .iter()
+        .position(|doc| doc.relative_path == source_doc.relative_path)
+        .unwrap(); // FIXME: handle this
+
+    let ctx: CodeNavigationContext<'_, '_> = CodeNavigationContext {
+        token: Token {
+            relative_path: params.relative_path.as_str(),
+            start_byte: params.start,
+            end_byte: params.end,
+        },
+        all_docs,
+        source_document_idx,
+    };
+
+    let data = ctx.token_info();
+    if data.is_empty() {
+        search_nav(
+            Arc::clone(&indexes),
+            repo_ref,
+            ctx.active_token_text(),
+            ctx.active_token_range(),
+            params.branch.as_deref(),
+            source_doc,
+        )
+        .await
+    } else {
+        Ok(data)
+    }
+}
+
 async fn search_nav(
     indexes: Arc<Indexes>,
     repo_ref: &RepoRef,
@@ -354,7 +352,7 @@ async fn search_nav(
     payload_range: std::ops::Range<usize>,
     branch: Option<&str>,
     source_document: &ContentDocument,
-) -> Result<Vec<FileSymbols>> {
+) -> anyhow::Result<Vec<FileSymbols>> {
     use crate::{
         indexes::{reader::ContentReader, DocumentRead},
         query::compiler::trigrams,

@@ -61,7 +61,7 @@ impl Agent {
                 .push(chunk.clone())
         }
 
-        let extra_chunks = self.get_ref_def_extra_chunks(chunks.clone()).await;
+        let extra_chunks = self.get_related_chunks(chunks.clone()).await;
 
         chunks.extend(extra_chunks);
 

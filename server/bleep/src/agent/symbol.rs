@@ -1,108 +1,113 @@
 use futures::TryStreamExt;
 
-use crate::agent::exchange::CodeChunk;
-use crate::agent::Agent;
-use crate::intelligence::code_navigation::FileSymbols;
+use crate::agent::{exchange::CodeChunk, Agent};
+use crate::intelligence::{code_navigation::FileSymbols, Language, TSLanguage};
 use crate::llm_gateway;
-use crate::llm_gateway::api::{Function, FunctionCall};
-use crate::webserver::hoverable::{inner_handle, HoverableRequest, HoverableResponse};
-use crate::webserver::intelligence::{inner_handle as token_info, TokenInfoRequest};
-use tracing::log::warn;
+use crate::webserver::intelligence::{get_token_info, TokenInfoRequest};
+use anyhow::{Context, Result};
+use tracing::log::{debug, info, warn};
 
-pub struct ChunkRefDef {
+pub struct ChunkWithSymbols {
     pub chunk: CodeChunk,
-    pub metadata: Vec<RefDefMetadata>,
+    pub symbols: Vec<Symbol>,
 }
 
 impl Agent {
-    pub async fn add_symbols_to_chunk(&self, chunk: CodeChunk) -> ChunkRefDef {
-        const MAX_NUMBER_REF_DEF: usize = 5;
-
-        let repo_ref = format!("{}", self.repo_ref);
-        let indexes = self.app.indexes.clone();
+    pub async fn extract_symbols(&self, chunk: CodeChunk) -> Result<ChunkWithSymbols> {
+        const MAX_REF_DEFS: usize = 5; // Ignore symbols with more than this many cross-file refs/defs
 
         // get hoverable elements
-        let hoverable_request = HoverableRequest {
-            repo_ref: repo_ref.clone(),
-            relative_path: chunk.path.clone(),
-            branch: None,
+        let document = self
+            .app
+            .indexes
+            .file
+            .by_path(&self.repo_ref, &chunk.path, None)
+            .await?
+            .with_context(|| format!("failed to read path: {}", &chunk.path))?;
+
+        let hoverable_ranges = document
+            .hoverable_ranges()
+            .ok_or_else(|| anyhow::anyhow!("no hoverable ranges"))?;
+
+        let all_docs = {
+            let associated_langs = match document.lang.as_deref().map(TSLanguage::from_id) {
+                Some(Language::Supported(config)) => config.language_ids,
+                _ => &[],
+            };
+            self.app
+                .indexes
+                .file
+                .by_repo(&self.repo_ref, associated_langs.iter(), None)
+                .await
         };
-        let hoverable_response = inner_handle(hoverable_request, indexes.clone())
-            .await
-            .unwrap_or_else(|_e| HoverableResponse { ranges: Vec::new() });
 
-        // for each symbol call token-info
-        let token_info_vec = hoverable_response
-            .ranges
-            .iter()
-            .filter(|range| {
-                (range.start.byte >= chunk.start_byte) && (range.start.byte < chunk.end_byte)
-            })
-            .map(|range| {
-                token_info(
-                    TokenInfoRequest {
-                        relative_path: chunk.path.clone(),
-                        repo_ref: repo_ref.clone(),
-                        branch: None,
-                        start: range.start.byte,
-                        end: range.end.byte,
-                    },
-                    indexes.clone(),
-                )
-            });
+        // get references and definitions for each symbol
+        let related_symbols = futures::future::join_all(
+            hoverable_ranges
+                .iter()
+                .filter(|range| {
+                    (range.start.byte >= chunk.start_byte) && (range.start.byte < chunk.end_byte)
+                })
+                .map(|range| {
+                    get_token_info(
+                        TokenInfoRequest {
+                            relative_path: chunk.path.clone(),
+                            repo_ref: String::new(), // FIXME
+                            branch: None,
+                            start: range.start.byte,
+                            end: range.end.byte,
+                        },
+                        &self.repo_ref,
+                        self.app.indexes.clone(),
+                        &document,
+                        &all_docs,
+                    )
+                }),
+        )
+        .await;
 
-        let token_info_vec = futures::future::join_all(token_info_vec)
-            .await
+        // filter references and definitions
+        let mut symbols = related_symbols
             .into_iter()
-            .map(|response| response.unwrap())
+            .filter_map(Result::ok)
+            .zip(hoverable_ranges.into_iter().filter(|range| {
+                (range.start.byte >= chunk.start_byte) && (range.start.byte < chunk.end_byte)
+            }))
+            .map(|(token_info, range)| {
+                let filtered_token_info = token_info
+                    .into_iter()
+                    .filter(|file_symbols| file_symbols.file != chunk.path)
+                    .collect::<Vec<_>>();
+
+                Symbol {
+                    name: chunk.snippet.clone()[(range.start.byte - chunk.start_byte)
+                        ..(range.end.byte - chunk.start_byte)]
+                        .to_string(),
+                    related_symbols: filtered_token_info,
+                }
+            })
+            .filter(|metadata| {
+                (metadata.related_symbols.len() < MAX_REF_DEFS)
+                    && (!metadata.related_symbols.is_empty())
+            })
             .collect::<Vec<_>>();
 
-        // add metadata and return chunk enriched with metadata (symbols with ref/defs)
+        symbols.sort_by(|a, b| a.name.cmp(&b.name));
+        symbols.dedup_by(|a, b| a.name == b.name);
 
-        ChunkRefDef {
+        debug!("Attatched {} symbols", symbols.len());
+
+        Ok(ChunkWithSymbols {
             chunk: chunk.clone(),
-            metadata: {
-                let mut metadata = token_info_vec
-                    .into_iter()
-                    .zip(hoverable_response.ranges.into_iter().filter(|range| {
-                        (range.start.byte >= chunk.start_byte)
-                            && (range.start.byte < chunk.end_byte)
-                    }))
-                    .map(|(token_info, range)| {
-                        let filtered_token_info = token_info
-                            .data
-                            .into_iter()
-                            .filter(|file_symbols| file_symbols.file != chunk.path)
-                            .collect::<Vec<_>>();
-
-                        RefDefMetadata {
-                            name: chunk.snippet.clone()[(range.start.byte - chunk.start_byte)
-                                ..(range.end.byte - chunk.start_byte)]
-                                .to_string(),
-                            file_symbols: filtered_token_info,
-                        }
-                    })
-                    .filter(|metadata| {
-                        (metadata.file_symbols.len() < MAX_NUMBER_REF_DEF)
-                            && (!metadata.file_symbols.is_empty())
-                    }) // &&
-                    .collect::<Vec<_>>();
-                metadata.sort_by(|a, b| a.name.cmp(&b.name));
-                metadata.dedup_by(|a, b| a.name == b.name);
-                dbg!("Metadata length: {}", metadata.len());
-                metadata
-            },
-        }
+            symbols,
+        })
     }
 
-    pub async fn expand_symbol_into_chunks(
-        &self,
-        ref_def_metadata: RefDefMetadata,
-    ) -> Vec<CodeChunk> {
+    pub async fn expand_symbol_into_chunks(&self, ref_def_metadata: Symbol) -> Vec<CodeChunk> {
         const NUMBER_CHUNK_LINES: usize = 10;
 
         let contents = ref_def_metadata
-            .file_symbols
+            .related_symbols
             .iter()
             .map(|f_s| self.get_file_content(&f_s.file));
 
@@ -114,7 +119,7 @@ impl Agent {
 
         // each symbol may be in multiple files and have multiple occurences in each file
         ref_def_metadata
-            .file_symbols
+            .related_symbols
             .iter()
             .zip(contents.iter())
             .flat_map(|(file_symbols, content)| {
@@ -149,8 +154,8 @@ impl Agent {
     pub async fn filter_symbols(
         &self,
         query: &str,
-        chunks_with_symbols: Vec<ChunkRefDef>,
-    ) -> Result<RefDefMetadata, SymbolError> {
+        chunks_with_symbols: Vec<ChunkWithSymbols>,
+    ) -> Result<Symbol, SymbolError> {
         let mut i: i32 = -1;
         // we have multiples chunks and each chunk may have multiple symbols
         // unique alias (i) per symbol
@@ -160,7 +165,7 @@ impl Agent {
                 (
                     chunk_with_symbol.chunk,
                     chunk_with_symbol
-                        .metadata
+                        .symbols
                         .into_iter()
                         .map(|symbol| {
                             i += 1;
@@ -201,7 +206,7 @@ impl Agent {
         let prompt = format!("Snippets:\n\n{}\n\nInstruction: Above there are some code chunks and some symbols extracted from the chunks. Your job is to select the most relevant symbol to the user query. Do not answer with the siymbol name, use the symbol key/alias.\n\nQuery:{}", chunks_string.as_str(),  query);
 
         // function_call
-        let filter_function = serde_json::from_value::<Vec<Function>>(serde_json::json!([
+        let filter_function = serde_json::from_value::<Vec<llm_gateway::api::Function>>(serde_json::json!([
             {
                 "name": "filter",
                 "description":  "Select the symbol most likely to contain information to answer the query",
@@ -226,7 +231,7 @@ impl Agent {
                     "Symbol classifier llm call failed, picking the first symbol: {}",
                     e
                 );
-                FunctionCall {
+                llm_gateway::api::FunctionCall {
                     name: Some("filter".to_string()),
                     arguments: "{\"symbol\": 0}".to_string(),
                 }
@@ -255,17 +260,20 @@ impl Agent {
         }
     }
 
-    pub async fn get_ref_def_extra_chunks(&mut self, chunks: Vec<CodeChunk>) -> Vec<CodeChunk> {
+    pub async fn get_related_chunks(&mut self, chunks: Vec<CodeChunk>) -> Vec<CodeChunk> {
         const MAX_CHUNKS: usize = 3;
 
         // get symbols with ref/defs for each chunk
-        let chunks_with_symbols = chunks
-            .iter()
-            .filter(|c| !c.is_empty())
-            .map(|c| self.add_symbols_to_chunk(c.clone()));
-
-        let chunks_with_symbols: Vec<ChunkRefDef> =
-            futures::future::join_all(chunks_with_symbols).await;
+        let chunks_with_symbols = futures::future::join_all(
+            chunks
+                .iter()
+                .filter(|c| !c.is_empty())
+                .map(|c| self.extract_symbols(c.clone())), // TODO: Log failure
+        )
+        .await
+        .into_iter()
+        .filter_map(Result::ok)
+        .collect();
 
         // get original user query
         let user_query = self.last_exchange().query.target().unwrap();
@@ -274,7 +282,7 @@ impl Agent {
         let selected_symbol = match self.filter_symbols(&user_query, chunks_with_symbols).await {
             Ok(selected_symbol) => selected_symbol,
             Err(e) => {
-                warn!("Returning no extra chunks: {}", e);
+                info!("Returning no extra chunks: {}", e);
                 return Vec::new();
             }
         };
@@ -310,8 +318,8 @@ impl Agent {
     async fn llm_with_function_call(
         &self,
         prompt: String,
-        functions: Vec<Function>,
-    ) -> Result<FunctionCall, anyhow::Error> {
+        functions: Vec<llm_gateway::api::Function>,
+    ) -> Result<llm_gateway::api::FunctionCall, anyhow::Error> {
         let messages = vec![llm_gateway::api::Message::user(prompt.as_str())];
 
         self.llm_gateway
@@ -322,16 +330,17 @@ impl Agent {
             .await?
             .try_fold(
                 llm_gateway::api::FunctionCall::default(),
-                |acc: FunctionCall, e: String| async move {
-                    let e: FunctionCall = serde_json::from_str(&e).map_err(|err| {
-                        tracing::error!(
-                            "Failed to deserialize to FunctionCall: {:?}. Error: {:?}",
-                            e,
+                |acc: llm_gateway::api::FunctionCall, e: String| async move {
+                    let e: llm_gateway::api::FunctionCall =
+                        serde_json::from_str(&e).map_err(|err| {
+                            tracing::error!(
+                                "Failed to deserialize to FunctionCall: {:?}. Error: {:?}",
+                                e,
+                                err
+                            );
                             err
-                        );
-                        err
-                    })?;
-                    Ok(FunctionCall {
+                        })?;
+                    Ok(llm_gateway::api::FunctionCall {
                         name: acc.name.or(e.name),
                         arguments: acc.arguments + &e.arguments,
                     })
@@ -341,9 +350,9 @@ impl Agent {
     }
 }
 
-pub struct RefDefMetadata {
+pub struct Symbol {
     pub name: String,
-    pub file_symbols: Vec<FileSymbols>,
+    pub related_symbols: Vec<FileSymbols>,
 }
 #[derive(serde::Deserialize)]
 struct Filter {
