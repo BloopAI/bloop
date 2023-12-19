@@ -17,40 +17,49 @@ export function getMatch(
     allowSpace?: boolean;
   },
 ) {
-  // take current para text content upto cursor start.
-  // this makes the regex simpler and parsing the matches easier.
-  const parastart = $position.before();
-  const text = $position.doc.textBetween(parastart, $position.pos, '\n', '\0');
+  try {
+    // take current para text content upto cursor start.
+    // this makes the regex simpler and parsing the matches easier.
+    const parastart = $position.before();
+    const text = $position.doc.textBetween(
+      parastart,
+      $position.pos,
+      '\n',
+      '\0',
+    );
 
-  const regex = getRegexp(opts.mentionTrigger, opts.allowSpace);
+    const regex = getRegexp(opts.mentionTrigger, opts.allowSpace);
 
-  const match = text.match(regex);
+    const match = text.match(regex);
 
-  // if match found, return match with useful information.
-  if (match) {
-    // adjust match.index to remove the matched extra space
-    match.index =
-      match[0].startsWith(' ') || match[0].startsWith(insertAfterSelect)
-        ? (match.index || 0) + 1
-        : match.index;
-    match[0] =
-      match[0].startsWith(' ') || match[0].startsWith(insertAfterSelect)
-        ? match[0].substring(1, match[0].length)
-        : match[0];
+    // if match found, return match with useful information.
+    if (match) {
+      // adjust match.index to remove the matched extra space
+      match.index =
+        match[0].startsWith(' ') || match[0].startsWith(insertAfterSelect)
+          ? (match.index || 0) + 1
+          : match.index;
+      match[0] =
+        match[0].startsWith(' ') || match[0].startsWith(insertAfterSelect)
+          ? match[0].substring(1, match[0].length)
+          : match[0];
 
-    // The absolute position of the match in the document
-    const from = $position.start() + match.index!;
-    const to = from + match[0].length;
+      // The absolute position of the match in the document
+      const from = $position.start() + match.index!;
+      const to = from + match[0].length;
 
-    const queryText = match[2];
+      const queryText = match[2];
 
-    return {
-      range: { from: from, to: to },
-      queryText: queryText,
-      type: 'mention',
-    };
+      return {
+        range: { from: from, to: to },
+        queryText: queryText,
+        type: 'mention',
+      };
+    }
+    // else if no match don't return anything.
+  } catch (e) {
+    console.log(e);
   }
-  // else if no match don't return anything.
 }
 
 /**
@@ -150,55 +159,61 @@ export function getMentionsPlugin(opts: Partial<Options>) {
     suggestions: Record<string, string>[],
     opts: Options,
   ) {
-    el.innerHTML = opts.getSuggestionsHTML(suggestions, state.type);
+    try {
+      el.innerHTML = opts.getSuggestionsHTML(suggestions, state.type);
 
-    // attach new item event handlers
-    el.querySelectorAll('.suggestion-item').forEach(function (itemNode, index) {
-      itemNode.addEventListener('click', function () {
-        select(view, state, opts);
-        view.focus();
-      });
-      // TODO: setIndex() needlessly queries.
-      // We already have the itemNode. SHOULD OPTIMIZE.
-      itemNode.addEventListener('mouseover', function () {
-        setIndex(index, state, opts);
-      });
-      itemNode.addEventListener('mouseout', function () {
-        setIndex(index, state, opts);
-      });
-    });
+      // attach new item event handlers
+      el.querySelectorAll('.suggestion-item').forEach(
+        function (itemNode, index) {
+          itemNode.addEventListener('click', function () {
+            select(view, state, opts);
+            view.focus();
+          });
+          // TODO: setIndex() needlessly queries.
+          // We already have the itemNode. SHOULD OPTIMIZE.
+          itemNode.addEventListener('mouseover', function () {
+            setIndex(index, state, opts);
+          });
+          itemNode.addEventListener('mouseout', function () {
+            setIndex(index, state, opts);
+          });
+        },
+      );
 
-    // highlight first element by default - like Facebook.
-    addClassAtIndex(state.index, opts.activeClass);
+      // highlight first element by default - like Facebook.
+      addClassAtIndex(state.index, opts.activeClass);
 
-    // TODO: knock off domAtPos usage. It's not documented and is not officially a public API.
-    // It's used currently, only to optimize the the query for textDOM
-    const node = view.domAtPos(view.state.selection.$from.pos);
-    const paraDOM = node.node;
-    const textDOM = (paraDOM as HTMLElement).querySelector(
-      '.' + opts.suggestionTextClass,
-    );
+      // TODO: knock off domAtPos usage. It's not documented and is not officially a public API.
+      // It's used currently, only to optimize the the query for textDOM
+      const node = view.domAtPos(view.state.selection.$from.pos);
+      const paraDOM = node.node;
+      const textDOM = (paraDOM as HTMLElement).querySelector(
+        '.' + opts.suggestionTextClass,
+      );
 
-    const offset = textDOM?.getBoundingClientRect();
+      const offset = textDOM?.getBoundingClientRect();
 
-    document.body.appendChild(el);
-    el.classList.add('suggestion-item-container');
-    el.style.position = 'fixed';
-    el.style.left = -9999 + 'px';
-    const offsetLeft = offset?.left || 0;
-    setTimeout(() => {
-      el.style.left =
-        offsetLeft + el.clientWidth < window.innerWidth
-          ? offsetLeft + 'px'
-          : offsetLeft +
-            (window.innerWidth - (offsetLeft + el.clientWidth) - 10) +
-            'px';
-    }, 10);
+      document.body.appendChild(el);
+      el.classList.add('suggestion-item-container');
+      el.style.position = 'fixed';
+      el.style.left = -9999 + 'px';
+      const offsetLeft = offset?.left || 0;
+      setTimeout(() => {
+        el.style.left =
+          offsetLeft + el.clientWidth < window.innerWidth
+            ? offsetLeft + 'px'
+            : offsetLeft +
+              (window.innerWidth - (offsetLeft + el.clientWidth) - 10) +
+              'px';
+      }, 10);
 
-    const bottom = window.innerHeight - (offset?.top || 0);
-    el.style.bottom = bottom + 'px';
-    el.style.display = 'block';
-    el.style.zIndex = '999999';
+      const bottom = window.innerHeight - (offset?.top || 0);
+      el.style.bottom = bottom + 'px';
+      el.style.display = 'block';
+      el.style.zIndex = '999999';
+    } catch (e) {
+      console.log(e);
+    }
   };
 
   const hideList = function () {
@@ -269,25 +284,29 @@ export function getMentionsPlugin(opts: Partial<Options>) {
       },
 
       apply(tr, state) {
-        // compute state.active for current transaction and return
-        const newState = getNewState();
-        const selection = tr.selection;
-        if (selection.from !== selection.to) {
+        try {
+          // compute state.active for current transaction and return
+          const newState = getNewState();
+          const selection = tr.selection;
+          if (selection.from !== selection.to) {
+            return newState;
+          }
+
+          const $position = selection.$from;
+          const match = getMatch($position, options);
+
+          // if match found update state
+          if (match) {
+            newState.active = true;
+            newState.range = match.range;
+            newState.type = match.type!;
+            newState.text = match.queryText;
+          }
+
           return newState;
+        } catch (e) {
+          return state;
         }
-
-        const $position = selection.$from;
-        const match = getMatch($position, options);
-
-        // if match found update state
-        if (match) {
-          newState.active = true;
-          newState.range = match.range;
-          newState.type = match.type!;
-          newState.text = match.queryText;
-        }
-
-        return newState;
       },
     },
 
