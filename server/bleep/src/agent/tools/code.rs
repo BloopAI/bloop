@@ -31,7 +31,7 @@ impl Agent {
                     limit: CODE_SEARCH_LIMIT,
                     offset: 0,
                     threshold: 0.3,
-                    exact_match: true,
+                    exact_match: false,
                 },
             )
             .await?;
@@ -52,7 +52,7 @@ impl Agent {
                             limit: CODE_SEARCH_LIMIT,
                             offset: 0,
                             threshold: 0.3,
-                            exact_match: true,
+                            exact_match: false,
                         },
                     )
                     .await?;
