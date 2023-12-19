@@ -9,6 +9,7 @@ use crate::{
         Agent,
     },
     analytics::EventData,
+    semantic::SemanticSearchParams,
 };
 
 impl Agent {
@@ -34,7 +35,16 @@ impl Agent {
         // If there are no lexical results, perform a semantic search.
         if paths.is_empty() {
             let semantic_paths = self
-                .semantic_search(query.into(), vec![], 30, 0, 0.0, true, false)
+                .semantic_search(
+                    query.into(),
+                    vec![],
+                    SemanticSearchParams {
+                        limit: 30,
+                        offset: 0,
+                        threshold: 0.0,
+                        exact_match: false,
+                    },
+                )
                 .await?
                 .into_iter()
                 .map(|chunk| chunk.relative_path)

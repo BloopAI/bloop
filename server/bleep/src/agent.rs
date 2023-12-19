@@ -345,11 +345,7 @@ impl Agent {
         &self,
         query: parser::Literal<'_>,
         paths: Vec<String>,
-        limit: u64,
-        offset: u64,
-        threshold: f32,
-        retrieve_more: bool,
-        exact: bool,
+        params: semantic::SemanticSearchParams,
     ) -> Result<Vec<semantic::Payload>> {
         let paths_set = paths
             .into_iter()
@@ -394,21 +390,14 @@ impl Agent {
         };
 
         debug!(?query, %self.thread_id, "executing semantic query");
-        self.app
-            .semantic
-            .search(&query, limit, offset, threshold, retrieve_more, exact)
-            .await
+        self.app.semantic.search(&query, params).await
     }
 
     #[allow(dead_code)]
     async fn batch_semantic_search(
         &self,
         queries: Vec<parser::Literal<'_>>,
-        limit: u64,
-        offset: u64,
-        threshold: f32,
-        retrieve_more: bool,
-        exact: bool,
+        params: semantic::SemanticSearchParams,
     ) -> Result<Vec<semantic::Payload>> {
         let queries = queries
             .iter()
@@ -424,14 +413,7 @@ impl Agent {
         debug!(?queries, %self.thread_id, "executing semantic query");
         self.app
             .semantic
-            .batch_search(
-                queries.as_slice(),
-                limit,
-                offset,
-                threshold,
-                retrieve_more,
-                exact,
-            )
+            .batch_search(queries.as_slice(), params)
             .await
     }
 

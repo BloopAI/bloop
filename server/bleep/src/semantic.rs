@@ -50,6 +50,14 @@ pub enum SemanticError {
     },
 }
 
+#[derive(Debug, Clone)]
+pub struct SemanticSearchParams {
+    pub limit: u64,
+    pub offset: u64,
+    pub threshold: f32,
+    pub exact_match: bool, // keyword match for all filters
+}
+
 #[derive(Clone)]
 pub struct Semantic {
     qdrant: Arc<QdrantClient>,
@@ -520,16 +528,18 @@ impl Semantic {
     pub async fn search<'a>(
         &self,
         parsed_query: &SemanticQuery<'a>,
-        limit: u64,
-        offset: u64,
-        threshold: f32,
-        retrieve_more: bool,
-        exact: bool,
+        params: SemanticSearchParams,
     ) -> anyhow::Result<Vec<Payload>> {
         let Some(query) = parsed_query.target() else {
             anyhow::bail!("no search target for query");
         };
         let vector = self.embedder.embed(&query).await?;
+        let SemanticSearchParams {
+            limit,
+            offset,
+            threshold,
+            exact_match: exact,
+        } = params;
 
         // TODO: Remove the need for `retrieve_more`. It's here because:
         // In /q `limit` is the maximum number of results returned (the actual number will often be lower due to deduplication)
@@ -538,7 +548,7 @@ impl Semantic {
             .search_with(
                 parsed_query,
                 vector.clone(),
-                if retrieve_more { limit * 2 } else { limit }, // Retrieve double `limit` and deduplicate
+                limit * 2, // Retrieve double `limit` and deduplicate
                 offset,
                 threshold,
                 exact,
@@ -555,7 +565,7 @@ impl Semantic {
             .search_lexical(
                 parsed_query,
                 vector.clone(),
-                if retrieve_more { limit * 2 } else { limit },
+                limit * 2, // Retrieve double `limit` and deduplicate
                 offset,
                 0.0,
                 exact,
@@ -581,11 +591,7 @@ impl Semantic {
     pub async fn batch_search<'a>(
         &self,
         parsed_queries: &[&SemanticQuery<'a>],
-        limit: u64,
-        offset: u64,
-        threshold: f32,
-        retrieve_more: bool,
-        exact: bool,
+        params: SemanticSearchParams,
     ) -> anyhow::Result<Vec<Payload>> {
         if parsed_queries.iter().any(|q| q.target().is_none()) {
             anyhow::bail!("no search target for query");
@@ -600,13 +606,20 @@ impl Semantic {
         .into_iter()
         .collect::<anyhow::Result<Vec<_>>>()?;
 
+        let SemanticSearchParams {
+            limit,
+            offset,
+            threshold,
+            exact_match: exact,
+        } = params;
+
         trace!(?parsed_queries, "performing qdrant batch search");
 
         let result = self
             .batch_search_with(
                 parsed_queries,
                 vectors.clone(),
-                if retrieve_more { limit * 2 } else { limit }, // Retrieve double `limit` and deduplicate
+                limit * 2, // Retrieve double `limit` and deduplicate
                 offset,
                 threshold,
                 exact,
@@ -766,17 +779,16 @@ fn build_conditions_lexical(
 
 fn build_conditions(
     query: &SemanticQuery<'_>,
-    exact: bool,
+    exact_match: bool,
 ) -> Vec<qdrant_client::qdrant::Condition> {
     let path_filter = {
         let conditions = query
             .paths()
             .map(|r| {
-                {
-                    match exact {
-                        true => make_kv_keyword_filter("relative_path", r.as_ref()),
-                        false => make_kv_text_filter("relative_path", r.as_ref()),
-                    }
+                if exact_match {
+                    make_kv_keyword_filter("relative_path", r.as_ref())
+                } else {
+                    make_kv_text_filter("relative_path", r.as_ref())
                 }
                 .into()
             })

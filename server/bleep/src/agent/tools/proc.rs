@@ -7,6 +7,7 @@ use crate::{
         Agent,
     },
     analytics::EventData,
+    semantic::SemanticSearchParams,
 };
 
 impl Agent {
@@ -31,7 +32,16 @@ impl Agent {
         .await?;
 
         let results = self
-            .semantic_search(query.into(), paths.clone(), 10, 0, 0.0, true, true)
+            .semantic_search(
+                query.into(),
+                paths.clone(),
+                SemanticSearchParams {
+                    limit: 10,
+                    offset: 0,
+                    threshold: 0.0,
+                    exact_match: true,
+                },
+            )
             .await?;
 
         let mut chunks = results
