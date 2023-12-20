@@ -36,8 +36,8 @@ pub struct TokenInfoRequest {
 
 /// The response from the `local-intel` endpoint.
 #[derive(Serialize, Debug)]
-pub struct TokenInfoResponse {
-    pub data: Vec<FileSymbols>,
+pub(super) struct TokenInfoResponse {
+    data: Vec<FileSymbols>,
 }
 
 impl TokenInfoResponse {
