@@ -7,6 +7,8 @@ use crate::webserver::intelligence::{get_token_info, TokenInfoRequest};
 use anyhow::{Context, Result};
 use tracing::log::{debug, info, warn};
 
+use super::prompts::symbol_classification_prompt;
+
 pub struct ChunkWithSymbols {
     pub chunk: CodeChunk,
     pub symbols: Vec<Symbol>,
@@ -184,7 +186,7 @@ impl Agent {
             .join("\n\n");
 
         // instruction
-        let prompt = format!("Snippets:\n\n{}\n\nInstruction: Above there are some code chunks and some symbols extracted from the chunks. Your job is to select the most relevant symbol to the user query. Do not answer with the siymbol name, use the symbol key/alias.\n\nQuery:{}", chunks_string.as_str(),  query);
+        let prompt = symbol_classification_prompt(chunks_string.as_str(), query);
 
         // function_call
         let filter_function = serde_json::from_value::<Vec<llm_gateway::api::Function>>(serde_json::json!([

@@ -386,6 +386,19 @@ Here is the full context for reference:
     )
 }
 
+pub fn symbol_classification_prompt(snippets: &str, query: &str) -> String {
+    format!(
+        r#""Snippets:
+
+{snippets}
+
+Instruction: Above there are some code chunks and some symbols extracted from the chunks. Your job is to select the most relevant symbol to the user query. Do not answer with the symbol name, use the symbol key/alias.
+
+Query:{query}"#
+    )
+}
+
+
 pub fn hypothetical_document_prompt(query: &str) -> String {
     format!(
         r#"Write a code snippet that could hypothetically be returned by a code search engine as the answer to the query: {query}
