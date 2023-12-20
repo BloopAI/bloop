@@ -15,6 +15,7 @@ pub struct ChunkWithSymbols {
 impl Agent {
     pub async fn extract_symbols(&self, chunk: CodeChunk) -> Result<ChunkWithSymbols> {
         const MAX_REF_DEFS: usize = 5; // Ignore symbols with more than this many cross-file refs/defs
+        const NUMBER_CHUNK_LINES: usize = 10;
 
         // get hoverable elements
         let document = self
@@ -61,6 +62,8 @@ impl Agent {
                         self.app.indexes.clone(),
                         &document,
                         &all_docs,
+                        Some(0),
+                        Some(NUMBER_CHUNK_LINES),
                     )
                 }),
         )
@@ -95,7 +98,7 @@ impl Agent {
         symbols.sort_by(|a, b| a.name.cmp(&b.name));
         symbols.dedup_by(|a, b| a.name == b.name);
 
-        debug!("Attatched {} symbols", symbols.len());
+        debug!("Attached {} symbols", symbols.len());
 
         Ok(ChunkWithSymbols {
             chunk: chunk.clone(),
@@ -104,47 +107,24 @@ impl Agent {
     }
 
     pub async fn expand_symbol_into_chunks(&self, ref_def_metadata: Symbol) -> Vec<CodeChunk> {
-        const NUMBER_CHUNK_LINES: usize = 10;
-
-        let contents = ref_def_metadata
-            .related_symbols
-            .iter()
-            .map(|f_s| self.get_file_content(&f_s.file));
-
-        let contents = futures::future::join_all(contents)
-            .await
-            .into_iter()
-            .map(|content_document| content_document.unwrap().unwrap())
-            .collect::<Vec<_>>();
-
         // each symbol may be in multiple files and have multiple occurences in each file
         ref_def_metadata
             .related_symbols
             .iter()
-            .zip(contents.iter())
-            .flat_map(|(file_symbols, content)| {
+            .flat_map(|file_symbols| {
                 let filename = file_symbols.file.clone();
-                let content = content.content.lines().collect::<Vec<_>>();
-
-                let n_lines = content.len();
 
                 file_symbols
                     .data
                     .iter()
-                    .map(|occurrence| {
-                        let chunk_content = content[occurrence.range.start.line
-                            ..(occurrence.range.end.line + NUMBER_CHUNK_LINES).min(n_lines)]
-                            .to_vec()
-                            .join("\n");
-                        CodeChunk {
-                            path: filename.clone(),
-                            alias: 0,
-                            snippet: chunk_content,
-                            start_line: occurrence.range.start.line,
-                            end_line: (occurrence.range.end.line + NUMBER_CHUNK_LINES).min(n_lines),
-                            start_byte: 0,
-                            end_byte: 0,
-                        }
+                    .map(|occurrence| CodeChunk {
+                        path: filename.clone(),
+                        alias: 0,
+                        snippet: occurrence.snippet.data.clone(),
+                        start_line: occurrence.snippet.line_range.start,
+                        end_line: occurrence.snippet.line_range.end,
+                        start_byte: 0,
+                        end_byte: 0,
                     })
                     .collect::<Vec<_>>()
             })

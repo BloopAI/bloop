@@ -76,9 +76,17 @@ pub(super) async fn handle(
             .await
     };
 
-    let symbols = get_token_info(payload, &repo_ref, indexes, &source_doc, &all_docs)
-        .await
-        .map_err(Error::internal)?;
+    let symbols = get_token_info(
+        payload,
+        &repo_ref,
+        indexes,
+        &source_doc,
+        &all_docs,
+        None,
+        None,
+    )
+    .await
+    .map_err(Error::internal)?;
 
     Ok(json(TokenInfoResponse::new(symbols)))
 }
@@ -313,11 +321,16 @@ pub async fn get_token_info(
     indexes: Arc<Indexes>,
     source_doc: &ContentDocument,
     all_docs: &Vec<ContentDocument>,
+    context_before: Option<usize>,
+    context_after: Option<usize>,
 ) -> anyhow::Result<Vec<FileSymbols>> {
     let source_document_idx = all_docs
         .iter()
         .position(|doc| doc.relative_path == source_doc.relative_path)
         .unwrap(); // FIXME: handle this
+
+    let snipper =
+        Some(Snipper::default().context(context_before.unwrap_or(0), context_after.unwrap_or(0)));
 
     let ctx: CodeNavigationContext<'_, '_> = CodeNavigationContext {
         token: Token {
@@ -327,6 +340,7 @@ pub async fn get_token_info(
         },
         all_docs,
         source_document_idx,
+        snipper,
     };
 
     let data = ctx.token_info();
@@ -338,6 +352,7 @@ pub async fn get_token_info(
             ctx.active_token_range(),
             params.branch.as_deref(),
             source_doc,
+            snipper,
         )
         .await
     } else {
@@ -352,6 +367,7 @@ async fn search_nav(
     payload_range: std::ops::Range<usize>,
     branch: Option<&str>,
     source_document: &ContentDocument,
+    snipper: Option<Snipper>,
 ) -> anyhow::Result<Vec<FileSymbols>> {
     use crate::{
         indexes::{reader::ContentReader, DocumentRead},
@@ -478,7 +494,8 @@ async fn search_nav(
                         })
                         .unwrap_or_default();
                     let highlight = start_byte..end_byte;
-                    let snippet = Snipper::default()
+                    let snippet = snipper
+                        .unwrap_or(Snipper::default())
                         .expand(highlight, &doc.content, &doc.line_end_indices)
                         .reify(&doc.content, &[]);
 
