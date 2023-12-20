@@ -196,7 +196,7 @@ impl Agent {
                     "properties": {
                         "symbol": {
                             "type": "integer",
-                            "description": "The chunk alias"
+                            "description": "The symbol alias"
                         }
                     },
                     "required": ["symbol"]
