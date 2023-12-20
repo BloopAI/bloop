@@ -78,7 +78,9 @@ impl Agent {
         let mut symbols = related_symbols
             .into_iter()
             .filter_map(Result::ok)
-            .zip(hoverable_ranges.into_iter())
+            .zip(hoverable_ranges.into_iter().filter(|range| {
+                (range.start.byte >= chunk.start_byte) && (range.start.byte < chunk.end_byte)
+            }))
             .map(|(token_info, range)| {
                 let filtered_token_info = token_info
                     .into_iter()

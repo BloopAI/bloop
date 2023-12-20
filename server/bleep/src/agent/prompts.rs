@@ -398,7 +398,6 @@ Query:{query}"#
     )
 }
 
-
 pub fn hypothetical_document_prompt(query: &str) -> String {
     format!(
         r#"Write a code snippet that could hypothetically be returned by a code search engine as the answer to the query: {query}
