@@ -16,9 +16,12 @@ pub struct ChunkWithSymbols {
 
 /// This helps the code and proc tool return related chunks based on references and definitions.
 /// `get_related_chunks` receives a list of chunks from code or proc search and returns `MAX_CHUNKS` related chunks
-/// For each input chunk, we extract the symbols. We then pick ONE symbol using a classifier.
-/// This symbol (reference and/or definition) may be present in many files one or more times.
-/// We extract the surrounding code for each occurence and pick `MAX_CHUNKS` occurrences/chunks.
+/// For each input chunk, we extract all symbols (variables, function names, structs...).
+/// Then we search for symbol occurrences OUTSIDE the file of the current chunk.
+/// We disconsider symbols with too many occurences (> `MAX_REF_DEFS`) as they are typically language related.
+/// We then pick ONE symbol using a classifier (`filter_symbols`), where the classifier has access to user query, original chunks and filtered list of symbols.
+/// This selected symbol may be present in many files one or more times.
+/// We extract the surrounding code (up to `NUMBER_CHUNK_LINES` lines) for each occurence and pick `MAX_CHUNKS` occurrences/chunks.
 
 impl Agent {
     pub async fn extract_symbols(&self, chunk: CodeChunk) -> Result<ChunkWithSymbols> {
