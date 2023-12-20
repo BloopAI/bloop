@@ -277,13 +277,8 @@ impl Agent {
             .take(MAX_CHUNKS)
             .map(|c| {
                 let chunk = CodeChunk {
-                    path: c.path.clone(),
                     alias: self.get_path_alias(c.path.as_str()),
-                    snippet: c.snippet.clone(),
-                    start_line: c.start_line,
-                    end_line: c.end_line,
-                    start_byte: 0,
-                    end_byte: 0,
+                    ..c.clone()
                 };
                 self.exchanges
                     .last_mut()
