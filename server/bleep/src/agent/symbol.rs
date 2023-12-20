@@ -53,7 +53,7 @@ impl Agent {
                     get_token_info(
                         TokenInfoRequest {
                             relative_path: chunk.path.clone(),
-                            repo_ref: String::new(), // FIXME
+                            repo_ref: self.repo_ref.display_name(),
                             branch: None,
                             start: range.start.byte,
                             end: range.end.byte,
@@ -70,12 +70,13 @@ impl Agent {
         .await;
 
         // filter references and definitions
+        // 1: symbol shouldn't be in the same file
+        // 2: number of refs/defs should be less than 5 to avoid very common symbols (iter, unwrap...)
+        // 3: also filter out symbols without refs/defs
         let mut symbols = related_symbols
             .into_iter()
             .filter_map(Result::ok)
-            .zip(hoverable_ranges.into_iter().filter(|range| {
-                (range.start.byte >= chunk.start_byte) && (range.start.byte < chunk.end_byte)
-            }))
+            .zip(hoverable_ranges.into_iter())
             .map(|(token_info, range)| {
                 let filtered_token_info = token_info
                     .into_iter()

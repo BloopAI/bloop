@@ -80,6 +80,7 @@ impl Agent {
         let response = chunks
             .clone()
             .into_iter()
+            .filter(|c| !c.is_empty())
             .map(|c| c.to_string())
             .collect::<Vec<_>>()
             .join("\n\n");
