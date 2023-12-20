@@ -22,16 +22,13 @@ impl Agent {
         }))
         .await?;
 
-        // not sure if this is what we want here, or use the project coupled with the agent.
-        //
-        // let repos = self.paths().map(|r| r.repo.to_string()).collect::<Vec<_>>();
-        let repos = todo!();// self.project.clone();
+        let repos = self.repo_refs.clone();
 
         let mut results = self
             .semantic_search(SemanticSearchParams {
                 query: Literal::from(&query.to_string()),
                 paths: vec![],
-                project: repos,
+                repos: repos.clone(),
                 limit: CODE_SEARCH_LIMIT,
                 offset: 0,
                 threshold: 0.3,
@@ -51,7 +48,7 @@ impl Agent {
                     .semantic_search(SemanticSearchParams {
                         query: hyde_doc,
                         paths: vec![],
-                        project: repos,
+                        repos,
                         limit: CODE_SEARCH_LIMIT,
                         offset: 0,
                         threshold: 0.3,
