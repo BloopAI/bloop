@@ -327,7 +327,7 @@ pub async fn get_token_info(
     let source_document_idx = all_docs
         .iter()
         .position(|doc| doc.relative_path == source_doc.relative_path)
-        .unwrap(); // FIXME: handle this
+        .ok_or(anyhow::anyhow!("invalid language"))?; 
 
     let snipper =
         Some(Snipper::default().context(context_before.unwrap_or(0), context_after.unwrap_or(0)));
