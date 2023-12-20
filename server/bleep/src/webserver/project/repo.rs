@@ -1,22 +1,22 @@
-use axum::{Extension, Json, extract::Path};
+use axum::{extract::Path, Extension, Json};
 
-use crate::{Application, webserver::{middleware::User, self, Error}, repo::RepoRef};
-
-#[derive(serde::Serialize)]
-pub struct ListItem {
-    #[serde(rename = "ref")]
-    repo_ref: String,
-}
+use crate::{
+    repo::RepoRef,
+    webserver::{self, middleware::User, repos::Repo, Error},
+    Application,
+};
 
 pub async fn list(
     app: Extension<Application>,
     user: Extension<User>,
     Path(project_id): Path<i64>,
-) -> webserver::Result<Json<Vec<ListItem>>> {
-    let user_id = user.username().ok_or_else(webserver::no_user_id)?.to_string();
+) -> webserver::Result<Json<Vec<Repo>>> {
+    let user_id = user
+        .username()
+        .ok_or_else(webserver::no_user_id)?
+        .to_string();
 
-    sqlx::query_as! {
-        ListItem,
+    let repos = sqlx::query! {
         "SELECT repo_ref
         FROM project_repos
         WHERE project_id = $1 AND EXISTS (
@@ -28,9 +28,14 @@ pub async fn list(
         user_id,
     }
     .fetch_all(&*app.sql)
-    .await
-    .map(Json)
-    .map_err(Error::internal)
+    .await?
+    .into_iter()
+    .filter_map(|row| row.repo_ref.parse().ok())
+    .filter_map(|repo_ref| app.repo_pool.get(&repo_ref))
+    .map(|entry| Repo::from((entry.key(), entry.get())))
+    .collect();
+
+    Ok(Json(repos))
 }
 
 #[derive(serde::Deserialize)]
@@ -45,7 +50,10 @@ pub async fn add(
     Path(project_id): Path<i64>,
     Json(params): Json<Add>,
 ) -> webserver::Result<()> {
-    let user_id = user.username().ok_or_else(webserver::no_user_id)?.to_string();
+    let user_id = user
+        .username()
+        .ok_or_else(webserver::no_user_id)?
+        .to_string();
 
     sqlx::query! {
         "SELECT id FROM projects WHERE id = ? AND user_id = ?",
@@ -74,7 +82,10 @@ pub async fn delete(
     user: Extension<User>,
     Path((project_id, repo_ref)): Path<(i64, String)>,
 ) -> webserver::Result<()> {
-    let user_id = user.username().ok_or_else(webserver::no_user_id)?.to_string();
+    let user_id = user
+        .username()
+        .ok_or_else(webserver::no_user_id)?
+        .to_string();
 
     sqlx::query! {
         "DELETE FROM project_repos
