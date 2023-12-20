@@ -24,7 +24,7 @@ pub(crate) struct Branch {
 }
 
 #[derive(Serialize, Debug, Eq)]
-pub(crate) struct Repo {
+pub struct Repo {
     pub(super) provider: Backend,
     pub(super) name: String,
     #[serde(rename = "ref")]

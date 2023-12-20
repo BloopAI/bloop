@@ -27,15 +27,13 @@ impl Agent {
         }))
         .await?;
 
-        // let relative_paths = paths.iter().map(|p| p.path.clone()).collect::<Vec<_>>();
-        // not sure we need this?
-        // let repos = paths.iter().map(|p| p.repo.clone()).collect::<Vec<_>>();
+        let repos = paths.iter().map(|p| p.repo.clone()).collect::<Vec<_>>();
 
         let results = self
             .semantic_search(AgentSemanticSearchParams {
                 query: Literal::from(&query.to_string()),
                 paths: paths.clone(),
-                project: todo!(), //self.project.clone(),
+                repos,
                 semantic_params: SemanticSearchParams {
                     limit: 10,
                     offset: 0,
