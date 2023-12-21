@@ -495,7 +495,7 @@ async fn search_nav(
                         .unwrap_or_default();
                     let highlight = start_byte..end_byte;
                     let snippet = snipper
-                        .unwrap_or(Snipper::default())
+                        .unwrap_or_default()
                         .expand(highlight, &doc.content, &doc.line_end_indices)
                         .reify(&doc.content, &[]);
 

@@ -457,7 +457,7 @@ fn to_occurrence(doc: &ContentDocument, range: TextRange, snipper: Option<Snippe
     let line_end_indices = &doc.line_end_indices;
     let highlight = range.start.byte..range.end.byte;
     snipper
-        .unwrap_or(Snipper::default())
+        .unwrap_or_default()
         .expand(highlight, src, line_end_indices)
         .reify(src, &[])
 }
