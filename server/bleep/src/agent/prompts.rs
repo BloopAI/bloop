@@ -398,6 +398,24 @@ Query:{query}"#
     )
 }
 
+pub fn filter_function() -> serde_json::Value {
+    serde_json::json!([
+    {
+        "name": "filter",
+        "description":  "Select the symbol most likely to contain information to answer the query",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "symbol": {
+                    "type": "integer",
+                    "description": "The symbol alias"
+                }
+            },
+            "required": ["symbol"]
+        }
+    }])
+}
+
 pub fn hypothetical_document_prompt(query: &str) -> String {
     format!(
         r#"Write a code snippet that could hypothetically be returned by a code search engine as the answer to the query: {query}

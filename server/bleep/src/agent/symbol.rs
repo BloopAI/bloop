@@ -7,7 +7,7 @@ use crate::webserver::intelligence::{get_token_info, TokenInfoRequest};
 use anyhow::{Context, Result};
 use tracing::log::{debug, info, warn};
 
-use super::prompts::symbol_classification_prompt;
+use super::prompts::{filter_function, symbol_classification_prompt};
 
 pub struct ChunkWithSymbols {
     pub chunk: CodeChunk,
@@ -58,7 +58,8 @@ impl Agent {
             hoverable_ranges
                 .iter()
                 .filter(|range| {
-                    (range.start.byte >= chunk.start_byte) && (range.start.byte < chunk.end_byte)
+                    (range.start.byte >= chunk.start_byte.unwrap_or_default())
+                        && (range.start.byte < chunk.end_byte.unwrap_or_default())
                 })
                 .map(|range| {
                     get_token_info(
@@ -88,7 +89,8 @@ impl Agent {
             .into_iter()
             .filter_map(Result::ok)
             .zip(hoverable_ranges.into_iter().filter(|range| {
-                (range.start.byte >= chunk.start_byte) && (range.start.byte < chunk.end_byte)
+                (range.start.byte >= chunk.start_byte.unwrap_or_default())
+                    && (range.start.byte < chunk.end_byte.unwrap_or_default())
             }))
             .map(|(token_info, range)| {
                 let filtered_token_info = token_info
@@ -97,8 +99,8 @@ impl Agent {
                     .collect::<Vec<_>>();
 
                 Symbol {
-                    name: chunk.snippet.clone()[(range.start.byte - chunk.start_byte)
-                        ..(range.end.byte - chunk.start_byte)]
+                    name: chunk.snippet[(range.start.byte - chunk.start_byte.unwrap_or_default())
+                        ..(range.end.byte - chunk.start_byte.unwrap_or_default())]
                         .to_string(),
                     related_symbols: filtered_token_info,
                 }
@@ -120,9 +122,9 @@ impl Agent {
         })
     }
 
-    pub async fn expand_symbol_into_chunks(&self, ref_def_metadata: Symbol) -> Vec<CodeChunk> {
+    pub async fn expand_symbol_into_chunks(&self, symbol: Symbol) -> Vec<CodeChunk> {
         // each symbol may be in multiple files and have multiple occurences in each file
-        ref_def_metadata
+        symbol
             .related_symbols
             .iter()
             .flat_map(|file_symbols| {
@@ -137,8 +139,8 @@ impl Agent {
                         snippet: occurrence.snippet.data.clone(),
                         start_line: occurrence.snippet.line_range.start,
                         end_line: occurrence.snippet.line_range.end,
-                        start_byte: 0,
-                        end_byte: 0,
+                        start_byte: None,
+                        end_byte: None,
                     })
                     .collect::<Vec<_>>()
             })
@@ -150,9 +152,13 @@ impl Agent {
         query: &str,
         chunks_with_symbols: Vec<ChunkWithSymbols>,
     ) -> Result<Symbol, SymbolError> {
-        let mut i: i32 = -1;
+        if chunks_with_symbols.is_empty() {
+            return Err(SymbolError::ListEmpty);
+        }
+
         // we have multiples chunks and each chunk may have multiple symbols
         // unique alias (i) per symbol
+        let mut i: i32 = -1;
         let symbols = chunks_with_symbols
             .into_iter()
             .map(|chunk_with_symbol| {
@@ -169,9 +175,6 @@ impl Agent {
                 )
             })
             .collect::<Vec<_>>();
-        if i == -1 {
-            return Err(SymbolError::ListEmpty);
-        }
 
         // Classifier
 
@@ -199,26 +202,10 @@ impl Agent {
         // instruction
         let prompt = symbol_classification_prompt(chunks_string.as_str(), query);
 
-        // function_call
-        let filter_function = serde_json::from_value::<Vec<llm_gateway::api::Function>>(serde_json::json!([
-            {
-                "name": "filter",
-                "description":  "Select the symbol most likely to contain information to answer the query",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "symbol": {
-                            "type": "integer",
-                            "description": "The symbol alias"
-                        }
-                    },
-                    "required": ["symbol"]
-                }
-            }])
-        )
-        .unwrap();
-
-        let llm_response = match self.llm_with_function_call(prompt, filter_function).await {
+        let llm_response = match self
+            .llm_with_function_call(prompt, serde_json::from_value(filter_function()).unwrap())
+            .await
+        {
             Ok(llm_response) => llm_response,
             Err(e) => {
                 warn!(

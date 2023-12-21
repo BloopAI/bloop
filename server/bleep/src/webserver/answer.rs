@@ -451,8 +451,8 @@ pub async fn explain(
         start_line: params.line_start,
         end_line: params.line_end,
         snippet,
-        start_byte: 0,
-        end_byte: 0,
+        start_byte: None,
+        end_byte: None,
     });
 
     let action = Action::Answer { paths: vec![0] };

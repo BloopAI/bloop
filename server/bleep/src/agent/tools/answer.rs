@@ -367,8 +367,8 @@ impl Agent {
                     snippet,
                     start_line: span.start,
                     end_line: span.end,
-                    start_byte: 0,
-                    end_byte: 0,
+                    start_byte: None,
+                    end_byte: None,
                 }
             })
             .collect::<Vec<CodeChunk>>();
