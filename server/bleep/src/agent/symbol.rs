@@ -261,18 +261,20 @@ impl Agent {
 
         // select one symbol
         let selected_symbol = match self.filter_symbols(&user_query, chunks_with_symbols).await {
-            Ok(selected_symbol) => selected_symbol,
+            Ok(selected_symbol) => {
+                info!("Selected symbol: {}", selected_symbol.name);
+                selected_symbol
+            }
             Err(e) => {
                 info!("Returning no extra chunks: {}", e);
                 return Vec::new();
             }
         };
 
-        // get expanded chunks for selected symbol
-        let extra_chunks = self.expand_symbol_into_chunks(selected_symbol).await;
-
         // take 3 chunks, update path aliases, update enchange chunks
-        let extra_chunks = extra_chunks
+        let extra_chunks = self
+            .expand_symbol_into_chunks(selected_symbol)
+            .await
             .iter()
             .take(MAX_CHUNKS)
             .map(|c| {
