@@ -377,7 +377,7 @@ impl AgentExecutor {
             .map(|res| res.unwrap_or_else(|_| Err(anyhow!("stream panicked"))))
             .map(|ex: Result<AnswerEvent>| {
                 sse::Event::default()
-                    .json_data(ex.map_err(|e| e.to_string()))
+                    .json_data(ex.map_err(|e| format!("{e:?}")))
                     .map_err(anyhow::Error::new)
             });
 
