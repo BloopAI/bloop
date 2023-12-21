@@ -50,6 +50,14 @@ pub enum SemanticError {
     },
 }
 
+#[derive(Debug, Clone)]
+pub struct SemanticSearchParams {
+    pub limit: u64,
+    pub offset: u64,
+    pub threshold: f32,
+    pub exact_match: bool, // keyword match for all filters
+}
+
 #[derive(Clone)]
 pub struct Semantic {
     qdrant: Arc<QdrantClient>,
@@ -329,10 +337,11 @@ impl Semantic {
         limit: u64,
         offset: u64,
         threshold: f32,
+        exact: bool,
     ) -> anyhow::Result<Vec<ScoredPoint>> {
         let hybrid_filter = Some(Filter {
             should: build_conditions_lexical(parsed_query),
-            must: build_conditions(parsed_query),
+            must: build_conditions(parsed_query, exact),
             ..Default::default()
         });
 
@@ -361,6 +370,7 @@ impl Semantic {
         limit: u64,
         offset: u64,
         threshold: f32,
+        exact: bool,
     ) -> anyhow::Result<Vec<ScoredPoint>> {
         let response = self
             .qdrant
@@ -374,7 +384,7 @@ impl Semantic {
                     selector_options: Some(with_payload_selector::SelectorOptions::Enable(true)),
                 }),
                 filter: Some(Filter {
-                    must: build_conditions(parsed_query),
+                    must: build_conditions(parsed_query, exact),
                     ..Default::default()
                 }),
                 with_vectors: Some(WithVectorsSelector {
@@ -398,6 +408,7 @@ impl Semantic {
         limit: u64,
         offset: u64,
         threshold: f32,
+        exact: bool,
     ) -> anyhow::Result<Vec<ScoredPoint>> {
         // FIXME: This method uses `search_points` internally, and not `search_batch_points`. It's
         // not clear why, but it seems that the `batch` variant of the `qdrant` calls leads to
@@ -412,7 +423,7 @@ impl Semantic {
 
         // Queries should contain the same filters, so we get the first one
         let parsed_query = parsed_queries.first().unwrap();
-        let filters = &build_conditions(parsed_query);
+        let filters = &build_conditions(parsed_query, exact);
 
         let responses = stream::iter(vectors.into_iter())
             .map(|vector| async move {
@@ -517,15 +528,18 @@ impl Semantic {
     pub async fn search<'a>(
         &self,
         parsed_query: &SemanticQuery<'a>,
-        limit: u64,
-        offset: u64,
-        threshold: f32,
-        retrieve_more: bool,
+        params: SemanticSearchParams,
     ) -> anyhow::Result<Vec<Payload>> {
         let Some(query) = parsed_query.target() else {
             anyhow::bail!("no search target for query");
         };
         let vector = self.embedder.embed(&query).await?;
+        let SemanticSearchParams {
+            limit,
+            offset,
+            threshold,
+            exact_match: exact,
+        } = params;
 
         // TODO: Remove the need for `retrieve_more`. It's here because:
         // In /q `limit` is the maximum number of results returned (the actual number will often be lower due to deduplication)
@@ -534,9 +548,10 @@ impl Semantic {
             .search_with(
                 parsed_query,
                 vector.clone(),
-                if retrieve_more { limit * 2 } else { limit }, // Retrieve double `limit` and deduplicate
+                limit * 2, // Retrieve double `limit` and deduplicate
                 offset,
                 threshold,
+                exact,
             )
             .await
             .map(|raw| {
@@ -550,9 +565,10 @@ impl Semantic {
             .search_lexical(
                 parsed_query,
                 vector.clone(),
-                if retrieve_more { limit * 2 } else { limit },
+                limit * 2, // Retrieve double `limit` and deduplicate
                 offset,
                 0.0,
+                exact,
             )
             .await
             .map(|raw| {
@@ -575,10 +591,7 @@ impl Semantic {
     pub async fn batch_search<'a>(
         &self,
         parsed_queries: &[&SemanticQuery<'a>],
-        limit: u64,
-        offset: u64,
-        threshold: f32,
-        retrieve_more: bool,
+        params: SemanticSearchParams,
     ) -> anyhow::Result<Vec<Payload>> {
         if parsed_queries.iter().any(|q| q.target().is_none()) {
             anyhow::bail!("no search target for query");
@@ -593,15 +606,23 @@ impl Semantic {
         .into_iter()
         .collect::<anyhow::Result<Vec<_>>>()?;
 
+        let SemanticSearchParams {
+            limit,
+            offset,
+            threshold,
+            exact_match: exact,
+        } = params;
+
         trace!(?parsed_queries, "performing qdrant batch search");
 
         let result = self
             .batch_search_with(
                 parsed_queries,
                 vectors.clone(),
-                if retrieve_more { limit * 2 } else { limit }, // Retrieve double `limit` and deduplicate
+                limit * 2, // Retrieve double `limit` and deduplicate
                 offset,
                 threshold,
+                exact,
             )
             .await;
 
@@ -756,7 +777,32 @@ fn build_conditions_lexical(
         .collect()
 }
 
-fn build_conditions(query: &SemanticQuery<'_>) -> Vec<qdrant_client::qdrant::Condition> {
+fn build_conditions(
+    query: &SemanticQuery<'_>,
+    exact_match: bool,
+) -> Vec<qdrant_client::qdrant::Condition> {
+    let path_filter = {
+        let conditions = query
+            .paths()
+            .map(|r| {
+                if exact_match {
+                    make_kv_keyword_filter("relative_path", r.as_ref())
+                } else {
+                    make_kv_text_filter("relative_path", r.as_ref())
+                }
+                .into()
+            })
+            .collect::<Vec<_>>();
+        if conditions.is_empty() {
+            None
+        } else {
+            Some(Filter {
+                should: conditions,
+                ..Default::default()
+            })
+        }
+    };
+
     let repo_filter = {
         let conditions = query
             .repos()
@@ -770,21 +816,6 @@ fn build_conditions(query: &SemanticQuery<'_>) -> Vec<qdrant_client::qdrant::Con
             .map(|r| make_kv_keyword_filter("repo_name", r.as_ref()).into())
             .collect::<Vec<_>>();
         // one of the above repos should match
-        if conditions.is_empty() {
-            None
-        } else {
-            Some(Filter {
-                should: conditions,
-                ..Default::default()
-            })
-        }
-    };
-
-    let path_filter = {
-        let conditions = query
-            .paths()
-            .map(|r| make_kv_text_filter("relative_path", r.as_ref()).into())
-            .collect::<Vec<_>>();
         if conditions.is_empty() {
             None
         } else {

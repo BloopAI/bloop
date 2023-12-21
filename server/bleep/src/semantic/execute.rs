@@ -5,6 +5,7 @@ use crate::{
         execute::{ApiQuery, PagingMetadata, QueryResponse, QueryResult, ResultStats},
         parser::SemanticQuery,
     },
+    semantic::SemanticSearchParams,
     snippet::Snippet,
 };
 
@@ -20,10 +21,12 @@ pub async fn execute(
     let results = semantic
         .search(
             &query,
-            params.page_size as u64,
-            ((params.page + 1) * params.page_size) as u64,
-            0.0,
-            false,
+            SemanticSearchParams {
+                limit: params.page_size as u64,
+                offset: ((params.page + 1) * params.page_size) as u64,
+                threshold: 0.0,
+                exact_match: false,
+            },
         )
         .await?;
 
