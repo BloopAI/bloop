@@ -164,7 +164,6 @@ impl SyncHandle {
         };
 
         let (exited, exit_signal) = flume::bounded(1);
-        let pipes = SyncPipes::new(reporef.clone(), filter_updates.clone(), status);
         let current = app
             .repo_pool
             .entry_async(reporef.clone())
@@ -195,6 +194,13 @@ impl SyncHandle {
                     }
                 }
             });
+
+        let pipes = SyncPipes::new(
+            reporef.clone(),
+            current.get().last_index_unix_secs != 0,
+            filter_updates.clone(),
+            status,
+        );
 
         // if we're not upgrading from shallow to full checkout
         // this seems to be a speed optimization for git operations

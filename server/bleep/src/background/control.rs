@@ -26,6 +26,9 @@ pub struct SyncPipes {
     /// Together with `filter_updates`, it uniquely identifies the sync process
     reporef: RepoRef,
 
+    /// Is this a re-sync?
+    resync: bool,
+
     /// Together with `reporef`, it uniquely identifies the sync process
     filter_updates: FilterUpdate,
 
@@ -42,11 +45,13 @@ pub struct SyncPipes {
 impl SyncPipes {
     pub(super) fn new(
         reporef: RepoRef,
+        resync: bool,
         filter_updates: FilterUpdate,
         progress: super::ProgressStream,
     ) -> Self {
         Self {
             reporef,
+            resync,
             progress,
             filter_updates,
             git_interrupt: Default::default(),
@@ -58,6 +63,7 @@ impl SyncPipes {
         // clear any state stored on the frontend
         _ = self.progress.send(Progress {
             reporef: self.reporef.clone(),
+            resync: self.resync,
             branch_filter: self.filter_updates.branch_filter.clone(),
             event: ProgressEvent::IndexPercent(None),
         });
@@ -70,6 +76,7 @@ impl SyncPipes {
             name: Default::default(),
             progress: self.progress.clone(),
             reporef: self.reporef.clone(),
+            resync: self.resync,
             filter_updates: self.filter_updates.clone(),
         }
     }
@@ -77,6 +84,7 @@ impl SyncPipes {
     pub(crate) fn index_percent(&self, current: u8) {
         _ = self.progress.send(Progress {
             reporef: self.reporef.clone(),
+            resync: self.resync,
             branch_filter: self.filter_updates.branch_filter.clone(),
             event: ProgressEvent::IndexPercent(Some(current)),
         });
@@ -85,6 +93,7 @@ impl SyncPipes {
     pub(crate) fn status(&self, new: SyncStatus) {
         _ = self.progress.send(Progress {
             reporef: self.reporef.clone(),
+            resync: self.resync,
             branch_filter: self.filter_updates.branch_filter.clone(),
             event: ProgressEvent::StatusChange(new),
         });
@@ -131,6 +140,9 @@ pub(crate) struct GitSync {
 
     /// Copy from `SyncPipes`, because we can't make this a referential type
     reporef: RepoRef,
+
+    /// Copy from `SyncPipes`, because we can't make this a referential type
+    resync: bool,
 
     /// Copy from `SyncPipes`, because we can't make this a referential type
     filter_updates: FilterUpdate,
@@ -181,6 +193,7 @@ impl gix::progress::Count for GitSync {
             let current = ((step as f32 / self.max.load(Ordering::SeqCst) as f32) * 100f32) as u8;
             _ = self.progress.send(Progress {
                 reporef: self.reporef.clone(),
+                resync: self.resync,
                 branch_filter: self.filter_updates.branch_filter.clone(),
                 event: ProgressEvent::IndexPercent(Some(current.min(100))),
             });
@@ -218,6 +231,7 @@ impl gix::progress::Count for GitSync {
 
             _ = self.progress.send(Progress {
                 reporef: self.reporef.clone(),
+                resync: self.resync,
                 branch_filter: self.filter_updates.branch_filter.clone(),
                 event: ProgressEvent::IndexPercent(Some(current.min(100))),
             });
@@ -258,6 +272,7 @@ impl gix::progress::NestedProgress for GitSync {
             cnt: self.cnt.clone(),
             filter_updates: self.filter_updates.clone(),
             reporef: self.reporef.clone(),
+            resync: self.resync,
             progress,
             name,
             id,
