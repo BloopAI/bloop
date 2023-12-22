@@ -6,7 +6,7 @@ use std::{
 
 use sentry::Level;
 use tauri::{plugin::Plugin, Runtime};
-use tracing::{error, warn};
+use tracing::{error, info, warn};
 
 use super::relative_command_path;
 
@@ -136,11 +136,14 @@ fn run_command(command: &Path, qdrant_dir: &Path, stdout: &Path, stderr: &Path) 
     match getrlimit(Resource::RLIMIT_NOFILE) {
         Ok((current_soft, current_hard)) => {
             let new_soft = current_hard.min(10000);
+            info!(current_soft, current_hard, "got rlimit/nofile");
             if let Err(err) = setrlimit(Resource::RLIMIT_NOFILE, new_soft, current_hard) {
                 error!(
                     ?err,
                     new_soft, current_soft, current_hard, "failed to set rlimit/nofile"
                 );
+            } else {
+                info!(new_soft, current_hard, "set rlimit/nofile");
             }
         }
         Err(err) => {
