@@ -59,6 +59,7 @@ pub struct SqlRecord {
 #[derive(serde::Serialize, Clone)]
 pub enum Progress {
     Init(i64),
+    SetMetadata,
     Update(Update),
     Done(i64),
 }
@@ -338,6 +339,7 @@ impl Doc {
                     is_meta_set = true;
                     self.set_metadata(&update.metadata, id, &url, &mut transaction)
                         .await;
+                    let _ = tx.send(Progress::SetMetadata);
                 };
             }
             let _ = tx.send(progress); // TODO: log err here
@@ -371,7 +373,7 @@ impl Doc {
             let handle = lock.iter().find(|handle| handle.id == id);
             match handle {
                 Some(h) => {
-                    let s = tokio_stream::wrappers::WatchStream::new(h.progress_stream.clone());
+                    let s = tokio_stream::wrappers::WatchStream::from_changes(h.progress_stream.clone());
                     for await progress in s {
                         yield progress;
                     }
