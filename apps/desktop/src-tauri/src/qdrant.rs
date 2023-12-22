@@ -135,8 +135,8 @@ fn run_command(command: &Path, qdrant_dir: &Path, stdout: &Path, stderr: &Path) 
 
     match getrlimit(Resource::RLIMIT_NOFILE) {
         Ok((current_soft, current_hard)) => {
-            let new_soft = current_hard.min(10000);
             info!(current_soft, current_hard, "got rlimit/nofile");
+            let new_soft = current_soft.max(current_hard.min(10000));
             if let Err(err) = setrlimit(Resource::RLIMIT_NOFILE, new_soft, current_hard) {
                 error!(
                     ?err,
