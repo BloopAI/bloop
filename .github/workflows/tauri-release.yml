@@ -129,7 +129,7 @@ jobs:
         id: release-version
         run: echo "RELEASE_VERSION=$(cat apps/desktop/src-tauri/tauri.conf.json | jq '.package.version' | tr -d '"')" >> "$GITHUB_OUTPUT"
 
-      - uses: tauri-apps/tauri-action@cb58ba3f65bd456ee564376585a8400bf0b71f47
+      - uses: tauri-apps/tauri-action
         env:
           NODE_OPTIONS: "--max-old-space-size=4096"
           ORT_LIB_LOCATION: ${{ github.workspace }}/lib/${{ matrix.target }}/onnxruntime
