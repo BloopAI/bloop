@@ -157,6 +157,8 @@ pub struct CodeChunk {
     pub end_line: usize,
     pub start_byte: Option<usize>,
     pub end_byte: Option<usize>,
+    #[serde(default)]
+    pub language: String,
 }
 
 impl CodeChunk {

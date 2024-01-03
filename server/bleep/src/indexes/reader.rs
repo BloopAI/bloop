@@ -375,7 +375,7 @@ fn read_bool_field(doc: &tantivy::Document, field: Field) -> bool {
     doc.get_first(field).unwrap().as_bool().unwrap()
 }
 
-fn read_text_field(doc: &tantivy::Document, field: Field) -> String {
+pub fn read_text_field(doc: &tantivy::Document, field: Field) -> String {
     let Some(field) = doc.get_first(field) else {
         return Default::default();
     };

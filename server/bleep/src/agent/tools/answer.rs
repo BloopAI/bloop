@@ -369,6 +369,7 @@ impl Agent {
                     end_line: span.end,
                     start_byte: None,
                     end_byte: None,
+                    language: String::default(),
                 }
             })
             .collect::<Vec<CodeChunk>>();
@@ -387,6 +388,7 @@ impl Agent {
                 end_line: (chunk.start_line + num_trimmed_lines).saturating_sub(1),
                 start_byte: chunk.start_byte,
                 end_byte: chunk.end_byte,
+                language: chunk.language.clone(),
             }]
         } else {
             code_chunks

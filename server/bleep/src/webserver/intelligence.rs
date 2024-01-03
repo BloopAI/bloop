@@ -15,6 +15,7 @@ use crate::{
 };
 
 use axum::{extract::Query, response::IntoResponse, Extension};
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 /// The request made to the `local-intel` endpoint.
@@ -61,6 +62,7 @@ pub(super) async fn handle(
         .map_err(Error::user)?
         .ok_or_else(|| Error::user("path not found").with_status(StatusCode::NOT_FOUND))?;
     let lang = source_doc.lang.as_deref();
+
     let all_docs = {
         let associated_langs = match lang.map(TSLanguage::from_id) {
             Some(Language::Supported(config)) => config.language_ids,
@@ -81,7 +83,7 @@ pub(super) async fn handle(
         &repo_ref,
         indexes,
         &source_doc,
-        &all_docs,
+        all_docs.iter().collect(),
         None,
         None,
     )
@@ -153,7 +155,7 @@ pub(super) async fn related_files(
 
     let (h1, h2) = std::thread::scope(|s| {
         let h1 = s.spawn(|| {
-            CodeNavigationContext::files_imported(&all_docs, source_document_idx)
+            CodeNavigationContext::files_imported(all_docs.iter().collect(), source_document_idx)
                 .into_iter()
                 .map(|doc| doc.relative_path.clone())
                 .collect()
@@ -320,10 +322,11 @@ pub async fn get_token_info(
     repo_ref: &RepoRef,
     indexes: Arc<Indexes>,
     source_doc: &ContentDocument,
-    all_docs: &Vec<ContentDocument>,
+    all_docs: Vec<&ContentDocument>,
     context_before: Option<usize>,
     context_after: Option<usize>,
 ) -> anyhow::Result<Vec<FileSymbols>> {
+    let n = std::time::Instant::now();
     let source_document_idx = all_docs
         .iter()
         .position(|doc| doc.relative_path == source_doc.relative_path)
@@ -338,23 +341,26 @@ pub async fn get_token_info(
             start_byte: params.start,
             end_byte: params.end,
         },
-        all_docs,
+        all_docs: all_docs.clone(),
         source_document_idx,
         snipper,
     };
-
     let data = ctx.token_info();
+    tracing::info!("got local nav info: {}ms", n.elapsed().as_millis());
     if data.is_empty() {
-        search_nav(
+        let data = search_nav(
             Arc::clone(&indexes),
             repo_ref,
             ctx.active_token_text(),
             ctx.active_token_range(),
             params.branch.as_deref(),
             source_doc,
+            all_docs,
             snipper,
         )
-        .await
+        .await;
+        tracing::info!("got search nav info: {}ms", n.elapsed().as_millis());
+        data
     } else {
         Ok(data)
     }
@@ -367,17 +373,17 @@ async fn search_nav(
     payload_range: std::ops::Range<usize>,
     branch: Option<&str>,
     source_document: &ContentDocument,
+    all_docs: Vec<&ContentDocument>,
     snipper: Option<Snipper>,
 ) -> anyhow::Result<Vec<FileSymbols>> {
-    use crate::{
-        indexes::{reader::ContentReader, DocumentRead},
-        query::compiler::trigrams,
-    };
+    use crate::query::compiler::trigrams;
     use tantivy::{
         collector::TopDocs,
         query::{BooleanQuery, TermQuery},
         schema::{IndexRecordOption, Term},
     };
+
+    let n = std::time::Instant::now();
 
     let associated_langs = match source_document.lang.as_deref().map(TSLanguage::from_id) {
         Some(Language::Supported(config)) => config.language_ids,
@@ -441,6 +447,7 @@ async fn search_nav(
     };
     let collector = TopDocs::with_limit(500);
     let searcher = indexes.file.reader.searcher();
+
     let results = searcher
         .search(&query, &collector)
         .expect("failed to search index");
@@ -459,15 +466,23 @@ async fn search_nav(
     };
 
     let data = results
-        .into_iter()
+        .into_par_iter()
         .filter_map(|(_, doc_addr)| {
             let retrieved_doc = searcher
                 .doc(doc_addr)
                 .expect("failed to get document by address");
-            let doc = ContentReader.read_document(file_source, retrieved_doc);
+
+            // instead of deserializing this document from the tantivy index, find this doc in all_docs
+            let path =
+                crate::indexes::reader::read_text_field(&retrieved_doc, file_source.relative_path);
+            let doc = all_docs
+                .iter()
+                .find(|d| d.relative_path == path)
+                .expect(&format!("missing doc {}", path));
             let hoverable_ranges = doc.hoverable_ranges()?;
             let data = target
                 .find_iter(&doc.content)
+                .par_bridge()
                 .map(|m| TextRange::from_byte_range(m.range(), &doc.line_end_indices))
                 .filter(|range| hoverable_ranges.iter().any(|r| r.contains(range)))
                 .filter(|range| {
@@ -508,7 +523,7 @@ async fn search_nav(
                 .filter(|o| !(ignore_defs && o.is_definition())) // if ignore_defs is true & o is a def, omit it
                 .collect::<Vec<_>>();
 
-            let file = doc.relative_path;
+            let file = &doc.relative_path;
 
             data.is_empty().not().then(|| FileSymbols {
                 file: file.clone(),

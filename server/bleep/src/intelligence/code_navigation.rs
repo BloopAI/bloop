@@ -48,7 +48,7 @@ pub enum CodeNavigationError {}
 
 pub struct CodeNavigationContext<'a, 'b> {
     pub token: Token<'a>,
-    pub all_docs: &'b [ContentDocument],
+    pub all_docs: Vec<&'b ContentDocument>,
     pub source_document_idx: usize,
     pub snipper: Option<Snipper>,
 }
@@ -112,7 +112,7 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
     /// This works by going through every reference or import node in the current file, calculating
     /// its non-local definition (if any) and gathering the resuting file-set.
     pub fn files_imported(
-        all_docs: &'b [ContentDocument],
+        all_docs: Vec<&'b ContentDocument>,
         source_document_idx: usize,
     ) -> HashSet<&'b ContentDocument> {
         // scope graph of the source document
@@ -128,7 +128,7 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
             .filter(|idx| source_sg.is_reference(*idx) || source_sg.is_import(*idx))
             .filter(|&idx| {
                 CodeNavigationContext {
-                    all_docs,
+                    all_docs: all_docs.clone(),
                     source_document_idx,
                     token: Token {
                         relative_path: &source_doc.relative_path,
@@ -151,7 +151,8 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
                 let active_token_text =
                     source_doc.content.as_str().get(active_token_range).unwrap();
                 all_docs
-                    .par_iter()
+                    .clone()
+                    .into_par_iter()
                     .filter(|doc| doc.relative_path != source_doc.relative_path)
                     .filter(|doc| {
                         let Some(scope_graph) = doc.symbol_locations.scope_graph() else {
@@ -178,7 +179,7 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
 
     fn singleton(source_document: &'b ContentDocument, token: Token<'a>) -> Self {
         Self {
-            all_docs: std::slice::from_ref(source_document),
+            all_docs: vec![source_document],
             source_document_idx: 0,
             token,
             snipper: None,
@@ -283,6 +284,7 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
     fn non_source_documents(&self) -> impl Iterator<Item = &ContentDocument> {
         self.all_docs
             .iter()
+            .copied()
             .filter(|doc| doc.relative_path != self.source_document().relative_path)
     }
 
@@ -452,7 +454,7 @@ pub struct Token<'a> {
     pub end_byte: usize,
 }
 
-fn to_occurrence(doc: &ContentDocument, range: TextRange, snipper: Option<Snipper>) -> Snippet {
+pub fn to_occurrence(doc: &ContentDocument, range: TextRange, snipper: Option<Snipper>) -> Snippet {
     let src = &doc.content;
     let line_end_indices = &doc.line_end_indices;
     let highlight = range.start.byte..range.end.byte;

@@ -47,6 +47,7 @@ impl Agent {
                     end_line: chunk.end_line as usize,
                     start_byte: Some(chunk.start_byte as usize),
                     end_byte: Some(chunk.end_byte as usize),
+                    language: chunk.lang,
                 }
             })
             .collect::<Vec<_>>();
@@ -61,7 +62,9 @@ impl Agent {
                 .push(chunk.clone())
         }
 
+        let n = std::time::Instant::now();
         let extra_chunks = self.get_related_chunks(chunks.clone()).await;
+        tracing::info!("proc: get_related_chunks: {}", n.elapsed().as_millis());
 
         chunks.extend(extra_chunks);
 

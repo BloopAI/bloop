@@ -553,20 +553,20 @@ impl Indexer<File> {
             query.push(Box::new(b) as Box<dyn Query>);
         };
 
-        query.push({
-            let queries = langs
-                .map(|lang| {
-                    Box::new(TermQuery::new(
-                        Term::from_field_bytes(
-                            self.source.lang,
-                            lang.as_ref().to_ascii_lowercase().as_bytes(),
-                        ),
-                        IndexRecordOption::Basic,
-                    )) as Box<dyn Query>
-                })
-                .collect::<Vec<_>>();
-            Box::new(BooleanQuery::union(queries))
-        });
+        let lang_queries = langs
+            .map(|lang| {
+                Box::new(TermQuery::new(
+                    Term::from_field_bytes(
+                        self.source.lang,
+                        lang.as_ref().to_ascii_lowercase().as_bytes(),
+                    ),
+                    IndexRecordOption::Basic,
+                )) as Box<dyn Query>
+            })
+            .collect::<Vec<_>>();
+        if !lang_queries.is_empty() {
+            query.push(Box::new(BooleanQuery::union(lang_queries)));
+        }
 
         let query = BooleanQuery::intersection(query);
         let collector = TopDocs::with_limit(500);

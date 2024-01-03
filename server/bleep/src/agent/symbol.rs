@@ -1,7 +1,11 @@
 use futures::TryStreamExt;
 
 use crate::agent::{exchange::CodeChunk, Agent};
-use crate::intelligence::{code_navigation::FileSymbols, Language, TSLanguage};
+use crate::indexes::reader::ContentDocument;
+use crate::intelligence::{
+    code_navigation::{FileSymbols, Occurrence, OccurrenceKind},
+    Language, TSLanguage,
+};
 use crate::llm_gateway;
 use crate::webserver::intelligence::{get_token_info, TokenInfoRequest};
 use anyhow::{Context, Result};
@@ -24,8 +28,12 @@ pub struct ChunkWithSymbols {
 /// We extract the surrounding code (up to `NUMBER_CHUNK_LINES` lines) for each occurence and pick `MAX_CHUNKS` occurrences/chunks.
 
 impl Agent {
-    pub async fn extract_symbols(&self, chunk: CodeChunk) -> Result<ChunkWithSymbols> {
-        const MAX_REF_DEFS: usize = 5; // Ignore symbols with more than this many cross-file refs/defs
+    pub async fn extract_symbols(
+        &self,
+        all_docs: Vec<&ContentDocument>,
+        chunk: CodeChunk,
+    ) -> Result<ChunkWithSymbols> {
+        const MAX_REF_DEFS: usize = 10; // Ignore symbols with more than this many cross-file refs/defs
         const NUMBER_CHUNK_LINES: usize = 10;
 
         // get hoverable elements
@@ -46,13 +54,19 @@ impl Agent {
                 Some(Language::Supported(config)) => config.language_ids,
                 _ => &[],
             };
-            self.app
-                .indexes
-                .file
-                .by_repo(&self.repo_ref, associated_langs.iter(), None)
-                .await
+            all_docs
+                .into_iter()
+                .filter(|doc| doc.lang.is_some())
+                .filter(|doc| {
+                    associated_langs.iter().any(|l| {
+                        l.to_ascii_lowercase().as_str()
+                            == doc.lang.as_ref().unwrap().to_ascii_lowercase().as_str()
+                    })
+                })
+                .collect::<Vec<_>>()
         };
 
+        let n = std::time::Instant::now();
         // get references and definitions for each symbol
         let related_symbols = futures::future::join_all(
             hoverable_ranges
@@ -62,7 +76,7 @@ impl Agent {
                         && (range.start.byte < chunk.end_byte.unwrap_or_default())
                 })
                 .map(|range| {
-                    get_token_info(
+                    get_token_info_tantivy(
                         TokenInfoRequest {
                             relative_path: chunk.path.clone(),
                             repo_ref: self.repo_ref.display_name(),
@@ -73,13 +87,39 @@ impl Agent {
                         &self.repo_ref,
                         self.app.indexes.clone(),
                         &document,
-                        &all_docs,
+                        all_docs.clone(),
                         Some(0),
                         Some(NUMBER_CHUNK_LINES),
                     )
+                    // get_token_info(
+                    //     TokenInfoRequest {
+                    //         relative_path: chunk.path.clone(),
+                    //         repo_ref: self.repo_ref.display_name(),
+                    //         branch: None,
+                    //         start: range.start.byte,
+                    //         end: range.end.byte,
+                    //     },
+                    //     &self.repo_ref,
+                    //     self.app.indexes.clone(),
+                    //     &document,
+                    //     all_docs.clone(),
+                    //     Some(0),
+                    //     Some(NUMBER_CHUNK_LINES),
+                    // )
                 }),
         )
         .await;
+        info!(
+            "get token info took: {}ms for {} ranges",
+            n.elapsed().as_millis(),
+            hoverable_ranges
+                .iter()
+                .filter(|range| {
+                    (range.start.byte >= chunk.start_byte.unwrap_or_default())
+                        && (range.start.byte < chunk.end_byte.unwrap_or_default())
+                })
+                .count()
+        );
 
         // filter references and definitions
         // 1: symbol shouldn't be in the same file
@@ -136,6 +176,7 @@ impl Agent {
                     .map(|occurrence| CodeChunk {
                         path: filename.clone(),
                         alias: 0,
+                        language: String::new(),
                         snippet: occurrence.snippet.data.clone(),
                         start_line: occurrence.snippet.line_range.start,
                         end_line: occurrence.snippet.line_range.end,
@@ -244,17 +285,33 @@ impl Agent {
     pub async fn get_related_chunks(&mut self, chunks: Vec<CodeChunk>) -> Vec<CodeChunk> {
         const MAX_CHUNKS: usize = 3;
 
+        let n = std::time::Instant::now();
+        let languages = chunks
+            .iter()
+            .map(|c| c.language.as_str())
+            .collect::<Vec<_>>();
+        info!("got languages: {}ms", n.elapsed().as_millis());
+
+        let all_docs = self
+            .app
+            .indexes
+            .file
+            .by_repo(&self.repo_ref, languages.iter(), None)
+            .await;
+        info!("got all_docs: {}ms", n.elapsed().as_millis());
+
         // get symbols with ref/defs for each chunk
         let chunks_with_symbols = futures::future::join_all(
             chunks
                 .iter()
                 .filter(|c| !c.is_empty())
-                .map(|c| self.extract_symbols(c.clone())), // TODO: Log failure
+                .map(|c| self.extract_symbols(all_docs.iter().collect(), c.clone())), // TODO: Log failure
         )
         .await
         .into_iter()
         .filter_map(Result::ok)
         .collect();
+        info!("got extracted symbols: {}ms", n.elapsed().as_millis());
 
         // get original user query
         let user_query = self.last_exchange().query.target().unwrap();
@@ -270,6 +327,7 @@ impl Agent {
                 return Vec::new();
             }
         };
+        info!("got filtered symbols: {}ms", n.elapsed().as_millis());
 
         // take 3 chunks, update path aliases, update enchange chunks
         let extra_chunks = self
@@ -326,6 +384,92 @@ impl Agent {
             )
             .await
     }
+}
+
+use crate::indexes::DocumentRead;
+use std::sync::Arc;
+async fn get_token_info_tantivy(
+    params: TokenInfoRequest,
+    repo_ref: &crate::repo::RepoRef,
+    indexes: Arc<crate::indexes::Indexes>,
+    source_doc: &ContentDocument,
+    all_docs: Vec<&ContentDocument>,
+    context_before: Option<usize>,
+    context_after: Option<usize>,
+) -> Result<Vec<FileSymbols>> {
+    let indexer = &indexes.clone().file;
+    let searcher = indexer.reader.searcher();
+
+    let token_text = &source_doc.content[params.start..params.end];
+    let query_text = format!("symbol:{token_text}");
+    let query = crate::query::parser::parse(&query_text)?;
+    let compiled_query = crate::indexes::reader::ContentReader.compile(
+        &indexer.source,
+        query.iter(),
+        &indexer.index,
+    )?;
+    let target = query.first().and_then(|q| q.target.as_ref()).unwrap();
+
+    let collector = tantivy::collector::TopDocs::with_limit(10);
+
+    let top_k = searcher
+        .search(&compiled_query, &collector)
+        .context("failed to execute search query")?;
+
+    let data = top_k
+        .iter()
+        .map(|(_score, addr)| {
+            let doc = searcher.doc(*addr).unwrap();
+            crate::indexes::reader::ContentReader.read_document(&indexer.source, doc)
+        })
+        .filter_map(|doc| {
+            let snipper = crate::snippet::Snipper::default()
+                .context(context_before.unwrap_or(0), context_after.unwrap_or(0))
+                .find_symbols(true)
+                .case_sensitive(true);
+
+            let lit = target.literal();
+            let reg = lit.regex_str();
+
+            Some(FileSymbols {
+                file: doc.relative_path.clone(),
+                data: to_occurrence(&doc, &reg, snipper),
+            })
+        })
+        .collect::<Vec<_>>();
+
+    dbg!(&data);
+
+    Ok(data)
+}
+
+fn to_occurrence(
+    doc: &ContentDocument,
+    regex: &str,
+    snipper: crate::snippet::Snipper,
+) -> Vec<Occurrence> {
+    let query = regex::RegexBuilder::new(regex)
+        .multi_line(true)
+        .case_insensitive(false)
+        .build()
+        .unwrap();
+    query
+        .find_iter(&doc.content)
+        .map(|m| m.range())
+        .map(|range| {
+            let snippet = snipper
+                .expand(range.clone(), &doc.content, &doc.line_end_indices)
+                .reify(&doc.content, &[]);
+            Occurrence {
+                kind: OccurrenceKind::Reference,
+                range: crate::text_range::TextRange::new(
+                    crate::text_range::Point::new(range.start, 0, 0),
+                    crate::text_range::Point::new(range.end, 0, 0),
+                ),
+                snippet,
+            }
+        })
+        .collect()
 }
 
 pub struct Symbol {

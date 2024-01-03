@@ -451,6 +451,7 @@ pub async fn explain(
         start_line: params.line_start,
         end_line: params.line_end,
         snippet,
+        language: String::new(),
         start_byte: None,
         end_byte: None,
     });
