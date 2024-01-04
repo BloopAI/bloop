@@ -14,6 +14,9 @@ pub struct ChunkWithSymbols {
     pub symbols: Vec<Symbol>,
 }
 
+use std::time::{Instant};
+
+
 /// This helps the code and proc tool return related chunks based on references and definitions.
 /// `get_related_chunks` receives a list of chunks from code or proc search and returns `MAX_CHUNKS` related chunks
 /// For each input chunk, we extract all symbols (variables, function names, structs...).
@@ -244,6 +247,12 @@ impl Agent {
     pub async fn get_related_chunks(&mut self, chunks: Vec<CodeChunk>) -> Vec<CodeChunk> {
         const MAX_CHUNKS: usize = 3;
 
+        let start_time = Instant::now();
+
+        
+    
+        
+
         // get symbols with ref/defs for each chunk
         let chunks_with_symbols = futures::future::join_all(
             chunks
@@ -256,8 +265,13 @@ impl Agent {
         .filter_map(Result::ok)
         .collect();
 
+        let elapsed = start_time.elapsed();
+        println!("Time taken extract symbols from chunks: {:?}", elapsed);
+
         // get original user query
         let user_query = self.last_exchange().query.target().unwrap();
+        let start_time2 = Instant::now();
+
 
         // select one symbol
         let selected_symbol = match self.filter_symbols(&user_query, chunks_with_symbols).await {
@@ -270,6 +284,10 @@ impl Agent {
                 return Vec::new();
             }
         };
+
+        let elapsed = start_time2.elapsed();
+        println!("Time taken to classify chunks: {:?}", elapsed);
+        let start_time3 = Instant::now();
 
         // take 3 chunks, update path aliases, update enchange chunks
         let extra_chunks = self
@@ -290,6 +308,9 @@ impl Agent {
                 chunk
             })
             .collect::<Vec<_>>();
+        let elapsed = start_time3.elapsed();
+        println!("Time taken to expand symbol: {:?}", elapsed);
+
         extra_chunks
     }
 
