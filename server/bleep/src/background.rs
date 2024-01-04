@@ -35,6 +35,8 @@ pub fn rayon_pool() -> &'static ThreadPool {
 pub struct Progress {
     #[serde(rename = "ref")]
     reporef: RepoRef,
+    #[serde(rename = "rsync")]
+    resync: bool,
     #[serde(rename = "b")]
     branch_filter: Option<BranchFilterConfig>,
     #[serde(rename = "ev")]

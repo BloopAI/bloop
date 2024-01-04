@@ -354,12 +354,8 @@ impl Repository {
 
         if shallow {
             self.sync_status = SyncStatus::Shallow
-        } else {
-            if let Some(ref ff) = filter_update.file_filter {
-                self.file_filter = ff.patch_into(&self.file_filter);
-            }
-
-            self.sync_status = SyncStatus::Done
+        } else if let Some(ref ff) = filter_update.file_filter {
+            self.file_filter = ff.patch_into(&self.file_filter);
         };
     }
 }
