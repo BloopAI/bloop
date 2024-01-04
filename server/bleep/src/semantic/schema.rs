@@ -70,6 +70,7 @@ pub(super) async fn create_collection(
                     ..Default::default()
                 })),
             }),
+            on_disk_payload: Some(true),
             ..Default::default()
         })
         .await
