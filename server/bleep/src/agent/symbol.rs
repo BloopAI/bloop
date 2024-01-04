@@ -14,8 +14,12 @@ pub struct ChunkWithSymbols {
     pub symbols: Vec<Symbol>,
 }
 
-use std::time::{Instant};
+pub struct ChunkWithHoverableSymbols {
+    pub chunk: CodeChunk,
+    pub symbols: Vec<HoverableSymbol>,
+}
 
+use std::time::Instant;
 
 /// This helps the code and proc tool return related chunks based on references and definitions.
 /// `get_related_chunks` receives a list of chunks from code or proc search and returns `MAX_CHUNKS` related chunks
@@ -27,6 +31,55 @@ use std::time::{Instant};
 /// We extract the surrounding code (up to `NUMBER_CHUNK_LINES` lines) for each occurence and pick `MAX_CHUNKS` occurrences/chunks.
 
 impl Agent {
+    pub async fn extract_hoverable_symbols(
+        &self,
+        chunk: CodeChunk,
+    ) -> Result<ChunkWithHoverableSymbols> {
+        // get hoverable elements
+        let document = self
+            .app
+            .indexes
+            .file
+            .by_path(&self.repo_ref, &chunk.path, None)
+            .await?
+            .with_context(|| format!("failed to read path: {}", &chunk.path))?;
+
+        let hoverable_ranges = document
+            .hoverable_ranges()
+            .ok_or_else(|| anyhow::anyhow!("no hoverable ranges"))?;
+
+        let mut symbols = hoverable_ranges
+            .into_iter()
+            .filter(|range| {
+                (range.start.byte >= chunk.start_byte.unwrap_or_default())
+                    && (range.start.byte < chunk.end_byte.unwrap_or_default())
+            })
+            .map(|range| HoverableSymbol {
+                name: chunk.snippet[(range.start.byte - chunk.start_byte.unwrap_or_default())
+                    ..(range.end.byte - chunk.start_byte.unwrap_or_default())]
+                    .to_string(),
+                token_info_request: TokenInfoRequest {
+                    relative_path: chunk.path.clone(),
+                    repo_ref: self.repo_ref.display_name(),
+                    branch: None,
+                    start: range.start.byte,
+                    end: range.end.byte,
+                },
+                path: chunk.path.clone(),
+            })
+            .collect::<Vec<_>>();
+
+        symbols.sort_by(|a, b| a.name.cmp(&b.name));
+        symbols.dedup_by(|a, b| a.name == b.name);
+
+        debug!("Attached {} symbols", symbols.len());
+
+        Ok(ChunkWithHoverableSymbols {
+            chunk: chunk.clone(),
+            symbols,
+        })
+    }
+
     pub async fn extract_symbols(&self, chunk: CodeChunk) -> Result<ChunkWithSymbols> {
         const MAX_REF_DEFS: usize = 5; // Ignore symbols with more than this many cross-file refs/defs
         const NUMBER_CHUNK_LINES: usize = 10;
@@ -153,7 +206,7 @@ impl Agent {
     pub async fn filter_symbols(
         &self,
         query: &str,
-        chunks_with_symbols: Vec<ChunkWithSymbols>,
+        chunks_with_symbols: Vec<ChunkWithHoverableSymbols>,
     ) -> Result<Symbol, SymbolError> {
         if chunks_with_symbols.is_empty() {
             return Err(SymbolError::ListEmpty);
@@ -239,7 +292,47 @@ impl Agent {
             .flat_map(|(_, symbol_with_alias)| symbol_with_alias)
             .find(|(alias, _)| *alias == selected_symbol as i32)
         {
-            Some((_alias, symbol_metadata)) => Ok(symbol_metadata),
+            Some((_alias, symbol_metadata)) => Ok(Symbol {
+                name: symbol_metadata.name,
+                related_symbols: {
+                    let document = self
+                        .app
+                        .indexes
+                        .file
+                        .by_path(&self.repo_ref, &symbol_metadata.path, None)
+                        .await
+                        .unwrap()
+                        .unwrap();
+
+                    let all_docs = {
+                        let associated_langs =
+                            match document.lang.as_deref().map(TSLanguage::from_id) {
+                                Some(Language::Supported(config)) => config.language_ids,
+                                _ => &[],
+                            };
+                        self.app
+                            .indexes
+                            .file
+                            .by_repo(&self.repo_ref, associated_langs.iter(), None)
+                            .await
+                    };
+
+                    get_token_info(
+                        symbol_metadata.token_info_request,
+                        &self.repo_ref,
+                        self.app.indexes.clone(),
+                        &document,
+                        &all_docs,
+                        Some(0),
+                        Some(10),
+                    )
+                    .await
+                    .unwrap()
+                    .into_iter()
+                    .filter(|file_symbol| file_symbol.file != symbol_metadata.path)
+                    .collect::<Vec<_>>()
+                },
+            }),
             _ => Err(SymbolError::OutOfBounds),
         }
     }
@@ -249,16 +342,12 @@ impl Agent {
 
         let start_time = Instant::now();
 
-        
-    
-        
-
         // get symbols with ref/defs for each chunk
         let chunks_with_symbols = futures::future::join_all(
             chunks
                 .iter()
                 .filter(|c| !c.is_empty())
-                .map(|c| self.extract_symbols(c.clone())), // TODO: Log failure
+                .map(|c| self.extract_hoverable_symbols(c.clone())), // TODO: Log failure
         )
         .await
         .into_iter()
@@ -271,7 +360,6 @@ impl Agent {
         // get original user query
         let user_query = self.last_exchange().query.target().unwrap();
         let start_time2 = Instant::now();
-
 
         // select one symbol
         let selected_symbol = match self.filter_symbols(&user_query, chunks_with_symbols).await {
@@ -323,7 +411,7 @@ impl Agent {
 
         self.llm_gateway
             .clone()
-            .model("gpt-3.5-turbo-0613")
+            .model("gpt-4-0613")
             .temperature(0.0)
             .chat_stream(&messages, Some(&functions))
             .await?
@@ -349,6 +437,11 @@ impl Agent {
     }
 }
 
+pub struct HoverableSymbol {
+    pub name: String,
+    pub token_info_request: TokenInfoRequest,
+    pub path: String,
+}
 pub struct Symbol {
     pub name: String,
     pub related_symbols: Vec<FileSymbols>,
