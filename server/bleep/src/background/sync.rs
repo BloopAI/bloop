@@ -164,7 +164,6 @@ impl SyncHandle {
         };
 
         let (exited, exit_signal) = flume::bounded(1);
-        let pipes = SyncPipes::new(reporef.clone(), filter_updates.clone(), status);
         let current = app
             .repo_pool
             .entry_async(reporef.clone())
@@ -195,6 +194,13 @@ impl SyncHandle {
                     }
                 }
             });
+
+        let pipes = SyncPipes::new(
+            reporef.clone(),
+            current.get().last_index_unix_secs != 0,
+            filter_updates.clone(),
+            status,
+        );
 
         // if we're not upgrading from shallow to full checkout
         // this seems to be a speed optimization for git operations
@@ -289,9 +295,7 @@ impl SyncHandle {
                         error!(?err, "failed to generate tutorial questions");
                     }
                 }
-
-                // technically `sync_done_with` does this, but we want to send notifications
-                self.set_status(|repo| repo.sync_status.clone())
+                self.set_status(|_| SyncStatus::Done)
             }
             Err(SyncError::Cancelled) => self.set_status(|_| SyncStatus::Cancelled),
             Err(err) => self.set_status(|_| SyncStatus::Error {
@@ -514,25 +518,26 @@ impl SyncHandle {
         &self,
         updater: impl FnOnce(&Repository) -> SyncStatus,
     ) -> Option<SyncStatus> {
-        let new_status = self.app.repo_pool.update(&self.reporef, move |_k, repo| {
-            let new_status = (updater)(repo);
-            let old_status = std::mem::replace(&mut repo.sync_status, new_status);
+        let (new_status, old_status) =
+            self.app.repo_pool.update(&self.reporef, move |_k, repo| {
+                let new_status = (updater)(repo);
+                let old_status = std::mem::replace(&mut repo.sync_status, new_status);
 
-            if !matches!(repo.sync_status, SyncStatus::Queued)
-                || matches!(old_status, SyncStatus::Syncing)
-            {
-                repo.pub_sync_status = repo.sync_status.clone();
-            }
+                if !matches!(repo.sync_status, SyncStatus::Queued)
+                    || matches!(old_status, SyncStatus::Syncing)
+                {
+                    repo.pub_sync_status = repo.sync_status.clone();
+                }
 
-            if matches!(
-                repo.sync_status,
-                SyncStatus::Error { .. } | SyncStatus::Done
-            ) {
-                repo.locked = false;
-            }
+                if matches!(
+                    repo.sync_status,
+                    SyncStatus::Error { .. } | SyncStatus::Done
+                ) {
+                    repo.locked = false;
+                }
 
-            repo.sync_status.clone()
-        })?;
+                (repo.sync_status.clone(), old_status)
+            })?;
 
         if let SyncStatus::Error { ref message } = new_status {
             error!(?self.reporef, err=?message, "indexing failed");
@@ -540,7 +545,7 @@ impl SyncHandle {
             debug!(?self.reporef, ?new_status, "new status");
         }
 
-        if !matches!(new_status, SyncStatus::Queued) {
+        if !matches!(new_status, SyncStatus::Queued) && new_status != old_status {
             self.pipes.status(new_status.clone());
         }
         Some(new_status)
@@ -563,7 +568,6 @@ impl SyncHandle {
             Some(Ok(repo)) => {
                 let new_status = repo.sync_status.clone();
                 debug!(?self.reporef, ?new_status, "new status");
-                self.pipes.status(new_status);
                 Ok(repo)
             }
             Some(err) => err,
