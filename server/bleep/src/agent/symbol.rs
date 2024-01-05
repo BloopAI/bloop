@@ -50,14 +50,14 @@ impl Agent {
                 (range.start.byte >= chunk.start_byte.unwrap_or_default())
                     && (range.start.byte < chunk.end_byte.unwrap_or_default())
             })
-            .filter_map(|range| {
+            .filter(|range| {
                 // if this node can be resolved locally in the scope-graph, omit it
                 if let Some(node_by_range) = graph.node_by_range(range.start.byte, range.end.byte) {
                     if graph.is_reference(node_by_range) || graph.is_definition(node_by_range) {
-                        return None;
+                        return false;
                     }
                 }
-                Some(range)
+                true
             })
             .map(|range| HoverableSymbol {
                 name: chunk.snippet[(range.start.byte - chunk.start_byte.unwrap_or_default())
