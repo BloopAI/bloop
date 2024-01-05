@@ -1,5 +1,3 @@
-use futures::TryStreamExt;
-
 use crate::agent::{exchange::CodeChunk, Agent};
 use crate::intelligence::{code_navigation::FileSymbols, Language, TSLanguage};
 use crate::llm_gateway;
@@ -7,12 +5,7 @@ use crate::webserver::intelligence::{get_token_info, TokenInfoRequest};
 use anyhow::{Context, Result};
 use tracing::log::{debug, info, warn};
 
-use super::prompts::{filter_function, symbol_classification_prompt};
-
-pub struct ChunkWithSymbols {
-    pub chunk: CodeChunk,
-    pub symbols: Vec<Symbol>,
-}
+use super::prompts::symbol_classification_prompt;
 
 pub struct ChunkWithHoverableSymbols {
     pub chunk: CodeChunk,
@@ -91,104 +84,6 @@ impl Agent {
         );
 
         Ok(ChunkWithHoverableSymbols {
-            chunk: chunk.clone(),
-            symbols,
-        })
-    }
-
-    pub async fn extract_symbols(&self, chunk: CodeChunk) -> Result<ChunkWithSymbols> {
-        const MAX_REF_DEFS: usize = 5; // Ignore symbols with more than this many cross-file refs/defs
-        const NUMBER_CHUNK_LINES: usize = 10;
-
-        // get hoverable elements
-        let document = self
-            .app
-            .indexes
-            .file
-            .by_path(&self.repo_ref, &chunk.path, None)
-            .await?
-            .with_context(|| format!("failed to read path: {}", &chunk.path))?;
-
-        let hoverable_ranges = document
-            .hoverable_ranges()
-            .ok_or_else(|| anyhow::anyhow!("no hoverable ranges"))?;
-
-        let all_docs = {
-            let associated_langs = match document.lang.as_deref().map(TSLanguage::from_id) {
-                Some(Language::Supported(config)) => config.language_ids,
-                _ => &[],
-            };
-            self.app
-                .indexes
-                .file
-                .by_repo(&self.repo_ref, associated_langs.iter(), None)
-                .await
-        };
-
-        // get references and definitions for each symbol
-        let related_symbols = futures::future::join_all(
-            hoverable_ranges
-                .iter()
-                .filter(|range| {
-                    (range.start.byte >= chunk.start_byte.unwrap_or_default())
-                        && (range.start.byte < chunk.end_byte.unwrap_or_default())
-                })
-                .map(|range| {
-                    get_token_info(
-                        TokenInfoRequest {
-                            relative_path: chunk.path.clone(),
-                            repo_ref: self.repo_ref.display_name(),
-                            branch: None,
-                            start: range.start.byte,
-                            end: range.end.byte,
-                        },
-                        &self.repo_ref,
-                        self.app.indexes.clone(),
-                        &document,
-                        &all_docs,
-                        Some(0),
-                        Some(NUMBER_CHUNK_LINES),
-                    )
-                }),
-        )
-        .await;
-
-        // filter references and definitions
-        // 1: symbol shouldn't be in the same file
-        // 2: number of refs/defs should be less than 5 to avoid very common symbols (iter, unwrap...)
-        // 3: also filter out symbols without refs/defs
-        let mut symbols = related_symbols
-            .into_iter()
-            .filter_map(Result::ok)
-            .zip(hoverable_ranges.into_iter().filter(|range| {
-                (range.start.byte >= chunk.start_byte.unwrap_or_default())
-                    && (range.start.byte < chunk.end_byte.unwrap_or_default())
-            }))
-            .map(|(token_info, range)| {
-                let filtered_token_info = token_info
-                    .into_iter()
-                    .filter(|file_symbols| file_symbols.file != chunk.path)
-                    .collect::<Vec<_>>();
-
-                Symbol {
-                    name: chunk.snippet[(range.start.byte - chunk.start_byte.unwrap_or_default())
-                        ..(range.end.byte - chunk.start_byte.unwrap_or_default())]
-                        .to_string(),
-                    related_symbols: filtered_token_info,
-                }
-            })
-            .filter(|metadata| {
-                (metadata.related_symbols.len() < MAX_REF_DEFS)
-                    && (!metadata.related_symbols.is_empty())
-            })
-            .collect::<Vec<_>>();
-
-        symbols.sort_by(|a, b| a.name.cmp(&b.name));
-        symbols.dedup_by(|a, b| a.name == b.name);
-
-        debug!("Attached {} symbols", symbols.len());
-
-        Ok(ChunkWithSymbols {
             chunk: chunk.clone(),
             symbols,
         })
@@ -414,40 +309,6 @@ impl Agent {
             .chat(&messages, None)
             .await
     }
-
-    async fn llm_with_function_call(
-        &self,
-        prompt: String,
-        functions: Vec<llm_gateway::api::Function>,
-    ) -> Result<llm_gateway::api::FunctionCall, anyhow::Error> {
-        let messages = vec![llm_gateway::api::Message::user(prompt.as_str())];
-
-        self.llm_gateway
-            .clone()
-            .model("gpt-4-0613")
-            .temperature(0.0)
-            .chat_stream(&messages, Some(&functions))
-            .await?
-            .try_fold(
-                llm_gateway::api::FunctionCall::default(),
-                |acc: llm_gateway::api::FunctionCall, e: String| async move {
-                    let e: llm_gateway::api::FunctionCall =
-                        serde_json::from_str(&e).map_err(|err| {
-                            tracing::error!(
-                                "Failed to deserialize to FunctionCall: {:?}. Error: {:?}",
-                                e,
-                                err
-                            );
-                            err
-                        })?;
-                    Ok(llm_gateway::api::FunctionCall {
-                        name: acc.name.or(e.name),
-                        arguments: acc.arguments + &e.arguments,
-                    })
-                },
-            )
-            .await
-    }
 }
 
 pub struct HoverableSymbol {
@@ -459,17 +320,11 @@ pub struct Symbol {
     pub name: String,
     pub related_symbols: Vec<FileSymbols>,
 }
-#[derive(serde::Deserialize)]
-struct Filter {
-    symbol: usize,
-}
 
 #[derive(thiserror::Error, Debug)]
 pub enum SymbolError {
     #[error("No symbol retrieved in the provided chunks")]
     ListEmpty,
-    #[error("Cannot deserialize llm function call arguments")]
-    DeserializeFilter,
     #[error("Selected symbol out of bounds")]
     OutOfBounds,
 }
