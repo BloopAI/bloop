@@ -19,8 +19,6 @@ pub struct ChunkWithHoverableSymbols {
     pub symbols: Vec<HoverableSymbol>,
 }
 
-use std::time::Instant;
-
 /// This helps the code and proc tool return related chunks based on references and definitions.
 /// `get_related_chunks` receives a list of chunks from code or proc search and returns `MAX_CHUNKS` related chunks
 /// For each input chunk, we extract all symbols (variables, function names, structs...).
@@ -44,6 +42,11 @@ impl Agent {
             .await?
             .with_context(|| format!("failed to read path: {}", &chunk.path))?;
 
+        let graph = document
+            .symbol_locations
+            .scope_graph()
+            .with_context(|| format!("no scope graph for file: {}", &chunk.path))?;
+
         let hoverable_ranges = document
             .hoverable_ranges()
             .ok_or_else(|| anyhow::anyhow!("no hoverable ranges"))?;
@@ -53,6 +56,15 @@ impl Agent {
             .filter(|range| {
                 (range.start.byte >= chunk.start_byte.unwrap_or_default())
                     && (range.start.byte < chunk.end_byte.unwrap_or_default())
+            })
+            .filter_map(|range| {
+                // if this node can be resolved locally in the scope-graph, omit it
+                if let Some(node_by_range) = graph.node_by_range(range.start.byte, range.end.byte) {
+                    if graph.is_reference(node_by_range) || graph.is_definition(node_by_range) {
+                        return None;
+                    }
+                }
+                Some(range)
             })
             .map(|range| HoverableSymbol {
                 name: chunk.snippet[(range.start.byte - chunk.start_byte.unwrap_or_default())
@@ -72,7 +84,11 @@ impl Agent {
         symbols.sort_by(|a, b| a.name.cmp(&b.name));
         symbols.dedup_by(|a, b| a.name == b.name);
 
-        debug!("Attached {} symbols", symbols.len());
+        debug!(
+            "Attached {} symbols: {:?}",
+            symbols.len(),
+            symbols.iter().map(|s| s.name.as_str()).collect::<Vec<_>>()
+        );
 
         Ok(ChunkWithHoverableSymbols {
             chunk: chunk.clone(),
@@ -340,8 +356,6 @@ impl Agent {
     pub async fn get_related_chunks(&mut self, chunks: Vec<CodeChunk>) -> Vec<CodeChunk> {
         const MAX_CHUNKS: usize = 3;
 
-        let start_time = Instant::now();
-
         // get symbols with ref/defs for each chunk
         let chunks_with_symbols = futures::future::join_all(
             chunks
@@ -354,12 +368,8 @@ impl Agent {
         .filter_map(Result::ok)
         .collect();
 
-        let elapsed = start_time.elapsed();
-        println!("Time taken extract symbols from chunks: {:?}", elapsed);
-
         // get original user query
         let user_query = self.last_exchange().query.target().unwrap();
-        let start_time2 = Instant::now();
 
         // select one symbol
         let selected_symbol = match self.filter_symbols(&user_query, chunks_with_symbols).await {
@@ -372,10 +382,6 @@ impl Agent {
                 return Vec::new();
             }
         };
-
-        let elapsed = start_time2.elapsed();
-        println!("Time taken to classify chunks: {:?}", elapsed);
-        let start_time3 = Instant::now();
 
         // take 3 chunks, update path aliases, update enchange chunks
         let extra_chunks = self
@@ -396,8 +402,6 @@ impl Agent {
                 chunk
             })
             .collect::<Vec<_>>();
-        let elapsed = start_time3.elapsed();
-        println!("Time taken to expand symbol: {:?}", elapsed);
 
         extra_chunks
     }
