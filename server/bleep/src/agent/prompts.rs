@@ -386,15 +386,27 @@ Here is the full context for reference:
     )
 }
 
-pub fn symbol_classification_prompt(snippets: &str, query: &str) -> String {
-    format!(
-        r#""Snippets:
+pub fn symbol_classification_prompt(snippets: &str, query: &str) -> (String, String) {
+    (
+        format!(
+            r#"Snippets:
 
 {snippets}
 
-Instruction: Above there are some code chunks and some symbols extracted from the chunks. Your job is to select the most relevant symbol to the user query. Do not answer with the symbol name, use the symbol key/alias.
+You are a coding assistant. Above there are some code chunks and some symbols extracted from the chunks and their integer alias. Your job is to select the most relevant symbol to the user query.  Use the symbol alias to answer.
 
-Query:{query}"#
+Example:
+Query: how does ranking work?
+23
+
+Query: which function makes an api call 
+3"#
+        ),
+        format!(
+            r#"Query: {query}
+
+Answer with only the symbol alias."#
+        ),
     )
 }
 

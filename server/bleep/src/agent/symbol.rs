@@ -258,33 +258,24 @@ impl Agent {
         // instruction
         let prompt = symbol_classification_prompt(chunks_string.as_str(), query);
 
-        let llm_response = match self
-            .llm_with_function_call(prompt, serde_json::from_value(filter_function()).unwrap())
-            .await
-        {
+        let llm_response = match self.llm_without_function_call(prompt.0, prompt.1).await {
             Ok(llm_response) => llm_response,
             Err(e) => {
                 warn!(
                     "Symbol classifier llm call failed, picking the first symbol: {}",
                     e
                 );
-                llm_gateway::api::FunctionCall {
-                    name: Some("filter".to_string()),
-                    arguments: "{\"symbol\": 0}".to_string(),
-                }
+                "0".to_string()
             }
         };
 
-        let filter_argument: Filter =
-            match serde_json::from_str(llm_response.clone().arguments.as_str()) {
-                Ok(argument) => argument,
-                Err(_e) => {
-                    warn!("Cannot deserialize: {:?}", llm_response);
-                    return Err(SymbolError::DeserializeFilter);
-                }
-            };
-
-        let selected_symbol = filter_argument.symbol;
+        let selected_symbol = match llm_response.as_str().parse::<i32>() {
+            Ok(symbol) => symbol,
+            Err(e) => {
+                warn!("Parsing to integer failed, picking the first symbol: {}", e);
+                0
+            }
+        };
 
         // finding symbol metadata
         match symbols
@@ -400,6 +391,24 @@ impl Agent {
         println!("Time taken to expand symbol: {:?}", elapsed);
 
         extra_chunks
+    }
+
+    async fn llm_without_function_call(
+        &self,
+        system_message: String,
+        user_message: String,
+    ) -> Result<String> {
+        let messages = vec![
+            llm_gateway::api::Message::system(system_message.as_str()),
+            llm_gateway::api::Message::user(user_message.as_str()),
+        ];
+
+        self.llm_gateway
+            .clone()
+            .model("gpt-4-0613")
+            .temperature(0.0)
+            .chat(&messages, None)
+            .await
     }
 
     async fn llm_with_function_call(
