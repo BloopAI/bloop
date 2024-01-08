@@ -345,7 +345,6 @@ pub async fn get_token_info(
 
     let data = ctx.token_info();
     if data.is_empty() {
-        dbg!("empty, search_nav");
         search_nav(
             Arc::clone(&indexes),
             repo_ref,

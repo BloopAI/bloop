@@ -190,10 +190,7 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
     }
 
     pub fn token_info(&self) -> Vec<FileSymbols> {
-        dbg!("tokeninfo");
-
         if self.is_definition() {
-            dbg!("def");
             let local_references = self.local_references();
             let repo_wide_references = self
                 .is_top_level()
@@ -205,8 +202,6 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
                 .chain(repo_wide_references)
                 .collect()
         } else if self.is_reference() {
-            dbg!("ref");
-
             let local_definitions = self.local_definitions();
             let repo_wide_definitions = local_definitions
                 .is_none()
@@ -229,8 +224,6 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
                 .chain(repo_wide_references)
                 .collect()
         } else if self.is_import() {
-            dbg!("import");
-
             let local_references = self.local_references();
             let repo_wide_definitions = self.repo_wide_definitions();
 
@@ -239,8 +232,6 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
                 .chain(local_references)
                 .collect()
         } else {
-            dbg!("empty");
-
             Vec::new()
         }
     }
