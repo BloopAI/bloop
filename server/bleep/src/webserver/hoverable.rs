@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 /// The request made to the `hoverable` endpoint.
 #[derive(Debug, Deserialize)]
-pub(super) struct HoverableRequest {
+pub struct HoverableRequest {
     /// The repo_ref of the file of interest
     repo_ref: String,
 
@@ -21,8 +21,8 @@ pub(super) struct HoverableRequest {
 
 /// The response from the `hoverable` endpoint.
 #[derive(Serialize)]
-pub(super) struct HoverableResponse {
-    ranges: Vec<TextRange>,
+pub struct HoverableResponse {
+    pub ranges: Vec<TextRange>,
 }
 
 impl super::ApiResponse for HoverableResponse {}

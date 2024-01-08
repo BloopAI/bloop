@@ -367,6 +367,8 @@ impl Agent {
                     snippet,
                     start_line: span.start,
                     end_line: span.end,
+                    start_byte: None,
+                    end_byte: None,
                 }
             })
             .collect::<Vec<CodeChunk>>();
@@ -383,6 +385,8 @@ impl Agent {
                 snippet: trimmed_snippet.to_string(),
                 start_line: chunk.start_line,
                 end_line: (chunk.start_line + num_trimmed_lines).saturating_sub(1),
+                start_byte: chunk.start_byte,
+                end_byte: chunk.end_byte,
             }]
         } else {
             code_chunks

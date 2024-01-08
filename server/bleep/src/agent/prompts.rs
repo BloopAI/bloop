@@ -99,7 +99,7 @@ pub fn system<'a>(paths: impl IntoIterator<Item = &'a str>) -> String {
 - DO NOT call a function that you've used before with the same arguments
 - DO NOT assume the structure of the codebase, or the existence of files or folders
 - Your queries to functions.code or functions.path should be significantly different to previous queries
-- Call functions.none with paths that you are confident will help answer the user's query
+- Call functions.none with paths that you are confident will help answer the user's query, include paths containing the information needed for a complete answer including definitions and references
 - If the user query is general (e.g. 'What does this do?', 'What is this repo?') look for READMEs, documentation and entry points in the code (main files, index files, api files etc.)
 - If the user is referring to, or asking for, information that is in your history, call functions.none
 - If after attempting to gather information you are still unsure how to answer the query, call functions.none
@@ -383,6 +383,23 @@ Here is the full context for reference:
 #####
 
 {context_formatted}"#
+    )
+}
+
+pub fn symbol_classification_prompt(snippets: &str) -> String {
+    format!(
+        r#"{snippets}
+
+Above are code chunks and non-local symbols that have been extracted from the chunks. Each chunk is followed by an enumerated list of symbols that it contains. Given a user query, select the symbol which is most relevant to it, e.g. the references or definition of this symbol would help somebody answer the query. Symbols which are language builtins or which come from third party libraries are unlikely to be helpful.
+
+Do not answer with the symbol name, use the symbol index.
+
+### Examples ###
+Q: how does ranking work?
+23
+
+Q: which function makes an api call 
+3"#
     )
 }
 

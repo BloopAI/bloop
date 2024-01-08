@@ -149,14 +149,14 @@ impl SearchStep {
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct CodeChunk {
     pub path: String,
-    #[serde(rename = "alias")]
     pub alias: usize,
-    #[serde(rename = "snippet")]
     pub snippet: String,
     #[serde(rename = "start")]
     pub start_line: usize,
     #[serde(rename = "end")]
     pub end_line: usize,
+    pub start_byte: Option<usize>,
+    pub end_byte: Option<usize>,
 }
 
 impl CodeChunk {

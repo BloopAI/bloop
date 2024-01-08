@@ -50,6 +50,7 @@ pub struct CodeNavigationContext<'a, 'b> {
     pub token: Token<'a>,
     pub all_docs: &'b [ContentDocument],
     pub source_document_idx: usize,
+    pub snipper: Option<Snipper>,
 }
 
 impl<'a, 'b> CodeNavigationContext<'a, 'b> {
@@ -134,6 +135,7 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
                         start_byte: source_sg.graph[idx].range().start.byte,
                         end_byte: source_sg.graph[idx].range().end.byte,
                     },
+                    snipper: None,
                 }
                 .local_definitions()
                 .is_none()
@@ -179,6 +181,7 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
             all_docs: std::slice::from_ref(source_document),
             source_document_idx: 0,
             token,
+            snipper: None,
         }
     }
 
@@ -303,7 +306,11 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
             .map(|idx| Occurrence {
                 kind: OccurrenceKind::Definition,
                 range: scope_graph.graph[idx].range(),
-                snippet: to_occurrence(self.source_document(), scope_graph.graph[idx].range()),
+                snippet: to_occurrence(
+                    self.source_document(),
+                    scope_graph.graph[idx].range(),
+                    self.snipper,
+                ),
             })
             .collect::<Vec<_>>();
 
@@ -335,7 +342,7 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
                     .map(|idx| Occurrence {
                         kind: OccurrenceKind::Definition,
                         range: scope_graph.graph[idx].range(),
-                        snippet: to_occurrence(doc, scope_graph.graph[idx].range()),
+                        snippet: to_occurrence(doc, scope_graph.graph[idx].range(), self.snipper),
                     })
                     .collect::<Vec<_>>();
 
@@ -360,7 +367,11 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
             .map(|idx| Occurrence {
                 kind: OccurrenceKind::Reference,
                 range: scope_graph.graph[idx].range(),
-                snippet: to_occurrence(self.source_document(), scope_graph.graph[idx].range()),
+                snippet: to_occurrence(
+                    self.source_document(),
+                    scope_graph.graph[idx].range(),
+                    self.snipper,
+                ),
             })
             .collect::<Vec<_>>();
 
@@ -396,7 +407,7 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
                     .map(|idx| Occurrence {
                         kind: OccurrenceKind::Reference,
                         range: scope_graph.graph[idx].range(),
-                        snippet: to_occurrence(doc, scope_graph.graph[idx].range()),
+                        snippet: to_occurrence(doc, scope_graph.graph[idx].range(), self.snipper),
                     })
                     .collect::<Vec<_>>();
 
@@ -418,7 +429,11 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
             .map(|idx| Occurrence {
                 kind: OccurrenceKind::Definition,
                 range: scope_graph.graph[idx].range(),
-                snippet: to_occurrence(self.source_document(), scope_graph.graph[idx].range()),
+                snippet: to_occurrence(
+                    self.source_document(),
+                    scope_graph.graph[idx].range(),
+                    self.snipper,
+                ),
             })
             .collect::<Vec<_>>();
 
@@ -437,11 +452,12 @@ pub struct Token<'a> {
     pub end_byte: usize,
 }
 
-fn to_occurrence(doc: &ContentDocument, range: TextRange) -> Snippet {
+fn to_occurrence(doc: &ContentDocument, range: TextRange, snipper: Option<Snipper>) -> Snippet {
     let src = &doc.content;
     let line_end_indices = &doc.line_end_indices;
     let highlight = range.start.byte..range.end.byte;
-    Snipper::default()
+    snipper
+        .unwrap_or_default()
         .expand(highlight, src, line_end_indices)
         .reify(src, &[])
 }

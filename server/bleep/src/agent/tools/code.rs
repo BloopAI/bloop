@@ -76,6 +76,8 @@ impl Agent {
                     snippet: chunk.text,
                     start_line: chunk.start_line as usize,
                     end_line: chunk.end_line as usize,
+                    start_byte: Some(chunk.start_byte as usize),
+                    end_byte: Some(chunk.end_byte as usize),
                 }
             })
             .collect::<Vec<_>>();
@@ -90,8 +92,13 @@ impl Agent {
                 .push(chunk.clone())
         }
 
+        let extra_chunks = self.get_related_chunks(chunks.clone()).await;
+
+        chunks.extend(extra_chunks);
+
         let response = chunks
-            .iter()
+            .clone()
+            .into_iter()
             .filter(|c| !c.is_empty())
             .map(|c| c.to_string())
             .collect::<Vec<_>>()
