@@ -158,7 +158,7 @@ impl Agent {
                     .join("\n");
 
                 format!(
-                    "Path:{}\n\n{}\n\nSymbols:\n\n{}",
+                    "```{}\n{}```\n\n{}",
                     c.path.clone(),
                     c.snippet.clone(),
                     symbols_string
@@ -168,20 +168,30 @@ impl Agent {
             .join("\n\n");
 
         // instruction
-        let prompt = symbol_classification_prompt(chunks_string.as_str(), query);
+        let messages = vec![
+            llm_gateway::api::Message::system(&symbol_classification_prompt(&chunks_string)),
+            llm_gateway::api::Message::user(query),
+        ];
 
-        let llm_response = match self.llm_without_function_call(prompt.0, prompt.1).await {
-            Ok(llm_response) => llm_response,
+        let response = match self
+            .llm_gateway
+            .clone()
+            .model("gpt-4-0613")
+            .temperature(0.0)
+            .chat(&messages, None)
+            .await
+        {
+            Ok(response) => response,
             Err(e) => {
                 warn!(
                     "Symbol classifier llm call failed, picking the first symbol: {}",
                     e
                 );
-                "0".to_string()
+                "0".into()
             }
         };
 
-        let selected_symbol = match llm_response.as_str().parse::<i32>() {
+        let selected_symbol = match response.as_str().parse::<i32>() {
             Ok(symbol) => symbol,
             Err(e) => {
                 warn!("Parsing to integer failed, picking the first symbol: {}", e);
@@ -193,7 +203,7 @@ impl Agent {
         match symbols
             .into_iter()
             .flat_map(|(_, symbol_with_alias)| symbol_with_alias)
-            .find(|(alias, _)| *alias == selected_symbol as i32)
+            .find(|(alias, _)| *alias == selected_symbol)
         {
             Some((_alias, symbol_metadata)) => Ok(Symbol {
                 name: symbol_metadata.name,
@@ -291,24 +301,6 @@ impl Agent {
             .collect::<Vec<_>>();
 
         extra_chunks
-    }
-
-    async fn llm_without_function_call(
-        &self,
-        system_message: String,
-        user_message: String,
-    ) -> Result<String> {
-        let messages = vec![
-            llm_gateway::api::Message::system(system_message.as_str()),
-            llm_gateway::api::Message::user(user_message.as_str()),
-        ];
-
-        self.llm_gateway
-            .clone()
-            .model("gpt-4-0613")
-            .temperature(0.0)
-            .chat(&messages, None)
-            .await
     }
 }
 

@@ -386,26 +386,20 @@ Here is the full context for reference:
     )
 }
 
-pub fn symbol_classification_prompt(snippets: &str, query: &str) -> (String, String) {
-    (
-        format!(
-            r#"Snippets:
-
-{snippets}
+pub fn symbol_classification_prompt(snippets: &str) -> String {
+    format!(
+        r#"{snippets}
 
 Above are code chunks and non-local symbols that have been extracted from the chunks. Each chunk is followed by an enumerated list of symbols that it contains. Given a user query, select the symbol which is most relevant to it, e.g. the references or definition of this symbol would help somebody answer the query. Symbols which are language builtins or which come from third party libraries are unlikely to be helpful.
-Example:
-Query: how does ranking work?
+
+Do not answer with the symbol name, use the symbol index.
+
+### Examples ###
+Q: how does ranking work?
 23
 
-Query: which function makes an api call 
+Q: which function makes an api call 
 3"#
-        ),
-        format!(
-            r#"Query: {query}
-
-Do not answer with the symbol name, use the symbol index."#
-        ),
     )
 }
 
