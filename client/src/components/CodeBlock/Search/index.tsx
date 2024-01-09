@@ -131,13 +131,13 @@ const CodeBlockSearch = ({
                     <pre className={`bg-bg-sub my-0 px-2`}>
                       <table>
                         <tbody>
-                          <tr className="token-line">
+                          <tr className="token-line border-l-[3px] border-transparent">
                             <td
                               className={`${
                                 snippet.symbols?.length ? 'w-5' : 'w-0 px-1'
                               }  text-center`}
                             />
-                            <td className="text-label-muted min-w-6 text-right text-l select-none">
+                            <td className="text-label-muted min-w-[27px] text-right text-l select-none">
                               ..
                             </td>
                           </tr>

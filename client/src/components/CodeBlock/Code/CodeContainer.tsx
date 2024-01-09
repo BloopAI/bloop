@@ -85,6 +85,7 @@ const CodeContainer = ({
           }
           showLineNumbers={showLines}
           symbols={getSymbols(lineStart + lineNumber)}
+          isSymbolSearch={!!symbols?.length}
           lineHidden={
             onlySymbolLines && !getSymbols(lineStart + lineNumber).length
           }

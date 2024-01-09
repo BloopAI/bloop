@@ -41,6 +41,7 @@ type Props = {
   leftHighlight?: boolean;
   removePaddings?: boolean;
   hoveredBackground?: boolean;
+  isSymbolSearch?: boolean;
 };
 
 const CodeLine = ({
@@ -66,6 +67,7 @@ const CodeLine = ({
   removePaddings,
   hoveredBackground,
   lineNumbersDiff,
+  isSymbolSearch,
 }: Props) => {
   const codeRef = useRef<HTMLTableCellElement>(null);
 
@@ -183,12 +185,14 @@ const CodeLine = ({
         onMouseSelectEnd?.(lineNumber, index);
       }}
     >
-      {symbols?.length ? (
+      {isSymbolSearch ? (
         <div
-          className={`peer text-center text-purple ${lineHidden ? 'p-0' : ''}`}
+          className={`peer text-center text-purple ${
+            lineHidden ? 'p-0' : ''
+          } min-w-[20px]`}
         >
           <span className="flex flex-row gap-1">
-            {symbols.length > 1 ? (
+            {symbols?.length && symbols.length > 1 ? (
               <Tooltip
                 text={
                   <div>
@@ -207,11 +211,11 @@ const CodeLine = ({
               >
                 <SymbolIcon type="multiple" />
               </Tooltip>
-            ) : (
+            ) : symbols?.length ? (
               <Tooltip text={symbols[0]} placement="top">
                 <SymbolIcon type={symbols[0]} />
               </Tooltip>
-            )}
+            ) : null}
           </span>
         </div>
       ) : null}
