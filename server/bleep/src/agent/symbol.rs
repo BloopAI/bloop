@@ -298,7 +298,8 @@ impl Agent {
                     alias: self.get_path_alias(&c.repo_path),
                     ..c.clone()
                 };
-                self.exchanges
+                self.conversation
+                    .exchanges
                     .last_mut()
                     .unwrap()
                     .code_chunks
