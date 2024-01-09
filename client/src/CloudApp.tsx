@@ -18,6 +18,11 @@ const CloudApp = () => {
     (getPlainFromStorage(LANGUAGE_KEY) as LocaleType | null) || 'en',
   );
 
+  useEffect(() => {
+    getConfig().then(setEnvConfig);
+    setTimeout(() => getConfig().then(setEnvConfig), 1000);
+  }, []);
+
   const deviceContextValue = useMemo(
     () => ({
       openFolderInExplorer: () => {},
