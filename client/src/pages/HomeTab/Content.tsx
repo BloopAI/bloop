@@ -126,7 +126,7 @@ const HomePage = ({ randomKey }: { randomKey?: any }) => {
             </Trans>
           </div>
         )}
-        <div className="w-full flex flex-col mx-auto max-w-6.5xl">
+        <div className="w-full flex flex-col mx-auto max-w-6.5xl overflow-auto">
           <div className="p-8 pb-0">
             <h4 className="mb-3">
               <Trans>Add</Trans>
