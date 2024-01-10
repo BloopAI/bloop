@@ -42,7 +42,7 @@ impl Agent {
                     query: query.into(),
                     paths: vec![],
                     repos: self.relevant_repos(),
-                    semantic_params: SemanticSearchParams  {
+                    semantic_params: SemanticSearchParams {
                         limit: 30,
                         offset: 0,
                         threshold: 0.0,

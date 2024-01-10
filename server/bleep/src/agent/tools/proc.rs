@@ -7,7 +7,8 @@ use crate::{
         Agent, AgentSemanticSearchParams,
     },
     analytics::EventData,
-    query::parser::Literal, semantic::SemanticSearchParams,
+    query::parser::Literal,
+    semantic::SemanticSearchParams,
 };
 
 impl Agent {
