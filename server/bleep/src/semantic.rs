@@ -538,7 +538,7 @@ impl Semantic {
             limit,
             offset,
             threshold,
-            exact_match: exact
+            exact_match: exact,
         } = params;
 
         // TODO: Remove the need for `retrieve_more`. It's here because:

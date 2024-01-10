@@ -216,7 +216,11 @@ impl Agent {
                         .app
                         .indexes
                         .file
-                        .by_path(&symbol_metadata.repo_path.repo, &symbol_metadata.repo_path.path, None)
+                        .by_path(
+                            &symbol_metadata.repo_path.repo,
+                            &symbol_metadata.repo_path.path,
+                            None,
+                        )
                         .await
                         .unwrap()
                         .unwrap();
@@ -230,7 +234,11 @@ impl Agent {
                         self.app
                             .indexes
                             .file
-                            .by_repo(&symbol_metadata.repo_path.repo, associated_langs.iter(), None)
+                            .by_repo(
+                                &symbol_metadata.repo_path.repo,
+                                associated_langs.iter(),
+                                None,
+                            )
                             .await
                     };
 

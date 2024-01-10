@@ -7,8 +7,9 @@ use std::{collections::HashSet, ops::Not};
 use super::NodeKind;
 use crate::{
     indexes::reader::ContentDocument,
+    repo::RepoRef,
     snippet::{Snipper, Snippet},
-    text_range::TextRange, repo::RepoRef,
+    text_range::TextRange,
 };
 
 use rayon::prelude::*;
