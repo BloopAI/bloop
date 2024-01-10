@@ -62,11 +62,13 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
             Router::new()
                 .route("/", get(docs::list)) // list all doc providers
                 .route("/search", get(docs::search)) // text search over doc providers
-                .route("/sync", get(docs::sync)) // index a new doc provider
+                .route("/enqueue", get(docs::enqueue)) // enqueue a new url to begin syncing
                 .route("/verify", get(docs::verify)) // verify if a doc url is valid
                 .route("/:id", get(docs::list_one)) // list a doc provider by id
                 .route("/:id", delete(docs::delete)) // delete a doc provider by id
                 .route("/:id/resync", get(docs::resync)) // resync a doc provider by id
+                .route("/:id/status", get(docs::status)) // query sync status of an existing doc source
+                .route("/:id/cancel", get(docs::cancel)) // cancel an index job
                 .route("/:id/search", get(docs::search_with_id)) // search/list sections of a doc provider
                 .route("/:id/list", get(docs::list_with_id)) // list pages of a doc provider
                 .route("/:id/fetch", get(docs::fetch)), // fetch all sections of a page of a doc provider
