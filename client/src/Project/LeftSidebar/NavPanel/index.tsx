@@ -1,8 +1,18 @@
-import { memo, useContext, useEffect, useMemo, useState } from 'react';
+import {
+  memo,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { ProjectContext } from '../../../context/projectContext';
 import { TabTypesEnum } from '../../../types/general';
 import { TabsContext } from '../../../context/tabsContext';
 import { RepositoriesContext } from '../../../context/repositoriesContext';
+import { UIContext } from '../../../context/uiContext';
+import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
 import RepoNav from './Repo';
 import ConversationsNav from './Conversations';
 
@@ -15,6 +25,10 @@ const NavPanel = ({}: Props) => {
   const { tab: leftTab } = useContext(TabsContext.CurrentLeft);
   const { tab: rightTab } = useContext(TabsContext.CurrentRight);
   const { indexingStatus } = useContext(RepositoriesContext);
+  const { isLeftSidebarFocused } = useContext(UIContext.Focus);
+  const ref = useRef<HTMLDivElement>(null);
+  const [focusedIndex, setFocusedIndex] = useState(-1);
+  const [focusedIndexFull, setFocusedIndexFull] = useState('');
 
   const currentlyFocusedTab = useMemo(() => {
     const focusedTab = focusedPanel === 'left' ? leftTab : rightTab;
@@ -41,12 +55,39 @@ const NavPanel = ({}: Props) => {
     }
   }, [currentlyFocusedTab]);
 
+  const handleKeyEvent = useCallback((e: KeyboardEvent) => {
+    if (ref.current) {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        e.stopPropagation();
+        const nodes = ref.current.querySelectorAll('[data-node-index]');
+        setFocusedIndex((prev) => {
+          const newInd =
+            e.key === 'ArrowDown'
+              ? prev < nodes.length - 1
+                ? prev + 1
+                : 0
+              : prev > 0
+              ? prev - 1
+              : nodes.length - 1;
+          setFocusedIndexFull(
+            (nodes[newInd] as HTMLElement)?.dataset?.nodeIndex || '',
+          );
+          return newInd;
+        });
+      }
+    }
+  }, []);
+  useKeyboardNavigation(handleKeyEvent, !isLeftSidebarFocused);
+
   return (
-    <div className="flex flex-col h-full flex-1 overflow-auto">
+    <div className="flex flex-col h-full flex-1 overflow-auto" ref={ref}>
       {!!project?.conversations.length && (
         <ConversationsNav
           setExpanded={setExpanded}
           isExpanded={expanded === 0}
+          focusedIndex={focusedIndexFull}
+          index={0}
         />
       )}
       {project?.repos.map((r, i) => (
@@ -68,6 +109,15 @@ const NavPanel = ({}: Props) => {
             currentlyFocusedTab?.repoRef === r.repo.ref
               ? currentlyFocusedTab?.path
               : undefined
+          }
+          focusedIndex={focusedIndexFull}
+          index={
+            i +
+            (project?.conversations.length
+              ? expanded === 0
+                ? project?.conversations.length + 1
+                : 1
+              : 0)
           }
         />
       ))}

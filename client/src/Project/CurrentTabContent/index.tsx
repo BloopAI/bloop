@@ -4,6 +4,7 @@ import { Trans } from 'react-i18next';
 import { TabsContext } from '../../context/tabsContext';
 import { DraggableTabItem, TabType, TabTypesEnum } from '../../types/general';
 import { SplitViewIcon } from '../../icons';
+import { UIContext } from '../../context/uiContext';
 import EmptyTab from './EmptyTab';
 import FileTab from './FileTab';
 import Header from './Header';
@@ -26,6 +27,7 @@ const CurrentTabContent = ({
     TabsContext[side === 'left' ? 'CurrentLeft' : 'CurrentRight'],
   );
   const { setFocusedPanel } = useContext(TabsContext.Handlers);
+  const { setIsLeftSidebarFocused } = useContext(UIContext.Focus);
 
   const [{ isOver, canDrop }, drop] = useDrop(
     () => ({
@@ -44,6 +46,7 @@ const CurrentTabContent = ({
 
   const focusPanel = useCallback(() => {
     setFocusedPanel(side);
+    setIsLeftSidebarFocused(false);
   }, [side]);
 
   const handleMoveToAnotherSide = useCallback(() => {

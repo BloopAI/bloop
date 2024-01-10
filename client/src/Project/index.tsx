@@ -5,6 +5,9 @@ import { ProjectContext } from '../context/projectContext';
 import { TabsContext } from '../context/tabsContext';
 import { TabType, TabTypesEnum } from '../types/general';
 import ChatsContextProvider from '../context/providers/ChatsContextProvider';
+import { UIContext } from '../context/uiContext';
+import { checkEventKeys } from '../utils/keyboardUtils';
+import useKeyboardNavigation from '../hooks/useKeyboardNavigation';
 import LeftSidebar from './LeftSidebar';
 import CurrentTabContent from './CurrentTabContent';
 import EmptyProject from './EmptyProject';
@@ -18,6 +21,7 @@ const Project = ({}: Props) => {
   useTranslation();
   const { project } = useContext(ProjectContext.Current);
   const { rightTabs, leftTabs } = useContext(TabsContext.All);
+  const { setIsLeftSidebarFocused } = useContext(UIContext.Focus);
   const {
     setActiveRightTab,
     setActiveLeftTab,
@@ -68,6 +72,24 @@ const Project = ({}: Props) => {
     setActiveLeftTab(tab);
     setFocusedPanel('left');
   }, []);
+
+  const handleKeyEvent = useCallback(
+    (e: KeyboardEvent) => {
+      if (checkEventKeys(e, ['cmd', '1'])) {
+        e.preventDefault();
+        e.stopPropagation();
+        setFocusedPanel('left');
+        setIsLeftSidebarFocused(false);
+      } else if (checkEventKeys(e, ['cmd', '2']) && rightTabs.length) {
+        e.preventDefault();
+        e.stopPropagation();
+        setFocusedPanel('right');
+        setIsLeftSidebarFocused(false);
+      }
+    },
+    [rightTabs.length],
+  );
+  useKeyboardNavigation(handleKeyEvent);
 
   return !project?.repos?.length ? (
     <EmptyProject />

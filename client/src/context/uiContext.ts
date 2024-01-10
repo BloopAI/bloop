@@ -35,4 +35,8 @@ export const UIContext = {
     theme: 'system' as Theme,
     setTheme: (t: Theme) => {},
   }),
+  Focus: createContext({
+    isLeftSidebarFocused: false,
+    setIsLeftSidebarFocused: (b: boolean) => {},
+  }),
 };

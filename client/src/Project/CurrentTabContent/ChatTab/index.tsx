@@ -20,6 +20,7 @@ import { ChatTabType } from '../../../types/general';
 import { ProjectContext } from '../../../context/projectContext';
 import { CommandBarContext } from '../../../context/commandBarContext';
 import { openInSplitViewShortcut } from '../../../consts/commandBar';
+import { UIContext } from '../../../context/uiContext';
 import Conversation from './Conversation';
 import ActionsDropdown from './ActionsDropdown';
 
@@ -41,6 +42,7 @@ const ChatTab = ({
   const { t } = useTranslation();
   const { focusedPanel } = useContext(TabsContext.All);
   const { closeTab } = useContext(TabsContext.Handlers);
+  const { isLeftSidebarFocused } = useContext(UIContext.Focus);
   const { setFocusedTabItems } = useContext(CommandBarContext.Handlers);
   const { project, refreshCurrentProjectConversations } = useContext(
     ProjectContext.Current,
@@ -74,7 +76,10 @@ const ChatTab = ({
     },
     [handleMoveToAnotherSide],
   );
-  useKeyboardNavigation(handleKeyEvent, focusedPanel !== side);
+  useKeyboardNavigation(
+    handleKeyEvent,
+    focusedPanel !== side || isLeftSidebarFocused,
+  );
 
   useEffect(() => {
     if (focusedPanel === side) {
@@ -108,21 +113,23 @@ const ChatTab = ({
           />
           {title || t('New chat')}
         </div>
-        <Dropdown
-          DropdownComponent={ActionsDropdown}
-          dropdownComponentProps={dropdownComponentProps}
-          appendTo={document.body}
-          dropdownPlacement="bottom-end"
-        >
-          <Button
-            variant="tertiary"
-            size="mini"
-            onlyIcon
-            title={t('More actions')}
+        {focusedPanel === side && (
+          <Dropdown
+            DropdownComponent={ActionsDropdown}
+            dropdownComponentProps={dropdownComponentProps}
+            appendTo={document.body}
+            dropdownPlacement="bottom-end"
           >
-            <MoreHorizontalIcon sizeClassName="w-3.5 h-3.5" />
-          </Button>
-        </Dropdown>
+            <Button
+              variant="tertiary"
+              size="mini"
+              onlyIcon
+              title={t('More actions')}
+            >
+              <MoreHorizontalIcon sizeClassName="w-3.5 h-3.5" />
+            </Button>
+          </Dropdown>
+        )}
       </div>
       <div className="flex-1 flex flex-col max-w-full px-4 overflow-auto">
         <Conversation side={side} tabKey={tabKey} />

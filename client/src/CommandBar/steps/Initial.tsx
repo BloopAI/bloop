@@ -93,12 +93,11 @@ const InitialCommandBar = ({}: Props) => {
     ];
     const projectItems: CommandBarItemGeneralType[] = projects
       .map(
-        (p, i): CommandBarItemGeneralType => ({
+        (p): CommandBarItemGeneralType => ({
           label: p.name,
           Icon: MagazineIcon,
           id: `project-${p.id}`,
           key: `project-${p.id}`,
-          shortcut: i < 9 ? ['cmd', (i + 1).toString()] : undefined,
           onClick: () => switchProject(p.id),
           footerHint:
             project?.id === p.id
