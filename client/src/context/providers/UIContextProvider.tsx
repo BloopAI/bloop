@@ -53,6 +53,7 @@ export const UIContextProvider = memo(
     const [theme, setTheme] = useState<Theme>(
       (getPlainFromStorage(THEME) as 'system' | null) || 'system',
     );
+    const [isLeftSidebarFocused, setIsLeftSidebarFocused] = useState(false);
 
     const refreshToken = useCallback(async (refToken: string) => {
       if (refToken) {
@@ -163,6 +164,14 @@ export const UIContextProvider = memo(
       [theme],
     );
 
+    const focusContextValue = useMemo(
+      () => ({
+        isLeftSidebarFocused,
+        setIsLeftSidebarFocused,
+      }),
+      [isLeftSidebarFocused],
+    );
+
     return (
       <UIContext.Settings.Provider value={settingsContextValue}>
         <UIContext.ProjectSettings.Provider value={projectSettingsContextValue}>
@@ -170,7 +179,9 @@ export const UIContextProvider = memo(
             <UIContext.BugReport.Provider value={bugReportContextValue}>
               <UIContext.GitHubConnected.Provider value={githubContextValue}>
                 <UIContext.Theme.Provider value={themeContextValue}>
-                  {children}
+                  <UIContext.Focus.Provider value={focusContextValue}>
+                    {children}
+                  </UIContext.Focus.Provider>
                 </UIContext.Theme.Provider>
               </UIContext.GitHubConnected.Provider>
             </UIContext.BugReport.Provider>

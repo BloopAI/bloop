@@ -38,6 +38,7 @@ import { CommandBarContext } from '../../../context/commandBarContext';
 import { openInSplitViewShortcut } from '../../../consts/commandBar';
 import BreadcrumbsPathContainer from '../../../components/Breadcrumbs/PathContainer';
 import { RepositoriesContext } from '../../../context/repositoriesContext';
+import { UIContext } from '../../../context/uiContext';
 import ActionsDropdown from './ActionsDropdown';
 
 type Props = {
@@ -76,6 +77,7 @@ const FileTab = ({
   const [isPending, startTransition] = useTransition();
   const { openNewTab, updateTabProperty } = useContext(TabsContext.Handlers);
   const { focusedPanel } = useContext(TabsContext.All);
+  const { isLeftSidebarFocused } = useContext(UIContext.Focus);
   const { fileHighlights, hoveredLines } = useContext(
     FileHighlightsContext.Values,
   );
@@ -166,7 +168,7 @@ const FileTab = ({
   );
   useKeyboardNavigation(
     handleKeyEvent,
-    !file?.contents || focusedPanel !== side,
+    !file?.contents || focusedPanel !== side || isLeftSidebarFocused,
   );
 
   useEffect(() => {
@@ -227,21 +229,23 @@ const FileTab = ({
             nonInteractive
           />
         </div>
-        <Dropdown
-          DropdownComponent={ActionsDropdown}
-          dropdownComponentProps={dropdownComponentProps}
-          dropdownPlacement="bottom-end"
-          appendTo={document.body}
-        >
-          <Button
-            variant="tertiary"
-            size="mini"
-            onlyIcon
-            title={t('More actions')}
+        {focusedPanel === side && (
+          <Dropdown
+            DropdownComponent={ActionsDropdown}
+            dropdownComponentProps={dropdownComponentProps}
+            dropdownPlacement="bottom-end"
+            appendTo={document.body}
           >
-            <MoreHorizontalIcon sizeClassName="w-3.5 h-3.5" />
-          </Button>
-        </Dropdown>
+            <Button
+              variant="tertiary"
+              size="mini"
+              onlyIcon
+              title={t('More actions')}
+            >
+              <MoreHorizontalIcon sizeClassName="w-3.5 h-3.5" />
+            </Button>
+          </Dropdown>
+        )}
       </div>
       <div className="flex-1 h-full max-w-full pl-4 py-4 overflow-auto relative">
         {file?.lang === 'jupyter notebook' ? (

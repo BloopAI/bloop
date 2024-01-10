@@ -23,11 +23,18 @@ import ConversationEntry from './CoversationEntry';
 type Props = {
   setExpanded: Dispatch<SetStateAction<number>>;
   isExpanded: boolean;
+  focusedIndex: string;
+  index: number;
 };
 
 const reactRoot = document.getElementById('root')!;
 
-const ConversationsNav = ({ isExpanded, setExpanded }: Props) => {
+const ConversationsNav = ({
+  isExpanded,
+  setExpanded,
+  focusedIndex,
+  index,
+}: Props) => {
   const { t } = useTranslation();
   const { project } = useContext(ProjectContext.Current);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -46,18 +53,25 @@ const ConversationsNav = ({ isExpanded, setExpanded }: Props) => {
     e?.stopPropagation();
   }, []);
 
+  useEffect(() => {
+    if (focusedIndex === index.toString() && containerRef.current) {
+      containerRef.current.scrollIntoView({ block: 'nearest' });
+    }
+  }, [focusedIndex, index]);
+
   return (
-    <div
-      className="select-none overflow-hidden w-full flex-shrink-0"
-      ref={containerRef}
-    >
+    <div className="select-none overflow-hidden w-full flex-shrink-0">
       <span
         role="button"
         tabIndex={0}
-        className={`h-10 flex items-center gap-3 px-4 bg-bg-sub ellipsis ${
+        className={`h-10 flex items-center gap-3 px-4 ellipsis ${
           isExpanded ? 'sticky z-10 top-0 left-0' : ''
+        } ${
+          focusedIndex === index.toString() ? 'bg-bg-sub-hover' : 'bg-bg-sub'
         }`}
         onClick={toggleExpanded}
+        ref={containerRef}
+        data-node-index={index.toString()}
       >
         <ChatBubblesIcon
           sizeClassName="w-3.5 h-3.5"
@@ -94,16 +108,18 @@ const ConversationsNav = ({ isExpanded, setExpanded }: Props) => {
           </div>
         )}
       </span>
-      <div
-        style={{
-          maxHeight: isExpanded ? undefined : 0,
-        }}
-        className={'overflow-hidden'}
-      >
-        {project?.conversations.map((c) => (
-          <ConversationEntry key={c.id} {...c} />
-        ))}
-      </div>
+      {isExpanded && (
+        <div className={'overflow-hidden'}>
+          {project?.conversations.map((c, ci) => (
+            <ConversationEntry
+              key={c.id}
+              {...c}
+              index={`${index}-${ci}`}
+              focusedIndex={focusedIndex}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 };

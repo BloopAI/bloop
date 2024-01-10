@@ -1,4 +1,4 @@
-import React, { memo, useContext } from 'react';
+import React, { memo, useCallback, useContext, MouseEvent } from 'react';
 import useResizeableWidth from '../../hooks/useResizeableWidth';
 import { LEFT_SIDEBAR_WIDTH_KEY } from '../../services/storage';
 import ProjectsDropdown from '../../components/Header/ProjectsDropdown';
@@ -6,8 +6,11 @@ import { ChevronDownIcon } from '../../icons';
 import Dropdown from '../../components/Dropdown';
 import { DeviceContext } from '../../context/deviceContext';
 import { ProjectContext } from '../../context/projectContext';
-import NavPanel from './NavPanel';
+import { UIContext } from '../../context/uiContext';
+import { checkEventKeys } from '../../utils/keyboardUtils';
+import useKeyboardNavigation from '../../hooks/useKeyboardNavigation';
 import RegexSearchPanel from './RegexSearchPanel';
+import NavPanel from './NavPanel';
 
 type Props = {};
 
@@ -15,12 +18,29 @@ const LeftSidebar = ({}: Props) => {
   const { os } = useContext(DeviceContext);
   const { project } = useContext(ProjectContext.Current);
   const { isRegexSearchEnabled } = useContext(ProjectContext.RegexSearch);
+  const { setIsLeftSidebarFocused } = useContext(UIContext.Focus);
+
   const { panelRef, dividerRef } = useResizeableWidth(
     true,
     LEFT_SIDEBAR_WIDTH_KEY,
     20,
     40,
   );
+
+  const handleKeyEvent = useCallback((e: KeyboardEvent) => {
+    if (checkEventKeys(e, ['cmd', '0'])) {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsLeftSidebarFocused(true);
+    }
+  }, []);
+  useKeyboardNavigation(handleKeyEvent);
+
+  const handleClick = useCallback((e: MouseEvent) => {
+    e.stopPropagation();
+    setIsLeftSidebarFocused(true);
+  }, []);
+
   return (
     <div
       className="h-full relative z-10 min-w-[204px] flex-shrink-0 overflow-hidden flex flex-col"
@@ -42,11 +62,13 @@ const LeftSidebar = ({}: Props) => {
           </div>
         </Dropdown>
       </div>
-      <RegexSearchPanel
-        projectId={project?.id}
-        isRegexEnabled={isRegexSearchEnabled}
-      />
-      {!isRegexSearchEnabled && <NavPanel />}
+      <div onClick={handleClick} className="flex-1 overflow-auto">
+        <RegexSearchPanel
+          projectId={project?.id}
+          isRegexEnabled={isRegexSearchEnabled}
+        />
+        {!isRegexSearchEnabled && <NavPanel />}
+      </div>
       <div
         ref={dividerRef}
         className="absolute top-0 right-0 transform group translate-x-1/2 w-2.5 h-full bottom-0 cursor-col-resize flex-shrink-0 z-10"

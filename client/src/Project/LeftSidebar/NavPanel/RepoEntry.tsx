@@ -16,6 +16,8 @@ import {
   TabTypesEnum,
 } from '../../../types/general';
 import SpinLoaderContainer from '../../../components/Loaders/SpinnerLoader';
+import { UIContext } from '../../../context/uiContext';
+import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
 
 type Props = {
   name: string;
@@ -30,6 +32,8 @@ type Props = {
   currentPath?: string;
   branch?: string | null;
   indexingData?: RepoIndexingStatusType;
+  focusedIndex: string;
+  index: string;
 };
 
 const RepoEntry = ({
@@ -45,8 +49,11 @@ const RepoEntry = ({
   lastIndex,
   branch,
   indexingData,
+  focusedIndex,
+  index,
 }: Props) => {
   const { openNewTab } = useContext(TabsContext.Handlers);
+  const { isLeftSidebarFocused } = useContext(UIContext.Focus);
   const [isOpen, setOpen] = useState(
     defaultOpen || (currentPath && currentPath.startsWith(fullPath)),
   );
@@ -103,6 +110,22 @@ const RepoEntry = ({
     }
   }, [isDirectory, fullPath, openNewTab, repoRef, branch]);
 
+  const handleKeyEvent = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        handleClick();
+      }
+    },
+    [handleClick],
+  );
+  useKeyboardNavigation(handleKeyEvent, focusedIndex !== index);
+
+  useEffect(() => {
+    if (focusedIndex === index && ref.current) {
+      ref.current.scrollIntoView({ block: 'nearest' });
+    }
+  }, [focusedIndex, index]);
+
   return (
     <div
       style={{
@@ -114,7 +137,11 @@ const RepoEntry = ({
         className={`min-w-full w-max text-left h-7 flex-shrink-0 flex items-center gap-3 px-4 cursor-pointer body-mini group
       ${
         currentPath === fullPath
-          ? 'bg-bg-shade-hover text-label-title'
+          ? isLeftSidebarFocused
+            ? 'bg-bg-shade-hover text-label-title'
+            : 'bg-bg-shade text-label-title'
+          : isLeftSidebarFocused && focusedIndex === index
+          ? 'bg-bg-sub-hover text-label-title'
           : 'hover:bg-bg-base-hover hover:text-label-title active:bg-transparent'
       } ${
         isOpen && isDirectory
@@ -126,6 +153,7 @@ const RepoEntry = ({
         style={{ paddingLeft: level * 27 }}
         onClick={handleClick}
         ref={ref}
+        data-node-index={index}
       >
         {isDirectory ? (
           <div className="w-4 h-4 flex items-center justify-center">
@@ -167,13 +195,13 @@ const RepoEntry = ({
         {/*  </div>*/}
         {/*)}*/}
       </a>
-      {subItems?.length ? (
+      {isOpen && subItems?.length ? (
         <div className="relative">
           <div
             className="absolute top-0 bottom-0 left-2 w-px bg-bg-border"
             style={{ left: level * 27 + 8 }}
           />
-          {subItems.map((si) => (
+          {subItems.map((si, sii) => (
             <RepoEntry
               key={name + si.name}
               name={si.name}
@@ -190,6 +218,8 @@ const RepoEntry = ({
               lastIndex={lastIndex}
               currentPath={currentPath}
               branch={branch}
+              focusedIndex={focusedIndex}
+              index={`${index}-${sii}`}
             />
           ))}
         </div>

@@ -26,6 +26,7 @@ import { splitPath } from '../../../utils';
 import { ProjectContext } from '../../../context/projectContext';
 import { CommandBarContext } from '../../../context/commandBarContext';
 import { regexToggleShortcut } from '../../../consts/shortcuts';
+import { UIContext } from '../../../context/uiContext';
 import CodeResult from './Results/CodeResult';
 import RepoResult from './Results/RepoResult';
 import FileResult from './Results/FileResult';
@@ -58,6 +59,7 @@ const RegexSearchPanel = ({ projectId, isRegexEnabled }: Props) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const { setIsRegexSearchEnabled } = useContext(ProjectContext.RegexSearch);
   const { isVisible } = useContext(CommandBarContext.General);
+  const { isLeftSidebarFocused } = useContext(UIContext.Focus);
   const [focusedIndex, setFocusedIndex] = useState(-1);
 
   const onChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
@@ -180,7 +182,10 @@ const RegexSearchPanel = ({ projectId, isRegexEnabled }: Props) => {
     },
     [resultsRaw],
   );
-  useKeyboardNavigation(handleKeyEvent, isVisible || !isRegexEnabled);
+  useKeyboardNavigation(
+    handleKeyEvent,
+    isVisible || !isRegexEnabled || !isLeftSidebarFocused,
+  );
 
   return !isRegexEnabled ? null : (
     <div className="flex flex-col h-full flex-1 overflow-auto">

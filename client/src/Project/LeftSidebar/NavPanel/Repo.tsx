@@ -40,6 +40,8 @@ type Props = {
   allBranches: { name: string; last_commit_unix_secs: number }[];
   indexedBranches: string[];
   indexingData?: RepoIndexingStatusType;
+  focusedIndex: string;
+  index: number;
 };
 
 const reactRoot = document.getElementById('root')!;
@@ -56,6 +58,8 @@ const RepoNav = ({
   lastIndex,
   currentPath,
   indexingData,
+  focusedIndex,
+  index,
 }: Props) => {
   const { t } = useTranslation();
   const [files, setFiles] = useState<DirectoryEntry[]>([]);
@@ -122,15 +126,25 @@ const RepoNav = ({
     ].includes(indexingData.status);
   }, [indexingData]);
 
+  useEffect(() => {
+    if (focusedIndex === index.toString() && containerRef.current) {
+      containerRef.current.scrollIntoView({ block: 'nearest' });
+    }
+  }, [focusedIndex, index]);
+
   return (
-    <div className="select-none flex-shrink-0" ref={containerRef}>
+    <div className="select-none flex-shrink-0">
       <span
         role="button"
         tabIndex={0}
-        className={`h-10 flex items-center gap-3 px-4 bg-bg-sub ellipsis ${
+        className={`h-10 flex items-center gap-3 px-4 ellipsis ${
           isExpanded ? 'sticky z-10 top-0 left-0' : ''
+        } ${
+          focusedIndex === index.toString() ? 'bg-bg-sub-hover' : 'bg-bg-sub'
         }`}
         onClick={toggleExpanded}
+        data-node-index={`${index}`}
+        ref={containerRef}
       >
         {isIndexing && indexingData ? (
           <Tooltip
@@ -181,31 +195,30 @@ const RepoNav = ({
           </div>
         )}
       </span>
-      <div
-        style={{
-          maxHeight: isExpanded && files.length ? undefined : 0,
-        }}
-        className={isExpanded ? 'overflow-auto' : 'overflow-hidden'}
-      >
-        {files.map((f) => (
-          <RepoEntry
-            key={f.name}
-            name={f.name}
-            indexed={
-              f.entry_data !== 'Directory' ? f.entry_data.File.indexed : true
-            }
-            isDirectory={f.entry_data === 'Directory'}
-            level={1}
-            fetchFiles={fetchFiles}
-            fullPath={f.name}
-            repoRef={repoRef}
-            currentPath={currentPath}
-            lastIndex={lastIndex}
-            branch={branch}
-            indexingData={indexingData}
-          />
-        ))}
-      </div>
+      {isExpanded && (
+        <div className={isExpanded ? 'overflow-auto' : 'overflow-hidden'}>
+          {files.map((f, fi) => (
+            <RepoEntry
+              key={f.name}
+              name={f.name}
+              indexed={
+                f.entry_data !== 'Directory' ? f.entry_data.File.indexed : true
+              }
+              isDirectory={f.entry_data === 'Directory'}
+              level={1}
+              fetchFiles={fetchFiles}
+              fullPath={f.name}
+              repoRef={repoRef}
+              currentPath={currentPath}
+              lastIndex={lastIndex}
+              branch={branch}
+              indexingData={indexingData}
+              focusedIndex={focusedIndex}
+              index={`${index}-${fi}`}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 };
