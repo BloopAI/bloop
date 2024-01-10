@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::agent::exchange::RepoPath;
 
 pub fn functions(add_proc: bool) -> serde_json::Value {
@@ -82,13 +84,22 @@ pub fn functions(add_proc: bool) -> serde_json::Value {
 }
 
 pub fn system<'a>(paths: impl IntoIterator<Item = &'a RepoPath>) -> String {
+    let paths = paths.into_iter().collect::<Vec<_>>();
+
     let mut s = "".to_string();
 
-    let mut paths = paths.into_iter().peekable();
+    let repos = paths.iter().map(|rp| &rp.repo).collect::<HashSet<_>>();
 
-    if paths.peek().is_some() {
-        s.push_str("## PATHS ##\nindex, repo, path\n");
-        for (i, path) in paths.enumerate() {
+    s.push_str("## REPOS ##\n");
+    for repo in repos {
+        s.push_str(&format!("{repo}\n"));
+    }
+
+    let mut iter = paths.into_iter().peekable();
+
+    if iter.peek().is_some() {
+        s.push_str("\n## PATHS ##\nindex, repo, path\n");
+        for (i, path) in iter.enumerate() {
             let repo = path.repo.display_name();
             let path = &path.path;
             s.push_str(&format!("{}, {}, {}\n", i, repo, path));
