@@ -462,6 +462,7 @@ impl Agent {
         &'a self,
         query: &str,
     ) -> impl Iterator<Item = FileDocument> + 'a {
+        
         let langs = self.last_exchange().query.langs.iter().map(Deref::deref);
 
         let user_id = self.user.username().expect("didn't have user ID");
@@ -480,6 +481,7 @@ impl Agent {
             let repo_ref = RepoRef::from_str(&row.repo_ref).ok()?;
             Some((repo_ref, row.branch))
         })
+        .filter(|(repo_ref, _)| self.repo_refs.contains(repo_ref))
         .unzip();
 
         let branch = branches.first().cloned().flatten();
@@ -488,7 +490,7 @@ impl Agent {
         self.app
             .indexes
             .file
-            .fuzzy_path_match(repos.into_iter(), branch.as_deref(), query, langs, 50)
+            .skim_fuzzy_path_match(repos.into_iter(),query, branch.as_deref(),  50)
             .await
     }
 
