@@ -408,7 +408,7 @@ pub fn symbol_classification_prompt(snippets: &str) -> String {
 
 Above are code chunks and non-local symbols that have been extracted from the chunks. Each chunk is followed by an enumerated list of symbols that it contains. Given a user query, select the symbol which is most relevant to it, e.g. the references or definition of this symbol would help somebody answer the query. Symbols which are language builtins or which come from third party libraries are unlikely to be helpful.
 
-Do not answer with the symbol name, use the symbol index.
+Do not answer with the symbol name, use the symbol index. If none of the symbols are relevant, answer with 0.
 
 ### Examples ###
 Q: how does ranking work?

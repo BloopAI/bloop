@@ -163,7 +163,7 @@ impl Agent {
 
                 format!(
                     "```{}\n{}```\n\n{}",
-                    c.repo_path.path.clone(),
+                    c.repo_path,
                     c.snippet.clone(),
                     symbols_string
                 )
@@ -182,6 +182,7 @@ impl Agent {
             .clone()
             .model("gpt-4-0613")
             .temperature(0.0)
+            .max_tokens(5)
             .chat(&messages, None)
             .await
         {
