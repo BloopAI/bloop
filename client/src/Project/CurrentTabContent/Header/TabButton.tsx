@@ -23,7 +23,12 @@ type Props = TabType & {
   isActive: boolean;
   side: 'left' | 'right';
   isOnlyTab: boolean;
-  moveTab: (i: number, j: number) => void;
+  moveTab: (
+    i: number,
+    j: number,
+    sourceSide: 'left' | 'right',
+    targetSide: 'left' | 'right',
+  ) => void;
   i: number;
   repoRef?: string;
   path?: string;
@@ -59,21 +64,23 @@ const TabButton = ({
     useContext(TabsContext.Handlers);
   const ref = useRef<HTMLAnchorElement>(null);
   const [{ handlerId }, drop] = useDrop({
-    accept: `tab-${side}`,
-    canDrop: (item: DraggableTabItem) => item.side === side,
+    accept: [`tab-left`, `tab-right`],
+    canDrop: (item: DraggableTabItem) => true,
     collect(monitor) {
       return {
         handlerId: monitor.getHandlerId(),
       };
     },
     hover(item: DraggableTabItem, monitor) {
-      if (!ref.current || item.side !== side) {
+      if (!ref.current) {
         return;
       }
       const dragIndex = item.index;
       const hoverIndex = i;
+      const sourceSide = item.side as 'left' | 'right';
+      const targetSide = side as 'left' | 'right';
       // Don't replace items with themselves
-      if (dragIndex === hoverIndex) {
+      if (dragIndex === hoverIndex && sourceSide === targetSide) {
         return;
       }
       // Determine rectangle on screen
@@ -83,26 +90,37 @@ const TabButton = ({
         (hoverBoundingRect.right - hoverBoundingRect.left) / 2;
       // Determine mouse position
       const clientOffset = monitor.getClientOffset();
-      // Get pixels to the top
+      // Get pixels to the left
       const hoverClientX = (clientOffset?.x || 0) - hoverBoundingRect.left;
-      // Only perform the move when the mouse has crossed half of the items height
-      // When dragging downwards, only move when the cursor is below 50%
-      // When dragging upwards, only move when the cursor is above 50%
-      // Dragging downwards
-      if (dragIndex < hoverIndex && hoverClientX < hoverMiddleX) {
+      // Only perform the move when the mouse has crossed half of the items width
+      // When dragging left, only move when the cursor is below 50%
+      // When dragging right, only move when the cursor is above 50%
+      // Dragging left
+      if (
+        dragIndex < hoverIndex &&
+        hoverClientX < hoverMiddleX &&
+        sourceSide === targetSide
+      ) {
         return;
       }
-      // Dragging upwards
-      if (dragIndex > hoverIndex && hoverClientX > hoverMiddleX) {
+      // Dragging right
+      if (
+        dragIndex > hoverIndex &&
+        hoverClientX > hoverMiddleX &&
+        sourceSide === targetSide
+      ) {
         return;
       }
       // Time to actually perform the action
-      moveTab(dragIndex, hoverIndex);
+      moveTab(dragIndex, hoverIndex, sourceSide, targetSide);
       // Note: we're mutating the monitor item here!
       // Generally it's better to avoid mutations,
       // but it's good here for the sake of performance
       // to avoid expensive index searches.
       item.index = hoverIndex;
+      if (sourceSide !== targetSide) {
+        item.side = targetSide;
+      }
     },
   });
   const [{ isDragging }, drag] = useDrag({
