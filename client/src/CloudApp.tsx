@@ -4,6 +4,7 @@ import packageJson from '../package.json';
 import App from './App';
 import { LocaleContext } from './context/localeContext';
 import i18n from './i18n';
+import './index.css';
 import {
   getPlainFromStorage,
   LANGUAGE_KEY,
@@ -12,9 +13,11 @@ import {
 import { LocaleType } from './types/general';
 import { DeviceContextProvider } from './context/providers/DeviceContextProvider';
 import { EnvContext } from './context/envContext';
-import { getConfig } from './services/api';
+import { getConfig, initApi } from './services/api';
+import { useComponentWillMount } from './hooks/useComponentWillMount';
 
 const CloudApp = () => {
+  useComponentWillMount(() => initApi('/api', true));
   const [envConfig, setEnvConfig] = useState({});
   const [locale, setLocale] = useState<LocaleType>(
     (getPlainFromStorage(LANGUAGE_KEY) as LocaleType | null) || 'en',

@@ -23,7 +23,7 @@ const SelfServe = () => {
   }, []);
 
   return (
-    <div className="text-label-title">
+    <div className="fixed top-0 bottom-0 left-0 right-0 z-100 bg-bg-sub select-none">
       <div
         className={`flex justify-center items-start mt-8 w-screen overflow-auto relative h-[calc(100vh-4rem)]`}
       >
@@ -39,7 +39,8 @@ const SelfServe = () => {
                 </div>
                 <a href={loginUrl} className="w-full flex flex-col">
                   <Button variant="primary" disabled={!loginUrl}>
-                    <GitHubLogo /> <Trans>Sign in with GitHub</Trans>
+                    <GitHubLogo sizeClassName="w-5 h-5" />{' '}
+                    <Trans>Sign in with GitHub</Trans>
                   </Button>
                 </a>
               </div>
