@@ -1,7 +1,7 @@
 import React, { memo, useCallback, useContext, useMemo } from 'react';
 import HeaderRightPart from '../../../components/Header/HeaderRightPart';
 import { TabsContext } from '../../../context/tabsContext';
-import { TabTypesEnum } from '../../../types/general';
+import { TabType, TabTypesEnum } from '../../../types/general';
 import AddTabButton from './AddTabButton';
 import TabButton from './TabButton';
 
@@ -14,27 +14,63 @@ const ProjectHeader = ({ side }: Props) => {
   const { tab } = useContext(
     TabsContext[side === 'left' ? 'CurrentLeft' : 'CurrentRight'],
   );
-  const { setLeftTabs, setRightTabs } = useContext(TabsContext.Handlers);
+  const { setLeftTabs, setRightTabs, setActiveRightTab, setActiveLeftTab } =
+    useContext(TabsContext.Handlers);
   const tabs = useMemo(() => {
     return side === 'left' ? leftTabs : rightTabs;
   }, [side, rightTabs, leftTabs]);
 
   const moveTab = useCallback(
-    (dragIndex: number, hoverIndex: number) => {
-      const action = side === 'left' ? setLeftTabs : setRightTabs;
-      action((prevTabs) => {
-        const newTabs = JSON.parse(JSON.stringify(prevTabs));
-        newTabs.splice(dragIndex, 1);
-        const newTab = prevTabs[dragIndex];
-        newTabs.splice(
-          hoverIndex,
-          0,
-          newTab.type === TabTypesEnum.FILE && newTab.isTemp
-            ? { ...newTab, isTemp: false }
-            : newTab,
-        );
-        return newTabs;
-      });
+    (
+      dragIndex: number,
+      hoverIndex: number,
+      sourceSide: 'left' | 'right',
+      targetSide: 'left' | 'right',
+    ) => {
+      if (sourceSide === targetSide) {
+        const action = side === 'left' ? setLeftTabs : setRightTabs;
+        action((prevTabs) => {
+          const newTabs = JSON.parse(JSON.stringify(prevTabs));
+          newTabs.splice(dragIndex, 1);
+          const newTab = prevTabs[dragIndex];
+          newTabs.splice(
+            hoverIndex,
+            0,
+            newTab.type === TabTypesEnum.FILE && newTab.isTemp
+              ? { ...newTab, isTemp: false }
+              : newTab,
+          );
+          return newTabs;
+        });
+      } else {
+        const sourceAction = sourceSide === 'left' ? setLeftTabs : setRightTabs;
+        const sourceTabAction =
+          sourceSide === 'left' ? setActiveLeftTab : setActiveRightTab;
+        const targetAction = targetSide === 'left' ? setLeftTabs : setRightTabs;
+        const targetTabAction =
+          targetSide === 'left' ? setActiveLeftTab : setActiveRightTab;
+
+        sourceAction((prevSourceTabs) => {
+          const newSourceTabs = JSON.parse(JSON.stringify(prevSourceTabs));
+          const [movedTab] = newSourceTabs.splice(dragIndex, 1);
+          sourceTabAction(
+            newSourceTabs.length
+              ? newSourceTabs[dragIndex - 1] || newSourceTabs[0]
+              : null,
+          );
+
+          targetAction((prevTargetTabs) => {
+            const newTargetTabs = JSON.parse(JSON.stringify(prevTargetTabs));
+            if (!newTargetTabs.find((t: TabType) => t.key === movedTab.key)) {
+              newTargetTabs.splice(hoverIndex, 0, movedTab);
+            }
+            targetTabAction(movedTab);
+            return newTargetTabs;
+          });
+
+          return newSourceTabs;
+        });
+      }
     },
     [side],
   );

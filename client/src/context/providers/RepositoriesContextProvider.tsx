@@ -41,23 +41,25 @@ const RepositoriesContextProvider = ({
       const data = JSON.parse(ev.data);
       console.log('data', data);
       if (data.ev?.status_change === SyncStatus.Done) {
-        toast(t('Repository indexed'), {
-          id: `${data.ref}-indexed`,
-          description: (
-            <Trans
-              values={{
-                repoName: splitPath(data.ref)
-                  .slice(data.ref.startsWith('github.com/') ? -2 : -1)
-                  .join('/'),
-              }}
-            >
-              <span className="text-label-base body-s-b">repoName</span> has
-              finished indexing. You can use it in your projects now.
-            </Trans>
-          ),
-          icon: <RepositoryIcon sizeClassName="w-4 h-4" />,
-          unstyled: true,
-        });
+        if (!data.ev?.rsync) {
+          toast(t('Repository indexed'), {
+            id: `${data.ref}-indexed`,
+            description: (
+              <Trans
+                values={{
+                  repoName: splitPath(data.ref)
+                    .slice(data.ref.startsWith('github.com/') ? -2 : -1)
+                    .join('/'),
+                }}
+              >
+                <span className="text-label-base body-s-b">repoName</span> has
+                finished indexing. You can use it in your projects now.
+              </Trans>
+            ),
+            icon: <RepositoryIcon sizeClassName="w-4 h-4" />,
+            unstyled: true,
+          });
+        }
         if (project?.repos.find((r) => r.repo.ref === data.ref)) {
           refreshCurrentProjectRepos();
         }
