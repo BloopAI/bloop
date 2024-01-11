@@ -26,7 +26,7 @@ const HeaderRightPart = ({}: Props) => {
       <Button variant="tertiary" size="mini" onClick={openCommandBar}>
         <KLetterIcon sizeClassName="w-3.5 h-3.5" className="-translate-y-px" />
         <Trans>Actions</Trans>
-        <span className="text-label-faint">{shortcut?.join('')}</span>
+        <span className="text-label-faint">{shortcut?.join(' ')}</span>
       </Button>
       <Dropdown DropdownComponent={UserDropdown} dropdownPlacement="bottom-end">
         {envConfig.github_user?.avatar_url ? (

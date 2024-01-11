@@ -37,7 +37,7 @@ const EmptyProject = ({}: Props) => {
               <p className="body-s text-label-base !leading-5">
                 <Trans values={{ cmdKey: shortcut?.[0] }}>
                   Press{' '}
-                  <span className="w-5 h-5 inline-flex items-center justify-center rounded border border-bg-border bg-bg-base shadow-low">
+                  <span className="min-w-[20px] h-5 px-0.5 inline-flex items-center justify-center rounded border border-bg-border bg-bg-base shadow-low">
                     cmdKey
                   </span>{' '}
                   <span className="w-5 h-5 inline-flex items-center justify-center rounded border border-bg-border bg-bg-base shadow-low">
