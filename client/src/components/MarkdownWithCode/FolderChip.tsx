@@ -63,6 +63,8 @@ const FolderChip = ({ onClick, path, repoRef }: Props) => {
             indexed
             repoRef={repoRef || ''}
             lastIndex={''}
+            focusedIndex={''}
+            index={'0'}
           />
         </OverflowTracker>
       </div>
