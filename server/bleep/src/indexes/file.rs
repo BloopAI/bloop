@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashSet,
     panic::AssertUnwindSafe,
     path::{Path, PathBuf},
     sync::atomic::{AtomicU64, Ordering},
@@ -32,7 +32,6 @@ use super::{
     DocumentRead, Indexable, Indexer,
 };
 use crate::{
-    agent::Project,
     background::SyncHandle,
     cache::{CacheKeys, FileCache, FileCacheSnapshot},
     intelligence::TreeSitterFile,
@@ -239,136 +238,12 @@ impl Indexable for File {
 }
 
 impl Indexer<File> {
-    /// Search this index for paths fuzzily matching a given string.
-    ///
-    /// For example, the string `Cargo` can return documents whose path is `foo/Cargo.toml`,
-    /// or `bar/Cargo.lock`. Constructs regexes that permit an edit-distance of 2.
-    ///
-    /// If the regex filter fails to build, an empty list is returned.
-    pub async fn fuzzy_path_match(
-        &self,
-        repos: impl Iterator<Item = RepoRef>,
-        branch: Option<&str>,
-        query_str: &str,
-        langs: impl Iterator<Item = &str>,
-        limit: usize,
-    ) -> impl Iterator<Item = FileDocument> + '_ {
-        // lifted from query::compiler
-        let searcher = self.reader.searcher();
-        let collector = TopDocs::with_limit(5 * limit); // TODO: tune this
-        let file_source = &self.source;
-
-        let branch_scope = branch
-            .map(|b| {
-                trigrams(b)
-                    .map(|token| Term::from_field_text(self.source.branches, token.as_str()))
-                    .map(|term| TermQuery::new(term, IndexRecordOption::Basic))
-                    .map(Box::new)
-                    .map(|q| q as Box<dyn Query>)
-                    .collect::<Vec<_>>()
-            })
-            .map(BooleanQuery::intersection);
-
-        let repo_scope = BooleanQuery::union(
-            repos
-                .map(|repo| {
-                    Box::new(TermQuery::new(
-                        Term::from_field_text(self.source.repo_name, &repo.to_string()),
-                        IndexRecordOption::Basic,
-                    )) as Box<dyn Query>
-                })
-                .collect::<Vec<_>>(),
-        );
-
-        // hits is a mapping between a document address and the number of trigrams in it that
-        // matched the query
-        let langs_query = BooleanQuery::union(
-            langs
-                .map(|l| Term::from_field_bytes(self.source.lang, l.as_bytes()))
-                .map(|t| TermQuery::new(t, IndexRecordOption::Basic))
-                .map(Box::new)
-                .map(|q| q as Box<dyn Query>)
-                .collect::<Vec<_>>(),
-        );
-
-        let mut hits = trigrams(query_str)
-            .flat_map(|s| case_permutations(s.as_str()))
-            .map(|token| Term::from_field_text(self.source.relative_path, token.as_str()))
-            .map(|term| TermQuery::new(term, IndexRecordOption::Basic))
-            .flat_map(|query| {
-                let mut q: Vec<Box<dyn Query>> =
-                    vec![Box::new(repo_scope.clone()), Box::new(query)];
-                q.extend(branch_scope.clone().map(|q| Box::new(q) as Box<dyn Query>));
-                q.push(Box::new(langs_query.clone()));
-
-                searcher
-                    .search(&BooleanQuery::intersection(q), &collector)
-                    .expect("failed to search index")
-                    .into_iter()
-                    .map(move |(_, addr)| addr)
-            })
-            .fold(HashMap::new(), |mut map: HashMap<_, usize>, hit| {
-                *map.entry(hit).or_insert(0) += 1;
-                map
-            })
-            .into_iter()
-            .map(move |(addr, count)| {
-                let retrieved_doc = searcher
-                    .doc(addr)
-                    .expect("failed to get document by address");
-                let doc = FileReader.read_document(file_source, retrieved_doc);
-                (doc, count)
-            })
-            .collect::<Vec<_>>();
-
-        // order hits in
-        // - decsending order of number of matched trigrams
-        // - alphabetical order of relative paths to break ties
-        //
-        //
-        // for a list of hits like so:
-        //
-        //     apple.rs 2
-        //     ball.rs  3
-        //     cat.rs   2
-        //
-        // the ordering produced is:
-        //
-        //     ball.rs  3  -- highest number of hits
-        //     apple.rs 2  -- same numeber of hits, but alphabetically preceeds cat.rs
-        //     cat.rs   2
-        //
-        hits.sort_by(|(this_doc, this_count), (other_doc, other_count)| {
-            let order_count_desc = other_count.cmp(this_count);
-            let order_path_asc = this_doc
-                .relative_path
-                .as_str()
-                .cmp(other_doc.relative_path.as_str());
-
-            order_count_desc.then(order_path_asc)
-        });
-
-        let regex_filter = build_fuzzy_regex_filter(query_str);
-
-        // if the regex filter fails to build for some reason, the filter defaults to returning
-        // false and zero results are produced
-        hits.into_iter()
-            .map(|(doc, _)| doc)
-            .filter(move |doc| {
-                regex_filter
-                    .as_ref()
-                    .map(|f| f.is_match(&doc.relative_path))
-                    .unwrap_or_default()
-            })
-            .filter(|doc| !doc.relative_path.ends_with('/')) // omit directories
-            .take(limit)
-    }
-
     pub async fn skim_fuzzy_path_match(
         &self,
         repo_refs: impl IntoIterator<Item = RepoRef>,
         query_str: &str,
         branch: Option<&str>,
+        langs: impl Iterator<Item = &str>,
         limit: usize,
     ) -> impl Iterator<Item = FileDocument> + '_ {
         let searcher = self.reader.searcher();
@@ -400,6 +275,19 @@ impl Indexer<File> {
             })
             .map(BooleanQuery::intersection)
             .map(Box::new);
+
+        let langs_term = langs
+            .map(|l| Term::from_field_bytes(self.source.lang, l.as_bytes()))
+            .map(|t| TermQuery::new(t, IndexRecordOption::Basic))
+            .map(Box::new)
+            .map(|q| q as Box<dyn Query>)
+            .collect::<Vec<_>>();
+
+        let langs_term = match langs_term.len() {
+            0 => None,
+            _ => Some(Box::new(BooleanQuery::union(langs_term))),
+        };
+
         let search_terms = trigrams(query_str)
             .flat_map(|s| case_permutations(s.as_str()))
             .map(|token| Term::from_field_text(self.source.relative_path, token.as_str()))
@@ -410,6 +298,10 @@ impl Indexer<File> {
                             as Box<dyn Query>),
                         Some(Box::clone(&repo_ref_terms) as Box<dyn Query>),
                         branch_term
+                            .as_ref()
+                            .map(Box::clone)
+                            .map(|t| t as Box<dyn Query>),
+                        langs_term
                             .as_ref()
                             .map(Box::clone)
                             .map(|t| t as Box<dyn Query>),
@@ -884,88 +776,5 @@ impl RepoFile {
             schema.is_directory => false,
             schema.indexed => true,
         ))
-    }
-}
-
-fn build_fuzzy_regex_filter(query_str: &str) -> Option<regex::RegexSet> {
-    fn additions(s: &str, i: usize, j: usize) -> String {
-        if i > j {
-            additions(s, j, i)
-        } else {
-            let mut s = s.to_owned();
-            s.insert_str(j, ".?");
-            s.insert_str(i, ".?");
-            s
-        }
-    }
-
-    fn replacements(s: &str, i: usize, j: usize) -> String {
-        if i > j {
-            replacements(s, j, i)
-        } else {
-            let mut s = s.to_owned();
-            s.remove(j);
-            s.insert_str(j, ".?");
-
-            s.remove(i);
-            s.insert_str(i, ".?");
-
-            s
-        }
-    }
-
-    fn one_of_each(s: &str, i: usize, j: usize) -> String {
-        if i > j {
-            one_of_each(s, j, i)
-        } else {
-            let mut s = s.to_owned();
-            s.remove(j);
-            s.insert_str(j, ".?");
-
-            s.insert_str(i, ".?");
-            s
-        }
-    }
-
-    let all_regexes = (query_str.char_indices().map(|(idx, _)| idx))
-        .flat_map(|i| (query_str.char_indices().map(|(idx, _)| idx)).map(move |j| (i, j)))
-        .filter(|(i, j)| i <= j)
-        .flat_map(|(i, j)| {
-            let mut v = vec![];
-            if j != query_str.len() {
-                v.push(one_of_each(query_str, i, j));
-                v.push(replacements(query_str, i, j));
-            }
-            v.push(additions(query_str, i, j));
-            v
-        });
-
-    regex::RegexSetBuilder::new(all_regexes)
-        // Increased from the default to account for long paths. At the time of writing,
-        // the default was `10 * (1 << 20)`.
-        .size_limit(10 * (1 << 25))
-        .case_insensitive(true)
-        .build()
-        .ok()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn fuzzy_multibyte_should_compile() {
-        let multibyte_str = "查询解析器在哪";
-        let filter = build_fuzzy_regex_filter(multibyte_str);
-        assert!(filter.is_some());
-
-        // tests removal of second character
-        assert!(filter.as_ref().unwrap().is_match("查解析器在哪"));
-
-        // tests replacement of second character with `n`
-        assert!(filter.as_ref().unwrap().is_match("查n析器在哪"));
-
-        // tests addition of character `n`
-        assert!(filter.as_ref().unwrap().is_match("查询解析器在哪n"));
     }
 }

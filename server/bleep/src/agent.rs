@@ -462,9 +462,7 @@ impl Agent {
         &'a self,
         query: &str,
     ) -> impl Iterator<Item = FileDocument> + 'a {
-        
         let langs = self.last_exchange().query.langs.iter().map(Deref::deref);
-
         let user_id = self.user.username().expect("didn't have user ID");
 
         let (repos, branches): (Vec<_>, Vec<_>) = sqlx::query! {
@@ -490,7 +488,7 @@ impl Agent {
         self.app
             .indexes
             .file
-            .skim_fuzzy_path_match(repos.into_iter(),query, branch.as_deref(),  50)
+            .skim_fuzzy_path_match(repos.into_iter(), query, branch.as_deref(), langs, 50)
             .await
     }
 
