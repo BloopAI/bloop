@@ -64,7 +64,7 @@ impl Agent {
 
         let mut paths = paths
             .iter()
-            .map(|repo_path| (self.get_path_alias(repo_path), repo_path.path.to_string()))
+            .map(|repo_path| (self.get_path_alias(repo_path), repo_path.to_string()))
             .collect::<Vec<_>>();
         paths.sort_by(|a: &(usize, String), b| a.0.cmp(&b.0)); // Sort by alias
 
