@@ -17,6 +17,8 @@ import { TabTypesEnum } from '../../../types/general';
 import { useOnClickOutside } from '../../../hooks/useOnClickOutsideHook';
 import RefsDefsPopup from '../../RefsDefsPopup';
 import { copyToClipboard, getSelectionLines } from '../../../utils';
+import SearchOnPage from '../../SearchOnPage';
+import { useCodeSearch } from '../../../hooks/useCodeSearch';
 import SelectionPopup from './SelectionPopup';
 import VirtualizedCode from './VirtualizedCode';
 
@@ -38,6 +40,7 @@ type Props = {
   side: 'left' | 'right';
   width: number;
   height: number;
+  isSearchDisabled?: boolean;
 };
 
 const CodeFull = ({
@@ -55,6 +58,7 @@ const CodeFull = ({
   side,
   width,
   height,
+  isSearchDisabled,
 }: Props) => {
   const { openNewTab } = useContext(TabsContext.Handlers);
   const [tokenInfo, setTokenInfo] = useState<TokenInfoWrapped>({
@@ -76,18 +80,40 @@ const CodeFull = ({
     right?: number;
   } | null>(null);
   useOnClickOutside(popupRef, () => setPopupVisible(false));
+  const scrollLineNumber = useMemo(
+    () =>
+      scrollToLine?.split('_').map((s) => Number(s)) as
+        | [number, number]
+        | undefined,
+    [scrollToLine],
+  );
+  const [scrollToIndex, setScrollToIndex] = useState(
+    scrollLineNumber || undefined,
+  );
+  useEffect(() => {
+    setScrollToIndex(scrollLineNumber || undefined);
+  }, [scrollLineNumber]);
+
+  const {
+    handleSearchCancel,
+    isSearchActive,
+    setSearchTerm,
+    searchTerm,
+    searchResults,
+    setCurrentResult,
+    currentResult,
+    deferredSearchTerm,
+  } = useCodeSearch({
+    code,
+    setScrollToIndex,
+    isDisabled: isSearchDisabled,
+  });
 
   const lang = useMemo(
     () => getPrismLanguage(language) || 'plaintext',
     [language],
   );
   const tokens = useMemo(() => tokenizeCode(code, lang), [code, lang]);
-
-  const scrollToIndex = useMemo(() => {
-    return scrollToLine?.split('_').map((s) => Number(s)) as
-      | [number, number]
-      | undefined;
-  }, [scrollToLine]);
 
   const getHoverableContent = useCallback(
     (hoverableRange: Range, tokenRange: Range, lineNumber?: number) => {
@@ -256,6 +282,16 @@ const CodeFull = ({
 
   return (
     <div className="">
+      <SearchOnPage
+        handleSearch={setSearchTerm}
+        isSearchActive={isSearchActive}
+        resultNum={searchResults.length}
+        onCancel={handleSearchCancel}
+        currentResult={currentResult}
+        setCurrentResult={setCurrentResult}
+        searchValue={searchTerm}
+        containerClassName="absolute top-2 right-2 w-80 max-w-[calc(100%-1rem)]"
+      />
       <pre
         className={`prism-code language-${lang} w-full h-full code-s`}
         ref={codeRef}
@@ -272,6 +308,7 @@ const CodeFull = ({
             isDiff={isDiff}
             width={width}
             height={height}
+            searchTerm={deferredSearchTerm}
           />
         </code>
       </pre>

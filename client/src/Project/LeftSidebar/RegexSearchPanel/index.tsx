@@ -4,6 +4,7 @@ import {
   memo,
   useCallback,
   useContext,
+  useEffect,
   useRef,
   useState,
 } from 'react';
@@ -59,7 +60,9 @@ const RegexSearchPanel = ({ projectId, isRegexEnabled }: Props) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const { setIsRegexSearchEnabled } = useContext(ProjectContext.RegexSearch);
   const { isVisible } = useContext(CommandBarContext.General);
-  const { isLeftSidebarFocused } = useContext(UIContext.Focus);
+  const { isLeftSidebarFocused, setIsLeftSidebarFocused } = useContext(
+    UIContext.Focus,
+  );
   const [focusedIndex, setFocusedIndex] = useState(-1);
 
   const onChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
@@ -186,6 +189,12 @@ const RegexSearchPanel = ({ projectId, isRegexEnabled }: Props) => {
     handleKeyEvent,
     isVisible || !isRegexEnabled || !isLeftSidebarFocused,
   );
+
+  useEffect(() => {
+    if (isRegexEnabled) {
+      setIsLeftSidebarFocused(true);
+    }
+  }, [isRegexEnabled]);
 
   return !isRegexEnabled ? null : (
     <div className="flex flex-col h-full flex-1 overflow-auto">

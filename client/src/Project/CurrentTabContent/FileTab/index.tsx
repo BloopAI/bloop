@@ -254,6 +254,7 @@ const FileTab = ({
           <AutoSizer>
             {({ width, height }) => (
               <CodeFull
+                isSearchDisabled={focusedPanel !== side}
                 code={file.contents}
                 language={file.lang}
                 repoRef={repoRef}

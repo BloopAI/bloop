@@ -32,6 +32,7 @@ type GeneralProps = {
   handleBack?: () => void;
   breadcrumbs?: string[];
   customRightComponent?: ReactElement;
+  disableKeyNav?: boolean;
 };
 
 type Props = GeneralProps & (PropsWithInput | PropsWithoutInput);
@@ -45,6 +46,7 @@ const CommandBarHeader = ({
   value,
   placeholder,
   noInput,
+  disableKeyNav,
 }: Props) => {
   const { t } = useTranslation();
   const { isVisible } = useContext(CommandBarContext.General);
@@ -62,7 +64,10 @@ const CommandBarHeader = ({
 
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (
+        e.key === 'Escape' ||
+        (e.key === 'Backspace' && !value && !isComposing)
+      ) {
         e.stopPropagation();
         e.preventDefault();
         if (handleBack) {
@@ -78,7 +83,7 @@ const CommandBarHeader = ({
     },
     [setIsVisible, handleBack, customSubmitHandler, value, isComposing],
   );
-  useKeyboardNavigation(handleKeyEvent, !isVisible);
+  useKeyboardNavigation(handleKeyEvent, !isVisible || disableKeyNav);
 
   return (
     <div className="w-full flex flex-col p-4 items-start gap-4 border-b border-bg-border">
@@ -111,6 +116,7 @@ const CommandBarHeader = ({
           autoFocus
           onCompositionStart={onCompositionStart}
           onCompositionEnd={onCompositionEnd}
+          disabled={disableKeyNav}
         />
       )}
     </div>

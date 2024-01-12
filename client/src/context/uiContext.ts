@@ -39,4 +39,8 @@ export const UIContext = {
     isLeftSidebarFocused: false,
     setIsLeftSidebarFocused: (b: boolean) => {},
   }),
+  UpgradeRequiredPopup: createContext({
+    isUpgradeRequiredPopupOpen: false,
+    setIsUpgradeRequiredPopupOpen: (b: boolean) => {},
+  }),
 };

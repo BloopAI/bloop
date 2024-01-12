@@ -31,6 +31,7 @@ import { ProjectContext } from '../../../context/projectContext';
 import { PersonalQuotaContext } from '../../../context/personalQuotaContext';
 import { RepoIndexingStatusType } from '../../../types/general';
 import { RepositoriesContext } from '../../../context/repositoriesContext';
+import { UIContext } from '../../../context/uiContext';
 
 type Props = {
   repoRef: string;
@@ -39,6 +40,7 @@ type Props = {
   allBranches: { name: string; last_commit_unix_secs: number }[];
   indexedBranches: string[];
   indexingStatus?: RepoIndexingStatusType;
+  handleClose: () => void;
 };
 
 const RepoDropdown = ({
@@ -48,6 +50,7 @@ const RepoDropdown = ({
   allBranches,
   projectId,
   indexingStatus,
+  handleClose,
 }: Props) => {
   const { t } = useTranslation();
   const [isBranchesOpen, setIsBranchesOpen] = useState(false);
@@ -57,6 +60,9 @@ const RepoDropdown = ({
   const { isSelfServe } = useContext(DeviceContext);
   const { refreshCurrentProjectRepos } = useContext(ProjectContext.Current);
   const { isSubscribed } = useContext(PersonalQuotaContext.Values);
+  const { setIsUpgradeRequiredPopupOpen } = useContext(
+    UIContext.UpgradeRequiredPopup,
+  );
 
   const onRepoSync = useCallback(
     async (e?: MouseEvent) => {
@@ -142,10 +148,15 @@ const RepoDropdown = ({
   const switchToBranch = useCallback(
     async (branch: string, e?: MouseEvent) => {
       e?.stopPropagation();
-      await changeRepoBranch(projectId, repoRef, branch);
-      refreshCurrentProjectRepos();
+      if (isSubscribed || isSelfServe) {
+        await changeRepoBranch(projectId, repoRef, branch);
+        refreshCurrentProjectRepos();
+      } else {
+        setIsUpgradeRequiredPopupOpen(true);
+        handleClose();
+      }
     },
-    [projectId, repoRef],
+    [projectId, repoRef, isSubscribed, isSelfServe],
   );
 
   return (
@@ -162,24 +173,22 @@ const RepoDropdown = ({
             )
           }
         />
-        {(isSelfServe || isSubscribed) && (
-          <SectionItem
-            onClick={toggleBranches}
-            label={t('Branches')}
-            icon={<BranchIcon sizeClassName="w-4 h-4" />}
-            customRightElement={
-              <span className="body-s text-label-muted overflow-hidden flex items-center gap-2">
-                <span className="ellipsis">{selectedBranch}</span>
-                <ArrowTriangleBottomIcon
-                  sizeClassName="w-2 h-2"
-                  className={`${
-                    isBranchesOpen ? 'rotate-180' : 'rotate-0'
-                  } transition-transform duration-150 ease-in-out`}
-                />
-              </span>
-            }
-          />
-        )}
+        <SectionItem
+          onClick={toggleBranches}
+          label={t('Branches')}
+          icon={<BranchIcon sizeClassName="w-4 h-4" />}
+          customRightElement={
+            <span className="body-s text-label-muted overflow-hidden flex items-center gap-2">
+              <span className="ellipsis">{selectedBranch}</span>
+              <ArrowTriangleBottomIcon
+                sizeClassName="w-2 h-2"
+                className={`${
+                  isBranchesOpen ? 'rotate-180' : 'rotate-0'
+                } transition-transform duration-150 ease-in-out`}
+              />
+            </span>
+          }
+        />
       </DropdownSection>
       <div
         style={{
@@ -247,8 +256,13 @@ const RepoDropdown = ({
                     variant="secondary"
                     size="mini"
                     onClick={async () => {
-                      setBranchesToSync((prev) => [...prev, b]);
-                      await indexRepoBranch(repoRef, b);
+                      if (isSubscribed || isSelfServe) {
+                        setBranchesToSync((prev) => [...prev, b]);
+                        await indexRepoBranch(repoRef, b);
+                      } else {
+                        setIsUpgradeRequiredPopupOpen(true);
+                        handleClose();
+                      }
                     }}
                   >
                     {t('Sync')}

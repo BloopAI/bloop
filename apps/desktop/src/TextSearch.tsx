@@ -142,7 +142,7 @@ const TextSearch = ({
       currentResult={currentResult}
       setCurrentResult={setCurrentResult}
       searchValue={searchValue}
-      containerClassName="fixed top-[100px] right-[5px]"
+      containerClassName="fixed top-[100px] right-[5px] w-80"
     />
   );
 };

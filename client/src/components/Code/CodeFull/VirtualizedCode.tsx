@@ -24,6 +24,7 @@ type Props = {
   )[];
   hoveredLines?: [number, number] | null;
   isDiff?: boolean;
+  searchTerm?: string;
 };
 
 const VirtualizedCode = ({
@@ -36,6 +37,7 @@ const VirtualizedCode = ({
   highlights,
   hoveredLines,
   isDiff,
+  searchTerm,
 }: Props) => {
   const ref = useRef<FixedSizeList>(null);
   const listProps = useMemo(
@@ -89,6 +91,7 @@ const VirtualizedCode = ({
             showLineNumbers
             hoverEffect
             style={style}
+            searchTerm={searchTerm}
             shouldHighlight={
               (!!scrollToIndex &&
                 index >= scrollToIndex[0] &&
