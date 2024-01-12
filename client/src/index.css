@@ -1143,11 +1143,11 @@ h5, .h5 {
 }
 
 .search-highlight {
-  background-color: rgba(var(--bg-highlight), 0.25);
+  background-color: rgba(var(--yellow), 0.25);
 }
 
 .search-highlight-active {
-  background-color: rgba(var(--bg-highlight), 0.8);
+  background-color: rgba(var(--yellow), 0.5);
 }
 
 .onboarding-chats-img {

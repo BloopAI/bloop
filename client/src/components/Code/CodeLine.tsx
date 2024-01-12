@@ -1,4 +1,12 @@
-import React, { ReactNode, useRef, memo, useMemo, CSSProperties } from 'react';
+import React, {
+  ReactNode,
+  useRef,
+  memo,
+  useMemo,
+  CSSProperties,
+  useEffect,
+} from 'react';
+import { markNode, unmark } from '../../utils/textSearch';
 
 type Props = {
   lineNumber: number;
@@ -13,6 +21,7 @@ type Props = {
   hoveredBackground?: boolean;
   highlightColor?: string | null;
   style?: CSSProperties;
+  searchTerm?: string;
 };
 
 const CodeLine = ({
@@ -28,8 +37,27 @@ const CodeLine = ({
   highlightColor,
   hoveredBackground,
   style,
+  searchTerm,
 }: Props) => {
   const codeRef = useRef<HTMLTableCellElement>(null);
+
+  useEffect(() => {
+    if (codeRef.current && searchTerm) {
+      markNode(
+        codeRef.current,
+        new RegExp(
+          searchTerm.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&'),
+          'gi',
+        ),
+      );
+    }
+    return () => {
+      if (codeRef.current) {
+        unmark(codeRef.current);
+      }
+    };
+  }, [searchTerm]);
+
   const styleCombined = useMemo(
     () => ({
       ...style,

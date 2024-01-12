@@ -16,6 +16,7 @@ import ProjectSettings from './ProjectSettings';
 import TabsContextProvider from './context/providers/TabsContextProvider';
 import { FileHighlightsContextProvider } from './context/providers/FileHighlightsContextProvider';
 import RepositoriesContextProvider from './context/providers/RepositoriesContextProvider';
+import UpgradeRequiredPopup from './components/UpgradeRequiredPopup';
 
 const toastOptions = {
   unStyled: true,
@@ -44,6 +45,7 @@ const App = () => {
               <RepositoriesContextProvider>
                 <ReportBugModal />
                 <Onboarding />
+                <UpgradeRequiredPopup />
                 <CommandBarContextProvider>
                   <Settings />
                   <ProjectSettings />

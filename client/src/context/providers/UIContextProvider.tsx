@@ -54,6 +54,8 @@ export const UIContextProvider = memo(
       (getPlainFromStorage(THEME) as 'system' | null) || 'system',
     );
     const [isLeftSidebarFocused, setIsLeftSidebarFocused] = useState(false);
+    const [isUpgradeRequiredPopupOpen, setIsUpgradeRequiredPopupOpen] =
+      useState(false);
 
     const refreshToken = useCallback(async (refToken: string) => {
       if (refToken) {
@@ -172,6 +174,14 @@ export const UIContextProvider = memo(
       [isLeftSidebarFocused],
     );
 
+    const upgradePopupContextValue = useMemo(
+      () => ({
+        isUpgradeRequiredPopupOpen,
+        setIsUpgradeRequiredPopupOpen,
+      }),
+      [isUpgradeRequiredPopupOpen],
+    );
+
     return (
       <UIContext.Settings.Provider value={settingsContextValue}>
         <UIContext.ProjectSettings.Provider value={projectSettingsContextValue}>
@@ -179,9 +189,13 @@ export const UIContextProvider = memo(
             <UIContext.BugReport.Provider value={bugReportContextValue}>
               <UIContext.GitHubConnected.Provider value={githubContextValue}>
                 <UIContext.Theme.Provider value={themeContextValue}>
-                  <UIContext.Focus.Provider value={focusContextValue}>
-                    {children}
-                  </UIContext.Focus.Provider>
+                  <UIContext.UpgradeRequiredPopup.Provider
+                    value={upgradePopupContextValue}
+                  >
+                    <UIContext.Focus.Provider value={focusContextValue}>
+                      {children}
+                    </UIContext.Focus.Provider>
+                  </UIContext.UpgradeRequiredPopup.Provider>
                 </UIContext.Theme.Provider>
               </UIContext.GitHubConnected.Provider>
             </UIContext.BugReport.Provider>

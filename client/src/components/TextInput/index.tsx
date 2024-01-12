@@ -127,7 +127,7 @@ const TextInput = forwardRef(function TextInputWithRef(
       >
         {type === 'email' || type === 'search' || startIcon ? (
           <span
-            className={`w-5 mx-2.5 flex items-center flex-shrink-0 ${
+            className={`w-3.5 mr-2.5 flex items-center flex-shrink-0 ${
               disabled ? 'text-label-muted' : 'text-label-base'
             } group-hover:text-label-title group-focus-within:text-label-title transition-all duration-150 ease-in-out`}
           >

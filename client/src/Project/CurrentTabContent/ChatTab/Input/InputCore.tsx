@@ -145,7 +145,7 @@ const InputCore = ({
           if (key && state[key]?.active) {
             return false;
           }
-          const parts = state.toJSON().doc.content[0]?.content;
+          const parts = state.toJSON().doc?.content?.[0]?.content;
           // trying to submit with no text
           if (!parts) {
             return false;
@@ -193,7 +193,7 @@ const InputCore = ({
   );
 
   useEffect(() => {
-    const newValue = state.toJSON().doc.content[0]?.content;
+    const newValue = state.toJSON().doc?.content?.[0]?.content || '';
     onChange(newValue || []);
   }, [state]);
 

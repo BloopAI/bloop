@@ -58,7 +58,7 @@ const ChatPersistentState = ({
   const { setChats } = useContext(ChatsContext);
   const { openNewTab, updateTabProperty } = useContext(TabsContext.Handlers);
 
-  const prevEventSource = useRef<EventSource | null>(null);
+  const eventSource = useRef<EventSource | null>(null);
 
   const [conversation, setConversation] = useState<ChatMessage[]>([]);
   useEffect(() => {
@@ -232,11 +232,11 @@ const ChatPersistentState = ({
   }, [setInputValueImperatively]);
 
   const makeSearch = useCallback(
-    (query: string, options?: Options) => {
+    async (query: string, options?: Options) => {
       if (!query) {
         return;
       }
-      prevEventSource.current?.close();
+      eventSource.current?.close();
       setInputValue({ plain: '', parsed: [] });
       setInputImperativeValue(null);
       setLoading(true);
@@ -270,11 +270,10 @@ const ChatPersistentState = ({
       }
       const fullUrl = url + '?' + new URLSearchParams(queryParams).toString();
       console.log(fullUrl);
-      const eventSource = new EventSource(fullUrl);
-      prevEventSource.current = eventSource;
+      eventSource.current = new EventSource(fullUrl);
       setSelectedLines(null);
       let firstResultCame: boolean;
-      eventSource.onerror = (err) => {
+      eventSource.current.onerror = (err) => {
         console.log('SSE error', err);
         firstResultCame = false;
         stopGenerating();
@@ -303,26 +302,30 @@ const ChatPersistentState = ({
         });
       };
       let conversation_id = '';
-      setConversation((prev) => [
-        ...prev,
-        {
-          author: ChatMessageAuthor.Server,
-          isLoading: true,
-          loadingSteps: [],
-          text: '',
-          conclusion: '',
-          queryId: '',
-          responseTimestamp: '',
-        },
-      ]);
-      eventSource.onmessage = (ev) => {
+      setConversation((prev) =>
+        prev[prev.length - 1].author === ChatMessageAuthor.Server &&
+        (prev[prev.length - 1] as ChatMessageServer).isLoading
+          ? prev
+          : [
+              ...prev,
+              {
+                author: ChatMessageAuthor.Server,
+                isLoading: true,
+                loadingSteps: [],
+                text: '',
+                conclusion: '',
+                queryId: '',
+                responseTimestamp: '',
+              },
+            ],
+      );
+      eventSource.current.onmessage = (ev) => {
         console.log(ev.data);
         if (
           ev.data === '{"Err":"incompatible client"}' ||
           ev.data === '{"Err":"failed to check compatibility"}'
         ) {
-          eventSource.close();
-          prevEventSource.current?.close();
+          eventSource.current?.close();
           if (ev.data === '{"Err":"incompatible client"}') {
             setDeprecatedModalOpen(true);
           } else {
@@ -408,8 +411,8 @@ const ChatPersistentState = ({
                 side,
               );
             }
-            eventSource.close();
-            prevEventSource.current = null;
+            eventSource.current?.close();
+            eventSource.current = null;
             setLoading(false);
             setConversation((prev) => {
               const newConversation = prev.slice(0, -1);
@@ -468,12 +471,15 @@ const ChatPersistentState = ({
           console.log('failed to parse response', err);
         }
       };
-      return () => {
-        eventSource.close();
-      };
     },
     [conversationId, t, queryIdToEdit, preferredAnswerSpeed, openNewTab, side],
   );
+
+  useEffect(() => {
+    return () => {
+      eventSource.current?.close();
+    };
+  }, []);
 
   useEffect(() => {
     if (!submittedQuery.plain) {
@@ -497,7 +503,10 @@ const ChatPersistentState = ({
       userQueryParsed = [{ type: ParsedQueryTypeEnum.TEXT, text: userQuery }];
     }
     setConversation((prev) => {
-      return prev.length === 1 && submittedQuery.options
+      return (prev.length === 1 && submittedQuery.options) ||
+        (prev.length === 2 &&
+          submittedQuery.options?.lines &&
+          submittedQuery.options === initialQuery)
         ? prev
         : [
             ...prev,
@@ -524,7 +533,7 @@ const ChatPersistentState = ({
   }, [conversation, tabKey, side, tabTitle]);
 
   const stopGenerating = useCallback(() => {
-    prevEventSource.current?.close();
+    eventSource.current?.close();
     setLoading(false);
     setConversation((prev) => {
       const newConversation = prev.slice(0, -1);

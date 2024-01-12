@@ -66,6 +66,7 @@ const SearchFiles = ({}: Props) => {
           onClick: () => {
             openNewTab({ type: TabTypesEnum.FILE, path, repoRef: repo });
             setIsVisible(false);
+            setChosenStep({ id: CommandBarStepEnum.INITIAL });
           },
           label: path,
           footerHint: t('Open'),

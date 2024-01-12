@@ -41,7 +41,7 @@ const RepositoriesContextProvider = ({
       const data = JSON.parse(ev.data);
       console.log('data', data);
       if (data.ev?.status_change === SyncStatus.Done) {
-        if (!data.ev?.rsync) {
+        if (!data.rsync) {
           toast(t('Repository indexed'), {
             id: `${data.ref}-indexed`,
             description: (

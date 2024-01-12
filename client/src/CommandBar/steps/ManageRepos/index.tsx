@@ -196,6 +196,7 @@ const ManageRepos = ({}: Props) => {
         onChange={handleInputChange}
         handleBack={handleBack}
         placeholder={t('')}
+        disableKeyNav={isDropdownVisible}
       />
       {sectionsToShow.length ? (
         <Body sections={sectionsToShow} disableKeyNav={isDropdownVisible} />

@@ -104,6 +104,7 @@ const PrivateReposStep = ({}: Props) => {
         value={inputValue}
         onChange={handleInputChange}
         placeholder={t('Search private repos...')}
+        disableKeyNav={isDropdownVisible}
       />
       {sectionsToShow.length ? (
         <Body sections={sectionsToShow} disableKeyNav={isDropdownVisible} />
