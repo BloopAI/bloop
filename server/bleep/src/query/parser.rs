@@ -168,6 +168,24 @@ impl<'a> Query<'a> {
     }
 }
 
+impl<'a> Query<'a> {
+    /// Get the `repo` value for this query as a plain string.
+    pub fn repo_str(&self) -> Option<String> {
+        self.repo
+            .as_ref()
+            .and_then(Literal::as_plain)
+            .map(Cow::into_owned)
+    }
+
+    /// Get the `branch` value for this query as a plain string.
+    pub fn branch_str(&self) -> Option<String> {
+        self.branch
+            .as_ref()
+            .and_then(Literal::as_plain)
+            .map(Cow::into_owned)
+    }
+}
+
 impl<'a> Target<'a> {
     /// Get the inner literal for this target, regardless of the variant.
     pub fn literal_mut(&'a mut self) -> &mut Literal<'a> {
