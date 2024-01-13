@@ -205,7 +205,7 @@ const NLInput = ({
           <Button variant="tertiary" size="small" onClick={onMessageEditCancel}>
             <Trans>Cancel</Trans>
           </Button>
-          <Button size="small" type="submit">
+          <Button size="small" type="button" onClick={onSubmitButtonClicked}>
             <Trans>Submit</Trans>
           </Button>
         </div>
