@@ -22,15 +22,6 @@ pub struct LLMModel {
     pub system_prompt: fn(&str) -> String,
 }
 
-pub const GPT_3_5_TURBO_FINETUNED: LLMModel = LLMModel {
-    tokenizer: "gpt-3.5-turbo-0613",
-    model_name: "gpt-3.5-turbo-finetuned",
-    answer_headroom: 512,
-    prompt_headroom: 1600,
-    history_headroom: 1024,
-    system_prompt: prompts::answer_article_prompt_finetuned,
-};
-
 // GPT-4 turbo has a context window of 128k tokens
 const GPT_4_TURBO_MAX_TOKENS: usize = 128_000;
 // We want to use only 24k tokens
@@ -46,6 +37,15 @@ pub const GPT_4_TURBO_24K: LLMModel = LLMModel {
     prompt_headroom: 2500 + HEADROOM_CORRECTION,
     history_headroom: 2048 + HEADROOM_CORRECTION,
     system_prompt: prompts::answer_article_prompt,
+};
+
+pub const GPT_3_5_TURBO_FINETUNED: LLMModel = LLMModel {
+    tokenizer: "gpt-3.5-turbo-16k",
+    model_name: "gpt-3.5-turbo-finetuned",
+    answer_headroom: 1024,
+    prompt_headroom: 2500,
+    history_headroom: 2048,
+    system_prompt: prompts::answer_article_prompt_finetuned,
 };
 
 pub const GPT_4: LLMModel = LLMModel {
