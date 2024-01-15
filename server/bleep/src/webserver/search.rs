@@ -64,6 +64,7 @@ pub(super) async fn fuzzy_path(
             repo_refs,
             target,
             q.first_branch().as_deref(),
+            std::iter::empty(),
             args.page_size,
         )
         .await
