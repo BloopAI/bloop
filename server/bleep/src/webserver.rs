@@ -50,8 +50,6 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
 
     let mut api = Router::new()
         .route("/config", get(config::get).put(config::put))
-        // autocomplete
-        .route("/autocomplete", get(autocomplete::handle))
         // indexing
         .route("/index", get(index::handle))
         // repo management
@@ -119,6 +117,7 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
             get(conversation::get).delete(conversation::delete),
         )
         .route("/projects/:project_id/q", get(query::handle))
+        .route("/projects/:project_id/autocomplete", get(autocomplete::handle))
         .route("/projects/:project_id/search/path", get(search::fuzzy_path))
         .route("/projects/:project_id/answer/vote", post(answer::vote))
         .route("/projects/:project_id/answer", get(answer::answer))

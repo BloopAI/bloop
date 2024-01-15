@@ -13,7 +13,7 @@ use crate::{
     },
 };
 
-use axum::{extract::Query, response::IntoResponse as IntoAxumResponse, Extension};
+use axum::{extract::{Query, Path}, response::IntoResponse as IntoAxumResponse, Extension};
 use futures::{stream, StreamExt, TryStreamExt};
 use serde::Serialize;
 
@@ -36,11 +36,14 @@ pub struct AutocompleteParams {
 pub(super) async fn handle(
     Query(mut api_params): Query<ApiQuery>,
     Query(ac_params): Query<AutocompleteParams>,
+    Path(project_id): Path<i64>,
     Extension(indexes): Extension<Arc<Indexes>>,
 ) -> Result<impl IntoAxumResponse> {
     // Override page_size and set to low value
     api_params.page = 0;
     api_params.page_size = 8;
+
+    api_params.project_id = project_id;
 
     let mut partial_lang = None;
     let mut has_target = false;
