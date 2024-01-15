@@ -1,19 +1,21 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 use super::prelude::*;
 use crate::{
-    indexes::{
-        reader::{ContentReader, FileReader, RepoReader},
-        Indexes,
-    },
+    indexes::reader::{ContentReader, FileReader, RepoReader},
     query::{
         execute::{ApiQuery, ExecuteQuery, QueryResult},
         languages, parser,
         parser::{Literal, Target},
     },
+    Application,
 };
 
-use axum::{extract::{Query, Path}, response::IntoResponse as IntoAxumResponse, Extension};
+use axum::{
+    extract::{Path, Query},
+    response::IntoResponse as IntoAxumResponse,
+    Extension,
+};
 use futures::{stream, StreamExt, TryStreamExt};
 use serde::Serialize;
 
@@ -37,7 +39,7 @@ pub(super) async fn handle(
     Query(mut api_params): Query<ApiQuery>,
     Query(ac_params): Query<AutocompleteParams>,
     Path(project_id): Path<i64>,
-    Extension(indexes): Extension<Arc<Indexes>>,
+    Extension(app): Extension<Application>,
 ) -> Result<impl IntoAxumResponse> {
     // Override page_size and set to low value
     api_params.page = 0;
@@ -117,17 +119,25 @@ pub(super) async fn handle(
         );
     }
 
+    // NB: This restricts queries in a repo-specific way. This might need to be generalized if
+    // we still use the other autocomplete fields.
+    let repo_queries = api_params
+        .restrict_repo_queries(queries.clone(), &app)
+        .await?;
+
+    dbg!(&queries, &repo_queries);
+
     let mut engines = vec![];
     if ac_params.content {
-        engines.push(ContentReader.execute(&indexes.file, &queries, &api_params));
+        engines.push(ContentReader.execute(&app.indexes.file, &queries, &api_params));
     }
 
     if ac_params.repo {
-        engines.push(RepoReader.execute(&indexes.repo, &queries, &api_params));
+        engines.push(RepoReader.execute(&app.indexes.repo, &repo_queries, &api_params));
     }
 
     if ac_params.file {
-        engines.push(FileReader.execute(&indexes.file, &queries, &api_params));
+        engines.push(FileReader.execute(&app.indexes.file, &queries, &api_params));
     }
 
     let (langs, list) = stream::iter(engines)

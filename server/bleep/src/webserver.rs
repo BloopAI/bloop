@@ -117,7 +117,10 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
             get(conversation::get).delete(conversation::delete),
         )
         .route("/projects/:project_id/q", get(query::handle))
-        .route("/projects/:project_id/autocomplete", get(autocomplete::handle))
+        .route(
+            "/projects/:project_id/autocomplete",
+            get(autocomplete::handle),
+        )
         .route("/projects/:project_id/search/path", get(search::fuzzy_path))
         .route("/projects/:project_id/answer/vote", post(answer::vote))
         .route("/projects/:project_id/answer", get(answer::answer))
