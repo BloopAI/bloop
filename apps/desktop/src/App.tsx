@@ -187,6 +187,19 @@ function App() {
   }, []);
 
   useEffect(() => {
+    const onContextMenu = (e: MouseEvent) => {
+      if (!import.meta.env.DEV) {
+        e.preventDefault();
+      }
+    };
+    document.addEventListener('contextmenu', onContextMenu);
+
+    return () => {
+      document.removeEventListener('contextmenu', onContextMenu);
+    };
+  }, []);
+
+  useEffect(() => {
     let intervalId: number;
     if (!Object.keys(envConfig).length) {
       initApi('http://127.0.0.1:7878/api');
