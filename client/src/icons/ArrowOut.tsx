@@ -1,30 +1,7 @@
 import IconWrapper from './Wrapper';
 
 const RawIcon = (
-  <svg viewBox="0 0 8 8" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path
-      fillRule="evenodd"
-      clipRule="evenodd"
-      d="M7.24281 1.37465L1.08362 7.53506L0.464844 6.9164L6.62403 0.755992L7.24281 1.37465Z"
-      fill="currentColor"
-    />
-    <path
-      fillRule="evenodd"
-      clipRule="evenodd"
-      d="M0.646062 0.645508H6.9169C7.15852 0.645508 7.3544 0.841383 7.3544 1.08301V7.35384H6.4794V1.52051H0.646062V0.645508Z"
-      fill="currentColor"
-    />
-  </svg>
-);
-
-const BoxedIcon = (
-  <svg
-    width="14"
-    height="14"
-    viewBox="0 0 14 14"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
+  <svg viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path
       fillRule="evenodd"
       clipRule="evenodd"
@@ -40,4 +17,4 @@ const BoxedIcon = (
   </svg>
 );
 
-export default IconWrapper(RawIcon, BoxedIcon);
+export default IconWrapper(RawIcon);

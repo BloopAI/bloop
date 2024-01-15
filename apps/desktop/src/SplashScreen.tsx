@@ -26,7 +26,7 @@ const SplashScreen = ({}: Props) => {
         <div className="animate-pulse-slow text-label-title">
           <LogoFull />
         </div>
-        <div className="flex gap-3 items-center rounded-lg shadow-high border border-bg-border bg-bg-shade px-4 py-2 absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 body-s z-10 text-label-base">
+        <div className="flex gap-3 items-center rounded-lg shadow-high border border-bg-border bg-bg-shade px-4 py-2 absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 body-s-b z-10 text-label-base">
           <Trans>Loading...</Trans>
         </div>
       </div>

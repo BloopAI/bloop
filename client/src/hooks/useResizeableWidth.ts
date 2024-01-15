@@ -16,7 +16,14 @@ const useResizeableWidth = (
 
     const savedPanelSize = Number(localStorage.getItem(localStorageKey));
     if (panel) {
-      panel.style.width = `${savedPanelSize || defaultWidth}%`;
+      if (!savedPanelSize) {
+        panel.style.width = `${defaultWidth}%`;
+      } else {
+        panel.style.width = `${Math.min(savedPanelSize, maxWidth)}%`;
+        if (savedPanelSize > maxWidth) {
+          localStorage.setItem(localStorageKey, maxWidth.toString());
+        }
+      }
     }
 
     const handleMouseDown = (e: MouseEvent) => {

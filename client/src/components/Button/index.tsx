@@ -12,20 +12,22 @@ import Tooltip from '../Tooltip';
 type Props = {
   children: ReactNode;
   variant?:
+    | 'brand-default'
     | 'primary'
     | 'secondary'
     | 'tertiary'
-    | 'tertiary-outlined'
-    | 'tertiary-disabled'
     | 'tertiary-active'
+    | 'ghost'
+    | 'studio'
     | 'danger';
-  size?: 'tiny' | 'small' | 'medium' | 'large';
+  size?: 'mini' | 'small' | 'medium' | 'large';
   className?: string;
 } & (OnlyIconProps | TextBtnProps);
 
 type OnlyIconProps = {
   onlyIcon: true;
   title: string;
+  shortcut?: string[];
   tooltipPlacement?: TippyProps['placement'];
 };
 
@@ -33,40 +35,66 @@ type TextBtnProps = {
   onlyIcon?: false;
   tooltipPlacement?: never;
   title?: string;
+  shortcut?: string[];
 };
 
 const variantStylesMap = {
+  'brand-default':
+    'text-label-control border border-brand-default bg-brand-default shadow-low ' +
+    'hover:bg-brand-default-hover ' +
+    'focus:bg-brand-default-hover focus:shadow-rings-blue ' +
+    'disabled:bg-bg-base disabled:border-none disabled:text-label-faint disabled:shadow-none ' +
+    'disabled:hover:bg-bg-base',
   primary:
-    'text-label-control bg-bg-main hover:bg-bg-main-hover focus:bg-bg-main-hover active:bg-bg-main active:shadow-rings-blue focus:shadow-rings-blue disabled:bg-bg-base disabled:text-label-muted disabled:hover:border-none disabled:hover:bg-bg-base disabled:active:shadow-none disabled:border-none',
+    'text-label-contrast border border-bg-contrast bg-bg-contrast shadow-low ' +
+    'hover:bg-bg-contrast-hover hover:border-bg-contrast-hover ' +
+    'disabled:bg-bg-base disabled:border-none disabled:text-label-faint disabled:shadow-none ' +
+    'disabled:hover:bg-bg-base',
   secondary:
-    'text-label-title bg-bg-base border border-bg-border hover:border-bg-border-hover focus:border-bg-border-hover hover:bg-bg-base-hover focus:bg-bg-base-hover active:bg-bg-base disabled:bg-bg-base disabled:border-none disabled:text-label-muted shadow-low hover:shadow-none focus:shadow-none active:shadow-rings-gray disabled:shadow-none',
+    'text-label-base border border-bg-border bg-bg-base shadow-low ' +
+    'hover:text-label-title hover:bg-bg-base-hover hover:border-bg-border-hover ' +
+    'disabled:text-label-faint disabled:shadow-none disabled:border-transparent' +
+    'disabled:hover:text-label-faint disabled:hover:bg-bg-base disabled:hover:border-transparent',
   tertiary:
-    'text-label-muted bg-transparent hover:text-label-title focus:text-label-title hover:bg-bg-base-hover focus:bg-bg-base-hover active:text-label-title active:bg-transparent disabled:bg-bg-base disabled:text-label-muted',
-  'tertiary-active': 'text-label-title bg-bg-base-hover',
-  'tertiary-outlined':
-    'text-label-muted bg-transparent border border-bg-border hover:bg-bg-base-hover focus:bg-bg-base-hover active:bg-transparent hover:text-label-title focus:text-label-title active:text-label-title disabled:bg-bg-base disabled:text-label-muted disabled:border-transparent disabled:hover:border-transparent',
-  'tertiary-disabled':
-    'text-label-muted bg-transparent hover:text-label-title focus:text-label-title hover:bg-bg-base-hover focus:bg-bg-base-hover active:text-label-title active:bg-transparent disabled:opacity-50 disabled:text-label-muted disabled:hover:text-label-muted disabled:hover:bg-transparent',
+    'text-label-muted bg-transparent ' +
+    'hover:text-label-title hover:bg-bg-base-hover ' +
+    'disabled:text-label-faint ' +
+    'disabled:hover:text-label-faint disabled:hover:bg-transparent',
+  'tertiary-active':
+    'text-label-title bg-bg-base-hover disabled:text-label-faint',
   danger:
-    'text-label-control bg-bg-danger hover:bg-bg-danger-hover focus:bg-bg-danger-hover active:bg-bg-danger active:shadow-low disabled:bg-bg-base disabled:text-label-muted disabled:hover:border-none disabled:hover:bg-bg-base disabled:active:shadow-none disabled:border-none',
+    'text-red border border-bg-border bg-bg-base shadow-low ' +
+    'hover:bg-bg-base-hover hover:border-bg-border-hover ' +
+    'disabled:text-label-faint disabled:shadow-none disabled:bg-bg-base disabled:border-transparent' +
+    'disabled:hover:text-label-faint disabled:hover:bg-bg-base disabled:hover:border-transparent',
+  ghost:
+    'text-label-muted bg-transparent ' +
+    'hover:text-label-title ' +
+    'disabled:text-label-faint ' +
+    'disabled:hover:text-label-faint',
+  studio:
+    'text-label-control bg-brand-studio border border-brand-studio shadow-low ' +
+    'hover:bg-brand-studio-hover ' +
+    'disabled:text-label-faint disabled:bg-bg-base disabled:bg-transparent disabled:shadow-none' +
+    'disabled:hover:bg-bg-base',
 };
 
 const sizeMap = {
-  tiny: {
-    default: 'h-6 px-1 gap-1 caption-strong',
-    square: 'h-6 w-6 justify-center p-0',
+  mini: {
+    default: 'h-6 px-1.5 gap-1 body-mini-b rounded',
+    square: 'h-6 w-6 rounded',
   },
   small: {
-    default: 'h-8 px-2 gap-1 caption-strong min-w-[70px]',
-    square: 'h-8 w-8 justify-center p-0',
+    default: 'h-7 px-2 gap-1 body-mini-b rounded',
+    square: 'h-7 w-8 rounded',
   },
   medium: {
-    default: 'h-10 px-2.5 gap-2 callout min-w-[84px]',
-    square: 'h-10 w-10 justify-center p-0',
+    default: 'h-8 px-2.5 gap-1.5 body-s-b rounded-6',
+    square: 'h-8 w-10 rounded-6',
   },
   large: {
-    default: 'h-11.5 px-3.5 gap-2 callout min-w-[84px]',
-    square: 'h-11.5 w-11.5 justify-center p-0',
+    default: 'h-9 px-3 gap-2 body-base-b rounded-6',
+    square: 'h-9 w-9 rounded-6',
   },
 };
 
@@ -91,23 +119,22 @@ const Button = forwardRef<
       title,
       tooltipPlacement,
       type = 'button',
+      shortcut,
       ...rest
     },
     ref,
   ) => {
     const buttonClassName = useMemo(
       () =>
-        `py-0 rounded-4 focus:outline-none outline-none outline-0 flex items-center flex-grow-0 flex-shrink-0 ${
+        `py-0 focus:outline-none outline-none outline-0 flex items-center justify-center flex-grow-0 flex-shrink-0 ${
           variantStylesMap[variant]
         } ${onlyIcon ? sizeMap[size].square : sizeMap[size].default} ${
           className || ''
-        } ${
-          onlyIcon ? '' : 'justify-center'
-        } transition-all duration-300 ease-in-bounce select-none`,
+        } select-none transition-all duration-150 ease-in-out`,
       [variant, className, size, onlyIcon],
     );
     return (onlyIcon && !rest.disabled) || title ? (
-      <Tooltip text={title} placement={tooltipPlacement}>
+      <Tooltip text={title} placement={tooltipPlacement} shortcut={shortcut}>
         <button {...rest} type={type} ref={ref} className={buttonClassName}>
           {children}
         </button>

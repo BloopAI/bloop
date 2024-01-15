@@ -6,7 +6,7 @@ import React, {
   useCallback,
 } from 'react';
 import TextInput from '../TextInput';
-import { ChevronDown, ChevronUp } from '../../icons';
+import { ChevronDownIcon, ChevronUpIcon } from '../../icons';
 
 type Props = {
   handleSearch: (v: string) => void;
@@ -55,29 +55,29 @@ const SearchOnPage = ({
         inputClassName="pr-24"
         onEscape={onCancel}
       />
-      <div className="flex items-center absolute top-0.5 right-9 caption text-label-base">
+      <div className="flex items-center absolute top-0 right-9 caption text-label-base">
         {resultNum ? (
           <span>
             {currentResult}/{resultNum}
           </span>
         ) : null}
         <button
-          className="p-2 hover:text-label-title disabled:hover:text-label-base"
+          className="p-2 hover:text-label-title disabled:hover:text-label-base flex items-center "
           onClick={() =>
             setCurrentResult((prev) => (prev > 1 ? prev - 1 : resultNum))
           }
           disabled={!searchValue}
         >
-          <ChevronUp />
+          <ChevronUpIcon sizeClassName="w-3.5 h-3.5" />
         </button>
         <button
-          className="p-2 hover:text-label-title disabled:hover:text-label-base"
+          className="p-2 hover:text-label-title disabled:hover:text-label-base flex items-center "
           onClick={() =>
             setCurrentResult((prev) => (prev < resultNum ? prev + 1 : 1))
           }
           disabled={!searchValue}
         >
-          <ChevronDown />
+          <ChevronDownIcon sizeClassName="w-3.5 h-3.5" />
         </button>
       </div>
     </div>

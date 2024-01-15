@@ -1,15 +1,19 @@
-import React, { createContext, Dispatch, SetStateAction } from 'react';
-import { RepoSource, Theme } from '../types';
-import { RepoTabType, TabType } from '../types/general';
+import { createContext } from 'react';
+import { Theme } from '../types';
+import { ProjectSettingSections, SettingSections } from '../types/general';
 
 export const UIContext = {
   Settings: createContext({
     isSettingsOpen: false,
     setSettingsOpen: (b: boolean) => {},
+    settingsSection: SettingSections.GENERAL,
+    setSettingsSection: (s: SettingSections) => {},
   }),
-  Symbols: createContext({
-    symbolsCollapsed: true,
-    setSymbolsCollapsed: (b: boolean) => {},
+  ProjectSettings: createContext({
+    isProjectSettingsOpen: false,
+    setProjectSettingsOpen: (b: boolean) => {},
+    projectSettingsSection: ProjectSettingSections.GENERAL,
+    setProjectSettingsSection: (s: ProjectSettingSections) => {},
   }),
   Onboarding: createContext({
     shouldShowWelcome: false,
@@ -20,7 +24,6 @@ export const UIContext = {
   BugReport: createContext({
     isBugReportModalOpen: false,
     setBugReportModalOpen: (b: boolean) => {},
-    activeTab: 'initial',
   }),
   GitHubConnected: createContext({
     isGithubConnected: false,
@@ -28,58 +31,16 @@ export const UIContext = {
     isGithubChecked: false,
     refreshToken: (refreshT: string) => Promise.resolve(),
   }),
-  Filters: createContext<{
-    isFiltersOpen: boolean;
-    setFiltersOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  }>({
-    isFiltersOpen: false,
-    setFiltersOpen: () => {},
-  }),
-  PromptGuide: createContext({
-    isPromptGuideOpen: false,
-    setPromptGuideOpen: (b: boolean) => {},
-  }),
-  StudioGuide: createContext({
-    isStudioGuideOpen: false,
-    setStudioGuideOpen: (b: boolean) => {},
-  }),
-  CloudFeaturePopup: createContext({
-    isCloudFeaturePopupOpen: false,
-    setCloudFeaturePopupOpen: (b: boolean) => {},
-  }),
-  UpgradePopup: createContext({
-    isUpgradePopupOpen: false,
-    setUpgradePopupOpen: (b: boolean) => {},
-    isWaitingUpgradePopupOpen: false,
-    setWaitingUpgradePopupOpen: (b: boolean) => {},
-  }),
-  Tab: createContext<{ tab: RepoTabType }>({
-    tab: {
-      key: 'initial',
-      name: 'Home',
-      type: TabType.REPO,
-      repoName: '',
-      branch: '',
-      repoRef: '',
-      source: RepoSource.LOCAL,
-      navigationHistory: [],
-    },
-  }),
   Theme: createContext({
     theme: 'system' as Theme,
     setTheme: (t: Theme) => {},
   }),
-  HomeScreen: createContext({
-    search: '',
-    setSearch: (t: string) => {},
-    filterType: 'all' as 'all' | 'repos' | 'studios',
-    setFilterType: (t: 'all' | 'repos' | 'studios') => {},
+  Focus: createContext({
+    isLeftSidebarFocused: false,
+    setIsLeftSidebarFocused: (b: boolean) => {},
   }),
-  AnswerSpeed: createContext<{
-    preferredAnswerSpeed: 'normal' | 'fast';
-    setPreferredAnswerSpeed: Dispatch<SetStateAction<'normal' | 'fast'>>;
-  }>({
-    preferredAnswerSpeed: 'fast',
-    setPreferredAnswerSpeed: () => {},
+  UpgradeRequiredPopup: createContext({
+    isUpgradeRequiredPopupOpen: false,
+    setIsUpgradeRequiredPopupOpen: (b: boolean) => {},
   }),
 };

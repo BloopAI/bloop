@@ -1,7 +1,10 @@
-import { useMemo, useState } from 'react';
-import ContextMenu, { ContextMenuItem } from '../ContextMenu';
-import { MenuItemType } from '../../types/general';
-import { MoreHorizontal } from '../../icons';
+import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
+import Tippy from '@tippyjs/react/headless';
+import { MoreHorizontalIcon } from '../../icons';
+import { animationDuration } from '../Dropdown';
+import { useOnClickOutside } from '../../hooks/useOnClickOutsideHook';
+import DropdownSection from '../Dropdown/Section';
+import SectionItem from '../Dropdown/Section/SectionItem';
 import { PathParts } from './index';
 
 type Props = {
@@ -23,45 +26,74 @@ const typeMap = {
 
 const BreadcrumbsCollapsed = ({ items, type }: Props) => {
   const [isHiddenClicked, setIsHiddenClicked] = useState(false);
-  const contextMenuItems = useMemo(
-    () =>
-      items.map(
-        (part): ContextMenuItem => ({
-          icon: part.icon,
-          text: part.label,
-          onClick: part?.onClick,
-          type: MenuItemType.LINK,
-          underline: part.underline,
-        }),
-      ),
-    [items],
+  const contextMenuRef = useRef(null);
+  const buttonRef = useRef(null);
+
+  const handleClose = useCallback((e: MouseEvent) => {
+    e.stopPropagation();
+    setIsHiddenClicked(false);
+  }, []);
+  useOnClickOutside(contextMenuRef, handleClose, buttonRef);
+
+  const handleToggle = useCallback((e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setIsHiddenClicked((prev) => !prev);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      setIsHiddenClicked(false);
+    };
+  }, []);
+
+  const renderContent = useCallback(() => {
+    return isHiddenClicked ? (
+      <div className="bg-bg-shade p-1 rounded">
+        <DropdownSection>
+          {items.map((part, i) => (
+            <SectionItem
+              key={i}
+              onClick={part?.onClick}
+              label={part.label}
+              icon={part.icon}
+            />
+          ))}
+        </DropdownSection>
+      </div>
+    ) : null;
+  }, [isHiddenClicked]);
+
+  const noPropagate = useCallback(
+    (e?: React.MouseEvent) => e?.stopPropagation(),
+    [],
   );
+
   return (
-    <span className="relative" onClick={(e) => e.stopPropagation()}>
-      <ContextMenu
-        items={contextMenuItems}
+    <span className="relative" onClick={noPropagate} ref={contextMenuRef}>
+      <Tippy
         visible={isHiddenClicked}
-        handleClose={() => setIsHiddenClicked(false)}
+        interactive
         appendTo={document.body}
+        duration={animationDuration}
+        animation
+        render={renderContent}
       >
         <span>
           <button
+            ref={buttonRef}
             className={`p-0 outline-0 outline-none focus:outline-none border-0 flex items-center ${
               isHiddenClicked
                 ? typeMap[type].isHiddenClicked
                 : typeMap[type].default
             }`}
-            onMouseDown={(e) => {
-              e.stopPropagation();
-              setIsHiddenClicked(() => !isHiddenClicked);
-            }}
+            onClick={handleToggle}
           >
-            <MoreHorizontal />
+            <MoreHorizontalIcon sizeClassName="w-3.5 h-3.5" />
           </button>
         </span>
-      </ContextMenu>
+      </Tippy>
     </span>
   );
 };
 
-export default BreadcrumbsCollapsed;
+export default memo(BreadcrumbsCollapsed);
