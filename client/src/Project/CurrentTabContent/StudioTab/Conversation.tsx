@@ -54,8 +54,6 @@ const Conversation = ({ side, tabKey }: Props) => {
         />
       </ScrollToBottom>
       <Input
-        selectedLines={studioData.selectedLines}
-        setSelectedLines={studioData.setSelectedLines}
         onStop={studioData.stopGenerating}
         submittedQuery={studioData.submittedQuery}
         isStoppable={studioData.isLoading}
@@ -76,6 +74,7 @@ const Conversation = ({ side, tabKey }: Props) => {
         conversation={studioData.conversation}
         setSubmittedQuery={studioData.setSubmittedQuery}
         isInputAtBottom={isScrollable}
+        projectId={project?.id || '0'}
       />
       <DeprecatedClientModal
         isOpen={studioData.isDeprecatedModalOpen}

@@ -17,6 +17,7 @@ import { FileResItem } from '../../types/api';
 import Body from '../Body';
 import FileIcon from '../../components/FileIcon';
 import { TabsContext } from '../../context/tabsContext';
+import { ProjectContext } from '../../context/projectContext';
 
 type Props = {};
 
@@ -26,6 +27,7 @@ const SearchFiles = ({}: Props) => {
   const { setChosenStep, setIsVisible } = useContext(
     CommandBarContext.Handlers,
   );
+  const { project } = useContext(ProjectContext.Current);
   const { openNewTab } = useContext(TabsContext.Handlers);
   const [files, setFiles] = useState<{ path: string; repo: string }[]>([]);
   const searchValue = useDeferredValue(inputValue);
@@ -35,18 +37,23 @@ const SearchFiles = ({}: Props) => {
   }, []);
 
   useEffect(() => {
-    getAutocomplete(`path:${searchValue}&content=false`).then((respPath) => {
-      const fileResults = respPath.data
-        .filter(
-          (d): d is FileResItem => d.kind === 'file_result' && !d.data.is_dir,
-        )
-        .map((d) => ({
-          path: d.data.relative_path.text,
-          repo: d.data.repo_ref,
-        }));
-      setFiles(fileResults);
-    });
-  }, [searchValue]);
+    if (project?.id) {
+      getAutocomplete(project.id, `path:${searchValue}&content=false`).then(
+        (respPath) => {
+          const fileResults = respPath.data
+            .filter(
+              (d): d is FileResItem =>
+                d.kind === 'file_result' && !d.data.is_dir,
+            )
+            .map((d) => ({
+              path: d.data.relative_path.text,
+              repo: d.data.repo_ref,
+            }));
+          setFiles(fileResults);
+        },
+      );
+    }
+  }, [searchValue, project?.id]);
 
   const breadcrumbs = useMemo(() => {
     return [t('Search files')];

@@ -198,9 +198,12 @@ export const indexRepoBranch = async (repoRef: string, branch: string) => {
 };
 
 export const getAutocomplete = async (
+  projectId: string,
   q: string,
 ): Promise<SuggestionsResponse> => {
-  return http.get(`/autocomplete?q=${q}`).then((r) => r.data);
+  return http
+    .get(`/projects/${projectId}/autocomplete?q=${q}`)
+    .then((r) => r.data);
 };
 
 export const getRepos = (): Promise<{ list: RepoType[] }> =>
