@@ -617,5 +617,7 @@
 	"Create ranges": "Crear rangos",
 	"# tokens_onw": "ficha",
 	"# tokens_other": "fichas",
-	"Edit ranges": "Editar rangos"
+	"Edit ranges": "Editar rangos",
+	"The whole file will be used as context.": "Todo el archivo se utilizará como contexto.",
+	"Selected ranges will be used as context.": "Los rangos seleccionados se utilizarán como contexto."
 }
