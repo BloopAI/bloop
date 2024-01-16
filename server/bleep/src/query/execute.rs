@@ -1,4 +1,5 @@
 use std::{
+    borrow::Cow,
     collections::{HashMap, HashSet},
     sync::Arc,
 };
@@ -12,6 +13,7 @@ use crate::{
     },
     repo::RepoRef,
     snippet::{HighlightedString, SnippedFile, Snipper},
+    Application,
 };
 
 use anyhow::{bail, Result};
@@ -231,11 +233,113 @@ pub trait ExecuteQuery {
 }
 
 impl ApiQuery {
-    pub async fn query(self: Arc<Self>, indexes: Arc<Indexes>) -> Result<QueryResponse> {
-        let query = self.q.clone();
-        let compiled = parser::parse(&query)?;
-        tracing::debug!("compiled query as {compiled:?}");
-        self.query_with(indexes, compiled).await
+    pub async fn query(self: Arc<Self>, app: &Application) -> Result<QueryResponse> {
+        let raw_query = self.q.clone();
+        let queries = self
+            .restrict_queries(parser::parse(&raw_query)?, app)
+            .await?;
+        tracing::debug!("compiled query as {queries:?}");
+        self.query_with(Arc::clone(&app.indexes), queries).await
+    }
+
+    /// This restricts a set of input parser queries.
+    ///
+    /// We trim down the input by:
+    ///
+    /// 1. Discarding all queries that reference repos not in the queried project
+    /// 2. Regenerating more specific queries for those without repo restrictions, such that there
+    ///    is a new query generated per repo that exists in the project.
+    ///
+    /// The idea here is to allow us to restrict the possible input space of queried documents to
+    /// be more specific as required by the project state.
+    ///
+    /// The `subset` flag indicates whether repo name matching is whole-string, or whether the
+    /// string must only be a substring of an existing repo. This is useful in autocomplete
+    /// scenarios, where we want to restrict queries such that they are not fully typed out.
+    pub async fn restrict_queries<'a>(
+        &self,
+        queries: impl IntoIterator<Item = parser::Query<'a>>,
+        app: &Application,
+    ) -> Result<Vec<parser::Query<'a>>> {
+        let repo_branches = sqlx::query! {
+            "SELECT repo_ref, branch
+            FROM project_repos
+            WHERE project_id = ?",
+            self.project_id,
+        }
+        .fetch_all(&*app.sql)
+        .await?
+        .into_iter()
+        .map(|row| {
+            (
+                row.repo_ref.parse::<RepoRef>().unwrap().indexed_name(),
+                row.branch,
+            )
+        })
+        .collect::<HashMap<_, _>>();
+
+        let mut out = Vec::new();
+
+        for q in queries {
+            if let Some(r) = q.repo_str() {
+                // The branch that this project has loaded this repo with.
+                let project_branch = repo_branches.get(&r).map(Option::as_ref).flatten();
+
+                // If the branch doesn't match what we expect, drop the query.
+                if q.branch_str().as_ref() == project_branch {
+                    out.push(q);
+                }
+            } else {
+                for (r, b) in &repo_branches {
+                    out.push(parser::Query {
+                        repo: Some(parser::Literal::from(r)),
+                        branch: b.as_ref().map(|b| parser::Literal::from(b)),
+                        ..q.clone()
+                    });
+                }
+            }
+        }
+
+        Ok(out)
+    }
+
+    /// This restricts a set of input repo-only queries.
+    ///
+    /// This is useful for autocomplete queries, which are effectively just `repo:foo`, where the
+    /// repo name may be partially written.
+    pub async fn restrict_repo_queries<'a>(
+        &self,
+        queries: impl IntoIterator<Item = parser::Query<'a>>,
+        app: &Application,
+    ) -> Result<Vec<parser::Query<'a>>> {
+        let repo_refs = sqlx::query! {
+            "SELECT repo_ref
+            FROM project_repos
+            WHERE project_id = ?",
+            self.project_id,
+        }
+        .fetch_all(&*app.sql)
+        .await?
+        .into_iter()
+        .map(|row| row.repo_ref.parse::<RepoRef>().unwrap().indexed_name())
+        .collect::<Vec<_>>();
+
+        let mut out = Vec::new();
+
+        for q in queries {
+            if let Some(r) = q.repo_str() {
+                for m in repo_refs.iter().filter(|r2| r2.contains(&r)) {
+                    out.push(parser::Query {
+                        repo: Some(parser::Literal::from(m)),
+                        ..Default::default()
+                    });
+                }
+            }
+        }
+
+        out.dedup();
+
+        Ok(out)
     }
 
     pub async fn query_with(
