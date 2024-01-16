@@ -278,6 +278,30 @@
     },
     "query": "SELECT id, index_status, name, url, favicon, description, modified_at FROM docs WHERE id = ?"
   },
+  "291848ee7ef54ea247a2f83e89d2dd8e96024ba2fe65d0e443ecc94942aa6fa9": {
+    "describe": {
+      "columns": [
+        {
+          "name": "repo_ref",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "branch",
+          "ordinal": 1,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        true
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT repo_ref, branch\n            FROM project_repos\n            WHERE project_id = ?"
+  },
   "2d33f9119b3b56c55378080c5c95aa91fcb495ceb39caaa4f2541d8b2aa408ae": {
     "describe": {
       "columns": [],
@@ -1074,6 +1098,24 @@
     },
     "query": "INSERT INTO studio_snapshots (studio_id, context, doc_context, messages)\n         VALUES (?, ?, ?, ?)"
   },
+  "95eaff0006df7f12604154c46113197e9440f06520672e2d7409cd0b831d83c2": {
+    "describe": {
+      "columns": [
+        {
+          "name": "repo_ref",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT repo_ref\n            FROM project_repos\n            WHERE project_id = ?"
+  },
   "9db35f3045790fbd63f1efc4a96e5a7234f09cc513323320fd145146b03cce2b": {
     "describe": {
       "columns": [
@@ -1377,24 +1419,6 @@
       }
     },
     "query": "UPDATE studio_snapshots SET messages = ? WHERE id = ?"
-  },
-  "dcb7f9427283203bce10fe7d618057ef3eab5f6af2277e7a1ac8ba050609894d": {
-    "describe": {
-      "columns": [
-        {
-          "name": "url",
-          "ordinal": 0,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Right": 1
-      }
-    },
-    "query": "SELECT url FROM docs WHERE id = ?"
   },
   "deae1c1c2619ec6e76e0b5fcc526bbabbc1d66642efc6158a793068221ebd019": {
     "describe": {
