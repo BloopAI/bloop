@@ -50,6 +50,7 @@ type Props = {
   >;
   submittedQuery: { parsed: ParsedQueryType[]; plain: string };
   isInputAtBottom?: boolean;
+  projectId: string;
 };
 
 const ConversationInput = ({
@@ -69,6 +70,7 @@ const ConversationInput = ({
   setSubmittedQuery,
   submittedQuery,
   isInputAtBottom,
+  projectId,
 }: Props) => {
   const { t } = useTranslation();
   const { envConfig } = useContext(EnvContext);
@@ -139,68 +141,77 @@ const ConversationInput = ({
     }
   }, [value, onSubmit]);
 
-  const getDataPath = useCallback(async (search: string) => {
-    const respPath = await getAutocomplete(`path:${search}&content=false`);
-    const fileResults = respPath.data.filter(
-      (d): d is FileResItem => d.kind === 'file_result',
-    );
-    const dirResults = fileResults
-      .filter((d) => d.data.is_dir)
-      .map((d) => ({
-        path: d.data.relative_path.text,
-        repo: d.data.repo_ref,
-      }));
-    const filesResults = openTabsCache.tabs
-      .filter(
-        (t): t is FileTabType =>
-          t.type === TabTypesEnum.FILE &&
-          (!search || t.path.toLowerCase().includes(search.toLowerCase())),
-      )
-      .map((t) => ({ path: t.path, repo: t.repoRef }));
-    filesResults.push(
-      ...fileResults
-        .filter(
-          (d) =>
-            !d.data.is_dir &&
-            !filesResults.find(
-              (f) =>
-                f.path === d.data.relative_path.text &&
-                f.repo === d.data.repo_ref,
-            ),
-        )
+  const getDataPath = useCallback(
+    async (search: string) => {
+      const respPath = await getAutocomplete(
+        projectId,
+        `path:${search}&content=false`,
+      );
+      const fileResults = respPath.data.filter(
+        (d): d is FileResItem => d.kind === 'file_result',
+      );
+      const dirResults = fileResults
+        .filter((d) => d.data.is_dir)
         .map((d) => ({
           path: d.data.relative_path.text,
           repo: d.data.repo_ref,
-        })),
-    );
-    const results: MentionOptionType[] = [];
-    filesResults.forEach((fr, i) => {
-      results.push({
-        id: fr.path,
-        display: fr.path,
-        type: 'file',
-        isFirst: i === 0,
-        hint: splitPath(fr.repo).pop(),
+        }));
+      const filesResults = openTabsCache.tabs
+        .filter(
+          (t): t is FileTabType =>
+            t.type === TabTypesEnum.FILE &&
+            (!search || t.path.toLowerCase().includes(search.toLowerCase())),
+        )
+        .map((t) => ({ path: t.path, repo: t.repoRef }));
+      filesResults.push(
+        ...fileResults
+          .filter(
+            (d) =>
+              !d.data.is_dir &&
+              !filesResults.find(
+                (f) =>
+                  f.path === d.data.relative_path.text &&
+                  f.repo === d.data.repo_ref,
+              ),
+          )
+          .map((d) => ({
+            path: d.data.relative_path.text,
+            repo: d.data.repo_ref,
+          })),
+      );
+      const results: MentionOptionType[] = [];
+      filesResults.forEach((fr, i) => {
+        results.push({
+          id: fr.path,
+          display: fr.path,
+          type: 'file',
+          isFirst: i === 0,
+          hint: splitPath(fr.repo).pop(),
+        });
       });
-    });
-    dirResults.forEach((fr, i) => {
-      results.push({
-        id: fr.path,
-        display: fr.path,
-        type: 'dir',
-        isFirst: i === 0,
-        hint: splitPath(fr.repo).pop(),
+      dirResults.forEach((fr, i) => {
+        results.push({
+          id: fr.path,
+          display: fr.path,
+          type: 'dir',
+          isFirst: i === 0,
+          hint: splitPath(fr.repo).pop(),
+        });
       });
-    });
-    return results;
-  }, []);
+      return results;
+    },
+    [projectId],
+  );
 
   const getDataLang = useCallback(
     async (
       search: string,
       // callback: (a: { id: string; display: string }[]) => void,
     ) => {
-      const respLang = await getAutocomplete(`lang:${search}&content=false`);
+      const respLang = await getAutocomplete(
+        projectId,
+        `lang:${search}&content=false`,
+      );
       const langResults = respLang.data
         .filter((d): d is LangItem => d.kind === 'lang')
         .map((d) => d.data);
@@ -210,7 +221,7 @@ const ConversationInput = ({
       });
       return results;
     },
-    [],
+    [projectId],
   );
 
   const getDataRepo = useCallback(
@@ -219,6 +230,7 @@ const ConversationInput = ({
       // callback: (a: { id: string; display: string }[]) => void,
     ) => {
       const respRepo = await getAutocomplete(
+        projectId,
         `repo:${search}&content=false&path=false&file=false`,
       );
       const repoResults = respRepo.data
@@ -235,7 +247,7 @@ const ConversationInput = ({
       });
       return results;
     },
-    [],
+    [projectId],
   );
 
   const handleKeyEvent = useCallback(

@@ -76,6 +76,7 @@ const Conversation = ({ side, tabKey }: Props) => {
         conversation={chatData.conversation}
         setSubmittedQuery={chatData.setSubmittedQuery}
         isInputAtBottom={isScrollable}
+        projectId={project?.id || '0'}
       />
       <DeprecatedClientModal
         isOpen={chatData.isDeprecatedModalOpen}
