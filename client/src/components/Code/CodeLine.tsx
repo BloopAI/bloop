@@ -126,9 +126,11 @@ const CodeLine = ({
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
-      e.preventDefault();
-      if (!isSelectionDisabled && isEditingRanges) {
-        setIsDragging(true);
+      if (isEditingRanges) {
+        e.preventDefault();
+        if (!isSelectionDisabled) {
+          setIsDragging(true);
+        }
       }
     },
     [isSelectionDisabled, isEditingRanges],
