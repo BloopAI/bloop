@@ -115,8 +115,13 @@ impl Agent {
 
         debug!(?paths, ?aliases, "created filtered path alias list");
 
+        s += "##### REPOS #####\n";
+        for repo in self.relevant_repos() {
+            s += &format!("{repo}\n");
+        }
+
         if !aliases.is_empty() {
-            s += "##### PATHS #####\n";
+            s += "\n##### PATHS #####\n";
 
             for alias in &aliases {
                 let path = &paths[*alias];
