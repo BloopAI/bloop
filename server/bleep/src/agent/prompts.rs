@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::agent::exchange::RepoPath;
 
 pub fn functions(add_proc: bool) -> serde_json::Value {
@@ -82,13 +84,22 @@ pub fn functions(add_proc: bool) -> serde_json::Value {
 }
 
 pub fn system<'a>(paths: impl IntoIterator<Item = &'a RepoPath>) -> String {
+    let paths = paths.into_iter().collect::<Vec<_>>();
+
     let mut s = "".to_string();
 
-    let mut paths = paths.into_iter().peekable();
+    let repos = paths.iter().map(|rp| &rp.repo).collect::<HashSet<_>>();
 
-    if paths.peek().is_some() {
-        s.push_str("## PATHS ##\nindex, repo, path\n");
-        for (i, path) in paths.enumerate() {
+    s.push_str("## REPOS ##\n");
+    for repo in repos {
+        s.push_str(&format!("{repo}\n"));
+    }
+
+    let mut iter = paths.into_iter().peekable();
+
+    if iter.peek().is_some() {
+        s.push_str("\n## PATHS ##\nindex, repo, path\n");
+        for (i, path) in iter.enumerate() {
             let repo = path.repo.display_name();
             let path = &path.path;
             s.push_str(&format!("{}, {}, {}\n", i, repo, path));
@@ -101,7 +112,7 @@ pub fn system<'a>(paths: impl IntoIterator<Item = &'a RepoPath>) -> String {
 
 - ALWAYS call a function, DO NOT answer the question directly, even if the query is not in English
 - DO NOT call a function that you've used before with the same arguments
-- DO NOT assume the structure of the codebase, or the existence of files or folders
+- DO NOT assume the structure of the indexed repos (listed above), or the existence of files or folders
 - Your queries to functions.code or functions.path should be significantly different to previous queries
 - Call functions.none with paths that you are confident will help answer the user's query, include paths containing the information needed for a complete answer including definitions and references
 - If the user query is general (e.g. 'What does this do?', 'What is this repo?') look for READMEs, documentation and entry points in the code (main files, index files, api files etc.)
@@ -121,7 +132,7 @@ pub fn answer_article_prompt(context: &str) -> String {
     format!(
         r#"{context}####
 
-You are an expert programmer called 'bloop' and you are helping a junior colleague answer questions about a codebase using the information above. If their query refers to 'this' or 'it' and there is no other context, assume that it refers to the information above.
+You are an expert programmer called 'bloop' and you are helping a junior colleague answer questions about some repos using the information above. If their query refers to 'this' or 'it' and there is no other context, assume that it refers to the information above.
 
 Provide only as much information and code as is necessary to answer the query, but be concise. Keep number of quoted lines to a minimum when possible. If you do not have enough information needed to answer the query, do not make up an answer. Infer as much as possible from the information above.
 When referring to code, you must provide an example in a code block.
@@ -397,7 +408,7 @@ pub fn symbol_classification_prompt(snippets: &str) -> String {
 
 Above are code chunks and non-local symbols that have been extracted from the chunks. Each chunk is followed by an enumerated list of symbols that it contains. Given a user query, select the symbol which is most relevant to it, e.g. the references or definition of this symbol would help somebody answer the query. Symbols which are language builtins or which come from third party libraries are unlikely to be helpful.
 
-Do not answer with the symbol name, use the symbol index.
+Do not answer with the symbol name, use the symbol index. If none of the symbols are relevant, answer with 0.
 
 ### Examples ###
 Q: how does ranking work?
