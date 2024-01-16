@@ -69,6 +69,7 @@ type Props = {
   studioId?: string;
   initialRanges?: [number, number][];
   isFileInContext?: boolean;
+  isTemp?: boolean;
   handleMoveToAnotherSide: () => void;
 };
 
@@ -85,6 +86,7 @@ const FileTab = ({
   studioId,
   initialRanges,
   isFileInContext,
+  isTemp,
 }: Props) => {
   const { t } = useTranslation();
   const [file, setFile] = useState<FileResponse | null>(null);
@@ -246,8 +248,10 @@ const FileTab = ({
   }, [repoRef, path]);
 
   const handleClick = useCallback(() => {
-    updateTabProperty<FileTabType, 'isTemp'>(tabKey, 'isTemp', false, side);
-  }, [updateTabProperty, tabKey, side]);
+    if (isTemp) {
+      updateTabProperty<FileTabType, 'isTemp'>(tabKey, 'isTemp', false, side);
+    }
+  }, [updateTabProperty, tabKey, side, isTemp]);
 
   const linesNumber = useMemo(() => {
     return file?.contents?.split(/\n(?!$)/g).length || 0;
