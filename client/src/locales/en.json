@@ -621,5 +621,7 @@
 	"Create ranges": "Create ranges",
 	"# tokens_one": "token",
 	"# tokens_other": "tokens",
-	"Edit ranges": "Edit ranges"
+	"Edit ranges": "Edit ranges",
+	"The whole file will be used as context.": "The whole file will be used as context.",
+	"Selected ranges will be used as context.": "Selected ranges will be used as context."
 }

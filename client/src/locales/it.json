@@ -583,5 +583,7 @@
 	"Create ranges": "Crea gamme",
 	"# tokens_one": "token",
 	"# tokens_other": "token",
-	"Edit ranges": "Modifica intervalli"
+	"Edit ranges": "Modifica intervalli",
+	"The whole file will be used as context.": "L'intero file verrà utilizzato come contesto.",
+	"Selected ranges will be used as context.": "Gli intervalli selezionati verranno utilizzati come contesto."
 }

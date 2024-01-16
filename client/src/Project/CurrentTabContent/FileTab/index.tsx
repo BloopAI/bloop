@@ -224,6 +224,7 @@ const FileTab = ({
     if (isFileInContext) {
       setSelectedLines(initialRanges || []);
     } else {
+      setSelectedLines([]);
       updateTabProperty<FileTabType, 'studioId'>(
         tabKey,
         'studioId',

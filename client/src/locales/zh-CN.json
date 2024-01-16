@@ -613,5 +613,7 @@
 	"Create ranges": "创建范围",
 	"# tokens_one": "代币",
 	"# tokens_other": "代币",
-	"Edit ranges": "编辑范围"
+	"Edit ranges": "编辑范围",
+	"The whole file will be used as context.": "整个文件将用作上下文。",
+	"Selected ranges will be used as context.": "选定的范围将用作上下文。"
 }

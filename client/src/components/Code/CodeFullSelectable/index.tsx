@@ -23,6 +23,7 @@ import { getSelectionLines } from '../../../utils';
 import RefsDefsPopup from '../../RefsDefsPopup';
 import SelectionPopup from '../CodeFull/SelectionPopup';
 import CodeContainer from './CodeContainer';
+import SelectionHint from './SelectionHint';
 
 type Props = {
   code: string;
@@ -320,6 +321,12 @@ const CodeFullSelectable = ({
           branch={branch}
           side={side}
           selectedLines={selectionPopupData?.selectedLines}
+        />
+      )}
+      {isEditingRanges && (
+        <SelectionHint
+          currentSelection={currentSelection}
+          setCurrentSelection={setCurrentSelection}
         />
       )}
     </div>

@@ -604,5 +604,7 @@
 	"Create ranges": "範囲を作成します",
 	"# tokens_one": "トークン",
 	"# tokens_other": "トークン",
-	"Edit ranges": "編集範囲"
+	"Edit ranges": "編集範囲",
+	"The whole file will be used as context.": "ファイル全体がコンテキストとして使用されます。",
+	"Selected ranges will be used as context.": "選択した範囲はコンテキストとして使用されます。"
 }
