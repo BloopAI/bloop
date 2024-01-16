@@ -8,12 +8,14 @@ import ChatsContextProvider from '../context/providers/ChatsContextProvider';
 import { UIContext } from '../context/uiContext';
 import { checkEventKeys } from '../utils/keyboardUtils';
 import useKeyboardNavigation from '../hooks/useKeyboardNavigation';
+import StudiosContextProvider from '../context/providers/StudiosContextProvider';
 import LeftSidebar from './LeftSidebar';
 import CurrentTabContent from './CurrentTabContent';
 import EmptyProject from './EmptyProject';
 import DropTarget from './CurrentTabContent/DropTarget';
 import RightTab from './RightTab';
 import ChatPersistentState from './CurrentTabContent/ChatTab/ChatPersistentState';
+import StudioPersistentState from './CurrentTabContent/StudioTab/StudioPersistentState';
 
 type Props = {};
 
@@ -97,35 +99,45 @@ const Project = ({}: Props) => {
     <div className="w-screen h-screen flex relative overflow-hidden scrollbar-hide">
       <LeftSidebar />
       <ChatsContextProvider>
-        <div className="flex-1 overflow-hidden relative">
-          <CurrentTabContent
-            side="left"
-            onDrop={onDropToLeft}
-            moveToAnotherSide={onDropToRight}
-            shouldStretch
-          />
-          {!rightTabs.length && isDragging ? (
-            <DropTarget onDrop={onDropToRight} />
-          ) : null}
-        </div>
-        {!!rightTabs.length && (
-          <RightTab
-            onDropToRight={onDropToRight}
-            moveToAnotherSide={onDropToLeft}
-          />
-        )}
-        {[...leftTabs, ...rightTabs].map((t, i) =>
-          t.type === TabTypesEnum.CHAT ? (
-            <ChatPersistentState
-              key={t.key}
-              tabKey={t.key}
-              tabTitle={t.title}
-              conversationId={t.conversationId}
-              initialQuery={t.initialQuery}
-              side={i < leftTabs.length ? 'left' : 'right'}
+        <StudiosContextProvider>
+          <div className="flex-1 overflow-hidden relative">
+            <CurrentTabContent
+              side="left"
+              onDrop={onDropToLeft}
+              moveToAnotherSide={onDropToRight}
+              shouldStretch
             />
-          ) : null,
-        )}
+            {!rightTabs.length && isDragging ? (
+              <DropTarget onDrop={onDropToRight} />
+            ) : null}
+          </div>
+          {!!rightTabs.length && (
+            <RightTab
+              onDropToRight={onDropToRight}
+              moveToAnotherSide={onDropToLeft}
+            />
+          )}
+          {[...leftTabs, ...rightTabs].map((t, i) =>
+            t.type === TabTypesEnum.CHAT ? (
+              <ChatPersistentState
+                key={t.key}
+                tabKey={t.key}
+                tabTitle={t.title}
+                conversationId={t.conversationId}
+                initialQuery={t.initialQuery}
+                side={i < leftTabs.length ? 'left' : 'right'}
+              />
+            ) : t.type === TabTypesEnum.STUDIO ? (
+              <StudioPersistentState
+                key={t.key}
+                tabKey={t.key}
+                tabTitle={t.title}
+                studioId={t.studioId}
+                side={i < leftTabs.length ? 'left' : 'right'}
+              />
+            ) : null,
+          )}
+        </StudiosContextProvider>
       </ChatsContextProvider>
     </div>
   );

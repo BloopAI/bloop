@@ -15,7 +15,7 @@ import {
 import FileIcon from '../../../components/FileIcon';
 import { splitPath } from '../../../utils';
 import Button from '../../../components/Button';
-import { ChatBubblesIcon, CloseSignIcon } from '../../../icons';
+import { ChatBubblesIcon, CloseSignIcon, CodeStudioIcon } from '../../../icons';
 import { TabsContext } from '../../../context/tabsContext';
 
 type Props = TabType & {
@@ -194,11 +194,13 @@ const TabButton = ({
     >
       {type === TabTypesEnum.FILE ? (
         <FileIcon filename={path} noMargin />
-      ) : (
+      ) : type === TabTypesEnum.CHAT ? (
         <ChatBubblesIcon
           sizeClassName="w-4 h-4"
           className="text-brand-default"
         />
+      ) : (
+        <CodeStudioIcon sizeClassName="w-4 h-4" className="text-brand-studio" />
       )}
       <p
         className={`body-mini-b ellipsis group-hover:text-label-title flex-1 ${
@@ -207,7 +209,9 @@ const TabButton = ({
       >
         {type === TabTypesEnum.FILE
           ? splitPath(path).pop()
-          : title || t('New chat')}
+          : type === TabTypesEnum.CHAT
+          ? title || t('New chat')
+          : title || t('New studio conversation')}
       </p>
       <Button
         variant="ghost"

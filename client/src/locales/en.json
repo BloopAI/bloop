@@ -604,5 +604,22 @@
 	"No repositories found...": "No repositories found...",
 	"Regex search": "Regex search",
 	"Close all tabs": "Close all tabs",
-	"Close all open tabs": "Close all open tabs"
+	"Close all open tabs": "Close all open tabs",
+	"New tab": "New tab",
+	"Studio conversations": "Studio conversations",
+	"New studio conversation": "New studio conversation",
+	"Hi, I am bloop! In <2><0></0>Studio mode</2> you can choose files from your codebase, write a prompt and generate patches, scripts and tests.": "Hi, I am bloop! In <2><0></0>Studio mode</2> you can choose files from your codebase, write a prompt and generate patches, scripts and tests.",
+	"Below are a few prompts to help you get started:": "Below are a few prompts to help you get started:",
+	"Studio mode": "Studio mode",
+	"Add to studio": "Add to studio",
+	"Add file to code studio context": "Add file to code studio context",
+	"{{count}} context files used": "{{count}} context files used",
+	"Existing studio conversations": "Existing studio conversations",
+	"Add file to studio": "Add file to studio",
+	"Add to existing": "Add to existing",
+	"Search studio conversations...": "Search studio conversations...",
+	"Create ranges": "Create ranges",
+	"# tokens_one": "token",
+	"# tokens_other": "tokens",
+	"Edit ranges": "Edit ranges"
 }

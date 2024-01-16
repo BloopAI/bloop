@@ -91,6 +91,7 @@ export type CodeStudioShortType = {
 export enum TabTypesEnum {
   FILE = 'file',
   CHAT = 'chat',
+  STUDIO = 'studio',
 }
 
 export type FileTabType = {
@@ -102,6 +103,9 @@ export type FileTabType = {
   branch?: string | null;
   scrollToLine?: string;
   tokenRange?: string;
+  studioId?: string;
+  initialRanges?: [number, number][];
+  isFileInContext?: boolean;
 };
 
 export type ChatTabType = {
@@ -117,7 +121,14 @@ export type ChatTabType = {
   };
 };
 
-export type TabType = FileTabType | ChatTabType;
+export type StudioTabType = {
+  type: TabTypesEnum.STUDIO;
+  key: string;
+  studioId: string;
+  title?: string;
+};
+
+export type TabType = FileTabType | ChatTabType | StudioTabType;
 
 export type DraggableTabItem = {
   id: string;
@@ -479,9 +490,22 @@ export type CommandBarStepType = {
   parent?: CommandBarStepType;
 };
 
-export type CommandBarActiveStepType = {
-  id: CommandBarStepEnum;
-  data?: Record<string, any>;
+export type CommandBarActiveStepType =
+  | AddFileToStudioStepType
+  | {
+      id: Exclude<CommandBarStepEnum, CommandBarStepEnum.ADD_FILE_TO_STUDIO>;
+      data?: Record<string, any>;
+    };
+
+export type AddFileToStudioDataType = {
+  path: string;
+  repoRef: string;
+  branch?: string | null;
+};
+
+export type AddFileToStudioStepType = {
+  id: CommandBarStepEnum.ADD_FILE_TO_STUDIO;
+  data: AddFileToStudioDataType;
 };
 
 export enum CommandBarStepEnum {
@@ -496,6 +520,7 @@ export enum CommandBarStepEnum {
   CREATE_PROJECT = 'create_project',
   TOGGLE_THEME = 'toggle_theme',
   SEARCH_FILES = 'search_files',
+  ADD_FILE_TO_STUDIO = 'add_file_to_studio',
 }
 
 export enum SettingSections {

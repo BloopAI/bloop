@@ -597,6 +597,21 @@
 	"No commands found...": "找不到命令...",
 	"No repositories found...": "找不到存储库...",
 	"Regex search": "正则搜索",
-	"Close all open tabs": "关闭所有打开选项卡"
+	"Close all open tabs": "关闭所有打开选项卡",
+	"New tab": "新标签",
+	"Studio conversations": "工作室对话",
+	"New studio conversation": "新工作室对话",
+	"Hi, I am bloop! In <2><0></0>Studio mode</2> you can choose files from your codebase, write a prompt and generate patches, scripts and tests.": "嗨，我是Bloop！ 在<2> <0> </0> 工作室模式</2>中，您可以从代码库中选择文件，编写提示并生成补丁程序，脚本和测试。",
+	"Below are a few prompts to help you get started:": "以下是一些提示，可以帮助您入门：",
+	"Studio mode": "工作室模式",
+	"Add to studio": "添加到工作室",
+	"Add file to code studio context": "将文件添加到代码工作室上下文",
+	"{{count}} context files used": "{{count}}使用的上下文文件",
+	"Add file to studio": "将文件添加到工作室",
+	"Search studio conversations...": "搜索工作室对话...",
+	"Close all tabs": "关闭所有选项卡",
+	"Create ranges": "创建范围",
+	"# tokens_one": "代币",
+	"# tokens_other": "代币",
+	"Edit ranges": "编辑范围"
 }
-

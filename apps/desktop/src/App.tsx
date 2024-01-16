@@ -156,7 +156,8 @@ function App() {
   const handleKeyEvent = useCallback((e: KeyboardEvent) => {
     if (
       (e.key === '=' || e.key === '-' || e.key === '0') &&
-      (e.metaKey || e.ctrlKey)
+      (e.metaKey || e.ctrlKey) &&
+      !e.shiftKey
     ) {
       const root = document.querySelector(':root');
       if (!root) {

@@ -80,9 +80,15 @@ const CommandBarItem = ({
       onClick();
       if (closeOnClick) {
         setIsVisible(false);
+        setChosenStep({ id: CommandBarStepEnum.INITIAL });
       }
     } else {
-      setChosenStep({ id: id as CommandBarStepEnum });
+      setChosenStep({
+        id: id as Exclude<
+          CommandBarStepEnum,
+          CommandBarStepEnum.ADD_FILE_TO_STUDIO
+        >,
+      });
     }
     updateArrayInStorage(RECENT_COMMANDS_KEY, itemKey);
   }, [id, onClick, closeOnClick, itemKey]);

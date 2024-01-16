@@ -10,6 +10,7 @@ import {
 import { useSearchParams } from 'react-router-dom';
 import { TabsContext } from '../tabsContext';
 import {
+  StudioTabType,
   ChatTabType,
   FileTabType,
   TabType,
@@ -44,7 +45,10 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
 
   const openNewTab = useCallback(
     (
-      data: Omit<FileTabType, 'key'> | Omit<ChatTabType, 'key'>,
+      data:
+        | Omit<FileTabType, 'key'>
+        | Omit<ChatTabType, 'key'>
+        | Omit<StudioTabType, 'key'>,
       forceSide?: 'left' | 'right',
     ) => {
       let sideForNewTab =
@@ -75,7 +79,7 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
       const setActiveTabAction =
         sideForNewTab === 'left' ? setActiveLeftTab : setActiveRightTab;
       setTabsAction((prev) => {
-        const newTab: FileTabType | ChatTabType =
+        const newTab: TabType =
           data.type === TabTypesEnum.FILE
             ? {
                 path: data.path,
@@ -85,14 +89,24 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
                 branch: data.branch,
                 type: TabTypesEnum.FILE,
                 tokenRange: data.tokenRange,
-                isTemp: !data.tokenRange && !data.scrollToLine,
+                isTemp:
+                  !data.tokenRange && !data.scrollToLine && !data.studioId,
+                studioId: data.studioId,
+                initialRanges: data.initialRanges,
+                isFileInContext: data.isFileInContext,
               }
-            : {
+            : data.type === TabTypesEnum.CHAT
+            ? {
                 type: TabTypesEnum.CHAT,
                 key: Date.now().toString(),
                 initialQuery: data.initialQuery,
                 conversationId: data.conversationId,
                 title: data.title,
+              }
+            : {
+                type: TabTypesEnum.STUDIO,
+                key: data.studioId,
+                studioId: data.studioId,
               };
         const previousTab = prev.find((t) =>
           newTab.type === TabTypesEnum.CHAT && newTab.conversationId
@@ -114,7 +128,8 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
             previousTab.type === TabTypesEnum.FILE &&
             newTab.type === TabTypesEnum.FILE &&
             (previousTab.scrollToLine !== newTab.scrollToLine ||
-              previousTab.tokenRange !== newTab.tokenRange)
+              previousTab.tokenRange !== newTab.tokenRange ||
+              previousTab.studioId !== newTab.studioId)
           ) {
             const previousTabIndex = prev.findIndex(
               (t) => t.key === newTab.key,
@@ -124,6 +139,7 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
               ...previousTab,
               scrollToLine: newTab.scrollToLine,
               tokenRange: newTab.tokenRange,
+              studioId: newTab.studioId,
             };
             newTabs[previousTabIndex] = t;
             setActiveTabAction(t);
@@ -245,7 +261,7 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
   }, []);
 
   const updateTabProperty = useCallback(
-    <T extends ChatTabType | FileTabType, K extends keyof T>(
+    <T extends ChatTabType | FileTabType | StudioTabType, K extends keyof T>(
       tabKey: string,
       objectKey: K,
       newValue: T[K],
@@ -259,7 +275,9 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
         const oldTabIndex = prevTabs.findIndex((t) => t.key === tabKey);
         const newTab = { ...newTabs[oldTabIndex], [objectKey]: newValue };
         newTabs[oldTabIndex] = newTab;
-        setActiveTabAction(newTab);
+        setActiveTabAction((prev) =>
+          prev?.key === newTab.key ? newTab : prev,
+        );
         return newTabs;
       });
     },

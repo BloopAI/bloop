@@ -16,12 +16,7 @@ type HandlersContext = {
       CommandBarItemGeneralType | CommandBarItemInvisibleType | null
     >
   >;
-  setChosenStep: Dispatch<
-    SetStateAction<{
-      id: CommandBarStepEnum;
-      data?: Record<string, any>;
-    }>
-  >;
+  setChosenStep: Dispatch<SetStateAction<CommandBarActiveStepType>>;
   setIsVisible: Dispatch<SetStateAction<boolean>>;
   setFocusedTabItems: Dispatch<SetStateAction<CommandBarItemGeneralType[]>>;
 };

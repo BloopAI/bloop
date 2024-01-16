@@ -5,6 +5,7 @@ import { TabsContext } from '../../../context/tabsContext';
 import { RepositoriesContext } from '../../../context/repositoriesContext';
 import RepoNav from './Repo';
 import ConversationsNav from './Conversations';
+import StudiosNav from './Studios';
 
 type Props = {
   focusedIndex: string;
@@ -28,7 +29,10 @@ const NavPanel = ({ focusedIndex }: Props) => {
 
   useEffect(() => {
     if (project?.repos.length === 1) {
-      setExpanded(!!project?.conversations.length ? 1 : 0);
+      setExpanded(
+        Number(!!project?.conversations.length) +
+          Number(!!project?.studios.length),
+      );
     }
   }, [project?.repos]);
 
@@ -38,19 +42,31 @@ const NavPanel = ({ focusedIndex }: Props) => {
         (r) => r.repo.ref === currentlyFocusedTab.repoRef,
       );
       if (repoIndex !== undefined && repoIndex > -1) {
-        setExpanded(repoIndex + (!!project?.conversations.length ? 1 : 0));
+        setExpanded(
+          repoIndex +
+            Number(!!project?.conversations.length) +
+            Number(!!project?.studios.length),
+        );
       }
     }
   }, [currentlyFocusedTab]);
 
   return (
     <div className="flex flex-col h-full flex-1 overflow-auto">
-      {!!project?.conversations.length && (
-        <ConversationsNav
+      {!!project?.studios.length && (
+        <StudiosNav
           setExpanded={setExpanded}
           isExpanded={expanded === 0}
           focusedIndex={focusedIndex}
-          index={0}
+          index={`studios-0`}
+        />
+      )}
+      {!!project?.conversations.length && (
+        <ConversationsNav
+          setExpanded={setExpanded}
+          isExpanded={expanded === (project?.studios.length ? 1 : 0)}
+          focusedIndex={focusedIndex}
+          index={`conv-1`}
         />
       )}
       {project?.repos.map((r, i) => (
@@ -59,9 +75,16 @@ const NavPanel = ({ focusedIndex }: Props) => {
           key={r.repo.ref}
           setExpanded={setExpanded}
           isExpanded={
-            expanded === i + (!!project?.conversations.length ? 1 : 0)
+            expanded ===
+            i +
+              Number(!!project?.conversations.length) +
+              Number(!!project?.studios.length)
           }
-          i={i + (!!project?.conversations.length ? 1 : 0)}
+          i={
+            i +
+            Number(!!project?.conversations.length) +
+            Number(!!project?.studios.length)
+          }
           repoRef={r.repo.ref}
           branch={r.branch}
           lastIndex={r.repo.last_index}
@@ -76,8 +99,13 @@ const NavPanel = ({ focusedIndex }: Props) => {
           focusedIndex={focusedIndex}
           index={
             i +
-            (project?.conversations.length
+            (project?.studios.length
               ? expanded === 0
+                ? project?.studios.length + 1
+                : 1
+              : 0) +
+            (project?.conversations.length
+              ? expanded === (project?.studios.length ? 1 : 0)
                 ? project?.conversations.length + 1
                 : 1
               : 0)

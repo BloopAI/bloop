@@ -566,5 +566,22 @@
 	"No commands found...": "Nessun comando trovato ...",
 	"No repositories found...": "Nessun repository trovato ...",
 	"Regex search": "Ricerca regex",
-	"Close all open tabs": "Chiudi tutte le schede aperte"
+	"Close all open tabs": "Chiudi tutte le schede aperte",
+	"New tab": "Nuova scheda",
+	"Studio conversations": "Conversazioni in studio",
+	"New studio conversation": "Nuova conversazione in studio",
+	"Hi, I am bloop! In <2><0></0>Studio mode</2> you can choose files from your codebase, write a prompt and generate patches, scripts and tests.": "Ciao, sono Bloop! In <2> <0> </0> Modalità Studio </2> è possibile scegliere i file dalla base del codice, scrivere un prompt e generare patch, script e test.",
+	"Below are a few prompts to help you get started:": "Di seguito sono riportati alcuni suggerimenti per aiutarti a iniziare:",
+	"Studio mode": "Modalità studio",
+	"Add to studio": "Aggiungi allo studio",
+	"Add file to code studio context": "Aggiungi file al contesto di code studio",
+	"Add to existing": "Aggiungi a esistente",
+	"Search studio conversations...": "Cerca conversazioni in studio ...",
+	"{{count}} context files used": "{{count}} file di contesto utilizzati",
+	"Add file to studio": "Aggiungi file a Studio",
+	"Close all tabs": "Chiudi tutte le schede",
+	"Create ranges": "Crea gamme",
+	"# tokens_one": "token",
+	"# tokens_other": "token",
+	"Edit ranges": "Modifica intervalli"
 }

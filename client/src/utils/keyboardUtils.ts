@@ -59,6 +59,9 @@ export const checkEventKeys = (e: KeyboardEvent, shortcut?: string[]) => {
     ) {
       return true;
     }
+    if (e.key === '=' && keys.includes('+')) {
+      return true;
+    }
     return false;
   }
   return true;

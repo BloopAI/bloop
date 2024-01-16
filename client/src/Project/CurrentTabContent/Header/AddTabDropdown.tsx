@@ -1,10 +1,4 @@
-import React, {
-  memo,
-  useCallback,
-  useContext,
-  MouseEvent,
-  useMemo,
-} from 'react';
+import React, { memo, useCallback, useContext, MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import SectionItem from '../../../components/Dropdown/Section/SectionItem';
 import { ChatBubblesIcon, CodeStudioIcon } from '../../../icons';
@@ -12,6 +6,12 @@ import { TabsContext } from '../../../context/tabsContext';
 import { TabTypesEnum } from '../../../types/general';
 import { checkEventKeys } from '../../../utils/keyboardUtils';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
+import { postCodeStudio } from '../../../services/api';
+import { ProjectContext } from '../../../context/projectContext';
+import {
+  newChatTabShortcut,
+  newStudioTabShortcut,
+} from '../../../consts/shortcuts';
 
 type Props = {
   side: 'left' | 'right';
@@ -20,26 +20,38 @@ type Props = {
 const AddTabDropdown = ({ side }: Props) => {
   const { t } = useTranslation();
   const { openNewTab } = useContext(TabsContext.Handlers);
+  const { focusedPanel } = useContext(TabsContext.All);
+  const { refreshCurrentProjectStudios, project } = useContext(
+    ProjectContext.Current,
+  );
 
   const openChatTab = useCallback(() => {
     openNewTab({ type: TabTypesEnum.CHAT }, side);
   }, [openNewTab, side]);
 
-  const shortcuts = useMemo(() => {
-    return { newChat: ['option', 'N'], newStudio: ['option', 'shift', 'N'] };
-  }, []);
+  const openStudioTab = useCallback(async () => {
+    if (project?.id) {
+      const newId = await postCodeStudio(project?.id);
+      refreshCurrentProjectStudios();
+      openNewTab({ type: TabTypesEnum.STUDIO, studioId: newId }, side);
+    }
+  }, [openNewTab, side, project?.id]);
 
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
-      if (checkEventKeys(e, shortcuts.newChat)) {
+      if (checkEventKeys(e, newChatTabShortcut)) {
         e.stopPropagation();
         e.preventDefault();
-        openNewTab({ type: TabTypesEnum.CHAT });
+        openChatTab();
+      } else if (checkEventKeys(e, newStudioTabShortcut)) {
+        e.stopPropagation();
+        e.preventDefault();
+        openStudioTab();
       }
     },
-    [openNewTab],
+    [openChatTab, openStudioTab],
   );
-  useKeyboardNavigation(handleKeyEvent, side !== 'left');
+  useKeyboardNavigation(handleKeyEvent, side !== focusedPanel);
 
   const noPropagate = useCallback((e?: MouseEvent) => {
     e?.stopPropagation();
@@ -56,7 +68,7 @@ const AddTabDropdown = ({ side }: Props) => {
             />
           }
           label={t('New Chat')}
-          shortcut={shortcuts.newChat}
+          shortcut={newChatTabShortcut}
           onClick={openChatTab}
         />
         <SectionItem
@@ -67,8 +79,8 @@ const AddTabDropdown = ({ side }: Props) => {
             />
           }
           label={t('New Code Studio')}
-          shortcut={shortcuts.newStudio}
-          onClick={noPropagate}
+          shortcut={newStudioTabShortcut}
+          onClick={openStudioTab}
         />
       </div>
     </div>

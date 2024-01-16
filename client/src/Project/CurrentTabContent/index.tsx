@@ -9,6 +9,7 @@ import EmptyTab from './EmptyTab';
 import FileTab from './FileTab';
 import Header from './Header';
 import ChatTab from './ChatTab';
+import StudioTab from './StudioTab';
 
 type Props = {
   side: 'left' | 'right';
@@ -66,19 +67,24 @@ const CurrentTabContent = ({
       <div className="overflow-hidden h-full flex-1 relative" ref={drop}>
         {tab?.type === TabTypesEnum.FILE ? (
           <FileTab
+            {...tab}
             key={tab.key}
             tabKey={tab.key}
-            path={tab.path}
-            repoRef={tab.repoRef}
-            scrollToLine={tab.scrollToLine}
             noBorder={side === 'left'}
-            branch={tab.branch}
-            tokenRange={tab.tokenRange}
             side={side}
             handleMoveToAnotherSide={handleMoveToAnotherSide}
           />
         ) : tab?.type === TabTypesEnum.CHAT ? (
           <ChatTab
+            {...tab}
+            noBorder={side === 'left'}
+            side={side}
+            tabKey={tab.key}
+            key={tab.key}
+            handleMoveToAnotherSide={handleMoveToAnotherSide}
+          />
+        ) : tab?.type === TabTypesEnum.STUDIO ? (
+          <StudioTab
             {...tab}
             noBorder={side === 'left'}
             side={side}

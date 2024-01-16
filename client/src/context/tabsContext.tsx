@@ -1,9 +1,17 @@
 import { createContext, Dispatch, SetStateAction } from 'react';
-import { ChatTabType, FileTabType, TabType } from '../types/general';
+import {
+  ChatTabType,
+  FileTabType,
+  StudioTabType,
+  TabType,
+} from '../types/general';
 
 type HandlersContextType = {
   openNewTab: (
-    data: Omit<FileTabType, 'key'> | Omit<ChatTabType, 'key'>,
+    data:
+      | Omit<FileTabType, 'key'>
+      | Omit<ChatTabType, 'key'>
+      | Omit<StudioTabType, 'key'>,
     forceSide?: 'left' | 'right',
   ) => void;
   closeTab: (key: string, side: 'left' | 'right') => void;
@@ -12,7 +20,10 @@ type HandlersContextType = {
   setFocusedPanel: (panel: 'left' | 'right') => void;
   setLeftTabs: Dispatch<SetStateAction<TabType[]>>;
   setRightTabs: Dispatch<SetStateAction<TabType[]>>;
-  updateTabProperty: <T extends ChatTabType | FileTabType, K extends keyof T>(
+  updateTabProperty: <
+    T extends ChatTabType | FileTabType | StudioTabType,
+    K extends keyof T,
+  >(
     tabKey: string,
     objectKey: K,
     newValue: T[K],
