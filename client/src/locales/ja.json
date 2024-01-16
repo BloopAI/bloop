@@ -587,5 +587,22 @@
 	"No commands found...": "コマンドが見つかりません...",
 	"No repositories found...": "リポジトリは見つかりません...",
 	"Regex search": "正規表現検索",
-	"Close all open tabs": "すべての開くタブを閉じます"
+	"Close all open tabs": "すべての開くタブを閉じます",
+	"New tab": "新しいタブ",
+	"Studio conversations": "スタジオの会話",
+	"New studio conversation": "新しいスタジオの会話",
+	"Hi, I am bloop! In <2><0></0>Studio mode</2> you can choose files from your codebase, write a prompt and generate patches, scripts and tests.": "こんにちは、私はブループです！ <2> <0> </0> スタジオモード </2>コードベースからファイルを選択し、プロンプトを書き、パッチ、スクリプト、テストを生成できます。",
+	"Below are a few prompts to help you get started:": "以下は、開始するのに役立ついくつかのプロンプトです。",
+	"Studio mode": "スタジオモード",
+	"Add file to code studio context": "コードスタジオコンテキストにファイルを追加します",
+	"Add to existing": "既存に追加します",
+	"Search studio conversations...": "スタジオの会話を検索...",
+	"Existing studio conversations": "既存のスタジオの会話",
+	"{{count}} context files used": "{{count}}コンテキストファイルが使用されます",
+	"Add file to studio": "スタジオにファイルを追加します",
+	"Close all tabs": "すべてのタブを閉じます",
+	"Create ranges": "範囲を作成します",
+	"# tokens_one": "トークン",
+	"# tokens_other": "トークン",
+	"Edit ranges": "編集範囲"
 }

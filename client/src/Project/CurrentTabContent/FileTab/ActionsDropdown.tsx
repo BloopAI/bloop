@@ -1,34 +1,52 @@
-import { memo, useMemo } from 'react';
+import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import DropdownSection from '../../../components/Dropdown/Section';
 import SectionItem from '../../../components/Dropdown/Section/SectionItem';
-import { SplitViewIcon, FileWithSparksIcon } from '../../../icons';
+import {
+  SplitViewIcon,
+  FileWithSparksIcon,
+  StudioPlusSignIcon,
+} from '../../../icons';
 import { openInSplitViewShortcut } from '../../../consts/commandBar';
-import { explainFileShortcut } from './index';
+import {
+  addFileToStudioShortcut,
+  explainFileShortcut,
+} from '../../../consts/shortcuts';
 
 type Props = {
   handleExplain: () => void;
   handleMoveToAnotherSide: () => void;
+  handleAddToStudio: () => void;
 };
 
-const ActionsDropdown = ({ handleExplain, handleMoveToAnotherSide }: Props) => {
+const ActionsDropdown = ({
+  handleExplain,
+  handleMoveToAnotherSide,
+  handleAddToStudio,
+}: Props) => {
   const { t } = useTranslation();
 
   return (
     <div>
-      <DropdownSection>
+      <DropdownSection borderBottom>
         <SectionItem
           label={t('Explain file')}
           onClick={handleExplain}
-          // isFocused
           shortcut={explainFileShortcut}
           icon={<FileWithSparksIcon sizeClassName="w-4 h-4" />}
         />
         <SectionItem
+          label={t('Add to studio')}
+          onClick={handleAddToStudio}
+          shortcut={addFileToStudioShortcut}
+          icon={<StudioPlusSignIcon sizeClassName="w-4 h-4" />}
+        />
+      </DropdownSection>
+      <DropdownSection>
+        <SectionItem
           label={t('Open in split view')}
           shortcut={openInSplitViewShortcut}
           onClick={handleMoveToAnotherSide}
-          // isFocused
           icon={<SplitViewIcon sizeClassName="w-4 h-4" />}
         />
       </DropdownSection>

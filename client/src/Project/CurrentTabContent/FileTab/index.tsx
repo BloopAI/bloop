@@ -8,11 +8,13 @@ import React, {
   useTransition,
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import AutoSizer from 'react-virtualized-auto-sizer';
 import {
   forceFileToBeIndexed,
+  getCodeStudio,
   getFileContent,
+  getFileTokenCount,
   getHoverables,
+  patchCodeStudio,
 } from '../../../services/api';
 import FileIcon from '../../../components/FileIcon';
 import Button from '../../../components/Button';
@@ -21,14 +23,19 @@ import {
   FileWithSparksIcon,
   MoreHorizontalIcon,
   SplitViewIcon,
+  StudioPlusSignIcon,
 } from '../../../icons';
-import { FileResponse } from '../../../types/api';
+import { CodeStudioType, FileResponse } from '../../../types/api';
 import { mapRanges } from '../../../mappers/results';
 import { Range } from '../../../types/results';
-import CodeFull from '../../../components/Code/CodeFull';
 import IpynbRenderer from '../../../components/IpynbRenderer';
 import SpinLoaderContainer from '../../../components/Loaders/SpinnerLoader';
-import { FileTabType, SyncStatus, TabTypesEnum } from '../../../types/general';
+import {
+  CommandBarStepEnum,
+  FileTabType,
+  SyncStatus,
+  TabTypesEnum,
+} from '../../../types/general';
 import { FileHighlightsContext } from '../../../context/fileHighlightsContext';
 import Dropdown from '../../../components/Dropdown';
 import { TabsContext } from '../../../context/tabsContext';
@@ -39,6 +46,15 @@ import { openInSplitViewShortcut } from '../../../consts/commandBar';
 import BreadcrumbsPathContainer from '../../../components/Breadcrumbs/PathContainer';
 import { RepositoriesContext } from '../../../context/repositoriesContext';
 import { UIContext } from '../../../context/uiContext';
+import {
+  addFileToStudioShortcut,
+  explainFileShortcut,
+} from '../../../consts/shortcuts';
+import { ProjectContext } from '../../../context/projectContext';
+import Badge from '../../../components/Badge';
+import { humanNumber } from '../../../utils';
+import { findElementInCurrentTab } from '../../../utils/domUtils';
+import CodeFullSelectable from '../../../components/Code/CodeFullSelectable';
 import ActionsDropdown from './ActionsDropdown';
 
 type Props = {
@@ -50,10 +66,11 @@ type Props = {
   noBorder?: boolean;
   branch?: string | null;
   side: 'left' | 'right';
+  studioId?: string;
+  initialRanges?: [number, number][];
+  isFileInContext?: boolean;
   handleMoveToAnotherSide: () => void;
 };
-
-export const explainFileShortcut = ['cmd', 'E'];
 
 const FileTab = ({
   path,
@@ -65,6 +82,9 @@ const FileTab = ({
   tokenRange,
   handleMoveToAnotherSide,
   tabKey,
+  studioId,
+  initialRanges,
+  isFileInContext,
 }: Props) => {
   const { t } = useTranslation();
   const [file, setFile] = useState<FileResponse | null>(null);
@@ -73,15 +93,38 @@ const FileTab = ({
   >(undefined);
   const [indexRequested, setIndexRequested] = useState(false);
   const [isFetched, setIsFetched] = useState(false);
-  const { setFocusedTabItems } = useContext(CommandBarContext.Handlers);
+  const [studio, setStudio] = useState<CodeStudioType | null>(null);
+  const [selectedLines, setSelectedLines] = useState<[number, number][]>(
+    initialRanges || [],
+  );
+  const [isEditingRanges, setIsEditingRanges] = useState(false);
+  const [tokenCount, setTokenCount] = useState(0);
+  const { setFocusedTabItems, setIsVisible, setChosenStep } = useContext(
+    CommandBarContext.Handlers,
+  );
   const [isPending, startTransition] = useTransition();
   const { openNewTab, updateTabProperty } = useContext(TabsContext.Handlers);
   const { focusedPanel } = useContext(TabsContext.All);
   const { isLeftSidebarFocused } = useContext(UIContext.Focus);
+  const { project, refreshCurrentProjectStudios } = useContext(
+    ProjectContext.Current,
+  );
   const { fileHighlights, hoveredLines } = useContext(
     FileHighlightsContext.Values,
   );
   const { indexingStatus } = useContext(RepositoriesContext);
+
+  const refreshStudio = useCallback(() => {
+    if (studioId && project?.id) {
+      getCodeStudio(project.id, studioId).then(setStudio);
+    } else if (project?.id) {
+      setStudio(null);
+    }
+  }, [studioId, project?.id]);
+
+  useEffect(() => {
+    refreshStudio();
+  }, [refreshStudio]);
 
   const highlights = useMemo(() => {
     return fileHighlights[path]?.sort((a, b) =>
@@ -98,6 +141,7 @@ const FileTab = ({
 
   const refetchFile = useCallback(async () => {
     try {
+      setSelectedLines(initialRanges || []);
       const resp = await getFileContent(repoRef, path, branch);
       if (!resp) {
         setIsFetched(true);
@@ -107,6 +151,33 @@ const FileTab = ({
         setFile(resp);
         setIsFetched(true);
       });
+      if (initialRanges) {
+        setTimeout(
+          () => {
+            const line = findElementInCurrentTab(
+              `[data-active="true"][data-line-number="${
+                initialRanges?.[0] ? initialRanges[0][0] : 0
+              }"]`,
+            );
+            line?.scrollIntoView({
+              behavior: 'auto',
+              block:
+                !!initialRanges?.[0] &&
+                initialRanges[0][0] > 1 &&
+                initialRanges[0][1] - initialRanges[0][0] > 5
+                  ? 'start'
+                  : 'center',
+            });
+          },
+          !initialRanges?.[0]
+            ? 100
+            : initialRanges[0][0] > 1000
+            ? 1000
+            : initialRanges[0][0] > 500
+            ? 800
+            : 500,
+        );
+      }
       // if (item.indexed) {
       const data = await getHoverables(path, repoRef, branch);
       setHoverableRanges(mapRanges(data.ranges));
@@ -119,6 +190,46 @@ const FileTab = ({
   useEffect(() => {
     refetchFile();
   }, [refetchFile]);
+
+  useEffect(() => {
+    if (project?.id) {
+      const mappedLines: [number, number][] = selectedLines.map((r) => [
+        r[0],
+        r[1] + 1,
+      ]);
+      getFileTokenCount(
+        project.id,
+        path,
+        repoRef,
+        branch || undefined,
+        mappedLines,
+      ).then(setTokenCount);
+    }
+  }, [path, repoRef, branch, selectedLines]);
+
+  const handleEditRanges = useCallback(() => {
+    setIsEditingRanges(true);
+  }, []);
+
+  useEffect(() => {
+    if (studioId && !isFileInContext) {
+      handleEditRanges();
+    }
+  }, [studioId, isFileInContext, handleEditRanges]);
+
+  const handleCancelStudio = useCallback(() => {
+    setIsEditingRanges(false);
+    if (isFileInContext) {
+      setSelectedLines(initialRanges || []);
+    } else {
+      updateTabProperty<FileTabType, 'studioId'>(
+        tabKey,
+        'studioId',
+        undefined,
+        side,
+      );
+    }
+  }, [tabKey, side, isFileInContext, initialRanges]);
 
   useEffect(() => {
     if (indexingStatus[repoRef]?.status === SyncStatus.Done) {
@@ -156,15 +267,86 @@ const FileTab = ({
       side === 'left' ? 'right' : 'left',
     );
   }, [path, repoRef, branch, linesNumber, side, openNewTab]);
+
+  const handleAddToStudio = useCallback(() => {
+    setChosenStep({
+      id: CommandBarStepEnum.ADD_FILE_TO_STUDIO,
+      data: { path, repoRef, branch },
+    });
+    setIsVisible(true);
+  }, [path, repoRef, branch]);
+
+  const handleSubmitToStudio = useCallback(async () => {
+    if (project?.id && studioId && studio) {
+      const patchedFile = studio?.context.find(
+        (f) => f.path === path && f.repo === repoRef && f.branch === branch,
+      );
+      const mappedRanges = selectedLines.map((r) => ({
+        start: r[0],
+        end: r[1] + 1,
+      }));
+      if (!patchedFile) {
+        await patchCodeStudio(project.id, studioId, {
+          context: [
+            ...(studio?.context || []),
+            {
+              path,
+              branch: branch || null,
+              repo: repoRef,
+              hidden: false,
+              ranges: mappedRanges || [],
+            },
+          ],
+        });
+      } else {
+        patchedFile.ranges = mappedRanges;
+        const newContext = studio?.context
+          .filter(
+            (f) => f.path !== path || f.repo !== repoRef || f.branch !== branch,
+          )
+          .concat(patchedFile);
+        await patchCodeStudio(project.id, studioId, {
+          context: newContext,
+        });
+      }
+      refreshCurrentProjectStudios();
+      refreshStudio();
+      setIsEditingRanges(false);
+      updateTabProperty<FileTabType, 'isFileInContext'>(
+        tabKey,
+        'isFileInContext',
+        true,
+        side,
+      );
+      updateTabProperty<FileTabType, 'initialRanges'>(
+        tabKey,
+        'initialRanges',
+        selectedLines,
+        side,
+      );
+    }
+  }, [project?.id, studio, path, repoRef, branch, selectedLines, studioId]);
+
+  const hasChanges = useMemo(() => {
+    return (
+      !isFileInContext ||
+      JSON.stringify(initialRanges) !== JSON.stringify(selectedLines)
+    );
+  }, [isFileInContext, initialRanges, selectedLines]);
+
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
       if (checkEventKeys(e, explainFileShortcut)) {
         handleExplain();
       } else if (checkEventKeys(e, openInSplitViewShortcut)) {
         handleMoveToAnotherSide();
+      } else if (checkEventKeys(e, addFileToStudioShortcut)) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleAddToStudio();
       }
     },
-    [handleExplain, handleMoveToAnotherSide],
+    [handleExplain, handleMoveToAnotherSide, handleAddToStudio],
   );
   useKeyboardNavigation(
     handleKeyEvent,
@@ -185,6 +367,20 @@ const FileTab = ({
           footerHint: '',
           footerBtns: [{ label: t('Explain'), shortcut: ['entr'] }],
         },
+        ...(studioId
+          ? []
+          : [
+              {
+                label: t('Add to studio'),
+                Icon: StudioPlusSignIcon,
+                id: 'file_to_studio',
+                key: 'file_to_studio',
+                onClick: handleAddToStudio,
+                shortcut: addFileToStudioShortcut,
+                footerHint: t('Add file to code studio context'),
+                footerBtns: [{ label: t('Add'), shortcut: ['entr'] }],
+              },
+            ]),
         {
           label: t('Open in split view'),
           Icon: SplitViewIcon,
@@ -204,14 +400,16 @@ const FileTab = ({
     file?.contents,
     handleExplain,
     handleMoveToAnotherSide,
+    handleAddToStudio,
   ]);
 
   const dropdownComponentProps = useMemo(() => {
     return {
       handleExplain,
       handleMoveToAnotherSide,
+      handleAddToStudio,
     };
-  }, [handleExplain, handleMoveToAnotherSide]);
+  }, [handleExplain, handleMoveToAnotherSide, handleAddToStudio]);
 
   return (
     <div
@@ -228,49 +426,101 @@ const FileTab = ({
             repoRef={repoRef}
             nonInteractive
           />
+          {!!studio && (
+            <>
+              <div className="w-px h-4 bg-bg-border flex-shrink-0" />
+              <Badge text={t('Whole file')} type="blue-subtle" size="small" />
+              <p className="select-none text-yellow code-mini">
+                {humanNumber(tokenCount)}{' '}
+                <Trans count={tokenCount}># tokens</Trans>
+              </p>
+            </>
+          )}
         </div>
-        {focusedPanel === side && (
-          <Dropdown
-            DropdownComponent={ActionsDropdown}
-            dropdownComponentProps={dropdownComponentProps}
-            dropdownPlacement="bottom-end"
-            appendTo={document.body}
-          >
-            <Button
-              variant="tertiary"
-              size="mini"
-              onlyIcon
-              title={t('More actions')}
+        {focusedPanel === side &&
+          (studio ? (
+            hasChanges || isEditingRanges ? (
+              <div className="flex items-center gap-3">
+                {!isEditingRanges && (
+                  <>
+                    <Button
+                      variant="secondary"
+                      size="mini"
+                      onClick={handleEditRanges}
+                    >
+                      <Trans>Create ranges</Trans>
+                    </Button>
+                    <div className="w-px h-4 bg-bg-border flex-shrink-0" />
+                  </>
+                )}
+                <Button
+                  variant="tertiary"
+                  size="mini"
+                  onClick={handleCancelStudio}
+                >
+                  <Trans>Cancel</Trans>
+                </Button>
+                <Button
+                  variant="studio"
+                  size="mini"
+                  onClick={handleSubmitToStudio}
+                >
+                  <Trans>Submit</Trans>
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="secondary"
+                  size="mini"
+                  onClick={handleEditRanges}
+                >
+                  <Trans>Edit ranges</Trans>
+                </Button>
+              </div>
+            )
+          ) : (
+            <Dropdown
+              DropdownComponent={ActionsDropdown}
+              dropdownComponentProps={dropdownComponentProps}
+              dropdownPlacement="bottom-end"
+              appendTo={document.body}
             >
-              <MoreHorizontalIcon sizeClassName="w-3.5 h-3.5" />
-            </Button>
-          </Dropdown>
-        )}
+              <Button
+                variant="tertiary"
+                size="mini"
+                onlyIcon
+                title={t('More actions')}
+              >
+                <MoreHorizontalIcon sizeClassName="w-3.5 h-3.5" />
+              </Button>
+            </Dropdown>
+          ))}
       </div>
-      <div className="flex-1 h-full max-w-full pl-4 py-4 overflow-auto relative">
+      <div
+        className="flex-1 h-full max-w-full pl-4 py-4 overflow-auto relative"
+        data-active={(focusedPanel === side).toString()}
+      >
         {file?.lang === 'jupyter notebook' ? (
           <IpynbRenderer data={file.contents} />
         ) : file ? (
-          <AutoSizer>
-            {({ width, height }) => (
-              <CodeFull
-                isSearchDisabled={focusedPanel !== side}
-                code={file.contents}
-                language={file.lang}
-                repoRef={repoRef}
-                relativePath={path}
-                hoverableRanges={hoverableRanges}
-                scrollToLine={scrollToLine}
-                branch={branch}
-                tokenRange={tokenRange}
-                highlights={highlights}
-                hoveredLines={hoveredLines}
-                side={side}
-                width={width}
-                height={height}
-              />
-            )}
-          </AutoSizer>
+          <CodeFullSelectable
+            code={file.contents}
+            language={file.lang}
+            isSearchDisabled={focusedPanel !== side}
+            currentSelection={selectedLines}
+            setCurrentSelection={setSelectedLines}
+            relativePath={path}
+            repoRef={repoRef}
+            hoverableRanges={hoverableRanges}
+            scrollToLine={scrollToLine}
+            branch={branch}
+            tokenRange={tokenRange}
+            highlights={highlights}
+            hoveredLines={hoveredLines}
+            side={side}
+            isEditingRanges={isEditingRanges}
+          />
         ) : isFetched && !file ? (
           <div className="flex-1 h-full flex flex-col items-center justify-center gap-6">
             <div className="w-15 h-15 flex items-center justify-center rounded-xl border border-bg-divider">

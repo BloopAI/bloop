@@ -324,47 +324,74 @@ export const upvoteAnswer = (
 
 export const getIndexQueue = () => http('/repos/queue').then((r) => r.data);
 
-export const getCodeStudios = (): Promise<CodeStudioShortType[]> =>
-  http('/studio').then((r) => r.data);
-export const patchCodeStudio = (id: string, data: Partial<CodeStudioType>) =>
-  http.patch(`/studio/${id}`, data).then((r) => r.data);
-export const getCodeStudio = (id: string): Promise<CodeStudioType> =>
-  http(`/studio/${id}`).then((r) => r.data);
+export const getCodeStudios = (
+  projectId: string,
+): Promise<CodeStudioShortType[]> =>
+  http(`/projects/${projectId}/studios`).then((r) => r.data);
+export const patchCodeStudio = (
+  projectId: string,
+  id: string,
+  data: Partial<CodeStudioType>,
+) =>
+  http.patch(`/projects/${projectId}/studios/${id}`, data).then((r) => r.data);
+export const getCodeStudio = (
+  projectId: string,
+  id: string,
+): Promise<CodeStudioType> =>
+  http(`/projects/${projectId}/studios/${id}`).then((r) => r.data);
 export const getCodeStudioHistory = (
+  projectId: string,
   id: string,
 ): Promise<HistoryConversationTurn[]> =>
-  http(`/studio/${id}/snapshots`).then((r) => r.data);
-export const deleteCodeStudio = (id: string): Promise<CodeStudioType> =>
-  http.delete(`/studio/${id}`).then((r) => r.data);
-export const postCodeStudio = () =>
-  http.post('/studio', {}).then((r) => r.data);
-export const importCodeStudio = (thread_id: string, studio_id?: string) =>
+  http(`/projects/${projectId}/studios/${id}/snapshots`).then((r) => r.data);
+export const deleteCodeStudio = (
+  projectId: string,
+  id: string,
+): Promise<CodeStudioType> =>
+  http.delete(`/projects/${projectId}/studios/${id}`).then((r) => r.data);
+export const postCodeStudio = (projectId: string) =>
+  http.post(`/projects/${projectId}/studios`, {}).then((r) => r.data);
+export const importCodeStudio = (
+  projectId: string,
+  thread_id: string,
+  studio_id?: string,
+) =>
   http
-    .post('/studio/import', {}, { params: { thread_id, studio_id } })
+    .post(
+      `/projects/${projectId}/studios/import`,
+      {},
+      { params: { thread_id, studio_id } },
+    )
     .then((r) => r.data);
 export const generateStudioDiff = (
+  projectId: string,
   id: string,
   abortSignal?: GenericAbortSignal,
 ): Promise<GeneratedCodeDiff> =>
-  http(`/studio/${id}/diff`, {
+  http(`/projects/${projectId}/studios/${id}/diff`, {
     timeout: 10 * 60 * 1000,
     signal: abortSignal,
   }).then((r) => r.data);
-export const confirmStudioDiff = (id: string, diff: string): Promise<void> =>
+export const confirmStudioDiff = (
+  projectId: string,
+  id: string,
+  diff: string,
+): Promise<void> =>
   http
-    .post(`/studio/${id}/diff/apply`, diff, {
+    .post(`/projects/${projectId}/studios/${id}/diff/apply`, diff, {
       headers: { 'Content-Type': 'text/plain' },
     })
     .then((r) => r.data);
 
 export const getFileTokenCount = (
+  projectId: string,
   path: string,
   repo: string,
   branch?: string,
   ranges?: [number, number][],
 ): Promise<number> =>
   http
-    .post(`/studio/file-token-count`, {
+    .post(`/projects/${projectId}/studios/file-token-count`, {
       path,
       repo,
       branch,
@@ -372,12 +399,13 @@ export const getFileTokenCount = (
     })
     .then((r) => r.data);
 export const getDocTokenCount = (
+  projectId: string,
   doc_id: string,
   relative_url: string,
   ranges?: string[],
 ): Promise<number> =>
   http
-    .post(`/studio/doc-file-token-count`, {
+    .post(`/projects/${projectId}/studios/doc-file-token-count`, {
       doc_id,
       relative_url,
       ranges,

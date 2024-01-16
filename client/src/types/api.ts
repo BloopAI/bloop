@@ -409,5 +409,6 @@ export type ProjectShortType = {
 
 export type ProjectFullType = ProjectShortType & {
   repos: { repo: RepoType; branch: string }[];
+  studios: CodeStudioType[];
   conversations: ConversationShortType[];
 };

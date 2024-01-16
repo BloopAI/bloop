@@ -50,6 +50,7 @@ export { default as RepositoryIcon } from './Repository';
 export { default as RunIcon } from './Run';
 export { default as ShapesIcon } from './Shapes';
 export { default as SplitViewIcon } from './SplitView';
+export { default as StudioPlusSignIcon } from './StudioPlusSign';
 export { default as ThemeBlackIcon } from './ThemeBlack';
 export { default as ThemeDarkIcon } from './ThemeDark';
 export { default as ThemeLightIcon } from './ThemeLight';

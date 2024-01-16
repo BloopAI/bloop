@@ -19,6 +19,7 @@ import {
 import {
   createProject,
   getAllProjects,
+  getCodeStudios,
   getProject,
   getProjectConversations,
   getProjectRepos,
@@ -58,6 +59,11 @@ const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
   const refreshCurrentProjectConversations = useCallback(async () => {
     getProjectConversations(currentProjectId).then((r) => {
       setProject((prev) => (prev ? { ...prev, conversations: r } : null));
+    });
+  }, [currentProjectId]);
+  const refreshCurrentProjectStudios = useCallback(async () => {
+    getCodeStudios(currentProjectId).then((r) => {
+      setProject((prev) => (prev ? { ...prev, studios: r } : null));
     });
   }, [currentProjectId]);
 
@@ -100,10 +106,12 @@ const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
             ...prev,
             ...p,
             repos: prev?.repos || [],
+            studios: prev?.studios || [],
             conversations: prev?.conversations || [],
           }));
           refreshCurrentProjectRepos();
           refreshCurrentProjectConversations();
+          refreshCurrentProjectStudios();
         })
         .catch((err) => {
           console.log(err);
@@ -149,6 +157,7 @@ const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
       setCurrentProjectId,
       refreshCurrentProjectRepos,
       refreshCurrentProjectConversations,
+      refreshCurrentProjectStudios,
       refreshCurrentProject,
       isLoading,
     }),

@@ -12,6 +12,7 @@ type Props = {
     lineNumber: number,
   ) => void;
   lineNumber: number;
+  isEditingRanges?: boolean;
 };
 
 const tokenHoverable = (tokenPosition: Range, ranges: Range[]) => {
@@ -33,6 +34,7 @@ const Token = ({
   lineHoverRanges = [],
   getHoverableContent,
   lineNumber,
+  isEditingRanges,
 }: Props) => {
   const [hoverableRange, setHoverableRange] = useState(
     tokenHoverable(token.byteRange, lineHoverRanges),
@@ -43,13 +45,21 @@ const Token = ({
   }, [token, lineHoverRanges]);
 
   const onClick = useCallback(() => {
-    if (!document.getSelection()?.toString() && hoverableRange) {
+    if (
+      !document.getSelection()?.toString() &&
+      hoverableRange &&
+      !isEditingRanges
+    ) {
       getHoverableContent(hoverableRange!, token.byteRange, lineNumber);
     }
-  }, [getHoverableContent, hoverableRange, lineNumber]);
+  }, [getHoverableContent, hoverableRange, lineNumber, isEditingRanges]);
 
   return (
-    <CodeToken token={token} isHoverable={!!hoverableRange} onClick={onClick} />
+    <CodeToken
+      token={token}
+      isHoverable={!!hoverableRange && !isEditingRanges}
+      onClick={onClick}
+    />
   );
 };
 

@@ -24,7 +24,7 @@ type Props = {
   setExpanded: Dispatch<SetStateAction<number>>;
   isExpanded: boolean;
   focusedIndex: string;
-  index: number;
+  index: string;
 };
 
 const reactRoot = document.getElementById('root')!;
@@ -54,7 +54,7 @@ const ConversationsNav = ({
   }, []);
 
   useEffect(() => {
-    if (focusedIndex === index.toString() && containerRef.current) {
+    if (focusedIndex === index && containerRef.current) {
       containerRef.current.scrollIntoView({ block: 'nearest' });
     }
   }, [focusedIndex, index]);
@@ -66,12 +66,10 @@ const ConversationsNav = ({
         tabIndex={0}
         className={`h-10 flex items-center gap-3 px-4 ellipsis ${
           isExpanded ? 'sticky z-10 top-0 left-0' : ''
-        } ${
-          focusedIndex === index.toString() ? 'bg-bg-sub-hover' : 'bg-bg-sub'
-        }`}
+        } ${focusedIndex === index ? 'bg-bg-sub-hover' : 'bg-bg-sub'}`}
         onClick={toggleExpanded}
         ref={containerRef}
-        data-node-index={index.toString()}
+        data-node-index={index}
       >
         <ChatBubblesIcon
           sizeClassName="w-3.5 h-3.5"

@@ -5,8 +5,11 @@ import React, {
   useMemo,
   CSSProperties,
   useEffect,
+  useState,
+  useCallback,
 } from 'react';
 import { markNode, unmark } from '../../utils/textSearch';
+import { CODE_LINE_HEIGHT } from '../../consts/code';
 
 type Props = {
   lineNumber: number;
@@ -22,6 +25,11 @@ type Props = {
   highlightColor?: string | null;
   style?: CSSProperties;
   searchTerm?: string;
+  isSelectionDisabled?: boolean;
+  setCurrentlySelectingRange?: (range: [number, number] | null) => void;
+  handleAddRange?: () => void;
+  fileLinesNum?: number;
+  isEditingRanges?: boolean;
 };
 
 const CodeLine = ({
@@ -38,8 +46,15 @@ const CodeLine = ({
   hoveredBackground,
   style,
   searchTerm,
+  isSelectionDisabled,
+  setCurrentlySelectingRange,
+  handleAddRange,
+  fileLinesNum,
+  isEditingRanges,
 }: Props) => {
+  const [isDragging, setIsDragging] = useState(false);
   const codeRef = useRef<HTMLTableCellElement>(null);
+  const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (codeRef.current && searchTerm) {
@@ -68,13 +83,72 @@ const CodeLine = ({
     [shouldHighlight, highlightColor, style],
   );
 
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isDragging && ref.current) {
+        const deltaY = e.clientY - ref.current.getBoundingClientRect().top;
+        setCurrentlySelectingRange?.([
+          Math.max(
+            Math.min(
+              lineNumber,
+              lineNumber + Math.ceil(deltaY / CODE_LINE_HEIGHT) - 1,
+            ),
+            0,
+          ),
+          Math.min(
+            Math.max(
+              lineNumber,
+              lineNumber + Math.ceil(deltaY / CODE_LINE_HEIGHT) - 1,
+            ),
+            (fileLinesNum || 0) - 1,
+          ),
+        ]);
+      }
+    };
+    const handleMouseUp = (e: MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragging(false);
+      handleAddRange?.();
+    };
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    } else {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, lineNumber, fileLinesNum]);
+
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      if (!isSelectionDisabled && isEditingRanges) {
+        setIsDragging(true);
+      }
+    },
+    [isSelectionDisabled, isEditingRanges],
+  );
+
   return (
     <div
       className={`flex w-full flex-1 transition-all duration-150 ease-in-bounce group ${
         isNewLine ? 'bg-bg-success/30' : isRemovedLine ? 'bg-bg-danger/30' : ''
-      } ${hoveredBackground ? 'bg-bg-base-hover' : ''}`}
+      } ${hoveredBackground ? 'bg-bg-base-hover' : ''} ${
+        isEditingRanges
+          ? isSelectionDisabled
+            ? 'cursor-row-resize'
+            : 'cursor-ns-resize'
+          : ''
+      }`}
       data-line-number={lineNumber}
       style={styleCombined}
+      onMouseDown={handleMouseDown}
+      ref={ref}
     >
       {showLineNumbers &&
         (lineNumbersDiff ? (
