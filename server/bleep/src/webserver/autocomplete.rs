@@ -125,11 +125,13 @@ pub(super) async fn handle(
         .restrict_repo_queries(queries.clone(), &app)
         .await?;
 
-    dbg!(&queries, &repo_queries);
+    let restricted_queries = api_params
+        .restrict_queries(queries.clone(), &app)
+        .await?;
 
     let mut engines = vec![];
     if ac_params.content {
-        engines.push(ContentReader.execute(&app.indexes.file, &queries, &api_params));
+        engines.push(ContentReader.execute(&app.indexes.file, &restricted_queries, &api_params));
     }
 
     if ac_params.repo {
@@ -137,7 +139,7 @@ pub(super) async fn handle(
     }
 
     if ac_params.file {
-        engines.push(FileReader.execute(&app.indexes.file, &queries, &api_params));
+        engines.push(FileReader.execute(&app.indexes.file, &restricted_queries, &api_params));
     }
 
     let (langs, list) = stream::iter(engines)
