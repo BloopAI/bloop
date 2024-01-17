@@ -952,7 +952,7 @@ pub fn deduplicate_with_mmr(
             equation_score += 0.75_f32.powi(*path_count);
 
             // MMR + (3/4)^n where n is the number of times a repo has been selected
-            let repo_count = repo_counts.get(repos[i]).unwrap_or(&0);
+            let repo_count = repo_counts.get(repos[i]).unwrap_or(&1);
             equation_score += 0.75_f32.powi(*repo_count);
 
             if equation_score > best_score {
