@@ -80,10 +80,12 @@ const General = ({}: Props) => {
       <hr className="border-bg-divider my-8" />
       <div className="flex items-start gap-8 w-full">
         <p className="body-s text-label-base">
-          Permanently delete{' '}
-          <span className="body-s-b text-label-title">{project?.name}</span> and
-          remove all the data associated to it. Repositories will remain
-          accessible in your GitHub account.
+          <Trans>
+            Permanently delete{' '}
+            <span className="body-s-b text-label-title">{project?.name}</span>{' '}
+            and remove all the data associated to it. Repositories will remain
+            accessible in your GitHub account.
+          </Trans>
         </p>
         <Button variant="danger" size="small" onClick={handleDelete}>
           <Trans>Delete project</Trans>

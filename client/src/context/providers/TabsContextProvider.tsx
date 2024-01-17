@@ -197,6 +197,13 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
           if (activeTab.title) {
             newParams.title = activeTab.title;
           }
+        } else if (activeTab.type === TabTypesEnum.STUDIO) {
+          if (activeTab.studioId) {
+            newParams.studioId = activeTab.studioId;
+          }
+          if (activeTab.title) {
+            newParams.title = activeTab.title;
+          }
         }
         setSearchParams(newParams, { replace: true });
       }
@@ -213,7 +220,8 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
     if (!isLoadingProjects) {
       const path = searchParams.get('path');
       const conversationId = searchParams.get('conversationId');
-      if (!activeLeftTab && (path || conversationId)) {
+      const studioId = searchParams.get('studioId');
+      if (!activeLeftTab && (path || conversationId || studioId)) {
         const repoRef = searchParams.get('repoRef');
         if (path && repoRef) {
           openNewTab({
@@ -228,6 +236,12 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
           openNewTab({
             type: TabTypesEnum.CHAT,
             conversationId,
+            title: searchParams.get('title') || undefined,
+          });
+        } else if (studioId) {
+          openNewTab({
+            type: TabTypesEnum.STUDIO,
+            studioId,
             title: searchParams.get('title') || undefined,
           });
         }

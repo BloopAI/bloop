@@ -131,8 +131,6 @@ const Project = ({}: Props) => {
               <StudioPersistentState
                 key={t.key}
                 tabKey={t.key}
-                tabTitle={t.title}
-                studioId={t.studioId}
                 side={i < leftTabs.length ? 'left' : 'right'}
               />
             ) : null,

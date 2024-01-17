@@ -1,55 +1,11 @@
-import { memo, useCallback, useContext, useEffect, useState } from 'react';
+import { memo } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { ChatBubblesIcon, CodeStudioIcon } from '../../../icons';
-import { TutorialQuestionType } from '../../../types/api';
-import { getTutorialQuestions } from '../../../services/api';
-import { ProjectContext } from '../../../context/projectContext';
+import { CodeStudioIcon } from '../../../icons';
 
-type Props = {
-  isEmptyConversation: boolean;
-  setInputValueImperatively: (v: string) => void;
-};
+type Props = {};
 
-const StarterMessage = ({
-  isEmptyConversation,
-  setInputValueImperatively,
-}: Props) => {
+const StarterMessage = ({}: Props) => {
   useTranslation();
-  const [tutorials, setTutorials] = useState<TutorialQuestionType[]>([]);
-  const { project } = useContext(ProjectContext.Current);
-
-  const getDiverseTutorials = useCallback(async () => {
-    if (project?.repos.length) {
-      const tutorials = [];
-      let tutorialsPerRepo = Math.floor(10 / project.repos.length);
-      let remainingTutorials = 10;
-
-      for (const repo of project.repos) {
-        const repoTutorials = await getTutorialQuestions(repo.repo.ref);
-
-        const tutorialsToAdd = Math.min(
-          tutorialsPerRepo,
-          repoTutorials.questions.length,
-          remainingTutorials,
-        );
-
-        tutorials.push(...repoTutorials.questions.slice(0, tutorialsToAdd));
-
-        remainingTutorials -= tutorialsToAdd;
-
-        if (remainingTutorials <= 0) {
-          break;
-        }
-      }
-
-      setTutorials(tutorials);
-    }
-  }, [project?.repos]);
-
-  useEffect(() => {
-    getDiverseTutorials();
-  }, [getDiverseTutorials]);
-
   return (
     <div className="flex items-start gap-5 rounded-md p-4">
       <div className="flex w-7 h-7 items-center justify-center rounded-full bg-brand-studio-subtle">
@@ -71,26 +27,6 @@ const StarterMessage = ({
             patches, scripts and tests.
           </Trans>
         </p>
-        {isEmptyConversation && !!tutorials.length && (
-          <p className="text-label-base body-base mt-4">
-            <Trans>Below are a few prompts to help you get started:</Trans>
-          </p>
-        )}
-        {isEmptyConversation && !!tutorials.length && (
-          <div className="pt-2 flex items-start gap-2 flex-wrap">
-            {tutorials.map((t, i) => (
-              <button
-                key={i}
-                className="h-7 rounded-full border border-bg-border px-2.5 body-s text-label-title"
-                onClick={() => {
-                  setInputValueImperatively(t.question);
-                }}
-              >
-                {t.tag}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );

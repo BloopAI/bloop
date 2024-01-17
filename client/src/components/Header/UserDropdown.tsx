@@ -32,6 +32,7 @@ const UserDropdown = ({}: Props) => {
   const { setSettingsOpen, setSettingsSection } = useContext(
     UIContext.Settings,
   );
+  const { setProjectSettingsOpen } = useContext(UIContext.ProjectSettings);
   const handleSignOut = useSignOut();
 
   useEffect(() => {
@@ -40,6 +41,7 @@ const UserDropdown = ({}: Props) => {
 
   const openGeneralSettings = useCallback(() => {
     setSettingsSection(SettingSections.GENERAL);
+    setProjectSettingsOpen(false);
     setSettingsOpen(true);
   }, []);
 

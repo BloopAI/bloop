@@ -615,5 +615,22 @@
 	"# tokens_other": "代币",
 	"Edit ranges": "编辑范围",
 	"The whole file will be used as context.": "整个文件将用作上下文。",
-	"Selected ranges will be used as context.": "选定的范围将用作上下文。"
+	"Selected ranges will be used as context.": "选定的范围将用作上下文。",
+	"Project": "项目",
+	"Project title": "项目名称",
+	"Permanently delete <2>Proyecto predeterminado</2> and remove all the data associated to it. Repositories will remain accessible in your GitHub account.": "永久删除<2> Proyecto Prederminado </2>并删除与之关联的所有数据。 存储库将在您的GitHub帐户中保持访问。",
+	"Studio": "工作室",
+	"Manage your studio settings.": "管理您的工作室设置。",
+	"Prompt templates": "提示模板",
+	"Write studio prompts faster with pre-written templates": "用预编辑的模板更快地编写工作室提示",
+	"New": "新的",
+	"Edit template": "编辑模板",
+	"All templates": "所有模板",
+	"Create template": "创建模板",
+	"Write your prompt...": "写你的提示...",
+	"Give your template a title": "给您的模板标题",
+	"Template title": "模板标题",
+	"Delete template": "删除模板",
+	"Search templates...": "搜索模板...",
+	"Manage templates": "管理模板"
 }

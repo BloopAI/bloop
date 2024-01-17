@@ -123,7 +123,7 @@
 @layer base {
   body {
     --default-black-bg-sub: 11, 11, 15; /* #0B0B0F */
-    --default-black-bg-sub-hover: 16, 16, 22; /* #101016 */
+    --default-black-bg-sub-hover: 29, 29, 39; /* #1D1D27 */
     --default-black-bg-base: 24, 26, 31; /* #181A1F */
     --default-black-bg-base-hover: 38, 39, 46; /* #26272E */
     --default-black-bg-selected: 94, 135, 203; /* #5E87CB 12% */
@@ -696,6 +696,15 @@ h5, .h5 {
   font-weight: 500;
   line-height: 133%;
   letter-spacing: -0.15px;
+}
+
+.title-m {
+  font-family: 'Inter', sans-serif;
+  font-size: 1.0625rem;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 129.412%;
+  letter-spacing: -0.17px;
 }
 
 .title-m-b {

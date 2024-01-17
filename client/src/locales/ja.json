@@ -606,5 +606,19 @@
 	"# tokens_other": "トークン",
 	"Edit ranges": "編集範囲",
 	"The whole file will be used as context.": "ファイル全体がコンテキストとして使用されます。",
-	"Selected ranges will be used as context.": "選択した範囲はコンテキストとして使用されます。"
+	"Selected ranges will be used as context.": "選択した範囲はコンテキストとして使用されます。",
+	"Project": "プロジェクト",
+	"Permanently delete <2>Proyecto predeterminado</2> and remove all the data associated to it. Repositories will remain accessible in your GitHub account.": "<2> <2> proyecto predeterminado </2>を永続的に削除し、それに関連付けられたすべてのデータを削除します。 リポジトリは、GitHubアカウントでアクセスできます。",
+	"Studio": "スタジオ",
+	"Manage your studio settings.": "スタジオ設定を管理します。",
+	"Prompt templates": "プロンプトテンプレート",
+	"Write studio prompts faster with pre-written templates": "事前に書かれたテンプレートを使用すると、スタジオのプロンプトをより速く書き込みます",
+	"New": "新しい",
+	"Edit template": "テンプレートを編集します",
+	"All templates": "すべてのテンプレート",
+	"Create template": "テンプレートを作成します",
+	"Give your template a title": "テンプレートにタイトルを付けてください",
+	"Delete template": "テンプレートを削除します",
+	"Search templates...": "テンプレートを検索...",
+	"Manage templates": "テンプレートを管理します"
 }

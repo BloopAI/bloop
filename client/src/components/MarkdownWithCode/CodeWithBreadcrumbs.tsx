@@ -12,6 +12,7 @@ type Props = {
   language: string;
   code: string;
   repoRef?: string;
+  isCodeStudio?: boolean;
 };
 
 const CodeWithBreadcrumbs = ({
@@ -21,6 +22,7 @@ const CodeWithBreadcrumbs = ({
   language,
   code,
   repoRef,
+  isCodeStudio,
 }: Props) => {
   const handleResultClick = useCallback(
     (e: MouseEvent) => {
@@ -47,7 +49,9 @@ const CodeWithBreadcrumbs = ({
 
   return (
     <div
-      className={`text-sm border border-bg-border bg-bg-sub rounded-md flex-1 overflow-x-auto cursor-pointer`}
+      className={`${
+        isCodeStudio ? ' code-mini my-4' : ' text-sm'
+      } border border-bg-border bg-bg-sub rounded-md flex-1 overflow-x-auto cursor-pointer`}
       onClick={handleResultClick}
     >
       <div
@@ -60,7 +64,7 @@ const CodeWithBreadcrumbs = ({
             repoRef={repoRef}
             onClick={onBreadcrumbClick}
           />
-          <CopyButton code={code} isInHeader />
+          <CopyButton code={code} isInHeader btnVariant="tertiary" />
         </div>
       </div>
       <div className="relative">

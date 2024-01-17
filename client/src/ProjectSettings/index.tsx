@@ -5,8 +5,9 @@ import Header from '../components/Header';
 import useKeyboardNavigation from '../hooks/useKeyboardNavigation';
 import { ProjectSettingSections } from '../types/general';
 import SectionsNav from '../components/SectionsNav';
-import { ShapesIcon } from '../icons';
+import { CodeStudioIcon, ShapesIcon } from '../icons';
 import General from './General';
+import Templates from './Templates';
 
 type Props = {};
 
@@ -46,10 +47,23 @@ const ProjectSettings = ({}: Props) => {
                 },
               ],
             },
+            {
+              title: t('Studio'),
+              Icon: CodeStudioIcon,
+              items: [
+                {
+                  type: ProjectSettingSections.TEMPLATES,
+                  onClick: setProjectSettingsSection,
+                  label: t('Templates'),
+                },
+              ],
+            },
           ]}
         />
         {projectSettingsSection === ProjectSettingSections.GENERAL ? (
           <General />
+        ) : projectSettingsSection === ProjectSettingSections.TEMPLATES ? (
+          <Templates />
         ) : null}
         <div className="w-56 flex-1 hidden lg:block" />
       </div>

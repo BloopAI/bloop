@@ -1,45 +1,55 @@
-import React, {
-  memo,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import { ChatMessageServer } from '../../../types/general';
-import { ProjectContext } from '../../../context/projectContext';
+import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { Trans } from 'react-i18next';
 import ScrollToBottom from '../../../components/ScrollToBottom';
-import { StudioContext, StudiosContext } from '../../../context/studiosContext';
-import Input from './Input';
-import ScrollableContent from './ScrollableContent';
-import DeprecatedClientModal from './DeprecatedClientModal';
+import { StudioContext } from '../../../context/studiosContext';
+import { TOKEN_LIMIT } from '../../../consts/codeStudio';
+import { BranchIcon, WarningSignIcon } from '../../../icons';
+import SpinLoaderContainer from '../../../components/Loaders/SpinnerLoader';
+import { StudioConversationMessageAuthor } from '../../../types/general';
+import { getTemplates } from '../../../services/api';
+import { StudioTemplateType } from '../../../types/api';
+import StarterMessage from './StarterMessage';
+import ConversationInput from './Input';
+import GeneratedDiff from './GeneratedDiff';
 
 type Props = {
   side: 'left' | 'right';
   tabKey: string;
+  studioData: StudioContext;
+  isActiveTab: boolean;
+  requestsLeft: number;
 };
 
-const Conversation = ({ side, tabKey }: Props) => {
-  const { project } = useContext(ProjectContext.Current);
-  const { studios } = useContext(StudiosContext);
+const Conversation = ({
+  side,
+  studioData,
+  isActiveTab,
+  requestsLeft,
+}: Props) => {
+  // const { project } = useContext(ProjectContext.Current);
   const scrollableRef = useRef<HTMLDivElement>(null);
-  const [isScrollable, setIsScrollable] = useState(false);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [templates, setTemplates] = useState<StudioTemplateType[]>([]);
 
-  const studioData: StudioContext | undefined = useMemo(
-    () => studios[tabKey],
-    [studios, tabKey],
-  );
+  const refetchTemplates = useCallback(() => {
+    getTemplates().then(setTemplates);
+  }, []);
 
   useEffect(() => {
-    setTimeout(() => {
-      if (scrollableRef.current) {
-        setIsScrollable(
-          scrollableRef.current.scrollHeight >
-            scrollableRef.current.clientHeight,
-        );
-      }
-    }, 100);
-  }, [studioData?.conversation, studioData?.hideMessagesFrom]);
+    refetchTemplates();
+  }, []);
+  // const [isScrollable, setIsScrollable] = useState(false);
+
+  // useEffect(() => {
+  //   setTimeout(() => {
+  //     if (scrollableRef.current) {
+  //       setIsScrollable(
+  //         scrollableRef.current.scrollHeight >
+  //           scrollableRef.current.clientHeight,
+  //       );
+  //     }
+  //   }, 100);
+  // }, [studioData?.conversation, studioData?.hideMessagesFrom]);
 
   return !studioData ? null : (
     <div className="w-full max-w-2xl mx-auto flex flex-col flex-1 overflow-auto">
@@ -47,39 +57,85 @@ const Conversation = ({ side, tabKey }: Props) => {
         className="max-w-full flex flex-col overflow-auto"
         wrapperRef={scrollableRef}
       >
-        <ScrollableContent
-          studioData={studioData}
-          side={side}
-          projectId={project?.id!}
-        />
+        <StarterMessage />
+        {studioData.conversation.map((m, i) => (
+          <ConversationInput
+            key={i}
+            author={m.author}
+            message={m.error || m.message}
+            onMessageChange={studioData.onMessageChange}
+            onMessageRemoved={studioData.onMessageRemoved}
+            i={i}
+            isTokenLimitExceeded={studioData.tokenCount > TOKEN_LIMIT}
+            isLast={i === studioData.conversation.length - 1}
+            side={side}
+            isActiveTab={isActiveTab}
+            requestsLeft={requestsLeft}
+            isLoading={studioData.isLoading}
+            handleCancel={studioData.handleCancel}
+            templates={templates}
+          />
+        ))}
+        {!!studioData.diff && (
+          <GeneratedDiff
+            diff={studioData.diff}
+            onDiffRemoved={studioData.onDiffRemoved}
+            onDiffChanged={studioData.onDiffChanged}
+            applyError={studioData.isDiffApplyError}
+          />
+        )}
+        {(studioData.isDiffApplied ||
+          studioData.waitingForDiff ||
+          studioData.isDiffGenFailed) && (
+          <div
+            className={`w-full flex items-center rounded-6 justify-center gap-1 py-2 ${
+              studioData.isDiffGenFailed
+                ? 'bg-bg-danger/12 text-bg-danger'
+                : 'bg-bg-main/12 text-label-link'
+            } caption`}
+          >
+            {studioData.isDiffGenFailed ? (
+              <WarningSignIcon raw sizeClassName="w-3.5 h-3.5" />
+            ) : studioData.waitingForDiff ? (
+              <SpinLoaderContainer sizeClassName="w-3.5 h-3.5" />
+            ) : (
+              <BranchIcon raw sizeClassName="w-3.5 h-3.5" />
+            )}
+            <Trans>
+              {studioData.isDiffGenFailed
+                ? 'Diff generation failed'
+                : studioData.waitingForDiff
+                ? 'Generating diff...'
+                : 'The diff has been applied locally.'}
+            </Trans>
+          </div>
+        )}
+        {!studioData.isLoading &&
+          // !studioData.isPreviewing &&
+          !studioData.waitingForDiff &&
+          !studioData.diff &&
+          !(
+            studioData.conversation[studioData.conversation.length - 1]
+              ?.author === StudioConversationMessageAuthor.USER
+          ) && (
+            <ConversationInput
+              key={'new'}
+              author={studioData.inputAuthor}
+              message={studioData.inputValue}
+              onMessageChange={studioData.onMessageChange}
+              inputRef={inputRef}
+              isTokenLimitExceeded={studioData.tokenCount > TOKEN_LIMIT}
+              isLast
+              side={side}
+              onSubmit={studioData.onSubmit}
+              isActiveTab={isActiveTab}
+              requestsLeft={requestsLeft}
+              isLoading={studioData.isLoading}
+              handleCancel={studioData.handleCancel}
+              templates={templates}
+            />
+          )}
       </ScrollToBottom>
-      <Input
-        onStop={studioData.stopGenerating}
-        submittedQuery={studioData.submittedQuery}
-        isStoppable={studioData.isLoading}
-        onMessageEditCancel={studioData.onMessageEditCancel}
-        generationInProgress={
-          (
-            studioData.conversation[
-              studioData.conversation.length - 1
-            ] as ChatMessageServer
-          )?.isLoading
-        }
-        hideMessagesFrom={studioData.hideMessagesFrom}
-        queryIdToEdit={studioData.queryIdToEdit}
-        valueToEdit={studioData.inputImperativeValue}
-        setInputValue={studioData.setInputValue}
-        value={studioData.inputValue}
-        setConversation={studioData.setConversation}
-        conversation={studioData.conversation}
-        setSubmittedQuery={studioData.setSubmittedQuery}
-        isInputAtBottom={isScrollable}
-        projectId={project?.id || '0'}
-      />
-      <DeprecatedClientModal
-        isOpen={studioData.isDeprecatedModalOpen}
-        onClose={studioData.closeDeprecatedModal}
-      />
     </div>
   );
 };

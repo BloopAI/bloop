@@ -1,27 +1,31 @@
 import { createContext, Dispatch, SetStateAction } from 'react';
-import { ChatMessage, InputValueType, ParsedQueryType } from '../types/general';
+import {
+  StudioConversationMessage,
+  StudioConversationMessageAuthor,
+} from '../types/general';
+import { GeneratedCodeDiff } from '../types/api';
 
 export type StudioContext = {
-  conversation: ChatMessage[];
-  setConversation: Dispatch<SetStateAction<ChatMessage[]>>;
-  inputValue: InputValueType;
-  setInputValue: Dispatch<SetStateAction<InputValueType>>;
-  selectedLines: [number, number] | null;
-  setSelectedLines: Dispatch<SetStateAction<[number, number] | null>>;
-  submittedQuery: InputValueType;
-  setSubmittedQuery: Dispatch<SetStateAction<InputValueType>>;
+  conversation: StudioConversationMessage[];
+  setConversation: Dispatch<SetStateAction<StudioConversationMessage[]>>;
+  inputValue: string;
+  setInputValue: Dispatch<SetStateAction<string>>;
+  tokenCount: number;
+  setTokenCount: Dispatch<SetStateAction<number>>;
+  onMessageChange: (message: string, i?: number) => void;
+  onMessageRemoved: (i: number, andSubsequent?: boolean) => void;
+  diff: GeneratedCodeDiff | null;
+  onDiffRemoved: (i: number) => void;
+  onDiffChanged: (i: number, v: string) => void;
+  isDiffApplyError: boolean;
+  isDiffApplied: boolean;
+  waitingForDiff: boolean;
+  isDiffGenFailed: boolean;
+  inputAuthor: StudioConversationMessageAuthor;
+  onSubmit: () => void;
   isLoading: boolean;
-  hideMessagesFrom: null | number;
-  queryIdToEdit: string;
-  inputImperativeValue: Record<string, any> | null;
-  threadId: string;
-  setThreadId: Dispatch<SetStateAction<string>>;
-  stopGenerating: () => void;
-  onMessageEditCancel: () => void;
-  onMessageEdit: (parentQueryId: string, i: number) => void;
-  setInputValueImperatively: (value: ParsedQueryType[] | string) => void;
-  isDeprecatedModalOpen: boolean;
-  closeDeprecatedModal: () => void;
+  handleCancel: () => void;
+  clearConversation: () => void;
 };
 
 type ContextType = {

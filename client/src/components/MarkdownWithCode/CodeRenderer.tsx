@@ -70,18 +70,20 @@ const CodeRenderer = ({
 
   const onClick = useCallback(
     (path?: string, linesToGo?: string) => {
-      openNewTab(
-        {
-          type: TabTypesEnum.FILE,
-          path: path || filePath,
-          repoRef,
-          scrollToLine:
-            linesToGo || lines
-              ? `${lines[0]}_${lines[1] ?? lines[0]}`
-              : undefined,
-        },
-        side === 'left' ? 'right' : 'left',
-      );
+      if (repoRef && filePath) {
+        openNewTab(
+          {
+            type: TabTypesEnum.FILE,
+            path: path || filePath,
+            repoRef,
+            scrollToLine:
+              linesToGo || lines
+                ? `${lines[0]}_${lines[1] ?? lines[0]}`
+                : undefined,
+          },
+          side === 'left' ? 'right' : 'left',
+        );
+      }
     },
     [openNewTab, filePath, repoRef, lines, side],
   );
@@ -91,14 +93,15 @@ const CodeRenderer = ({
       {!inline &&
       (matchType?.[1] || matchLang?.[1]) &&
       typeof children[0] === 'string' ? (
-        matchType?.[1] === 'Quoted' ? (
+        matchType?.[1] === 'Quoted' || (isCodeStudio && matchPath?.[1]) ? (
           <CodeWithBreadcrumbs
             code={code}
-            repoRef={repoRef}
+            repoRef={filePath ? repoRef : ''}
             language={matchLang?.[1] || ''}
-            filePath={filePath || ''}
+            filePath={filePath || repoRef || ''}
             onResultClick={onClick}
             startLine={lines[0] ? lines[0] : null}
+            isCodeStudio={isCodeStudio}
           />
         ) : (
           <NewCode

@@ -22,11 +22,11 @@ const Usage = ({ percent }: UsageProps) => {
   const strokeDashArray = setPercentage(percent > 100 ? 100 : percent);
 
   const map = [
-    { fill: 'fill-green', stroke: 'stroke-bg-success-hover' },
+    { fill: 'fill-green', stroke: 'stroke-green' },
     { fill: 'fill-yellow', stroke: 'stroke-yellow' },
     { fill: 'fill-orange-600', stroke: 'stroke-orange-600' },
-    { fill: 'fill-bg-danger-hover', stroke: 'stroke-bg-danger-hover' },
-    { fill: 'fill-bg-danger', stroke: 'stroke-bg-danger' },
+    { fill: 'fill-red', stroke: 'stroke-red' },
+    { fill: 'fill-red', stroke: 'stroke-red' },
   ];
 
   const index = Math.max(Math.min(Math.floor(percent / 25), map.length - 1), 0);

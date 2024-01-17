@@ -3,3 +3,4 @@ export const newChatTabShortcut = ['option', 'N'];
 export const newStudioTabShortcut = ['option', 'shift', 'N'];
 export const explainFileShortcut = ['cmd', 'E'];
 export const addFileToStudioShortcut = ['cmd', 'shift', '+'];
+export const useTemplateShortcut = ['cmd', 'T'];
