@@ -585,5 +585,21 @@
 	"# tokens_other": "token",
 	"Edit ranges": "Modifica intervalli",
 	"The whole file will be used as context.": "L'intero file verrà utilizzato come contesto.",
-	"Selected ranges will be used as context.": "Gli intervalli selezionati verranno utilizzati come contesto."
+	"Selected ranges will be used as context.": "Gli intervalli selezionati verranno utilizzati come contesto.",
+	"Project": "Progetto",
+	"Project title": "Titolo del progetto",
+	"Permanently delete <2>Proyecto predeterminado</2> and remove all the data associated to it. Repositories will remain accessible in your GitHub account.": "Elimina permanentemente <2> Proyecto Predeterinado </2> e rimuovere tutti i dati associati ad esso. I repository rimarranno accessibili nel tuo account GitHub.",
+	"Studio": "Studio",
+	"Manage your studio settings.": "Gestisci le tue impostazioni in studio.",
+	"Prompt templates": "Modelli rapidi",
+	"Write studio prompts faster with pre-written templates": "Scrivi lo studio chiede più velocemente con modelli pre-scritti",
+	"New": "Nuova",
+	"Edit template": "Modello di modifica",
+	"All templates": "Tutti i modelli",
+	"Create template": "Crea modello",
+	"Template title": "Titolo del modello",
+	"Give your template a title": "Dai un titolo al tuo modello",
+	"Delete template": "Elimina modello",
+	"Search templates...": "Modelli di ricerca ...",
+	"Manage templates": "Gestisci modelli"
 }

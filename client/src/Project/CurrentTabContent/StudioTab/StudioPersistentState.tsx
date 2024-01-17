@@ -1,146 +1,152 @@
-import {
+import React, {
   memo,
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import throttle from 'lodash.throttle';
 import { DeviceContext } from '../../../context/deviceContext';
 import { ProjectContext } from '../../../context/projectContext';
 import {
-  ChatMessage,
-  ChatMessageAuthor,
-  ChatMessageServer,
-  ChatMessageUser,
-  ChatTabType,
-  InputValueType,
-  ParsedQueryType,
-  ParsedQueryTypeEnum,
-  TabTypesEnum,
+  DiffHunkType,
+  StudioConversationMessage,
+  StudioConversationMessageAuthor,
+  StudioTabType,
 } from '../../../types/general';
-import { mapLoadingSteps } from '../../../mappers/conversation';
-import { focusInput } from '../../../utils/domUtils';
 import { TabsContext } from '../../../context/tabsContext';
-import { getCodeStudio } from '../../../services/api';
+import {
+  confirmStudioDiff,
+  generateStudioDiff,
+  getCodeStudio,
+  patchCodeStudio,
+} from '../../../services/api';
 import { StudiosContext } from '../../../context/studiosContext';
-
-type Options = {
-  path: string;
-  lines: [number, number];
-  repoRef: string;
-  branch?: string | null;
-};
+import {
+  CodeStudioMessageType,
+  CodeStudioType,
+  GeneratedCodeDiff,
+} from '../../../types/api';
+import { PersonalQuotaContext } from '../../../context/personalQuotaContext';
+import { UIContext } from '../../../context/uiContext';
 
 type Props = {
-  tabKey: string;
-  tabTitle?: string;
-  studioId?: string;
+  tabKey: string; //studioId
   side: 'left' | 'right';
 };
 
-const StudioPersistentState = ({
-  tabKey,
-  tabTitle,
-  side,
-  studioId: stId,
-}: Props) => {
+const throttledPatch = throttle(
+  (projectId, studioId, data) => {
+    return patchCodeStudio(projectId, studioId, data);
+  },
+  2000,
+  { leading: false, trailing: true },
+);
+
+function mapConversation(
+  messages: CodeStudioMessageType[],
+): StudioConversationMessage[] {
+  return messages.map((m) => {
+    const author = Object.keys(m)[0] as StudioConversationMessageAuthor;
+    return { author, message: Object.values(m)[0] };
+  });
+}
+
+const StudioPersistentState = ({ tabKey, side }: Props) => {
   const { t } = useTranslation();
   const { apiUrl } = useContext(DeviceContext);
+  const { refetchQuota } = useContext(PersonalQuotaContext.Handlers);
+  const { requestsLeft } = useContext(PersonalQuotaContext.Values);
+  const { setIsUpgradeRequiredPopupOpen } = useContext(
+    UIContext.UpgradeRequiredPopup,
+  );
   const { project, refreshCurrentProjectStudios } = useContext(
     ProjectContext.Current,
   );
-  const { preferredAnswerSpeed } = useContext(ProjectContext.AnswerSpeed);
   const { setStudios } = useContext(StudiosContext);
-  const { openNewTab, updateTabProperty } = useContext(TabsContext.Handlers);
-
+  const { updateTabProperty } = useContext(TabsContext.Handlers);
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const abortController = useRef<AbortController | null>(null);
   const eventSource = useRef<EventSource | null>(null);
 
-  const [conversation, setConversation] = useState<ChatMessage[]>([]);
-  useEffect(() => {
-    setStudios((prev) => {
-      return { ...prev, [tabKey]: { ...prev[tabKey], conversation } };
-    });
-  }, [conversation]);
+  const [name, setName] = useState('');
 
-  const [inputValue, setInputValue] = useState<InputValueType>({
-    plain: '',
-    parsed: [],
-  });
+  const [inputValue, setInputValue] = useState('');
   useEffect(() => {
     setStudios((prev) => {
       return { ...prev, [tabKey]: { ...prev[tabKey], inputValue } };
     });
   }, [inputValue]);
 
-  const [submittedQuery, setSubmittedQuery] = useState<
-    InputValueType & { options?: Options }
-  >({
-    parsed: [],
-    plain: '',
-  });
-  useEffect(() => {
-    setStudios((prev) => {
-      return { ...prev, [tabKey]: { ...prev[tabKey], submittedQuery } };
-    });
-  }, [submittedQuery]);
-
-  const [isLoading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   useEffect(() => {
     setStudios((prev) => {
       return { ...prev, [tabKey]: { ...prev[tabKey], isLoading } };
     });
   }, [isLoading]);
 
-  const [isDeprecatedModalOpen, setDeprecatedModalOpen] = useState(false);
+  const [conversation, setConversation] = useState<StudioConversationMessage[]>(
+    [],
+  );
   useEffect(() => {
     setStudios((prev) => {
-      return { ...prev, [tabKey]: { ...prev[tabKey], isDeprecatedModalOpen } };
+      return { ...prev, [tabKey]: { ...prev[tabKey], conversation } };
     });
-  }, [isDeprecatedModalOpen]);
+  }, [conversation]);
 
-  const [hideMessagesFrom, setHideMessagesFrom] = useState<null | number>(null);
+  const [inputAuthor, setInputAuthor] = useState(
+    StudioConversationMessageAuthor.USER,
+  );
   useEffect(() => {
     setStudios((prev) => {
-      return { ...prev, [tabKey]: { ...prev[tabKey], hideMessagesFrom } };
+      return { ...prev, [tabKey]: { ...prev[tabKey], inputAuthor } };
     });
-  }, [hideMessagesFrom]);
+  }, [inputAuthor]);
 
-  const [queryIdToEdit, setQueryIdToEdit] = useState('');
+  const [tokenCount, setTokenCount] = useState(0);
   useEffect(() => {
     setStudios((prev) => {
-      return { ...prev, [tabKey]: { ...prev[tabKey], queryIdToEdit } };
+      return { ...prev, [tabKey]: { ...prev[tabKey], tokenCount } };
     });
-  }, [queryIdToEdit]);
+  }, [tokenCount]);
 
-  const [inputImperativeValue, setInputImperativeValue] = useState<Record<
-    string,
-    any
-  > | null>(null);
+  const [waitingForDiff, setWaitingForDiff] = useState(false);
   useEffect(() => {
     setStudios((prev) => {
-      return { ...prev, [tabKey]: { ...prev[tabKey], inputImperativeValue } };
+      return { ...prev, [tabKey]: { ...prev[tabKey], waitingForDiff } };
     });
-  }, [inputImperativeValue]);
+  }, [waitingForDiff]);
 
-  const [threadId, setThreadId] = useState('');
+  const [isDiffApplied, setDiffApplied] = useState(false);
   useEffect(() => {
     setStudios((prev) => {
-      return { ...prev, [tabKey]: { ...prev[tabKey], threadId } };
+      return { ...prev, [tabKey]: { ...prev[tabKey], isDiffApplied } };
     });
-  }, [threadId]);
+  }, [isDiffApplied]);
 
-  const [conversationId, setConversationId] = useState('');
+  const [isDiffApplyError, setDiffApplyError] = useState(false);
   useEffect(() => {
     setStudios((prev) => {
-      return { ...prev, [tabKey]: { ...prev[tabKey], conversationId } };
+      return { ...prev, [tabKey]: { ...prev[tabKey], isDiffApplyError } };
     });
-  }, [conversationId]);
+  }, [isDiffApplyError]);
 
-  const closeDeprecatedModal = useCallback(() => {
-    setDeprecatedModalOpen(false);
-  }, []);
+  const [isDiffGenFailed, setDiffGenFailed] = useState(false);
+  useEffect(() => {
+    setStudios((prev) => {
+      return { ...prev, [tabKey]: { ...prev[tabKey], isDiffGenFailed } };
+    });
+  }, [isDiffGenFailed]);
+
+  const [diff, setDiff] = useState<GeneratedCodeDiff | null>(null);
+  useEffect(() => {
+    setStudios((prev) => {
+      return { ...prev, [tabKey]: { ...prev[tabKey], diff } };
+    });
+  }, [diff]);
 
   useEffect(() => {
     setStudios((prev) => {
@@ -149,299 +155,265 @@ const StudioPersistentState = ({
         [tabKey]: {
           ...prev[tabKey],
           setConversation,
-          setInputValue,
-          setSubmittedQuery,
-          setThreadId,
-          closeDeprecatedModal,
         },
       };
     });
   }, []);
 
-  const setInputValueImperatively = useCallback(
-    (value: ParsedQueryType[] | string) => {
-      setInputImperativeValue({
-        type: 'paragraph',
-        content:
-          typeof value === 'string'
-            ? [
-                {
-                  type: 'text',
-                  text: value,
-                },
-              ]
-            : value
-                .filter((pq) =>
-                  ['path', 'lang', 'text', 'repo'].includes(pq.type),
-                )
-                .map((pq) =>
-                  pq.type === 'text'
-                    ? { type: 'text', text: pq.text }
-                    : {
-                        type: 'mention',
-                        attrs: {
-                          id: pq.text,
-                          display: pq.text,
-                          type: pq.type,
-                          isFirst: false,
-                        },
-                      },
-                ),
-      });
-      focusInput();
+  const refetchCodeStudio = useCallback(
+    (key?: keyof CodeStudioType) => {
+      if (tabKey && project?.id) {
+        return getCodeStudio(project.id, tabKey).then((s) => {
+          if (key) {
+            if (key === 'token_counts') {
+              setTokenCount(s.token_counts.total);
+            }
+            if (key === 'messages') {
+              const mappedConv = mapConversation(s.messages);
+              setConversation(mappedConv);
+            }
+          } else {
+            const mappedConv = mapConversation(s.messages);
+            setTokenCount(s.token_counts.total);
+            setName(s.name);
+            if (
+              mappedConv[mappedConv.length - 1]?.author ===
+              StudioConversationMessageAuthor.USER
+              // && !isPreviewing
+            ) {
+              const editedMessage = mappedConv[s.messages.length - 1];
+              setInputValue((prev) =>
+                prev < editedMessage.message ? editedMessage.message : prev,
+              );
+              setConversation(mappedConv.slice(0, -1));
+            } else {
+              setConversation(mappedConv);
+            }
+          }
+        });
+      }
     },
-    [],
+    [tabKey, project?.id, side],
+  );
+
+  useEffect(() => {
+    refetchCodeStudio();
+  }, [refetchCodeStudio]);
+
+  useEffect(() => {
+    if (name) {
+      updateTabProperty<StudioTabType, 'title'>(tabKey, 'title', name, side);
+      refreshCurrentProjectStudios();
+    }
+  }, [name]);
+
+  const setInput = useCallback((value: StudioConversationMessage) => {
+    setInputValue(value.message);
+    setInputAuthor(value.author);
+    // Focus on the input
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, []);
+
+  const saveConversation = useCallback(
+    async (
+      force?: boolean,
+      newConversation?: StudioConversationMessage[],
+      newInput?: string,
+    ) => {
+      if (!project?.id) {
+        return;
+      }
+      const messages: ({ User: string } | { Assistant: string })[] = (
+        newConversation || conversation
+      )
+        .map((c) => ({ [c.author as 'User']: c.message }))
+        .concat(
+          !newConversation && (newInput || inputValue)
+            ? [{ [inputAuthor as 'User']: newInput || inputValue }]
+            : [],
+        );
+      if (force) {
+        await patchCodeStudio(project.id, tabKey, {
+          messages,
+        });
+      } else {
+        throttledPatch(project.id, tabKey, {
+          messages,
+        });
+      }
+    },
+    [conversation, inputValue, inputAuthor],
+  );
+
+  const onMessageChange = useCallback(
+    (message: string, i?: number) => {
+      if (i === undefined) {
+        setInputValue(message);
+        saveConversation(false, undefined, message);
+      } else {
+        setConversation((prev) => {
+          const newConv = JSON.parse(JSON.stringify(prev));
+          newConv[i].message = message;
+          saveConversation(false, newConv);
+          return newConv;
+        });
+      }
+    },
+    [saveConversation],
   );
   useEffect(() => {
     setStudios((prev) => {
-      return {
-        ...prev,
-        [tabKey]: { ...prev[tabKey], setInputValueImperatively },
-      };
+      return { ...prev, [tabKey]: { ...prev[tabKey], onMessageChange } };
     });
-  }, [setInputValueImperatively]);
+  }, [onMessageChange]);
 
-  const makeSearch = useCallback(
-    async (query: string, options?: Options) => {
-      if (!query) {
-        return;
-      }
-      eventSource.current?.close();
-      setInputValue({ plain: '', parsed: [] });
-      setInputImperativeValue(null);
-      setLoading(true);
-      setQueryIdToEdit('');
-      setHideMessagesFrom(null);
-      const url = `${apiUrl}/projects/${project?.id}/answer${
-        options ? `/explain` : ``
-      }`;
-      const queryParams: Record<string, string> = {
-        model:
-          preferredAnswerSpeed === 'normal'
-            ? 'gpt-4'
-            : 'gpt-3.5-turbo-finetuned',
-      };
-      if (conversationId) {
-        queryParams.conversation_id = conversationId;
-        if (queryIdToEdit) {
-          queryParams.parent_query_id = queryIdToEdit;
-        }
-      }
-      if (options) {
-        queryParams.relative_path = options.path;
-        queryParams.repo_ref = options.repoRef;
-        if (options.branch) {
-          queryParams.branch = options.branch;
-        }
-        queryParams.line_start = options.lines[0].toString();
-        queryParams.line_end = options.lines[1].toString();
-      } else {
-        queryParams.q = query;
-      }
-      const fullUrl = url + '?' + new URLSearchParams(queryParams).toString();
-      console.log(fullUrl);
-      eventSource.current = new EventSource(fullUrl);
-      let firstResultCame: boolean;
-      eventSource.current.onerror = (err) => {
-        console.log('SSE error', err);
-        firstResultCame = false;
-        stopGenerating();
-        setConversation((prev) => {
-          const newConversation = prev.slice(0, -1);
-          const lastMessage: ChatMessage = {
-            author: ChatMessageAuthor.Server,
-            isLoading: false,
+  const handleCancel = useCallback(() => {
+    eventSource.current?.close();
+    setIsLoading(false);
+    refetchQuota();
+    if (
+      conversation[conversation.length - 1]?.author ===
+      StudioConversationMessageAuthor.USER
+    ) {
+      const editedMessage = conversation[conversation.length - 1];
+      setInputValue((prev) =>
+        prev < editedMessage.message ? editedMessage.message : prev,
+      );
+      setConversation(conversation.slice(0, -1));
+      saveConversation(false, conversation.slice(0, -1));
+    } else {
+      saveConversation();
+    }
+  }, [conversation]);
+  useEffect(() => {
+    setStudios((prev) => {
+      return { ...prev, [tabKey]: { ...prev[tabKey], handleCancel } };
+    });
+  }, [handleCancel]);
+
+  const onSubmit = useCallback(async () => {
+    if (!inputValue || !project?.id) {
+      return;
+    }
+    await saveConversation(true);
+    if (!requestsLeft) {
+      setIsUpgradeRequiredPopupOpen(true);
+      return;
+    }
+    setDiffApplied(false);
+    setDiffApplyError(false);
+    setDiff(null);
+    setDiffGenFailed(false);
+    setConversation((prev) => [
+      ...prev,
+      { message: inputValue, author: inputAuthor },
+    ]);
+    setInput({
+      author: StudioConversationMessageAuthor.USER,
+      message: '',
+    });
+    setIsLoading(true);
+
+    eventSource.current?.close();
+    eventSource.current = new EventSource(
+      `${apiUrl.replace('https:', '')}/projects/${
+        project.id
+      }/studios/${tabKey}/generate`,
+    );
+    eventSource.current.onerror = (err) => {
+      console.log('SSE error', err);
+      refetchQuota();
+      setConversation((prev) => {
+        const newConv = [
+          ...prev,
+          {
+            author: StudioConversationMessageAuthor.ASSISTANT,
+            message: '',
             error: t(
               "We couldn't answer your question. You can try asking again in a few moments, or rephrasing your question.",
             ),
-            loadingSteps: [],
-            queryId: '',
-            responseTimestamp: new Date().toISOString(),
-          };
-          if (!options) {
-            // setInputValue(prev[prev.length - 2]?.text || submittedQuery);
-            setInputValueImperatively(
-              (prev[prev.length - 2] as ChatMessageUser)?.parsedQuery ||
-                prev[prev.length - 2]?.text ||
-                submittedQuery.parsed,
-            );
-          }
-          setSubmittedQuery({ plain: '', parsed: [] });
-          return [...newConversation, lastMessage];
-        });
-      };
-      let conversation_id = '';
-      setConversation((prev) =>
-        prev[prev.length - 1].author === ChatMessageAuthor.Server &&
-        (prev[prev.length - 1] as ChatMessageServer).isLoading
-          ? prev
-          : [
-              ...prev,
-              {
-                author: ChatMessageAuthor.Server,
-                isLoading: true,
-                loadingSteps: [],
-                text: '',
-                conclusion: '',
-                queryId: '',
-                responseTimestamp: '',
-              },
-            ],
-      );
-      eventSource.current.onmessage = (ev) => {
-        console.log(ev.data);
-        if (
-          ev.data === '{"Err":"incompatible client"}' ||
-          ev.data === '{"Err":"failed to check compatibility"}'
-        ) {
-          eventSource.current?.close();
-          if (ev.data === '{"Err":"incompatible client"}') {
-            setDeprecatedModalOpen(true);
+          },
+        ];
+        saveConversation(false, newConv);
+        return newConv;
+      });
+      setIsLoading(false);
+      eventSource.current?.close();
+    };
+    let i = 0;
+    eventSource.current.onmessage = (ev) => {
+      if (ev.data === '[DONE]') {
+        eventSource.current?.close();
+        setIsLoading(false);
+        refetchCodeStudio();
+        return;
+      }
+      try {
+        const data = JSON.parse(ev.data);
+        if (data.Ok) {
+          const newMessage = data.Ok;
+          if (i === 0) {
+            refetchQuota();
+            setConversation((prev) => {
+              const newConv = [
+                ...prev,
+                {
+                  author: StudioConversationMessageAuthor.ASSISTANT,
+                  message: newMessage,
+                },
+              ];
+              saveConversation(false, newConv);
+              return newConv;
+            });
           } else {
             setConversation((prev) => {
-              const newConversation = prev.slice(0, -1);
-              const lastMessage: ChatMessage = {
-                author: ChatMessageAuthor.Server,
-                isLoading: false,
-                error: t(
-                  "We couldn't answer your question. You can try asking again in a few moments, or rephrasing your question.",
-                ),
-                loadingSteps: [],
-                queryId: '',
-                responseTimestamp: new Date().toISOString(),
-              };
-              if (!options) {
-                // setInputValue(prev[prev.length - 1]?.text || submittedQuery);
-                setInputValueImperatively(
-                  (prev[prev.length - 1] as ChatMessageUser)?.parsedQuery ||
-                    prev[prev.length - 2]?.text ||
-                    submittedQuery.parsed,
-                );
-              }
-              setSubmittedQuery({ plain: '', parsed: [] });
-              return [...newConversation, lastMessage];
+              const newConv = [
+                ...prev.slice(0, -1),
+                {
+                  author: StudioConversationMessageAuthor.ASSISTANT,
+                  message: newMessage,
+                },
+              ];
+              saveConversation(false, newConv);
+              return newConv;
             });
           }
-          setLoading(false);
-          return;
+          i++;
+        } else if (data.Err) {
+          refetchQuota();
+          setConversation((prev) => {
+            const newConv = [
+              ...prev,
+              {
+                author: StudioConversationMessageAuthor.ASSISTANT,
+                message: data.Err,
+              },
+            ];
+            saveConversation(false, newConv);
+            return newConv;
+          });
         }
-        try {
-          const data = JSON.parse(ev.data);
-          if (data?.Ok?.ChatEvent) {
-            const newMessage = data.Ok.ChatEvent;
-            setConversation((prev) => {
-              const newConversation = prev?.slice(0, -1) || [];
-              const lastMessage = prev?.slice(-1)[0];
-              const messageToAdd = {
-                author: ChatMessageAuthor.Server,
-                isLoading: true,
-                loadingSteps: mapLoadingSteps(newMessage.search_steps, t),
-                text: newMessage.answer,
-                conclusion: newMessage.conclusion,
-                queryId: newMessage.id,
-                responseTimestamp: newMessage.response_timestamp,
-                explainedFile: newMessage.focused_chunk?.repo_path,
-              };
-              const lastMessages: ChatMessage[] =
-                lastMessage?.author === ChatMessageAuthor.Server
-                  ? [messageToAdd]
-                  : [...prev.slice(-1), messageToAdd];
-              return [...newConversation, ...lastMessages];
-            });
-            // workaround: sometimes we get [^summary]: before it is removed from response
-            if (newMessage.answer?.length > 11 && !firstResultCame) {
-              if (newMessage.focused_chunk?.repo_path) {
-                openNewTab(
-                  {
-                    type: TabTypesEnum.FILE,
-                    path: newMessage.focused_chunk.repo_path.path,
-                    repoRef: newMessage.focused_chunk.repo_path.repo,
-                    scrollToLine:
-                      newMessage.focused_chunk.start_line > -1
-                        ? `${newMessage.focused_chunk.start_line}_${newMessage.focused_chunk.end_line}`
-                        : undefined,
-                  },
-                  side === 'left' ? 'right' : 'left',
-                );
-              }
-              firstResultCame = true;
-            }
-          } else if (data?.Ok?.StreamEnd) {
-            const message = data.Ok.StreamEnd;
-            conversation_id = message.conversation_id;
-            setThreadId(message.thread_id);
-            setConversationId(message.conversation_id);
-            if (conversation.length < 2) {
-              updateTabProperty<ChatTabType, 'conversationId'>(
-                tabKey,
-                'conversationId',
-                message.conversation_id,
-                side,
-              );
-            }
-            eventSource.current?.close();
-            eventSource.current = null;
-            setLoading(false);
-            setConversation((prev) => {
-              const newConversation = prev.slice(0, -1);
-              const lastMessage = {
-                ...prev.slice(-1)[0],
-                isLoading: false,
-              };
-              return [...newConversation, lastMessage];
-            });
-            refreshCurrentProjectStudios();
-            setTimeout(() => focusInput(), 100);
-            return;
-          } else if (data.Err) {
-            setConversation((prev) => {
-              const lastMessageIsServer =
-                prev[prev.length - 1].author === ChatMessageAuthor.Server;
-              const newConversation = prev.slice(
-                0,
-                lastMessageIsServer ? -2 : -1,
-              );
-              const lastMessage: ChatMessageServer = {
-                ...(lastMessageIsServer
-                  ? (prev.slice(-1)[0] as ChatMessageServer)
-                  : {
-                      author: ChatMessageAuthor.Server,
-                      loadingSteps: [],
-                      queryId: '',
-                      responseTimestamp: new Date().toISOString(),
-                    }),
-                isLoading: false,
-                error:
-                  data.Err === 'request failed 5 times'
-                    ? t(
-                        'Failed to get a response from OpenAI. Try again in a few moments.',
-                      )
-                    : t(
-                        "We couldn't answer your question. You can try asking again in a few moments, or rephrasing your question.",
-                      ),
-              };
-              if (!options) {
-                setInputValueImperatively(
-                  (
-                    prev[
-                      prev.length - (lastMessageIsServer ? 2 : 1)
-                    ] as ChatMessageUser
-                  )?.parsedQuery ||
-                    prev[prev.length - 2]?.text ||
-                    submittedQuery.parsed,
-                );
-              }
-              setSubmittedQuery({ plain: '', parsed: [] });
-              return [...newConversation, lastMessage];
-            });
-          }
-        } catch (err) {
-          console.log('failed to parse response', err);
-        }
-      };
-    },
-    [conversationId, t, queryIdToEdit, preferredAnswerSpeed, openNewTab, side],
-  );
+      } catch (err) {
+        setIsLoading(false);
+        console.log('failed to parse response', err);
+      }
+    };
+  }, [
+    tabKey,
+    conversation,
+    inputValue,
+    inputAuthor,
+    saveConversation,
+    requestsLeft,
+    project?.id,
+  ]);
+  useEffect(() => {
+    setStudios((prev) => {
+      return { ...prev, [tabKey]: { ...prev[tabKey], onSubmit } };
+    });
+  }, [onSubmit]);
 
   useEffect(() => {
     return () => {
@@ -449,150 +421,189 @@ const StudioPersistentState = ({
     };
   }, []);
 
-  useEffect(() => {
-    if (!submittedQuery.plain) {
-      return;
-    }
-    let userQuery = submittedQuery.plain;
-    let userQueryParsed = submittedQuery.parsed;
-    const options = submittedQuery.options;
-    if (submittedQuery.plain.startsWith('#explain_')) {
-      const [prefix, ending] = submittedQuery.plain.split(':');
-      const [lineStart, lineEnd] = ending.split('-');
-      const filePath = prefix.slice(9);
-      userQuery = t(
-        `Explain the purpose of the file {{filePath}}, from lines {{lineStart}} - {{lineEnd}}`,
-        {
-          lineStart: Number(lineStart) + 1,
-          lineEnd: Number(lineEnd) + 1,
-          filePath,
-        },
-      );
-      userQueryParsed = [{ type: ParsedQueryTypeEnum.TEXT, text: userQuery }];
-    }
-    setConversation((prev) => {
-      return prev.length === 1 && submittedQuery.options
-        ? prev
-        : [
-            ...prev,
-            {
-              author: ChatMessageAuthor.User,
-              text: userQuery,
-              parsedQuery: userQueryParsed,
-              isLoading: false,
-            },
-          ];
-    });
-    makeSearch(userQuery, options);
-  }, [submittedQuery]);
-
-  useEffect(() => {
-    if (conversation.length && conversation.length < 3 && !tabTitle) {
-      updateTabProperty<ChatTabType, 'title'>(
-        tabKey,
-        'title',
-        conversation[0].text,
-        side,
-      );
-    }
-  }, [conversation, tabKey, side, tabTitle]);
-
-  const stopGenerating = useCallback(() => {
-    eventSource.current?.close();
-    setLoading(false);
-    setConversation((prev) => {
-      const newConversation = prev.slice(0, -1);
-      const lastMessage = {
-        ...prev.slice(-1)[0],
-        isLoading: false,
-      };
-      return [...newConversation, lastMessage];
-    });
-    setTimeout(focusInput, 100);
-  }, []);
-  useEffect(() => {
-    setStudios((prev) => {
-      return { ...prev, [tabKey]: { ...prev[tabKey], stopGenerating } };
-    });
-  }, [stopGenerating]);
-
-  const onMessageEdit = useCallback(
-    (parentQueryId: string, i: number) => {
-      setQueryIdToEdit(parentQueryId);
-      if (isLoading) {
-        stopGenerating();
+  const onMessageRemoved = useCallback(
+    async (i: number, andSubsequent?: boolean) => {
+      if (andSubsequent) {
+        // Set input to the message being removed
+        setInput(conversation[i]);
       }
-      setHideMessagesFrom(i);
-      const mes = conversation[i] as ChatMessageUser;
-      setInputValueImperatively(mes.parsedQuery || mes.text!);
+      setWaitingForDiff(false);
+      setDiffGenFailed(false);
+      setDiff(null);
+      setDiffApplied(false);
+      setDiffApplyError(false);
+      if (
+        i === conversation.length - 1 &&
+        conversation[i].author === StudioConversationMessageAuthor.ASSISTANT &&
+        isLoading
+      ) {
+        handleCancel();
+      }
+      setConversation((prev) => {
+        const newConv = prev.filter((_, j) =>
+          andSubsequent ? i > j : i !== j,
+        );
+        if (
+          newConv[newConv.length - 1]?.author ===
+          StudioConversationMessageAuthor.USER
+        ) {
+          const editedMessage = newConv[messages.length - 1];
+          setInputValue(editedMessage.message);
+          return newConv.slice(0, -1);
+        }
+        return newConv;
+      });
+
+      const messages = conversation.filter((m, j) =>
+        andSubsequent ? i > j : i !== j,
+      );
+      await saveConversation(true, messages);
+      refetchCodeStudio('token_counts');
     },
-    [isLoading, conversation],
+    [conversation, isLoading],
   );
   useEffect(() => {
     setStudios((prev) => {
-      return { ...prev, [tabKey]: { ...prev[tabKey], onMessageEdit } };
+      return { ...prev, [tabKey]: { ...prev[tabKey], onMessageRemoved } };
     });
-  }, [onMessageEdit]);
+  }, [onMessageRemoved]);
 
-  const onMessageEditCancel = useCallback(() => {
-    setQueryIdToEdit('');
-    setInputValue({ plain: '', parsed: [] });
-    setInputImperativeValue(null);
-    setHideMessagesFrom(null);
+  const clearConversation = useCallback(async () => {
+    if (!project?.id) {
+      return;
+    }
+    await patchCodeStudio(project.id, tabKey, {
+      messages: [],
+    });
+    setDiff(null);
+    setWaitingForDiff(false);
+    setDiffApplied(false);
+    setDiffApplyError(false);
+    setDiffGenFailed(false);
+    setInput({
+      author: StudioConversationMessageAuthor.USER,
+      message: '',
+    });
+    setConversation([]);
+    refetchCodeStudio('token_counts');
+  }, [tabKey, project?.id]);
+  useEffect(() => {
+    setStudios((prev) => {
+      return { ...prev, [tabKey]: { ...prev[tabKey], clearConversation } };
+    });
+  }, [clearConversation]);
+
+  const hasCodeBlock = useMemo(() => {
+    return conversation.some(
+      (m) =>
+        m.author === StudioConversationMessageAuthor.ASSISTANT &&
+        m.message.includes('```'),
+    );
+  }, [conversation]);
+
+  const handleApplyChanges = useCallback(async () => {
+    if (!project?.id) {
+      return;
+    }
+    setWaitingForDiff(true);
+    setDiffGenFailed(false);
+    try {
+      abortController.current = new AbortController();
+      const resp = await generateStudioDiff(
+        project.id,
+        tabKey,
+        abortController.current?.signal,
+      );
+      setDiff(resp);
+    } catch (err) {
+      console.log(err);
+      setDiffGenFailed(true);
+    } finally {
+      setWaitingForDiff(false);
+    }
+  }, [tabKey, project?.id]);
+
+  const handleCancelDiff = useCallback(() => {
+    abortController.current?.abort();
+    setWaitingForDiff(false);
+  }, []);
+
+  const handleConfirmDiff = useCallback(
+    async (e: React.MouseEvent) => {
+      e.preventDefault();
+      if (!diff || !project?.id) {
+        return;
+      }
+      const result = diff.chunks.map((c) => c.raw_patch).join('');
+      try {
+        await confirmStudioDiff(project.id, tabKey, result);
+        setDiff(null);
+        setDiffApplied(true);
+      } catch (err: unknown) {
+        console.log(err);
+        // @ts-ignore
+        if (err.code !== 'ERR_CANCELED') {
+          setDiffApplyError(true);
+        }
+      }
+    },
+    [tabKey, diff, project?.id],
+  );
+
+  const onDiffChanged = useCallback((i: number, v: string) => {
+    setDiff((prev) => {
+      const newValue: GeneratedCodeDiff = JSON.parse(JSON.stringify(prev));
+      newValue.chunks[i].raw_patch = v;
+      const newHunks: DiffHunkType[] = v
+        .split(/\n(?=@@ -)/)
+        .slice(1)
+        .map((h) => {
+          const startLine = h.match(/@@ -(\d+)/)?.[1];
+          return {
+            line_start: Number(startLine),
+            patch: h.split('\n').slice(1).join('\n'),
+          };
+        });
+      newValue.chunks[i].hunks = newHunks;
+      return newValue;
+    });
   }, []);
   useEffect(() => {
     setStudios((prev) => {
-      return { ...prev, [tabKey]: { ...prev[tabKey], onMessageEditCancel } };
+      return { ...prev, [tabKey]: { ...prev[tabKey], onDiffChanged } };
     });
-  }, [onMessageEditCancel]);
+  }, [onDiffChanged]);
 
+  const onDiffRemoved = useCallback((i: number) => {
+    setDiff((prev) => {
+      const newValue: GeneratedCodeDiff = JSON.parse(JSON.stringify(prev));
+      newValue.chunks.splice(i, 1);
+      if (!newValue.chunks.length) {
+        return null;
+      }
+      return newValue;
+    });
+  }, []);
   useEffect(() => {
-    // if it was open from history and not updated from sse message
-    if (stId && project?.id && !conversation.length) {
-      getCodeStudio(project.id, stId).then((resp) => {
-        console.log(resp);
-        // const conv: ChatMessage[] = [];
-        // let hasOpenedTab = false;
-        // resp.exchanges.forEach((m) => {
-        //   // @ts-ignore
-        //   const userQuery = m.search_steps.find((s) => s.type === 'QUERY');
-        //   const parsedQuery = mapUserQuery(m);
-        //   conv.push({
-        //     author: ChatMessageAuthor.User,
-        //     text: m.query.raw_query || userQuery?.content?.query || '',
-        //     parsedQuery,
-        //     isFromHistory: true,
-        //   });
-        //   conv.push({
-        //     author: ChatMessageAuthor.Server,
-        //     isLoading: false,
-        //     loadingSteps: mapLoadingSteps(m.search_steps, t),
-        //     text: m.answer,
-        //     conclusion: m.conclusion,
-        //     queryId: m.id,
-        //     responseTimestamp: m.response_timestamp,
-        //     explainedFile: m.focused_chunk?.repo_path.path,
-        //   });
-        //   if (!hasOpenedTab && m.focused_chunk?.repo_path) {
-        //     openNewTab(
-        //       {
-        //         type: TabTypesEnum.FILE,
-        //         path: m.focused_chunk.repo_path.path,
-        //         repoRef: m.focused_chunk.repo_path.repo,
-        //         scrollToLine:
-        //           m.focused_chunk.start_line > -1
-        //             ? `${m.focused_chunk.start_line}_${m.focused_chunk.end_line}`
-        //             : undefined,
-        //       },
-        //       side === 'left' ? 'right' : 'left',
-        //     );
-        //     hasOpenedTab = true;
-        //   }
-        // });
-        // setConversation(conv);
-      });
-    }
-  }, [stId, project?.id]);
+    setStudios((prev) => {
+      return { ...prev, [tabKey]: { ...prev[tabKey], onDiffRemoved } };
+    });
+  }, [onDiffRemoved]);
+
+  const isDiffForLocalRepo = useMemo(() => {
+    return diff?.chunks.find((c) => c.repo.startsWith('local//'));
+  }, [diff]);
+
+  // useEffect(() => {
+  //   if (conversation.length && conversation.length < 3 && !tabTitle) {
+  //     updateTabProperty<ChatTabType, 'title'>(
+  //       tabKey,
+  //       'title',
+  //       conversation[0].text,
+  //       side,
+  //     );
+  //   }
+  // }, [conversation, tabKey, side, tabTitle]);
 
   return null;
 };

@@ -623,5 +623,21 @@
 	"# tokens_other": "tokens",
 	"Edit ranges": "Edit ranges",
 	"The whole file will be used as context.": "The whole file will be used as context.",
-	"Selected ranges will be used as context.": "Selected ranges will be used as context."
+	"Selected ranges will be used as context.": "Selected ranges will be used as context.",
+	"Permanently delete <2>Proyecto predeterminado</2> and remove all the data associated to it. Repositories will remain accessible in your GitHub account.": "Permanently delete <2>Proyecto predeterminado</2> and remove all the data associated to it. Repositories will remain accessible in your GitHub account.",
+	"Studio": "Studio",
+	"Manage your studio settings.": "Manage your studio settings.",
+	"Prompt templates": "Prompt templates",
+	"Write studio prompts faster with pre-written templates": "Write studio prompts faster with pre-written templates",
+	"New": "New",
+	"Edit template": "Edit template",
+	"All templates": "All templates",
+	"Create template": "Create template",
+	"Template title": "Template title",
+	"Give your template a title": "Give your template a title",
+	"Prompt": "Prompt",
+	"Write your prompt...": "Write your prompt...",
+	"Delete template": "Delete template",
+	"Search templates...": "Search templates...",
+	"Manage templates": "Manage templates"
 }
