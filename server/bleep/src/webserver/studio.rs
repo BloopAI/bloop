@@ -357,6 +357,14 @@ pub struct ListItem {
     modified_at: NaiveDateTime,
     repos: Vec<String>,
     most_common_ext: String,
+    context: Vec<ListItemContextFile>,
+}
+
+#[derive(serde::Serialize)]
+struct ListItemContextFile {
+    path: String,
+    hidden: bool,
+    ranges: Vec<Range<usize>>,
 }
 
 pub async fn list(
@@ -421,6 +429,14 @@ pub async fn list(
             modified_at: studio.modified_at,
             repos: repos.into_iter().collect::<Vec<_>>(),
             most_common_ext,
+            context: context
+                .iter()
+                .map(|c| ListItemContextFile {
+                    path: c.path.clone(),
+                    hidden: c.hidden,
+                    ranges: c.ranges.clone(),
+                })
+                .collect(),
         };
 
         list_items.push(list_item);
