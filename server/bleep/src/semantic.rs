@@ -808,14 +808,7 @@ fn build_conditions(
     let repo_filter = {
         let conditions = query
             .repos()
-            .map(|r| {
-                if r.contains('/') && !r.starts_with("github.com/") {
-                    format!("github.com/{r}")
-                } else {
-                    r.to_string()
-                }
-            })
-            .map(|r| make_kv_keyword_filter("repo_name", r.as_ref()).into())
+            .map(|r| make_kv_keyword_filter("repo_name", &r).into())
             .collect::<Vec<_>>();
         // one of the above repos should match
         if conditions.is_empty() {
