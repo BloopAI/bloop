@@ -269,7 +269,9 @@ const ConversationInput = ({
   return (
     <div
       className={`flex items-start w-full p-4 gap-4 rounded-tl-md rounded-tr-md ${
-        isInputAtBottom ? 'bg-bg-base border-t border-x border-bg-border' : ''
+        isInputAtBottom
+          ? 'bg-bg-base border-t border-x border-bg-border shadow-medium'
+          : ''
       }`}
       ref={containerRef}
     >

@@ -1,9 +1,8 @@
-import React, {
+import {
   memo,
   useCallback,
   useContext,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -12,7 +11,6 @@ import throttle from 'lodash.throttle';
 import { DeviceContext } from '../../../context/deviceContext';
 import { ProjectContext } from '../../../context/projectContext';
 import {
-  DiffHunkType,
   StudioConversationMessage,
   StudioConversationMessageAuthor,
   StudioTabType,
@@ -155,6 +153,7 @@ const StudioPersistentState = ({ tabKey, side }: Props) => {
         [tabKey]: {
           ...prev[tabKey],
           setConversation,
+          setDiff,
         },
       };
     });
@@ -493,14 +492,6 @@ const StudioPersistentState = ({ tabKey, side }: Props) => {
     });
   }, [clearConversation]);
 
-  const hasCodeBlock = useMemo(() => {
-    return conversation.some(
-      (m) =>
-        m.author === StudioConversationMessageAuthor.ASSISTANT &&
-        m.message.includes('```'),
-    );
-  }, [conversation]);
-
   const handleApplyChanges = useCallback(async () => {
     if (!project?.id) {
       return;
@@ -522,39 +513,50 @@ const StudioPersistentState = ({ tabKey, side }: Props) => {
       setWaitingForDiff(false);
     }
   }, [tabKey, project?.id]);
+  useEffect(() => {
+    setStudios((prev) => {
+      return { ...prev, [tabKey]: { ...prev[tabKey], handleApplyChanges } };
+    });
+  }, [handleApplyChanges]);
 
   const handleCancelDiff = useCallback(() => {
     abortController.current?.abort();
     setWaitingForDiff(false);
   }, []);
+  useEffect(() => {
+    setStudios((prev) => {
+      return { ...prev, [tabKey]: { ...prev[tabKey], handleCancelDiff } };
+    });
+  }, [handleCancelDiff]);
 
-  const handleConfirmDiff = useCallback(
-    async (e: React.MouseEvent) => {
-      e.preventDefault();
-      if (!diff || !project?.id) {
-        return;
+  const handleConfirmDiff = useCallback(async () => {
+    if (!diff || !project?.id) {
+      return;
+    }
+    const result = diff.chunks.map((c) => c.raw_patch).join('');
+    try {
+      await confirmStudioDiff(project.id, tabKey, result);
+      setDiff(null);
+      setDiffApplied(true);
+    } catch (err: unknown) {
+      console.log(err);
+      // @ts-ignore
+      if (err.code !== 'ERR_CANCELED') {
+        setDiffApplyError(true);
       }
-      const result = diff.chunks.map((c) => c.raw_patch).join('');
-      try {
-        await confirmStudioDiff(project.id, tabKey, result);
-        setDiff(null);
-        setDiffApplied(true);
-      } catch (err: unknown) {
-        console.log(err);
-        // @ts-ignore
-        if (err.code !== 'ERR_CANCELED') {
-          setDiffApplyError(true);
-        }
-      }
-    },
-    [tabKey, diff, project?.id],
-  );
+    }
+  }, [tabKey, diff, project?.id]);
+  useEffect(() => {
+    setStudios((prev) => {
+      return { ...prev, [tabKey]: { ...prev[tabKey], handleConfirmDiff } };
+    });
+  }, [handleConfirmDiff]);
 
   const onDiffChanged = useCallback((i: number, v: string) => {
     setDiff((prev) => {
       const newValue: GeneratedCodeDiff = JSON.parse(JSON.stringify(prev));
       newValue.chunks[i].raw_patch = v;
-      const newHunks: DiffHunkType[] = v
+      newValue.chunks[i].hunks = v
         .split(/\n(?=@@ -)/)
         .slice(1)
         .map((h) => {
@@ -564,7 +566,6 @@ const StudioPersistentState = ({ tabKey, side }: Props) => {
             patch: h.split('\n').slice(1).join('\n'),
           };
         });
-      newValue.chunks[i].hunks = newHunks;
       return newValue;
     });
   }, []);
@@ -589,21 +590,6 @@ const StudioPersistentState = ({ tabKey, side }: Props) => {
       return { ...prev, [tabKey]: { ...prev[tabKey], onDiffRemoved } };
     });
   }, [onDiffRemoved]);
-
-  const isDiffForLocalRepo = useMemo(() => {
-    return diff?.chunks.find((c) => c.repo.startsWith('local//'));
-  }, [diff]);
-
-  // useEffect(() => {
-  //   if (conversation.length && conversation.length < 3 && !tabTitle) {
-  //     updateTabProperty<ChatTabType, 'title'>(
-  //       tabKey,
-  //       'title',
-  //       conversation[0].text,
-  //       side,
-  //     );
-  //   }
-  // }, [conversation, tabKey, side, tabTitle]);
 
   return null;
 };

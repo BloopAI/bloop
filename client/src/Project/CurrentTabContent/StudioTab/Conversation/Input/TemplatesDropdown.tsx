@@ -9,13 +9,13 @@ import {
   useRef,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import DropdownSection from '../../../../components/Dropdown/Section';
-import { StudioTemplateType } from '../../../../types/api';
-import SectionItem from '../../../../components/Dropdown/Section/SectionItem';
-import { CogIcon, TemplatesIcon } from '../../../../icons';
-import { UIContext } from '../../../../context/uiContext';
-import { ProjectSettingSections } from '../../../../types/general';
-import useKeyboardNavigation from '../../../../hooks/useKeyboardNavigation';
+import DropdownSection from '../../../../../components/Dropdown/Section';
+import { StudioTemplateType } from '../../../../../types/api';
+import SectionItem from '../../../../../components/Dropdown/Section/SectionItem';
+import { CogIcon, TemplatesIcon } from '../../../../../icons';
+import { UIContext } from '../../../../../context/uiContext';
+import { ProjectSettingSections } from '../../../../../types/general';
+import useKeyboardNavigation from '../../../../../hooks/useKeyboardNavigation';
 
 type Props = {
   templates: StudioTemplateType[];

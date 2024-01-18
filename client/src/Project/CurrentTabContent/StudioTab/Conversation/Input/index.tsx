@@ -10,25 +10,21 @@ import React, {
   useState,
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { StudioConversationMessageAuthor } from '../../../../types/general';
-import MarkdownWithCode from '../../../../components/MarkdownWithCode';
-import { EnvContext } from '../../../../context/envContext';
-import KeyboardHint from '../../../../components/KeyboardHint';
+import { StudioConversationMessageAuthor } from '../../../../../types/general';
+import MarkdownWithCode from '../../../../../components/MarkdownWithCode';
+import { EnvContext } from '../../../../../context/envContext';
 import {
   PencilIcon,
   RefreshIcon,
   TemplatesIcon,
   TrashCanIcon,
   WarningSignIcon,
-} from '../../../../icons';
-import Button from '../../../../components/Button';
-import useKeyboardNavigation from '../../../../hooks/useKeyboardNavigation';
-import { checkEventKeys } from '../../../../utils/keyboardUtils';
-import { UIContext } from '../../../../context/uiContext';
-import CopyButton from '../../../../components/MarkdownWithCode/CopyButton';
-import { StudioTemplateType } from '../../../../types/api';
-import Dropdown from '../../../../components/Dropdown';
-import { useTemplateShortcut } from '../../../../consts/shortcuts';
+} from '../../../../../icons';
+import Button from '../../../../../components/Button';
+import CopyButton from '../../../../../components/MarkdownWithCode/CopyButton';
+import { StudioTemplateType } from '../../../../../types/api';
+import Dropdown from '../../../../../components/Dropdown';
+import { useTemplateShortcut } from '../../../../../consts/shortcuts';
 import TemplatesDropdown from './TemplatesDropdown';
 
 type Props = {
@@ -38,15 +34,12 @@ type Props = {
   onMessageRemoved?: (i: number, andSubsequent?: boolean) => void;
   i?: number;
   inputRef?: React.MutableRefObject<HTMLTextAreaElement | null>;
+  templatesRef?: React.MutableRefObject<HTMLButtonElement | null>;
   isTokenLimitExceeded: boolean;
   isLast: boolean;
   side: 'left' | 'right';
-  onSubmit?: () => void;
-  isActiveTab: boolean;
-  isLoading: boolean;
-  requestsLeft: number;
-  handleCancel: () => void;
   templates?: StudioTemplateType[];
+  setIsDropdownShown: (b: boolean) => void;
 };
 
 const ConversationInput = ({
@@ -59,31 +52,20 @@ const ConversationInput = ({
   isLast,
   isTokenLimitExceeded,
   side,
-  onSubmit,
-  isActiveTab,
-  requestsLeft,
-  isLoading,
-  handleCancel,
   templates,
+  setIsDropdownShown,
+  templatesRef,
 }: Props) => {
   const { t } = useTranslation();
   const { envConfig } = useContext(EnvContext);
-  const { setIsUpgradeRequiredPopupOpen } = useContext(
-    UIContext.UpgradeRequiredPopup,
-  );
-  // const { refetchTemplates, setTemplates } = useContext(StudioContext.Setters);
   const [isFocused, setFocused] = useState(false);
-  const [isDropdownShown, setIsDropdownShown] = useState(false);
   const ref = useRef<HTMLTextAreaElement | null>(null);
   const cloneRef = useRef<HTMLTextAreaElement | null>(null);
-  const templatesRef = useRef<HTMLButtonElement | null>(null);
-  const [isSaved, setSaved] = useState(false);
   useImperativeHandle(inputRef, () => ref.current!);
 
   const handleChange = useCallback(
     (e: ChangeEvent<HTMLTextAreaElement>) => {
       onMessageChange(e.target.value, i);
-      setSaved(false);
     },
     [i, onMessageChange],
   );
@@ -100,67 +82,10 @@ const ConversationInput = ({
     }
   }, [message, isFocused]);
 
-  const saveAsTemplate = useCallback(() => {
-    setSaved(true);
-    // setTemplates((prev) => [
-    //   {
-    //     name: '',
-    //     content: message,
-    //     id: 'new',
-    //     modified_at: '',
-    //     is_default: false,
-    //   },
-    //   ...prev,
-    // ]);
-    // setLeftPanel({ type: StudioLeftPanelType.TEMPLATES });
-  }, [message]);
-
-  const useTemplates = useCallback(() => {
-    // setLeftPanel({ type: StudioLeftPanelType.TEMPLATES });
-  }, []);
-
-  const handleKeyEvent = useCallback(
-    (e: KeyboardEvent) => {
-      if (checkEventKeys(e, ['entr'])) {
-        e.preventDefault();
-        e.stopPropagation();
-        if (
-          message &&
-          !isTokenLimitExceeded &&
-          // !hasContextError &&
-          requestsLeft
-          // && !isChangeUnsaved
-        ) {
-          onSubmit?.();
-        } else if (!requestsLeft) {
-          setIsUpgradeRequiredPopupOpen(true);
-        }
-        // } else if ((e.metaKey || e.ctrlKey) && e.key === 't') {
-        //   setLeftPanel({ type: StudioLeftPanelType.TEMPLATES });
-      }
-      if (checkEventKeys(e, ['Esc']) && isLoading) {
-        e.preventDefault();
-        e.stopPropagation();
-        handleCancel();
-      }
-      if (checkEventKeys(e, useTemplateShortcut) && i === undefined) {
-        templatesRef.current?.parentElement?.click();
-      }
-    },
-    [onSubmit, isLoading, requestsLeft, i],
-  );
-  useKeyboardNavigation(
-    handleKeyEvent,
-    !isActiveTab || !onSubmit || isDropdownShown,
-  );
-
   const dropdownProps = useMemo(() => {
     return {
       templates,
-      onTemplateSelected: (t: string) => {
-        onMessageChange(t, i);
-        setSaved(false);
-      },
+      onTemplateSelected: onMessageChange,
     };
   }, [templates, onMessageChange, i]);
 
@@ -230,18 +155,6 @@ const ConversationInput = ({
                 rows={1}
                 ref={cloneRef}
               />
-              {!!onSubmit && (
-                <div className="self-end flex gap-2 items-center select-none">
-                  <button
-                    className="flex gap-1 items-center py-1 pr-1 pl-2 rounded-6 body-mini-b text-label-base bg-bg-base disabled:text-label-muted disabled:bg-bg-base"
-                    disabled={!message}
-                    onClick={onSubmit}
-                  >
-                    <Trans>Generate</Trans>
-                    <KeyboardHint shortcut="entr" />
-                  </button>
-                </div>
-              )}
             </>
           ) : (
             <>

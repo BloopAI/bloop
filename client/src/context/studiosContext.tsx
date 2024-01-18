@@ -15,6 +15,7 @@ export type StudioContext = {
   onMessageChange: (message: string, i?: number) => void;
   onMessageRemoved: (i: number, andSubsequent?: boolean) => void;
   diff: GeneratedCodeDiff | null;
+  setDiff: Dispatch<SetStateAction<GeneratedCodeDiff | null>>;
   onDiffRemoved: (i: number) => void;
   onDiffChanged: (i: number, v: string) => void;
   isDiffApplyError: boolean;
@@ -26,6 +27,9 @@ export type StudioContext = {
   isLoading: boolean;
   handleCancel: () => void;
   clearConversation: () => void;
+  handleCancelDiff: () => void;
+  handleApplyChanges: () => void;
+  handleConfirmDiff: () => void;
 };
 
 type ContextType = {
