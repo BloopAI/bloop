@@ -7,7 +7,12 @@ import React, {
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { CodeStudioType } from '../../../../types/api';
-import { CodeStudioIcon, PromptIcon, RangeIcon } from '../../../../icons';
+import {
+  CodeStudioIcon,
+  MagazineIcon,
+  PromptIcon,
+  RangeIcon,
+} from '../../../../icons';
 import ChevronRight from '../../../../icons/ChevronRight';
 import TokenUsage from '../../../../components/TokenUsage';
 import { TOKEN_LIMIT } from '../../../../consts/codeStudio';
@@ -34,6 +39,7 @@ const StudioEntry = ({
   setExpandedIndex,
   context,
   token_counts,
+  doc_context,
   isLeftSidebarFocused,
 }: Props) => {
   const { t } = useTranslation();
@@ -137,6 +143,59 @@ const StudioEntry = ({
                 }`}
               >
                 {humanNumber(token_counts.per_file[i] || 0)}
+              </span>
+            </StudioSubItem>
+          ))}
+          {!!doc_context.length && (
+            <div className="body-tiny text-label-base pl-10.5 pr-4 h-7 flex items-center">
+              <Trans>Documentation in studio</Trans>
+            </div>
+          )}
+          {doc_context.map((d, i) => (
+            <StudioSubItem
+              key={`${d.doc_id}`}
+              studioId={id}
+              focusedIndex={focusedIndex}
+              index={`${index}-${d.doc_id}`}
+              studioName={name}
+              isLeftSidebarFocused={isLeftSidebarFocused}
+            >
+              {d.doc_icon ? (
+                <img
+                  src={d.doc_icon}
+                  alt={d.doc_title || d.absolute_url}
+                  className={'w-4 h-4'}
+                />
+              ) : (
+                <MagazineIcon sizeClassName="w-4 h-4" />
+              )}
+              <span className="flex-1 ellipsis">{d.doc_title}</span>
+              {!!d.ranges.length && (
+                <Tooltip
+                  text={
+                    d.ranges.length === 1
+                      ? t('Lines # - #', {
+                          start: d.ranges[0] + 1,
+                          end: d.ranges[1],
+                        })
+                      : t('# ranges', { count: d.ranges.length })
+                  }
+                  placement={'top'}
+                >
+                  <RangeIcon sizeClassName="w-3.5 h-3.5" />
+                </Tooltip>
+              )}
+              <span
+                className={`code-mini w-10 text-right ${
+                  (token_counts.per_doc_file[i] || 0) < 2000 &&
+                  (token_counts.per_doc_file[i] || 0) > 500
+                    ? 'text-yellow'
+                    : (token_counts.per_doc_file[i] || 0) < 500
+                    ? 'text-green'
+                    : 'text-red'
+                }`}
+              >
+                {humanNumber(token_counts.per_doc_file[i] || 0)}
               </span>
             </StudioSubItem>
           ))}

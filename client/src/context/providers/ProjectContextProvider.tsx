@@ -22,6 +22,7 @@ import {
   getCodeStudios,
   getProject,
   getProjectConversations,
+  getProjectDocs,
   getProjectRepos,
 } from '../../services/api';
 import { ProjectFullType, ProjectShortType } from '../../types/api';
@@ -66,6 +67,11 @@ const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
       setProject((prev) => (prev ? { ...prev, studios: r } : null));
     });
   }, [currentProjectId]);
+  const refreshCurrentProjectDocs = useCallback(async () => {
+    getProjectDocs(currentProjectId).then((r) => {
+      setProject((prev) => (prev ? { ...prev, docs: r } : null));
+    });
+  }, [currentProjectId]);
 
   useEffect(() => {
     if (
@@ -108,10 +114,12 @@ const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
             repos: prev?.repos || [],
             studios: prev?.studios || [],
             conversations: prev?.conversations || [],
+            docs: prev?.docs || [],
           }));
           refreshCurrentProjectRepos();
           refreshCurrentProjectConversations();
           refreshCurrentProjectStudios();
+          refreshCurrentProjectDocs();
         })
         .catch((err) => {
           console.log(err);
@@ -158,10 +166,20 @@ const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
       refreshCurrentProjectRepos,
       refreshCurrentProjectConversations,
       refreshCurrentProjectStudios,
+      refreshCurrentProjectDocs,
       refreshCurrentProject,
       isLoading,
     }),
-    [project, isReposLoaded, isLoading],
+    [
+      project,
+      isReposLoaded,
+      refreshCurrentProjectRepos,
+      refreshCurrentProjectConversations,
+      refreshCurrentProjectStudios,
+      refreshCurrentProjectDocs,
+      refreshCurrentProject,
+      isLoading,
+    ],
   );
 
   const allValue = useMemo(

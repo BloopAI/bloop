@@ -8,15 +8,23 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CommandBarSectionType, CommandBarStepEnum } from '../../types/general';
-import { CommandBarContext } from '../../context/commandBarContext';
-import { getIndexedDocs, verifyDocsUrl } from '../../services/api';
-import { PlusSignIcon } from '../../icons';
-import { DocShortType } from '../../types/api';
-import Header from '../Header';
-import Body from '../Body';
-import Footer from '../Footer';
-import DocItem from './items/DocItem';
+import {
+  CommandBarSectionType,
+  CommandBarStepEnum,
+} from '../../../types/general';
+import { CommandBarContext } from '../../../context/commandBarContext';
+import {
+  getIndexedDocs,
+  indexDocsUrl,
+  verifyDocsUrl,
+} from '../../../services/api';
+import { PlusSignIcon } from '../../../icons';
+import { DocShortType } from '../../../types/api';
+import Header from '../../Header';
+import Body from '../../Body';
+import Footer from '../../Footer';
+import DocItem from '../items/DocItem';
+import ActionsDropdown from './ActionsDropdown';
 
 type Props = {};
 
@@ -25,7 +33,10 @@ const Documentation = ({}: Props) => {
   const [isAddMode, setIsAddMode] = useState(false);
   const [hasFetched, setHasFetched] = useState(false);
   const [indexedDocs, setIndexedDocs] = useState<DocShortType[]>([]);
-  const [addedDoc, setAddedDoc] = useState('');
+  const [addedDoc, setAddedDoc] = useState<null | { id: string; url: string }>(
+    null,
+  );
+  const [isDropdownVisible, setIsDropdownVisible] = useState(false);
   const { setChosenStep, setFocusedItem } = useContext(
     CommandBarContext.Handlers,
   );
@@ -76,19 +87,22 @@ const Documentation = ({}: Props) => {
   }, [t, isAddMode]);
 
   const handleBack = useCallback(() => {
-    if (isAddMode && (addedDoc || indexedDocs.length)) {
+    if (isAddMode) {
       setIsAddMode(false);
     } else {
       setChosenStep({ id: CommandBarStepEnum.INITIAL });
     }
-  }, [isAddMode, addedDoc, indexedDocs]);
+  }, [isAddMode]);
 
   const refetchDocs = useCallback(() => {
     getIndexedDocs().then((data) => {
       setIndexedDocs(data);
       setHasFetched(true);
+      if (addedDoc && data.find((d) => d.id === addedDoc.id)) {
+        setAddedDoc(null);
+      }
     });
-  }, []);
+  }, [addedDoc]);
 
   useEffect(() => {
     const mapped = indexedDocs.map((d) => ({
@@ -96,16 +110,13 @@ const Documentation = ({}: Props) => {
       componentProps: { doc: d, isIndexed: !!d.id, refetchDocs },
       key: d.id,
     }));
-    if (!mapped.length && hasFetched && !addedDoc) {
-      enterAddMode();
-    }
     if (addedDoc) {
       mapped.unshift({
         Component: DocItem,
         componentProps: {
           doc: {
-            url: addedDoc,
-            id: '',
+            url: addedDoc.url,
+            id: addedDoc.id,
             name: '',
             favicon: '',
             index_status: 'indexing',
@@ -113,10 +124,10 @@ const Documentation = ({}: Props) => {
           isIndexed: false,
           refetchDocs: () => {
             refetchDocs();
-            setAddedDoc('');
+            setAddedDoc(null);
           },
         },
-        key: addedDoc,
+        key: `doc-${addedDoc.id}`,
       });
     }
     setSections([
@@ -128,7 +139,7 @@ const Documentation = ({}: Props) => {
         items: mapped,
       },
     ]);
-  }, [indexedDocs, addedDoc, hasFetched]);
+  }, [indexedDocs, addedDoc, hasFetched, refetchDocs]);
 
   useEffect(() => {
     if (!isAddMode || !hasFetched) {
@@ -136,25 +147,25 @@ const Documentation = ({}: Props) => {
     }
   }, [isAddMode]);
 
-  const handleAddSubmit = useCallback((inputValue: string) => {
+  const handleAddSubmit = useCallback(async (inputValue: string) => {
     setFocusedItem({
       footerHint: t('Verifying access...'),
       footerBtns: [],
     });
     setInputValue('');
-    verifyDocsUrl(inputValue.trim())
-      .then(() => {
-        setIsAddMode(false);
-        setAddedDoc(inputValue);
-      })
-      .catch(() => {
-        setFocusedItem({
-          footerHint: t(
-            "We couldn't find any docs at that link. Try again or make sure the link is correct!",
-          ),
-          footerBtns: [],
-        });
+    try {
+      await verifyDocsUrl(inputValue.trim());
+      setIsAddMode(false);
+      const newId = await indexDocsUrl(inputValue);
+      setAddedDoc({ id: newId, url: inputValue });
+    } catch (err) {
+      setFocusedItem({
+        footerHint: t(
+          "We couldn't find any docs at that link. Try again or make sure the link is correct!",
+        ),
+        footerBtns: [],
       });
+    }
   }, []);
 
   const sectionsToShow = useMemo(() => {
@@ -186,13 +197,20 @@ const Documentation = ({}: Props) => {
         }
         onChange={handleInputChange}
         value={inputValue}
+        disableKeyNav={!isAddMode && isDropdownVisible}
       />
       {isAddMode ? (
         <div className="flex-1" />
       ) : (
-        <Body sections={sectionsToShow} />
+        <Body
+          sections={sectionsToShow}
+          disableKeyNav={!isAddMode && isDropdownVisible}
+        />
       )}
-      <Footer />
+      <Footer
+        onDropdownVisibilityChange={setIsDropdownVisible}
+        ActionsDropdown={isAddMode ? undefined : ActionsDropdown}
+      />
     </div>
   );
 };

@@ -6,6 +6,7 @@ import { RepositoriesContext } from '../../../context/repositoriesContext';
 import RepoNav from './Repo';
 import ConversationsNav from './Conversations';
 import StudiosNav from './Studios';
+import DocNav from './Doc';
 
 type Props = {
   focusedIndex: string;
@@ -92,6 +93,20 @@ const NavPanel = ({ focusedIndex, setFocusedIndex }: Props) => {
           }
           focusedIndex={focusedIndex}
           index={`repo-${r.repo.ref}`}
+        />
+      ))}
+      {project?.docs.map((d) => (
+        <DocNav
+          projectId={project?.id}
+          key={d.id}
+          setExpanded={setExpanded}
+          isExpanded={expanded === `doc-${d.id}`}
+          focusedIndex={focusedIndex}
+          index={`doc-${d.id}`}
+          docId={d.id}
+          title={d.name}
+          favicon={d.favicon}
+          url={d.url}
         />
       ))}
     </div>

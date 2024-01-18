@@ -621,5 +621,6 @@
 	"Delete template": "テンプレートを削除します",
 	"Search templates...": "テンプレートを検索...",
 	"Manage templates": "テンプレートを管理します",
-	"Prompts": "プロンプト"
+	"Prompts": "プロンプト",
+	"Manage docs": "ドキュメントを管理します"
 }

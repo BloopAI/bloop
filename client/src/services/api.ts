@@ -467,12 +467,24 @@ export const refreshToken = (refresh_token: string) =>
     (r) => r.data,
   );
 
-export const indexDocsUrl = (url: string) =>
-  http('/docs/sync', { params: { url } }).then((r) => r.data);
+export const getProjectDocs = (projectId: string): Promise<DocShortType[]> =>
+  http(`projects/${projectId}/docs`).then((r) => r.data);
+export const addDocToProject = (projectId: string, doc_id: string) =>
+  http.post(`projects/${projectId}/docs`, { doc_id }).then((r) => r.data);
+export const removeDocFromProject = (projectId: string, doc_id: string) =>
+  http.delete(`projects/${projectId}/docs/${doc_id}`).then((r) => r.data);
+export const indexDocsUrl = (url: string): Promise<string> =>
+  http('/docs/enqueue', { params: { url } }).then((r) => r.data);
+export const cancelDocIndexing = (docId: string) =>
+  http(`/${docId}/cancel`).then((r) => r.data);
+export const resyncDoc = (docId: string) =>
+  http(`/${docId}/resync`).then((r) => r.data);
 export const verifyDocsUrl = (url: string) =>
   http('/docs/verify', { params: { url } }).then((r) => r.data);
 export const getIndexedDocs = (): Promise<DocShortType[]> =>
   http('/docs').then((r) => r.data);
+export const getDocById = (id: string): Promise<DocShortType> =>
+  http(`/docs/${id}`).then((r) => r.data);
 export const getIndexedPages = (id: number | string): Promise<DocPageType[]> =>
   http(`docs/${id}/list`, { params: { limit: 100 } }).then((r) => r.data);
 export const deleteDocProvider = (

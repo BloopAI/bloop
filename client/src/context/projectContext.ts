@@ -11,6 +11,7 @@ export const ProjectContext = {
     refreshCurrentProjectRepos: () => void;
     refreshCurrentProjectConversations: () => void;
     refreshCurrentProjectStudios: () => void;
+    refreshCurrentProjectDocs: () => void;
   }>({
     project: null,
     isReposLoaded: false,
@@ -20,6 +21,7 @@ export const ProjectContext = {
     refreshCurrentProjectRepos: () => {},
     refreshCurrentProjectConversations: () => {},
     refreshCurrentProjectStudios: () => {},
+    refreshCurrentProjectDocs: () => {},
   }),
   All: createContext<{
     projects: ProjectShortType[];

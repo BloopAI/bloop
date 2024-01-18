@@ -90,6 +90,15 @@ const InitialCommandBar = ({}: Props) => {
           },
         ],
       },
+      {
+        label: t('Manage docs'),
+        Icon: MagazineIcon,
+        id: CommandBarStepEnum.DOCS,
+        key: CommandBarStepEnum.DOCS,
+        shortcut: globalShortcuts.openAddDocs.shortcut,
+        footerHint: '',
+        footerBtns: [{ label: t('Manage'), shortcut: ['entr'] }],
+      },
     ];
     const projectItems: CommandBarItemGeneralType[] = projects
       .map(

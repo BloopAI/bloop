@@ -77,6 +77,10 @@ const Dropdown = ({
 
   useEffect(() => {
     onVisibilityChange?.(isVisible);
+
+    return () => {
+      onVisibilityChange?.(false);
+    };
   }, [isVisible]);
 
   const handleKeyEvent = useCallback((e: KeyboardEvent) => {
