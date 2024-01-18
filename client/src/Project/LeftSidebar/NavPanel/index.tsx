@@ -9,10 +9,11 @@ import StudiosNav from './Studios';
 
 type Props = {
   focusedIndex: string;
+  setFocusedIndex: (i: string) => void;
 };
 
-const NavPanel = ({ focusedIndex }: Props) => {
-  const [expanded, setExpanded] = useState(-1);
+const NavPanel = ({ focusedIndex, setFocusedIndex }: Props) => {
+  const [expanded, setExpanded] = useState('');
   const { project } = useContext(ProjectContext.Current);
   const { focusedPanel } = useContext(TabsContext.All);
   const { tab: leftTab } = useContext(TabsContext.CurrentLeft);
@@ -20,34 +21,36 @@ const NavPanel = ({ focusedIndex }: Props) => {
   const { indexingStatus } = useContext(RepositoriesContext);
 
   const currentlyFocusedTab = useMemo(() => {
-    const focusedTab = focusedPanel === 'left' ? leftTab : rightTab;
-    if (focusedTab?.type === TabTypesEnum.FILE) {
-      return focusedTab;
-    }
-    return null;
+    return focusedPanel === 'left' ? leftTab : rightTab;
   }, [focusedPanel, leftTab, rightTab]);
 
   useEffect(() => {
     if (project?.repos.length === 1) {
-      setExpanded(
-        Number(!!project?.conversations.length) +
-          Number(!!project?.studios.length),
-      );
+      setExpanded(`repo-${project.repos[0].repo.ref}`);
     }
   }, [project?.repos]);
 
   useEffect(() => {
-    if (currentlyFocusedTab?.repoRef) {
-      const repoIndex = project?.repos.findIndex(
-        (r) => r.repo.ref === currentlyFocusedTab.repoRef,
-      );
-      if (repoIndex !== undefined && repoIndex > -1) {
-        setExpanded(
-          repoIndex +
-            Number(!!project?.conversations.length) +
-            Number(!!project?.studios.length),
-        );
+    if (
+      currentlyFocusedTab?.type === TabTypesEnum.FILE &&
+      currentlyFocusedTab?.repoRef
+    ) {
+      if (!currentlyFocusedTab.studioId) {
+        setExpanded(`repo-${currentlyFocusedTab.repoRef}`);
+      } else {
+        setExpanded('studios');
+        const { studioId, repoRef, branch, path } = currentlyFocusedTab;
+        setFocusedIndex(`studios-${studioId}-${path}-${repoRef}-${branch}`);
       }
+    } else if (currentlyFocusedTab?.type === TabTypesEnum.STUDIO) {
+      setExpanded('studios');
+      setFocusedIndex(`studios-${currentlyFocusedTab.studioId}-prompts`);
+    } else if (
+      currentlyFocusedTab?.type === TabTypesEnum.CHAT &&
+      currentlyFocusedTab.conversationId
+    ) {
+      setExpanded('conversations');
+      setFocusedIndex(`conversations-${currentlyFocusedTab.conversationId}`);
     }
   }, [currentlyFocusedTab]);
 
@@ -56,17 +59,17 @@ const NavPanel = ({ focusedIndex }: Props) => {
       {!!project?.studios.length && (
         <StudiosNav
           setExpanded={setExpanded}
-          isExpanded={expanded === 0}
+          isExpanded={expanded === 'studios'}
           focusedIndex={focusedIndex}
-          index={`studios-0`}
+          index={`studios`}
         />
       )}
       {!!project?.conversations.length && (
         <ConversationsNav
           setExpanded={setExpanded}
-          isExpanded={expanded === (project?.studios.length ? 1 : 0)}
+          isExpanded={expanded === 'conversations'}
           focusedIndex={focusedIndex}
-          index={`conv-1`}
+          index={`conversations`}
         />
       )}
       {project?.repos.map((r, i) => (
@@ -74,17 +77,7 @@ const NavPanel = ({ focusedIndex }: Props) => {
           projectId={project?.id}
           key={r.repo.ref}
           setExpanded={setExpanded}
-          isExpanded={
-            expanded ===
-            i +
-              Number(!!project?.conversations.length) +
-              Number(!!project?.studios.length)
-          }
-          i={
-            i +
-            Number(!!project?.conversations.length) +
-            Number(!!project?.studios.length)
-          }
+          isExpanded={expanded === `repo-${r.repo.ref}`}
           repoRef={r.repo.ref}
           branch={r.branch}
           lastIndex={r.repo.last_index}
@@ -92,24 +85,13 @@ const NavPanel = ({ focusedIndex }: Props) => {
           indexingData={indexingStatus[r.repo.ref]}
           indexedBranches={r.repo.branch_filter?.select || []}
           currentPath={
+            currentlyFocusedTab?.type === TabTypesEnum.FILE &&
             currentlyFocusedTab?.repoRef === r.repo.ref
               ? currentlyFocusedTab?.path
               : undefined
           }
           focusedIndex={focusedIndex}
-          index={
-            i +
-            (project?.studios.length
-              ? expanded === 0
-                ? project?.studios.length + 1
-                : 1
-              : 0) +
-            (project?.conversations.length
-              ? expanded === (project?.studios.length ? 1 : 0)
-                ? project?.conversations.length + 1
-                : 1
-              : 0)
-          }
+          index={`repo-${r.repo.ref}`}
         />
       ))}
     </div>

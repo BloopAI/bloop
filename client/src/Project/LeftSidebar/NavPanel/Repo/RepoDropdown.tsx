@@ -9,29 +9,29 @@ import {
   useEffect,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import DropdownSection from '../../../components/Dropdown/Section';
-import SectionItem from '../../../components/Dropdown/Section/SectionItem';
+import DropdownSection from '../../../../components/Dropdown/Section';
+import SectionItem from '../../../../components/Dropdown/Section/SectionItem';
 import {
   ArrowTriangleBottomIcon,
   BranchIcon,
   RefreshIcon,
   TrashCanIcon,
-} from '../../../icons';
+} from '../../../../icons';
 import {
   changeRepoBranch,
   indexRepoBranch,
   removeRepoFromProject,
   syncRepo,
-} from '../../../services/api';
-import { DeviceContext } from '../../../context/deviceContext';
-import SpinLoaderContainer from '../../../components/Loaders/SpinnerLoader';
-import SectionLabel from '../../../components/Dropdown/Section/SectionLabel';
-import Button from '../../../components/Button';
-import { ProjectContext } from '../../../context/projectContext';
-import { PersonalQuotaContext } from '../../../context/personalQuotaContext';
-import { RepoIndexingStatusType } from '../../../types/general';
-import { RepositoriesContext } from '../../../context/repositoriesContext';
-import { UIContext } from '../../../context/uiContext';
+} from '../../../../services/api';
+import { DeviceContext } from '../../../../context/deviceContext';
+import SpinLoaderContainer from '../../../../components/Loaders/SpinnerLoader';
+import SectionLabel from '../../../../components/Dropdown/Section/SectionLabel';
+import Button from '../../../../components/Button';
+import { ProjectContext } from '../../../../context/projectContext';
+import { PersonalQuotaContext } from '../../../../context/personalQuotaContext';
+import { RepoIndexingStatusType } from '../../../../types/general';
+import { RepositoriesContext } from '../../../../context/repositoriesContext';
+import { UIContext } from '../../../../context/uiContext';
 
 type Props = {
   repoRef: string;

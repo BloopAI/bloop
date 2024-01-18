@@ -7,21 +7,25 @@ import React, {
   useRef,
   MouseEvent,
   useContext,
+  useState,
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import Dropdown from '../../../components/Dropdown';
+import Dropdown from '../../../../components/Dropdown';
 import {
   ArrowTriangleBottomIcon,
-  ChatBubblesIcon,
+  CodeStudioIcon,
   MoreHorizontalIcon,
-} from '../../../icons';
-import Button from '../../../components/Button';
-import { ProjectContext } from '../../../context/projectContext';
-import ConversationsDropdown from './ConversationsDropdown';
-import ConversationEntry from './CoversationEntry';
+} from '../../../../icons';
+import Button from '../../../../components/Button';
+import { ProjectContext } from '../../../../context/projectContext';
+import { useEnterKey } from '../../../../hooks/useEnterKey';
+import { UIContext } from '../../../../context/uiContext';
+import { useNavPanel } from '../../../../hooks/useNavPanel';
+import StudioEntry from './StudioEntry';
+import StudiosDropdown from './StudiosDropdown';
 
 type Props = {
-  setExpanded: Dispatch<SetStateAction<number>>;
+  setExpanded: Dispatch<SetStateAction<string>>;
   isExpanded: boolean;
   focusedIndex: string;
   index: string;
@@ -29,35 +33,17 @@ type Props = {
 
 const reactRoot = document.getElementById('root')!;
 
-const ConversationsNav = ({
+const StudiosNav = ({
   isExpanded,
   setExpanded,
   focusedIndex,
   index,
 }: Props) => {
   const { t } = useTranslation();
+  const [expandedIndex, setExpandedIndex] = useState('');
   const { project } = useContext(ProjectContext.Current);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const toggleExpanded = useCallback(() => {
-    setExpanded((prev) => (prev === 0 ? -1 : 0));
-  }, []);
-
-  useEffect(() => {
-    if (isExpanded) {
-      // containerRef.current?.scrollIntoView({ block: 'nearest' });
-    }
-  }, [isExpanded]);
-
-  const noPropagate = useCallback((e?: MouseEvent) => {
-    e?.stopPropagation();
-  }, []);
-
-  useEffect(() => {
-    if (focusedIndex === index && containerRef.current) {
-      containerRef.current.scrollIntoView({ block: 'nearest' });
-    }
-  }, [focusedIndex, index]);
+  const { containerRef, toggleExpanded, noPropagate, isLeftSidebarFocused } =
+    useNavPanel(index, setExpanded, isExpanded, focusedIndex);
 
   return (
     <div className="select-none overflow-hidden w-full flex-shrink-0">
@@ -71,13 +57,13 @@ const ConversationsNav = ({
         ref={containerRef}
         data-node-index={index}
       >
-        <ChatBubblesIcon
+        <CodeStudioIcon
           sizeClassName="w-3.5 h-3.5"
-          className="text-brand-default"
+          className="text-brand-studio"
         />
         <p className="flex items-center gap-1 body-s-b flex-1 ellipsis">
           <span className="text-label-title ellipsis">
-            <Trans>Chat conversations</Trans>
+            <Trans>Studio conversations</Trans>
           </span>
           {isExpanded && (
             <ArrowTriangleBottomIcon
@@ -89,7 +75,7 @@ const ConversationsNav = ({
         {isExpanded && (
           <div onClick={noPropagate}>
             <Dropdown
-              DropdownComponent={ConversationsDropdown}
+              DropdownComponent={StudiosDropdown}
               appendTo={reactRoot}
               dropdownPlacement="bottom-start"
               size="auto"
@@ -108,12 +94,15 @@ const ConversationsNav = ({
       </span>
       {isExpanded && (
         <div className={'overflow-hidden'}>
-          {project?.conversations.map((c, ci) => (
-            <ConversationEntry
+          {project?.studios.map((c) => (
+            <StudioEntry
               key={c.id}
               {...c}
-              index={`${index}-${ci}`}
+              index={`${index}-${c.id}`}
               focusedIndex={focusedIndex}
+              expandedIndex={expandedIndex}
+              setExpandedIndex={setExpandedIndex}
+              isLeftSidebarFocused={isLeftSidebarFocused}
             />
           ))}
         </div>
@@ -122,4 +111,4 @@ const ConversationsNav = ({
   );
 };
 
-export default memo(ConversationsNav);
+export default memo(StudiosNav);

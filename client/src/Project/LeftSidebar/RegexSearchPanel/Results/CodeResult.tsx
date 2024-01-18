@@ -11,8 +11,8 @@ import { ChevronRightIcon } from '../../../../icons';
 import FileIcon from '../../../../components/FileIcon';
 import { TabsContext } from '../../../../context/tabsContext';
 import { TabTypesEnum } from '../../../../types/general';
-import useKeyboardNavigation from '../../../../hooks/useKeyboardNavigation';
 import { UIContext } from '../../../../context/uiContext';
+import { useEnterKey } from '../../../../hooks/useEnterKey';
 import CodeLine from './CodeLine';
 
 type Props = {
@@ -48,25 +48,15 @@ const CodeResult = ({
     }
   }, [focusedIndex, index]);
 
-  const handleKeyEvent = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        e.stopPropagation();
-        e.preventDefault();
-        openNewTab({
-          type: TabTypesEnum.FILE,
-          path: relative_path,
-          repoRef: repo_ref,
-          scrollToLine: `${snippets[0].line_range.start}_${snippets[0].line_range.end}`,
-        });
-      }
-    },
-    [repo_ref, relative_path, openNewTab],
-  );
-  useKeyboardNavigation(
-    handleKeyEvent,
-    focusedIndex !== index || !isLeftSidebarFocused,
-  );
+  const handleEnter = useCallback(() => {
+    openNewTab({
+      type: TabTypesEnum.FILE,
+      path: relative_path,
+      repoRef: repo_ref,
+      scrollToLine: `${snippets[0].line_range.start}_${snippets[0].line_range.end}`,
+    });
+  }, [repo_ref, relative_path, openNewTab]);
+  useEnterKey(handleEnter, focusedIndex !== index || !isLeftSidebarFocused);
 
   const handleClick = useCallback(() => {
     openNewTab({

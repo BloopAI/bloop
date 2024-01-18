@@ -620,5 +620,6 @@
 	"Give your template a title": "テンプレートにタイトルを付けてください",
 	"Delete template": "テンプレートを削除します",
 	"Search templates...": "テンプレートを検索...",
-	"Manage templates": "テンプレートを管理します"
+	"Manage templates": "テンプレートを管理します",
+	"Prompts": "プロンプト"
 }

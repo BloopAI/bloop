@@ -45,6 +45,7 @@ export { default as MoreHorizontalIcon } from './MoreHorizontal';
 export { default as PencilIcon } from './Pencil';
 export { default as PersonIcon } from './Person';
 export { default as PlusSignIcon } from './PlusSign';
+export { default as PromptIcon } from './Prompt';
 export { default as RangeIcon } from './Range';
 export { default as RefIcon } from './Ref';
 export { default as RefreshIcon } from './Refresh';

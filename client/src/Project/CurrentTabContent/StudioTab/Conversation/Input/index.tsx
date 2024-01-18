@@ -37,6 +37,7 @@ type Props = {
   templatesRef?: React.MutableRefObject<HTMLButtonElement | null>;
   isTokenLimitExceeded: boolean;
   isLast: boolean;
+  isActiveTab: boolean;
   side: 'left' | 'right';
   templates?: StudioTemplateType[];
   setIsDropdownShown: (b: boolean) => void;
@@ -55,6 +56,7 @@ const ConversationInput = ({
   templates,
   setIsDropdownShown,
   templatesRef,
+  isActiveTab,
 }: Props) => {
   const { t } = useTranslation();
   const { envConfig } = useContext(EnvContext);
@@ -65,9 +67,11 @@ const ConversationInput = ({
 
   const handleChange = useCallback(
     (e: ChangeEvent<HTMLTextAreaElement>) => {
-      onMessageChange(e.target.value, i);
+      if (isActiveTab) {
+        onMessageChange(e.target.value, i);
+      }
     },
-    [i, onMessageChange],
+    [i, onMessageChange, isActiveTab],
   );
 
   useEffect(() => {

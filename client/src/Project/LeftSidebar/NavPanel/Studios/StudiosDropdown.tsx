@@ -1,10 +1,10 @@
 import { memo, useCallback, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
-import DropdownSection from '../../../components/Dropdown/Section';
-import SectionItem from '../../../components/Dropdown/Section/SectionItem';
-import { TrashCanIcon } from '../../../icons';
-import { deleteCodeStudio } from '../../../services/api';
-import { ProjectContext } from '../../../context/projectContext';
+import DropdownSection from '../../../../components/Dropdown/Section';
+import SectionItem from '../../../../components/Dropdown/Section/SectionItem';
+import { TrashCanIcon } from '../../../../icons';
+import { deleteCodeStudio } from '../../../../services/api';
+import { ProjectContext } from '../../../../context/projectContext';
 
 type Props = {};
 

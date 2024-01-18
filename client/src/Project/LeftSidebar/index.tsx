@@ -5,7 +5,6 @@ import React, {
   MouseEvent,
   useRef,
   useState,
-  useEffect,
 } from 'react';
 import useResizeableWidth from '../../hooks/useResizeableWidth';
 import { LEFT_SIDEBAR_WIDTH_KEY } from '../../services/storage';
@@ -30,7 +29,6 @@ const LeftSidebar = ({}: Props) => {
     UIContext.Focus,
   );
   const ref = useRef<HTMLDivElement>(null);
-  const [focusedIndex, setFocusedIndex] = useState(-1);
   const [focusedIndexFull, setFocusedIndexFull] = useState('');
 
   const { panelRef, dividerRef } = useResizeableWidth(
@@ -52,15 +50,25 @@ const LeftSidebar = ({}: Props) => {
           if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
             e.preventDefault();
             e.stopPropagation();
-            const nodes = ref.current.querySelectorAll('[data-node-index]');
-            setFocusedIndex((prev) => {
-              return e.key === 'ArrowDown'
-                ? prev < nodes.length - 1
-                  ? prev + 1
-                  : 0
-                : prev > 0
-                ? prev - 1
-                : nodes.length - 1;
+            // eslint-disable-next-line no-undef
+            const nodes: NodeListOf<HTMLElement> =
+              ref.current.querySelectorAll('[data-node-index]');
+            setFocusedIndexFull((prev) => {
+              const prevIndex = Array.from(nodes).findIndex(
+                (n) => n.dataset.nodeIndex === prev,
+              );
+              if (prevIndex > -1) {
+                const newIndex =
+                  e.key === 'ArrowDown'
+                    ? prevIndex < nodes.length - 1
+                      ? prevIndex + 1
+                      : 0
+                    : prevIndex > 0
+                    ? prevIndex - 1
+                    : nodes.length - 1;
+                return nodes[newIndex]?.dataset?.nodeIndex || '';
+              }
+              return nodes[0]?.dataset?.nodeIndex || '';
             });
           }
         }
@@ -69,15 +77,6 @@ const LeftSidebar = ({}: Props) => {
     [isLeftSidebarFocused],
   );
   useKeyboardNavigation(handleKeyEvent);
-
-  useEffect(() => {
-    if (ref.current) {
-      const nodes = ref.current.querySelectorAll('[data-node-index]');
-      setFocusedIndexFull(
-        (nodes[focusedIndex] as HTMLElement)?.dataset?.nodeIndex || '',
-      );
-    }
-  }, [focusedIndex]);
 
   const handleClick = useCallback((e: MouseEvent) => {
     e.stopPropagation();
@@ -110,9 +109,14 @@ const LeftSidebar = ({}: Props) => {
           projectId={project?.id}
           isRegexEnabled={isRegexSearchEnabled}
           focusedIndex={focusedIndexFull}
-          setFocusedIndex={setFocusedIndex}
+          setFocusedIndex={setFocusedIndexFull}
         />
-        {!isRegexSearchEnabled && <NavPanel focusedIndex={focusedIndexFull} />}
+        {!isRegexSearchEnabled && (
+          <NavPanel
+            focusedIndex={focusedIndexFull}
+            setFocusedIndex={setFocusedIndexFull}
+          />
+        )}
       </div>
       <div
         ref={dividerRef}

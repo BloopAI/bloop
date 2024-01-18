@@ -10,9 +10,9 @@ import { HardDriveIcon } from '../../../../icons';
 import { splitPath } from '../../../../utils';
 import { DirectoryEntry } from '../../../../types/api';
 import { getFolderContent } from '../../../../services/api';
-import RepoEntry from '../../NavPanel/RepoEntry';
-import useKeyboardNavigation from '../../../../hooks/useKeyboardNavigation';
+import RepoEntry from '../../NavPanel/Repo/RepoEntry';
 import { UIContext } from '../../../../context/uiContext';
+import { useEnterKey } from '../../../../hooks/useEnterKey';
 
 type Props = {
   repoRef: string;
@@ -55,18 +55,8 @@ const RepoResult = ({ repoRef, isExpandable, index, focusedIndex }: Props) => {
     }
   }, [isExpandable]);
 
-  const handleKeyEvent = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        e.stopPropagation();
-        e.preventDefault();
-        onClick();
-      }
-    },
-    [onClick],
-  );
-  useKeyboardNavigation(
-    handleKeyEvent,
+  useEnterKey(
+    onClick,
     focusedIndex !== index.toString() || !isExpandable || !isLeftSidebarFocused,
   );
 
@@ -114,6 +104,7 @@ const RepoResult = ({ repoRef, isExpandable, index, focusedIndex }: Props) => {
               focusedIndex={focusedIndex}
               index={`${index}-${fi}`}
               lastIndex={''}
+              isLeftSidebarFocused={isLeftSidebarFocused}
             />
           ))}
         </div>

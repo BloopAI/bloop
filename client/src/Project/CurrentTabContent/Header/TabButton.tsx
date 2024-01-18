@@ -38,6 +38,16 @@ type Props = TabType & {
   tokenRange?: string;
   focusedPanel: 'left' | 'right';
   isTemp?: boolean;
+  studioId?: string;
+  initialRanges?: [number, number][];
+  isFileInContext?: boolean;
+  conversationId?: string;
+  initialQuery?: {
+    path: string;
+    lines: [number, number];
+    repoRef: string;
+    branch?: string | null | undefined;
+  };
 };
 
 const closeTabShortcut = ['cmd', 'W'];
@@ -58,6 +68,11 @@ const TabButton = ({
   tokenRange,
   focusedPanel,
   isTemp,
+  studioId,
+  initialRanges,
+  isFileInContext,
+  conversationId,
+  initialQuery,
 }: Props) => {
   const { t } = useTranslation();
   const { closeTab, setActiveLeftTab, setActiveRightTab, setFocusedPanel } =
@@ -140,6 +155,11 @@ const TabButton = ({
           branch,
           scrollToLine,
           tokenRange,
+          studioId,
+          initialRanges,
+          isFileInContext,
+          conversationId,
+          initialQuery,
         },
         side,
       };
@@ -170,9 +190,28 @@ const TabButton = ({
       branch,
       scrollToLine,
       tokenRange,
+      studioId,
+      initialRanges,
+      isFileInContext,
+      conversationId,
+      initialQuery,
     });
     setFocusedPanel(side);
-  }, [path, repoRef, tabKey, side, branch, scrollToLine, tokenRange, title]);
+  }, [
+    path,
+    repoRef,
+    tabKey,
+    side,
+    branch,
+    scrollToLine,
+    tokenRange,
+    title,
+    studioId,
+    initialRanges,
+    isFileInContext,
+    conversationId,
+    initialQuery,
+  ]);
 
   return (
     <a
