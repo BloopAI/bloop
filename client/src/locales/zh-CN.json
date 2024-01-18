@@ -633,5 +633,6 @@
 	"Delete template": "删除模板",
 	"Search templates...": "搜索模板...",
 	"Manage templates": "管理模板",
-	"Prompts": "提示"
+	"Prompts": "提示",
+	"Manage docs": "管理文档"
 }

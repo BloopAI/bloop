@@ -14,7 +14,6 @@ import {
   CommandBarSectionType,
   CommandBarStepEnum,
   RepoProvider,
-  SyncStatus,
 } from '../../../types/general';
 import { getRepos } from '../../../services/api';
 import { mapReposBySections } from '../../../utils/mappers';

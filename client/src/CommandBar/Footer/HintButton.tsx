@@ -18,7 +18,7 @@ const HintButton = forwardRef(
         {shortcutKeys?.map((k) => (
           <div
             key={k}
-            className="w-5 h-5 px-1 flex items-center justify-center rounded bg-bg-base-hover"
+            className="min-w-[1.25rem] h-5 px-1 flex items-center justify-center rounded bg-bg-base-hover"
           >
             {k}
           </div>

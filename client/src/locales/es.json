@@ -639,5 +639,7 @@
 	"Delete template": "Plantilla eliminar",
 	"Search templates...": "Plantillas de búsqueda ...",
 	"Manage templates": "Administrar plantillas",
-	"Prompts": "Indicaciones"
+	"Prompts": "Indicaciones",
+	"Manage docs": "Administrar documentos",
+	"Paste a link to any documentation web page": "Pegue un enlace a cualquier página web de documentación"
 }
