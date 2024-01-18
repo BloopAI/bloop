@@ -141,6 +141,7 @@ const Conversation = ({
             isLast={i === studioData.conversation.length - 1}
             side={side}
             templates={templates}
+            isActiveTab={isActiveTab}
             setIsDropdownShown={setIsDropdownShown}
           />
         ))}
@@ -198,6 +199,7 @@ const Conversation = ({
               templates={templates}
               setIsDropdownShown={setIsDropdownShown}
               templatesRef={templatesRef}
+              isActiveTab={isActiveTab}
             />
           )}
       </ScrollToBottom>

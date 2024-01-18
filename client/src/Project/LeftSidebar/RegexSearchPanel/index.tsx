@@ -32,7 +32,7 @@ type Props = {
   projectId?: string;
   isRegexEnabled?: boolean;
   focusedIndex: string;
-  setFocusedIndex: (i: number) => void;
+  setFocusedIndex: (i: string) => void;
 };
 
 // const getAutocompleteThrottled = throttle(
@@ -70,7 +70,7 @@ const RegexSearchPanel = ({
 
   const onChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
-    setFocusedIndex(0);
+    setFocusedIndex('input');
   }, []);
 
   const onClear = useCallback(() => {
@@ -182,7 +182,7 @@ const RegexSearchPanel = ({
         if (focusedIndex === 'input') {
           onClear();
         } else {
-          setFocusedIndex(0);
+          setFocusedIndex('input');
         }
       }
     },

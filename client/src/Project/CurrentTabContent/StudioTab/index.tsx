@@ -17,11 +17,7 @@ import Dropdown from '../../../components/Dropdown';
 import { checkEventKeys } from '../../../utils/keyboardUtils';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
 import { TabsContext } from '../../../context/tabsContext';
-import {
-  ChatTabType,
-  SettingSections,
-  StudioTabType,
-} from '../../../types/general';
+import { SettingSections, StudioTabType } from '../../../types/general';
 import { ProjectContext } from '../../../context/projectContext';
 import { CommandBarContext } from '../../../context/commandBarContext';
 import { openInSplitViewShortcut } from '../../../consts/commandBar';

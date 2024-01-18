@@ -2,7 +2,7 @@ import React, { useCallback } from 'react';
 import { ArrowOutIcon, FolderIcon } from '../../icons';
 import { getFolderContent } from '../../services/api';
 import OverflowTracker from '../OverflowTracker';
-import RepoEntry from '../../Project/LeftSidebar/NavPanel/RepoEntry';
+import RepoEntry from '../../Project/LeftSidebar/NavPanel/Repo/RepoEntry';
 
 type Props = {
   onClick: () => void;
@@ -65,6 +65,7 @@ const FolderChip = ({ onClick, path, repoRef }: Props) => {
             lastIndex={''}
             focusedIndex={''}
             index={'0'}
+            isLeftSidebarFocused={false}
           />
         </OverflowTracker>
       </div>

@@ -1,19 +1,29 @@
 import { memo, useCallback, useContext } from 'react';
-import { ConversationShortType } from '../../../types/api';
-import { TabsContext } from '../../../context/tabsContext';
-import { TabTypesEnum } from '../../../types/general';
+import { ConversationShortType } from '../../../../types/api';
+import { TabsContext } from '../../../../context/tabsContext';
+import { TabTypesEnum } from '../../../../types/general';
+import { useEnterKey } from '../../../../hooks/useEnterKey';
 
 type Props = ConversationShortType & {
   index: string;
   focusedIndex: string;
+  isLeftSidebarFocused: boolean;
 };
 
-const ConversationEntry = ({ title, id, index, focusedIndex }: Props) => {
+const ConversationEntry = ({
+  title,
+  id,
+  index,
+  focusedIndex,
+  isLeftSidebarFocused,
+}: Props) => {
   const { openNewTab } = useContext(TabsContext.Handlers);
 
   const handleClick = useCallback(() => {
     openNewTab({ type: TabTypesEnum.CHAT, conversationId: id, title });
   }, [openNewTab, id, title]);
+
+  useEnterKey(handleClick, focusedIndex !== index || !isLeftSidebarFocused);
 
   return (
     <a
@@ -24,7 +34,7 @@ const ConversationEntry = ({ title, id, index, focusedIndex }: Props) => {
             ? 'bg-bg-sub-hover text-label-title'
             : 'text-label-base'
         }
-        hover:bg-bg-base-hover hover:text-label-title active:bg-transparent pl-[2.625rem]`}
+        hover:bg-bg-base-hover hover:text-label-title active:bg-transparent pl-10.5`}
       onClick={handleClick}
       data-node-index={index}
     >

@@ -1,28 +1,19 @@
-import React, {
-  Dispatch,
-  memo,
-  SetStateAction,
-  useCallback,
-  useEffect,
-  useRef,
-  MouseEvent,
-  useContext,
-} from 'react';
+import React, { Dispatch, memo, SetStateAction, useContext } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import Dropdown from '../../../components/Dropdown';
+import Dropdown from '../../../../components/Dropdown';
 import {
   ArrowTriangleBottomIcon,
   ChatBubblesIcon,
-  CodeStudioIcon,
   MoreHorizontalIcon,
-} from '../../../icons';
-import Button from '../../../components/Button';
-import { ProjectContext } from '../../../context/projectContext';
-import StudioEntry from './StudioEntry';
-import StudiosDropdown from './StudiosDropdown';
+} from '../../../../icons';
+import Button from '../../../../components/Button';
+import { ProjectContext } from '../../../../context/projectContext';
+import { useNavPanel } from '../../../../hooks/useNavPanel';
+import ConversationsDropdown from './ConversationsDropdown';
+import ConversationEntry from './CoversationEntry';
 
 type Props = {
-  setExpanded: Dispatch<SetStateAction<number>>;
+  setExpanded: Dispatch<SetStateAction<string>>;
   isExpanded: boolean;
   focusedIndex: string;
   index: string;
@@ -30,7 +21,7 @@ type Props = {
 
 const reactRoot = document.getElementById('root')!;
 
-const StudiosNav = ({
+const ConversationsNav = ({
   isExpanded,
   setExpanded,
   focusedIndex,
@@ -38,27 +29,8 @@ const StudiosNav = ({
 }: Props) => {
   const { t } = useTranslation();
   const { project } = useContext(ProjectContext.Current);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const toggleExpanded = useCallback(() => {
-    setExpanded((prev) => (prev === 0 ? -1 : 0));
-  }, []);
-
-  useEffect(() => {
-    if (isExpanded) {
-      // containerRef.current?.scrollIntoView({ block: 'nearest' });
-    }
-  }, [isExpanded]);
-
-  const noPropagate = useCallback((e?: MouseEvent) => {
-    e?.stopPropagation();
-  }, []);
-
-  useEffect(() => {
-    if (focusedIndex === index && containerRef.current) {
-      containerRef.current.scrollIntoView({ block: 'nearest' });
-    }
-  }, [focusedIndex, index]);
+  const { containerRef, toggleExpanded, noPropagate, isLeftSidebarFocused } =
+    useNavPanel(index, setExpanded, isExpanded, focusedIndex);
 
   return (
     <div className="select-none overflow-hidden w-full flex-shrink-0">
@@ -72,13 +44,13 @@ const StudiosNav = ({
         ref={containerRef}
         data-node-index={index}
       >
-        <CodeStudioIcon
+        <ChatBubblesIcon
           sizeClassName="w-3.5 h-3.5"
-          className="text-brand-studio"
+          className="text-brand-default"
         />
         <p className="flex items-center gap-1 body-s-b flex-1 ellipsis">
           <span className="text-label-title ellipsis">
-            <Trans>Studio conversations</Trans>
+            <Trans>Chat conversations</Trans>
           </span>
           {isExpanded && (
             <ArrowTriangleBottomIcon
@@ -90,7 +62,7 @@ const StudiosNav = ({
         {isExpanded && (
           <div onClick={noPropagate}>
             <Dropdown
-              DropdownComponent={StudiosDropdown}
+              DropdownComponent={ConversationsDropdown}
               appendTo={reactRoot}
               dropdownPlacement="bottom-start"
               size="auto"
@@ -109,12 +81,13 @@ const StudiosNav = ({
       </span>
       {isExpanded && (
         <div className={'overflow-hidden'}>
-          {project?.studios.map((c, ci) => (
-            <StudioEntry
+          {project?.conversations.map((c) => (
+            <ConversationEntry
               key={c.id}
               {...c}
-              index={`${index}-${ci}`}
+              index={`${index}-${c.id}`}
               focusedIndex={focusedIndex}
+              isLeftSidebarFocused={isLeftSidebarFocused}
             />
           ))}
         </div>
@@ -123,4 +96,4 @@ const StudiosNav = ({
   );
 };
 
-export default memo(StudiosNav);
+export default memo(ConversationsNav);

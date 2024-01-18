@@ -6,18 +6,17 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { ChevronRightIcon, EyeCutIcon, FolderIcon } from '../../../icons';
-import FileIcon from '../../../components/FileIcon';
-import { DirectoryEntry } from '../../../types/api';
-import { TabsContext } from '../../../context/tabsContext';
+import { ChevronRightIcon, EyeCutIcon, FolderIcon } from '../../../../icons';
+import FileIcon from '../../../../components/FileIcon';
+import { DirectoryEntry } from '../../../../types/api';
+import { TabsContext } from '../../../../context/tabsContext';
 import {
   RepoIndexingStatusType,
   SyncStatus,
   TabTypesEnum,
-} from '../../../types/general';
-import SpinLoaderContainer from '../../../components/Loaders/SpinnerLoader';
-import { UIContext } from '../../../context/uiContext';
-import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
+} from '../../../../types/general';
+import SpinLoaderContainer from '../../../../components/Loaders/SpinnerLoader';
+import { useEnterKey } from '../../../../hooks/useEnterKey';
 
 type Props = {
   name: string;
@@ -34,6 +33,7 @@ type Props = {
   indexingData?: RepoIndexingStatusType;
   focusedIndex: string;
   index: string;
+  isLeftSidebarFocused: boolean;
 };
 
 const RepoEntry = ({
@@ -51,9 +51,9 @@ const RepoEntry = ({
   indexingData,
   focusedIndex,
   index,
+  isLeftSidebarFocused,
 }: Props) => {
   const { openNewTab } = useContext(TabsContext.Handlers);
-  const { isLeftSidebarFocused } = useContext(UIContext.Focus);
   const [isOpen, setOpen] = useState(
     defaultOpen || (currentPath && currentPath.startsWith(fullPath)),
   );
@@ -110,15 +110,7 @@ const RepoEntry = ({
     }
   }, [isDirectory, fullPath, openNewTab, repoRef, branch]);
 
-  const handleKeyEvent = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        handleClick();
-      }
-    },
-    [handleClick],
-  );
-  useKeyboardNavigation(handleKeyEvent, focusedIndex !== index);
+  useEnterKey(handleClick, focusedIndex !== index || !isLeftSidebarFocused);
 
   useEffect(() => {
     if (focusedIndex === index && ref.current) {
@@ -220,6 +212,7 @@ const RepoEntry = ({
               branch={branch}
               focusedIndex={focusedIndex}
               index={`${index}-${sii}`}
+              isLeftSidebarFocused={isLeftSidebarFocused}
             />
           ))}
         </div>

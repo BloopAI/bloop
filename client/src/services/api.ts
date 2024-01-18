@@ -327,9 +327,7 @@ export const upvoteAnswer = (
 
 export const getIndexQueue = () => http('/repos/queue').then((r) => r.data);
 
-export const getCodeStudios = (
-  projectId: string,
-): Promise<CodeStudioShortType[]> =>
+export const getCodeStudios = (projectId: string): Promise<CodeStudioType[]> =>
   http(`/projects/${projectId}/studios`).then((r) => r.data);
 export const patchCodeStudio = (
   projectId: string,

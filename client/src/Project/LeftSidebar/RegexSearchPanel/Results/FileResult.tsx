@@ -11,10 +11,10 @@ import { TabTypesEnum } from '../../../../types/general';
 import { TabsContext } from '../../../../context/tabsContext';
 import { DirectoryEntry, RepoFileNameItem } from '../../../../types/api';
 import { FolderIcon } from '../../../../icons';
-import useKeyboardNavigation from '../../../../hooks/useKeyboardNavigation';
 import { UIContext } from '../../../../context/uiContext';
 import { getFolderContent } from '../../../../services/api';
-import RepoEntry from '../../NavPanel/RepoEntry';
+import RepoEntry from '../../NavPanel/Repo/RepoEntry';
+import { useEnterKey } from '../../../../hooks/useEnterKey';
 
 type Props = {
   relative_path: RepoFileNameItem;
@@ -80,20 +80,7 @@ const FileResult = ({
     }
   }, [relative_path, repo_ref, is_dir, openNewTab]);
 
-  const handleKeyEvent = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        e.stopPropagation();
-        e.preventDefault();
-        handleClick();
-      }
-    },
-    [handleClick],
-  );
-  useKeyboardNavigation(
-    handleKeyEvent,
-    focusedIndex !== index || !isLeftSidebarFocused,
-  );
+  useEnterKey(handleClick, focusedIndex !== index || !isLeftSidebarFocused);
 
   return (
     <span
@@ -145,6 +132,7 @@ const FileResult = ({
               focusedIndex={focusedIndex}
               index={`${index}-${fi}`}
               lastIndex={''}
+              isLeftSidebarFocused={isLeftSidebarFocused}
             />
           ))}
         </div>

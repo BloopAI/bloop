@@ -601,5 +601,6 @@
 	"Give your template a title": "Dai un titolo al tuo modello",
 	"Delete template": "Elimina modello",
 	"Search templates...": "Modelli di ricerca ...",
-	"Manage templates": "Gestisci modelli"
+	"Manage templates": "Gestisci modelli",
+	"Prompts": "Richiede"
 }

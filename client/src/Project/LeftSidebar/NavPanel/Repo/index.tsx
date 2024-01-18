@@ -5,34 +5,32 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
-  MouseEvent,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { DirectoryEntry } from '../../../types/api';
-import { getFolderContent } from '../../../services/api';
-import { splitPath } from '../../../utils';
-import GitHubIcon from '../../../icons/GitHubIcon';
-import Dropdown from '../../../components/Dropdown';
+import { DirectoryEntry } from '../../../../types/api';
+import { getFolderContent } from '../../../../services/api';
+import { splitPath } from '../../../../utils';
+import GitHubIcon from '../../../../icons/GitHubIcon';
+import Dropdown from '../../../../components/Dropdown';
 import {
   ArrowTriangleBottomIcon,
   HardDriveIcon,
   MoreHorizontalIcon,
-} from '../../../icons';
-import Button from '../../../components/Button';
-import { RepoIndexingStatusType, SyncStatus } from '../../../types/general';
-import SpinLoaderContainer from '../../../components/Loaders/SpinnerLoader';
-import Tooltip from '../../../components/Tooltip';
-import { repoStatusMap } from '../../../consts/general';
+} from '../../../../icons';
+import Button from '../../../../components/Button';
+import { RepoIndexingStatusType, SyncStatus } from '../../../../types/general';
+import SpinLoaderContainer from '../../../../components/Loaders/SpinnerLoader';
+import Tooltip from '../../../../components/Tooltip';
+import { repoStatusMap } from '../../../../consts/general';
+import { useNavPanel } from '../../../../hooks/useNavPanel';
 import RepoEntry from './RepoEntry';
 import RepoDropdown from './RepoDropdown';
 
 type Props = {
   repoRef: string;
-  setExpanded: Dispatch<SetStateAction<number>>;
+  setExpanded: Dispatch<SetStateAction<string>>;
   isExpanded: boolean;
-  i: number;
   projectId: string;
   lastIndex: string;
   currentPath?: string;
@@ -41,14 +39,13 @@ type Props = {
   indexedBranches: string[];
   indexingData?: RepoIndexingStatusType;
   focusedIndex: string;
-  index: number;
+  index: string;
 };
 
 const reactRoot = document.getElementById('root')!;
 
 const RepoNav = ({
   repoRef,
-  i,
   isExpanded,
   setExpanded,
   branch,
@@ -63,7 +60,8 @@ const RepoNav = ({
 }: Props) => {
   const { t } = useTranslation();
   const [files, setFiles] = useState<DirectoryEntry[]>([]);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const { containerRef, toggleExpanded, noPropagate, isLeftSidebarFocused } =
+    useNavPanel(index, setExpanded, isExpanded, focusedIndex);
 
   const fetchFiles = useCallback(
     async (path?: string) => {
@@ -90,16 +88,6 @@ const RepoNav = ({
     refetchParentFolder();
   }, [refetchParentFolder]);
 
-  const toggleExpanded = useCallback(() => {
-    setExpanded((prev) => (prev === i ? -1 : i));
-  }, [i]);
-
-  useEffect(() => {
-    if (isExpanded) {
-      // containerRef.current?.scrollIntoView({ block: 'nearest' });
-    }
-  }, [isExpanded]);
-
   const dropdownComponentProps = useMemo(() => {
     return {
       key: repoRef,
@@ -110,10 +98,6 @@ const RepoNav = ({
       allBranches,
     };
   }, [projectId, repoRef, branch, indexedBranches, allBranches]);
-
-  const noPropagate = useCallback((e?: MouseEvent) => {
-    e?.stopPropagation();
-  }, []);
 
   const isIndexing = useMemo(() => {
     if (!indexingData) {
@@ -126,12 +110,6 @@ const RepoNav = ({
     ].includes(indexingData.status);
   }, [indexingData]);
 
-  useEffect(() => {
-    if (focusedIndex === index.toString() && containerRef.current) {
-      containerRef.current.scrollIntoView({ block: 'nearest' });
-    }
-  }, [focusedIndex, index]);
-
   return (
     <div className="select-none flex-shrink-0">
       <span
@@ -139,11 +117,9 @@ const RepoNav = ({
         tabIndex={0}
         className={`h-10 flex items-center gap-3 px-4 ellipsis ${
           isExpanded ? 'sticky z-10 top-0 left-0' : ''
-        } ${
-          focusedIndex === index.toString() ? 'bg-bg-sub-hover' : 'bg-bg-sub'
-        }`}
+        } ${focusedIndex === index ? 'bg-bg-sub-hover' : 'bg-bg-sub'}`}
         onClick={toggleExpanded}
-        data-node-index={`${index}`}
+        data-node-index={index}
         ref={containerRef}
       >
         {isIndexing && indexingData ? (
@@ -215,6 +191,7 @@ const RepoNav = ({
               indexingData={indexingData}
               focusedIndex={focusedIndex}
               index={`${index}-${fi}`}
+              isLeftSidebarFocused={isLeftSidebarFocused}
             />
           ))}
         </div>
