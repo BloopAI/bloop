@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { CodeStudioIcon } from '../../../icons';
+import { CodeStudioIcon } from '../../../../icons';
 
 type Props = {};
 

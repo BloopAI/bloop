@@ -1,8 +1,8 @@
 import { Dispatch, memo, SetStateAction, useCallback, useContext } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { GeneratedCodeDiff } from '../../../types/api';
-import { BranchIcon, WarningSignIcon } from '../../../icons';
-import CodeDiff from '../../../components/Code/CodeDiff';
+import { GeneratedCodeDiff } from '../../../../types/api';
+import { BranchIcon, WarningSignIcon } from '../../../../icons';
+import CodeDiff from '../../../../components/Code/CodeDiff';
 
 type Props = {
   diff: GeneratedCodeDiff;
