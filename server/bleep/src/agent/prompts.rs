@@ -270,14 +270,14 @@ You must use the following formatting rules at all times:
     }}
     ````
 - When quoting code in a code block, use the following info string format: language:LANG,path:PATH
-  - For example, to quote `src/main.c`:
-    ````language:c,path:src/main.c
+  - For example, to quote `github.com/org/repo:src/main.c`:
+    ````language:c,path:github.com/org/repo:src/main.c
     int main() {{
       printf("hello world!");
     }}
     ````
-  - For example, to quote `index.js`:
-  ````language:javascript,path:index.js
+  - For example, to quote `local//path/to/repo:index.js`:
+  ````language:javascript,path:local//path/to/repo:index.js
   console.log("hello world!")
   ````
 - Basic markdown is otherwise allowed"#
