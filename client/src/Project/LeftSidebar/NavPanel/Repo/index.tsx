@@ -60,8 +60,13 @@ const RepoNav = ({
 }: Props) => {
   const { t } = useTranslation();
   const [files, setFiles] = useState<DirectoryEntry[]>([]);
-  const { containerRef, toggleExpanded, noPropagate, isLeftSidebarFocused } =
-    useNavPanel(index, setExpanded, isExpanded, focusedIndex);
+  const {
+    containerRef,
+    toggleExpanded,
+    noPropagate,
+    isLeftSidebarFocused,
+    isCommandBarVisible,
+  } = useNavPanel(index, setExpanded, isExpanded, focusedIndex);
 
   const fetchFiles = useCallback(
     async (path?: string) => {
@@ -192,6 +197,7 @@ const RepoNav = ({
               focusedIndex={focusedIndex}
               index={`${index}-${fi}`}
               isLeftSidebarFocused={isLeftSidebarFocused}
+              isCommandBarVisible={isCommandBarVisible}
             />
           ))}
         </div>

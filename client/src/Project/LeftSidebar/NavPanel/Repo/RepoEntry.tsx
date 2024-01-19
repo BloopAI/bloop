@@ -34,6 +34,7 @@ type Props = {
   focusedIndex: string;
   index: string;
   isLeftSidebarFocused: boolean;
+  isCommandBarVisible: boolean;
 };
 
 const RepoEntry = ({
@@ -52,6 +53,7 @@ const RepoEntry = ({
   focusedIndex,
   index,
   isLeftSidebarFocused,
+  isCommandBarVisible,
 }: Props) => {
   const { openNewTab } = useContext(TabsContext.Handlers);
   const [isOpen, setOpen] = useState(
@@ -110,7 +112,10 @@ const RepoEntry = ({
     }
   }, [isDirectory, fullPath, openNewTab, repoRef, branch]);
 
-  useEnterKey(handleClick, focusedIndex !== index || !isLeftSidebarFocused);
+  useEnterKey(
+    handleClick,
+    focusedIndex !== index || !isLeftSidebarFocused || isCommandBarVisible,
+  );
 
   useEffect(() => {
     if (focusedIndex === index && ref.current) {
@@ -213,6 +218,7 @@ const RepoEntry = ({
               focusedIndex={focusedIndex}
               index={`${index}-${sii}`}
               isLeftSidebarFocused={isLeftSidebarFocused}
+              isCommandBarVisible={isCommandBarVisible}
             />
           ))}
         </div>

@@ -13,6 +13,7 @@ import { TabsContext } from '../../../../context/tabsContext';
 import { TabTypesEnum } from '../../../../types/general';
 import { UIContext } from '../../../../context/uiContext';
 import { useEnterKey } from '../../../../hooks/useEnterKey';
+import { CommandBarContext } from '../../../../context/commandBarContext';
 import CodeLine from './CodeLine';
 
 type Props = {
@@ -36,6 +37,9 @@ const CodeResult = ({
 }: Props) => {
   const { openNewTab } = useContext(TabsContext.Handlers);
   const { isLeftSidebarFocused } = useContext(UIContext.Focus);
+  const { isVisible: isCommandBarVisible } = useContext(
+    CommandBarContext.General,
+  );
   const ref = useRef<HTMLDivElement>(null);
   const [isExpanded, setIsExpanded] = useState(true);
   const toggleExpanded = useCallback(() => {
@@ -56,7 +60,10 @@ const CodeResult = ({
       scrollToLine: `${snippets[0].line_range.start}_${snippets[0].line_range.end}`,
     });
   }, [repo_ref, relative_path, openNewTab]);
-  useEnterKey(handleEnter, focusedIndex !== index || !isLeftSidebarFocused);
+  useEnterKey(
+    handleEnter,
+    focusedIndex !== index || !isLeftSidebarFocused || isCommandBarVisible,
+  );
 
   const handleClick = useCallback(() => {
     openNewTab({

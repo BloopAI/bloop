@@ -5,6 +5,7 @@ import React, {
   MutableRefObject,
   SetStateAction,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -19,7 +20,9 @@ import {
 import { CODE_LINE_HEIGHT } from '../../../consts/code';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
 import { Range } from '../../../types/results';
-import { useDiffLines } from '../../../hooks/useDiffLines';
+import { TabsContext } from '../../../context/tabsContext';
+import { UIContext } from '../../../context/uiContext';
+import { CommandBarContext } from '../../../context/commandBarContext';
 import SelectionHandler from './SelectionHandler';
 import SelectionRect from './SelectionRect';
 import LinesContainer from './LazyLinesContainer';
@@ -45,6 +48,7 @@ type Props = {
   hoveredLines?: [number, number] | null;
   isDiff?: boolean;
   isEditingRanges?: boolean;
+  side: 'left' | 'right';
 };
 
 const CodeContainerSelectable = ({
@@ -61,8 +65,8 @@ const CodeContainerSelectable = ({
   isDiff,
   highlights,
   isEditingRanges,
+  side,
 }: Props) => {
-  const { lineNumbersAdd, lineNumbersRemove } = useDiffLines(tokens, !isDiff);
   const pathHash = useMemo(
     () => (relativePath ? hashCode(relativePath) : ''),
     [relativePath],
@@ -76,6 +80,11 @@ const CodeContainerSelectable = ({
     false,
   );
   const [currentFocusedRange, setCurrentFocusedRange] = useState(-1);
+  const { focusedPanel } = useContext(TabsContext.All);
+  const { isLeftSidebarFocused } = useContext(UIContext.Focus);
+  const { isVisible: isCommandBarVisible } = useContext(
+    CommandBarContext.General,
+  );
 
   useEffect(() => {
     if (scrollToIndex && ref.current) {
@@ -239,7 +248,10 @@ const CodeContainerSelectable = ({
     },
     [currentSelection],
   );
-  useKeyboardNavigation(handleKeyEvent);
+  useKeyboardNavigation(
+    handleKeyEvent,
+    focusedPanel !== side || isLeftSidebarFocused || isCommandBarVisible,
+  );
 
   return (
     <div ref={ref} className="relative pb-16 overflow-auto">

@@ -48,8 +48,13 @@ const DocNav = ({
 }: Props) => {
   const { t } = useTranslation();
   const [pages, setPages] = useState<DocPageType[]>([]);
-  const { containerRef, toggleExpanded, noPropagate, isLeftSidebarFocused } =
-    useNavPanel(index, setExpanded, isExpanded, focusedIndex);
+  const {
+    containerRef,
+    toggleExpanded,
+    noPropagate,
+    isLeftSidebarFocused,
+    isCommandBarVisible,
+  } = useNavPanel(index, setExpanded, isExpanded, focusedIndex);
 
   const fetchPages = useCallback(async () => {
     const resp = await getIndexedPages(docId);
@@ -123,6 +128,7 @@ const DocNav = ({
               focusedIndex={focusedIndex}
               index={`${index}-${p.absolute_url}`}
               isLeftSidebarFocused={isLeftSidebarFocused}
+              isCommandBarVisible={isCommandBarVisible}
             />
           ))}
         </div>

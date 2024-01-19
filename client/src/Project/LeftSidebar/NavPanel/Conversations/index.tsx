@@ -29,8 +29,13 @@ const ConversationsNav = ({
 }: Props) => {
   const { t } = useTranslation();
   const { project } = useContext(ProjectContext.Current);
-  const { containerRef, toggleExpanded, noPropagate, isLeftSidebarFocused } =
-    useNavPanel(index, setExpanded, isExpanded, focusedIndex);
+  const {
+    containerRef,
+    toggleExpanded,
+    noPropagate,
+    isLeftSidebarFocused,
+    isCommandBarVisible,
+  } = useNavPanel(index, setExpanded, isExpanded, focusedIndex);
 
   return (
     <div className="select-none overflow-hidden w-full flex-shrink-0">
@@ -88,6 +93,7 @@ const ConversationsNav = ({
               index={`${index}-${c.id}`}
               focusedIndex={focusedIndex}
               isLeftSidebarFocused={isLeftSidebarFocused}
+              isCommandBarVisible={isCommandBarVisible}
             />
           ))}
         </div>

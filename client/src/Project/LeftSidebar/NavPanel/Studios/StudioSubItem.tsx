@@ -13,6 +13,7 @@ type Props = {
   repoRef?: string;
   branch?: string | null;
   isLeftSidebarFocused: boolean;
+  isCommandBarVisible: boolean;
   ranges?: Range[];
 };
 
@@ -26,6 +27,7 @@ const StudioSubItem = ({
   repoRef,
   branch,
   isLeftSidebarFocused,
+  isCommandBarVisible,
   ranges,
 }: PropsWithChildren<Props>) => {
   const { openNewTab } = useContext(TabsContext.Handlers);
@@ -46,7 +48,10 @@ const StudioSubItem = ({
     }
   }, [path, openNewTab, studioId, studioName, repoRef, branch, ranges]);
 
-  useEnterKey(handleClick, focusedIndex !== index || !isLeftSidebarFocused);
+  useEnterKey(
+    handleClick,
+    focusedIndex !== index || !isLeftSidebarFocused || isCommandBarVisible,
+  );
 
   return (
     <a

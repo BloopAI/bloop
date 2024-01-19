@@ -13,6 +13,7 @@ import { getFolderContent } from '../../../../services/api';
 import RepoEntry from '../../NavPanel/Repo/RepoEntry';
 import { UIContext } from '../../../../context/uiContext';
 import { useEnterKey } from '../../../../hooks/useEnterKey';
+import { CommandBarContext } from '../../../../context/commandBarContext';
 
 type Props = {
   repoRef: string;
@@ -23,6 +24,9 @@ type Props = {
 
 const RepoResult = ({ repoRef, isExpandable, index, focusedIndex }: Props) => {
   const { isLeftSidebarFocused } = useContext(UIContext.Focus);
+  const { isVisible: isCommandBarVisible } = useContext(
+    CommandBarContext.General,
+  );
   const [isExpanded, setIsExpanded] = useState(false);
   const [files, setFiles] = useState<DirectoryEntry[]>([]);
 
@@ -57,7 +61,10 @@ const RepoResult = ({ repoRef, isExpandable, index, focusedIndex }: Props) => {
 
   useEnterKey(
     onClick,
-    focusedIndex !== index.toString() || !isExpandable || !isLeftSidebarFocused,
+    focusedIndex !== index.toString() ||
+      !isExpandable ||
+      !isLeftSidebarFocused ||
+      isCommandBarVisible,
   );
 
   return (

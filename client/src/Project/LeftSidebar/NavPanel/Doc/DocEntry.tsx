@@ -9,12 +9,14 @@ type Props = DocPageType & {
   index: string;
   focusedIndex: string;
   isLeftSidebarFocused: boolean;
+  isCommandBarVisible: boolean;
 };
 
 const DocEntry = ({
   index,
   focusedIndex,
   isLeftSidebarFocused,
+  isCommandBarVisible,
   doc_id,
   doc_source,
   doc_title,
@@ -27,7 +29,10 @@ const DocEntry = ({
     // openNewTab({ type: TabTypesEnum.CHAT, conversationId: id, title });
   }, [openNewTab]);
 
-  useEnterKey(handleClick, focusedIndex !== index || !isLeftSidebarFocused);
+  useEnterKey(
+    handleClick,
+    focusedIndex !== index || !isLeftSidebarFocused || isCommandBarVisible,
+  );
 
   return (
     <a

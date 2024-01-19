@@ -2,10 +2,6 @@ import React, {
   Dispatch,
   memo,
   SetStateAction,
-  useCallback,
-  useEffect,
-  useRef,
-  MouseEvent,
   useContext,
   useState,
 } from 'react';
@@ -18,8 +14,6 @@ import {
 } from '../../../../icons';
 import Button from '../../../../components/Button';
 import { ProjectContext } from '../../../../context/projectContext';
-import { useEnterKey } from '../../../../hooks/useEnterKey';
-import { UIContext } from '../../../../context/uiContext';
 import { useNavPanel } from '../../../../hooks/useNavPanel';
 import StudioEntry from './StudioEntry';
 import StudiosDropdown from './StudiosDropdown';
@@ -42,8 +36,13 @@ const StudiosNav = ({
   const { t } = useTranslation();
   const [expandedIndex, setExpandedIndex] = useState('');
   const { project } = useContext(ProjectContext.Current);
-  const { containerRef, toggleExpanded, noPropagate, isLeftSidebarFocused } =
-    useNavPanel(index, setExpanded, isExpanded, focusedIndex);
+  const {
+    containerRef,
+    toggleExpanded,
+    noPropagate,
+    isLeftSidebarFocused,
+    isCommandBarVisible,
+  } = useNavPanel(index, setExpanded, isExpanded, focusedIndex);
 
   return (
     <div className="select-none overflow-hidden w-full flex-shrink-0">
@@ -103,6 +102,7 @@ const StudiosNav = ({
               expandedIndex={expandedIndex}
               setExpandedIndex={setExpandedIndex}
               isLeftSidebarFocused={isLeftSidebarFocused}
+              isCommandBarVisible={isCommandBarVisible}
             />
           ))}
         </div>
