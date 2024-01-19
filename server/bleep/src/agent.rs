@@ -432,7 +432,7 @@ impl Agent {
             target: Some(query),
             repos: repos
                 .iter()
-                .map(RepoRef::to_string)
+                .map(RepoRef::indexed_name)
                 .map(|r| parser::Literal::Plain(r.into()))
                 .collect(),
             paths,
