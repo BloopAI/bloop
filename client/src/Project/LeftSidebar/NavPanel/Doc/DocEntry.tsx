@@ -1,5 +1,5 @@
 import { memo, useCallback, useContext } from 'react';
-import { ConversationShortType, DocPageType } from '../../../../types/api';
+import { DocPageType } from '../../../../types/api';
 import { TabsContext } from '../../../../context/tabsContext';
 import { TabTypesEnum } from '../../../../types/general';
 import { useEnterKey } from '../../../../hooks/useEnterKey';
@@ -10,6 +10,7 @@ type Props = DocPageType & {
   focusedIndex: string;
   isLeftSidebarFocused: boolean;
   isCommandBarVisible: boolean;
+  favicon?: string;
 };
 
 const DocEntry = ({
@@ -18,16 +19,21 @@ const DocEntry = ({
   isLeftSidebarFocused,
   isCommandBarVisible,
   doc_id,
-  doc_source,
   doc_title,
   relative_url,
-  absolute_url,
+  favicon,
 }: Props) => {
   const { openNewTab } = useContext(TabsContext.Handlers);
 
   const handleClick = useCallback(() => {
-    // openNewTab({ type: TabTypesEnum.CHAT, conversationId: id, title });
-  }, [openNewTab]);
+    openNewTab({
+      type: TabTypesEnum.DOC,
+      title: doc_title,
+      docId: doc_id,
+      favicon,
+      relativeUrl: relative_url,
+    });
+  }, [openNewTab, doc_id, doc_title, favicon, relative_url]);
 
   useEnterKey(
     handleClick,

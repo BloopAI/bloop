@@ -15,7 +15,12 @@ import {
 import FileIcon from '../../../components/FileIcon';
 import { splitPath } from '../../../utils';
 import Button from '../../../components/Button';
-import { ChatBubblesIcon, CloseSignIcon, CodeStudioIcon } from '../../../icons';
+import {
+  ChatBubblesIcon,
+  CloseSignIcon,
+  CodeStudioIcon,
+  MagazineIcon,
+} from '../../../icons';
 import { TabsContext } from '../../../context/tabsContext';
 
 type Props = TabType & {
@@ -48,6 +53,9 @@ type Props = TabType & {
     repoRef: string;
     branch?: string | null | undefined;
   };
+  docId?: string;
+  favicon?: string;
+  relativeUrl?: string;
 };
 
 const closeTabShortcut = ['cmd', 'W'];
@@ -73,6 +81,9 @@ const TabButton = ({
   isFileInContext,
   conversationId,
   initialQuery,
+  relativeUrl,
+  favicon,
+  docId,
 }: Props) => {
   const { t } = useTranslation();
   const { closeTab, setActiveLeftTab, setActiveRightTab, setFocusedPanel } =
@@ -160,6 +171,9 @@ const TabButton = ({
           isFileInContext,
           conversationId,
           initialQuery,
+          favicon,
+          relativeUrl,
+          docId,
         },
         side,
       };
@@ -195,6 +209,9 @@ const TabButton = ({
       isFileInContext,
       conversationId,
       initialQuery,
+      docId,
+      relativeUrl,
+      favicon,
     });
     setFocusedPanel(side);
   }, [
@@ -238,8 +255,12 @@ const TabButton = ({
           sizeClassName="w-4 h-4"
           className="text-brand-default"
         />
-      ) : (
+      ) : type === TabTypesEnum.STUDIO ? (
         <CodeStudioIcon sizeClassName="w-4 h-4" className="text-brand-studio" />
+      ) : favicon ? (
+        <img src={favicon} className="w-4 h-4" alt={title} />
+      ) : (
+        <MagazineIcon sizeClassName="w-4 h-4" />
       )}
       <p
         className={`body-mini-b ellipsis group-hover:text-label-title flex-1 ${
@@ -250,7 +271,9 @@ const TabButton = ({
           ? splitPath(path).pop()
           : type === TabTypesEnum.CHAT
           ? title || t('New chat')
-          : title || t('New studio conversation')}
+          : type === TabTypesEnum.STUDIO
+          ? title || t('New studio conversation')
+          : title || relativeUrl}
       </p>
       <Button
         variant="ghost"

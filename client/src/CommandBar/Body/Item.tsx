@@ -84,10 +84,7 @@ const CommandBarItem = ({
       }
     } else {
       setChosenStep({
-        id: id as Exclude<
-          CommandBarStepEnum,
-          CommandBarStepEnum.ADD_FILE_TO_STUDIO
-        >,
+        id: id as Exclude<CommandBarStepEnum, CommandBarStepEnum.ADD_TO_STUDIO>,
       });
     }
     updateArrayInStorage(RECENT_COMMANDS_KEY, itemKey);

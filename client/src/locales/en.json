@@ -614,6 +614,8 @@
 	"Add to studio": "Add to studio",
 	"Add file to code studio context": "Add file to code studio context",
 	"{{count}} context files used": "{{count}} context files used",
+	"{{count}} context files used_one": "{{count}} context file used",
+	"{{count}} context files used_other": "{{count}} context files used",
 	"Existing studio conversations": "Existing studio conversations",
 	"Add file to studio": "Add file to studio",
 	"Add to existing": "Add to existing",
@@ -641,5 +643,15 @@
 	"Search templates...": "Search templates...",
 	"Manage templates": "Manage templates",
 	"Prompts": "Prompts",
-	"Manage docs": "Manage docs"
+	"Manage docs": "Manage docs",
+	"Add doc to studio": "Add doc to studio",
+	"Whole page": "Whole page",
+	"Select sections": "Select sections",
+	"Edit sections": "Edit sections",
+	"Documentation in studio": "Documentation in studio",
+	"# selected section_one": "{{count}} selected section",
+	"# selected section_other": "{{count}} selected sections",
+	"Remove from studio": "Remove from studio",
+	"Remove file from code studio context": "Remove file from code studio context",
+	"Remove page from code studio context": "Remove page from code studio context"
 }

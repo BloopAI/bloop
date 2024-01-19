@@ -578,6 +578,8 @@
 	"Add to existing": "Aggiungi a esistente",
 	"Search studio conversations...": "Cerca conversazioni in studio ...",
 	"{{count}} context files used": "{{count}} file di contesto utilizzati",
+	"{{count}} context files used_one": "{{count}} file di contesto utilizzato",
+	"{{count}} context files used_other": "{{count}} file di contesto utilizzati",
 	"Add file to studio": "Aggiungi file a Studio",
 	"Close all tabs": "Chiudi tutte le schede",
 	"Create ranges": "Crea gamme",
@@ -603,5 +605,15 @@
 	"Search templates...": "Modelli di ricerca ...",
 	"Manage templates": "Gestisci modelli",
 	"Prompts": "Richiede",
-	"Manage docs": "Gestisci documenti"
+	"Manage docs": "Gestisci documenti",
+	"Add doc to studio": "Aggiungi doc a studio",
+	"Whole page": "Pagina intera",
+	"Select sections": "Seleziona le sezioni",
+	"Edit sections": "Modifica sezioni",
+	"Documentation in studio": "Documentazione in studio",
+	"# selected section_one": "{{count}} sezione selezionata",
+	"# selected section_other": "{{count}} sezioni selezionate",
+	"Remove from studio": "Togliere dallo studio",
+	"Remove file from code studio context": "Rimuovi il file dal contesto Code Studio",
+	"Remove page from code studio context": "Rimuovi la pagina dal contesto di Code Studio"
 }

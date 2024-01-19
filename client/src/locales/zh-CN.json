@@ -607,6 +607,8 @@
 	"Add to studio": "添加到工作室",
 	"Add file to code studio context": "将文件添加到代码工作室上下文",
 	"{{count}} context files used": "{{count}}使用的上下文文件",
+	"{{count}} context files used_one": "{{count}}使用的上下文文件",
+	"{{count}} context files used_other": "{{count}}使用的上下文文件",
 	"Add file to studio": "将文件添加到工作室",
 	"Search studio conversations...": "搜索工作室对话...",
 	"Close all tabs": "关闭所有选项卡",
@@ -634,5 +636,15 @@
 	"Search templates...": "搜索模板...",
 	"Manage templates": "管理模板",
 	"Prompts": "提示",
-	"Manage docs": "管理文档"
+	"Manage docs": "管理文档",
+	"Add doc to studio": "将DOC添加到工作室",
+	"Whole page": "整页",
+	"Select sections": "选择部分",
+	"Edit sections": "编辑章节",
+	"Documentation in studio": "Studio中的文档",
+	"# selected section": "{{count}} 个选定部分",
+	"# selected section_one": "{{count}} 个选定部分",
+	"# selected section_other": "{{count}} 个选定部分",
+	"Remove file from code studio context": "从代码工作室上下文中删除文件",
+	"Remove page from code studio context": "从代码工作室上下文中删除页面"
 }

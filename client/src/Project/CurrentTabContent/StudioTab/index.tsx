@@ -20,12 +20,12 @@ import { TabsContext } from '../../../context/tabsContext';
 import { SettingSections, StudioTabType } from '../../../types/general';
 import { ProjectContext } from '../../../context/projectContext';
 import { CommandBarContext } from '../../../context/commandBarContext';
-import { openInSplitViewShortcut } from '../../../consts/commandBar';
 import { UIContext } from '../../../context/uiContext';
 import TokenUsage from '../../../components/TokenUsage';
 import { StudioContext, StudiosContext } from '../../../context/studiosContext';
 import { TOKEN_LIMIT } from '../../../consts/codeStudio';
 import { PersonalQuotaContext } from '../../../context/personalQuotaContext';
+import { openInSplitViewShortcut } from '../../../consts/shortcuts';
 import ActionsDropdown from './ActionsDropdown';
 import Conversation from './Conversation';
 
@@ -89,7 +89,7 @@ const StudioTab = ({
 
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
-      if (checkEventKeys(e, ['cmd', ']'])) {
+      if (checkEventKeys(e, openInSplitViewShortcut)) {
         handleMoveToAnotherSide();
       }
     },

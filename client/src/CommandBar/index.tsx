@@ -15,7 +15,7 @@ import ManageRepos from './steps/ManageRepos';
 import AddNewRepo from './steps/AddNewRepo';
 import ToggleTheme from './steps/ToggleTheme';
 import SearchFiles from './steps/SeachFiles';
-import AddFileToStudio from './steps/AddFileToStudio';
+import AddFileToStudio from './steps/AddToStudio';
 
 type Props = {};
 
@@ -79,7 +79,7 @@ const CommandBar = ({}: Props) => {
         <ToggleTheme />
       ) : chosenStep.id === CommandBarStepEnum.SEARCH_FILES ? (
         <SearchFiles />
-      ) : chosenStep.id === CommandBarStepEnum.ADD_FILE_TO_STUDIO ? (
+      ) : chosenStep.id === CommandBarStepEnum.ADD_TO_STUDIO ? (
         <AddFileToStudio {...chosenStep.data} />
       ) : null}
     </Modal>

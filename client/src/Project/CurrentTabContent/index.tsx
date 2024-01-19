@@ -10,6 +10,7 @@ import FileTab from './FileTab';
 import Header from './Header';
 import ChatTab from './ChatTab';
 import StudioTab from './StudioTab';
+import DocTab from './DocTab';
 
 type Props = {
   side: 'left' | 'right';
@@ -85,6 +86,15 @@ const CurrentTabContent = ({
           />
         ) : tab?.type === TabTypesEnum.STUDIO ? (
           <StudioTab
+            {...tab}
+            noBorder={side === 'left'}
+            side={side}
+            tabKey={tab.key}
+            key={tab.key}
+            handleMoveToAnotherSide={handleMoveToAnotherSide}
+          />
+        ) : tab?.type === TabTypesEnum.DOC ? (
+          <DocTab
             {...tab}
             noBorder={side === 'left'}
             side={side}

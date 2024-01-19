@@ -9,13 +9,14 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  AddDocToStudioDataType,
   AddFileToStudioDataType,
   CommandBarItemGeneralType,
   CommandBarSectionType,
   CommandBarStepEnum,
   TabTypesEnum,
 } from '../../types/general';
-import { CodeStudioIcon, PlusSignIcon } from '../../icons';
+import { PlusSignIcon } from '../../icons';
 import Header from '../Header';
 import Body from '../Body';
 import Footer from '../Footer';
@@ -23,10 +24,12 @@ import { CommandBarContext } from '../../context/commandBarContext';
 import { ProjectContext } from '../../context/projectContext';
 import { TabsContext } from '../../context/tabsContext';
 import { postCodeStudio } from '../../services/api';
+import TokenUsage from '../../components/TokenUsage';
+import { TOKEN_LIMIT } from '../../consts/codeStudio';
 
-type Props = AddFileToStudioDataType & {};
+type Props = (AddFileToStudioDataType | AddDocToStudioDataType) & {};
 
-const AddFileToStudio = ({ path, repoRef, branch }: Props) => {
+const AddToStudio = (props: Props) => {
   const { t } = useTranslation();
   const { setChosenStep } = useContext(CommandBarContext.Handlers);
   const { project, refreshCurrentProjectStudios } = useContext(
@@ -50,15 +53,56 @@ const AddFileToStudio = ({ path, repoRef, branch }: Props) => {
     if (project?.id) {
       const newId = await postCodeStudio(project.id);
       refreshCurrentProjectStudios();
-      openNewTab({
-        type: TabTypesEnum.FILE,
-        studioId: newId,
-        path,
-        repoRef,
-        branch,
-      });
+      if ('path' in props) {
+        openNewTab(
+          {
+            type: TabTypesEnum.FILE,
+            studioId: newId,
+            ...props,
+          },
+          'left',
+        );
+      } else {
+        openNewTab(
+          {
+            type: TabTypesEnum.DOC,
+            studioId: newId,
+            ...props,
+          },
+          'left',
+        );
+      }
+      openNewTab({ type: TabTypesEnum.STUDIO, studioId: newId }, 'right');
     }
-  }, [project?.id, path, repoRef, branch]);
+  }, [project?.id, props, openNewTab, refreshCurrentProjectStudios]);
+
+  const handleAddToCodeStudio = useCallback(
+    async (studioId: string) => {
+      if (project?.id) {
+        if ('path' in props) {
+          openNewTab(
+            {
+              type: TabTypesEnum.FILE,
+              studioId,
+              ...props,
+            },
+            'left',
+          );
+        } else {
+          openNewTab(
+            {
+              type: TabTypesEnum.DOC,
+              studioId,
+              ...props,
+            },
+            'left',
+          );
+        }
+        openNewTab({ type: TabTypesEnum.STUDIO, studioId }, 'right');
+      }
+    },
+    [project?.id, props, openNewTab],
+  );
 
   const initialSections = useMemo(() => {
     return [
@@ -81,22 +125,20 @@ const AddFileToStudio = ({ path, repoRef, branch }: Props) => {
       {
         items: (project?.studios || []).map((s) => ({
           label: s.name,
-          Icon: CodeStudioIcon,
+          Icon: () => (
+            <TokenUsage
+              percent={(s.token_counts.total / TOKEN_LIMIT) * 100}
+              sizeClassName={'w-6 h-6'}
+            />
+          ),
+          iconContainerClassName: 'bg-transparent',
           id: s.id,
           key: s.id,
-          onClick: () =>
-            openNewTab({
-              type: TabTypesEnum.FILE,
-              studioId: s.id,
-              path,
-              repoRef,
-              branch,
-            }),
+          onClick: () => handleAddToCodeStudio(s.id),
           closeOnClick: true,
-          // footerHint: t('{{count}} context files used', {
-          //   count: s.token_counts?.per_file.filter((f) => !!f).length,
-          // }),
-          footerHint: '',
+          footerHint: t('{{count}} context files used', {
+            count: s.context.length,
+          }),
           footerBtns: [{ label: t('Add to existing'), shortcut: ['entr'] }],
         })),
         label: t('Existing studio conversations'),
@@ -104,15 +146,7 @@ const AddFileToStudio = ({ path, repoRef, branch }: Props) => {
         key: 'studio-items',
       },
     ];
-  }, [
-    t,
-    project?.studios,
-    handleNewCodeStudio,
-    openNewTab,
-    path,
-    repoRef,
-    branch,
-  ]);
+  }, [t, project?.studios, handleNewCodeStudio, openNewTab, props]);
 
   useEffect(() => {
     if (!inputValue) {
@@ -140,8 +174,8 @@ const AddFileToStudio = ({ path, repoRef, branch }: Props) => {
   }, [initialSections, inputValue]);
 
   const breadcrumbs = useMemo(() => {
-    return [t('Add file to studio')];
-  }, []);
+    return [t(`Add ${'path' in props ? 'file' : 'doc'} to studio`)];
+  }, [props, t]);
 
   return (
     <div className="w-full flex flex-col h-[28.875rem] max-w-[40rem] overflow-auto">
@@ -158,4 +192,4 @@ const AddFileToStudio = ({ path, repoRef, branch }: Props) => {
   );
 };
 
-export default memo(AddFileToStudio);
+export default memo(AddToStudio);

@@ -55,6 +55,7 @@ export { default as RepositoryIcon } from './Repository';
 export { default as RunIcon } from './Run';
 export { default as ShapesIcon } from './Shapes';
 export { default as SplitViewIcon } from './SplitView';
+export { default as StudioCloseSignIcon } from './StudioCloseSign';
 export { default as StudioPlusSignIcon } from './StudioPlusSign';
 export { default as TemplateIcon } from './Template';
 export { default as TemplatesIcon } from './Templates';
