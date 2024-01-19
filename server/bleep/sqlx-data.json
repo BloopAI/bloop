@@ -1492,7 +1492,7 @@
     },
     "query": "UPDATE project_repos\n        SET branch = ?\n        WHERE project_id = ? AND repo_ref = ?\n        RETURNING id"
   },
-  "ebdb202965998c4e29727dca19a60c82b2a4574530858e29bf6584c8b6e1f32b": {
+  "e72d027c61c96b02889751f6817129ea73d23383be3dae5fc1bffdc6e7b2c46d": {
     "describe": {
       "columns": [
         {
@@ -1514,11 +1514,23 @@
           "name": "context",
           "ordinal": 3,
           "type_info": "Text"
+        },
+        {
+          "name": "doc_context",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "messages",
+          "ordinal": 5,
+          "type_info": "Text"
         }
       ],
       "nullable": [
         false,
         true,
+        false,
+        false,
         false,
         false
       ],
@@ -1526,7 +1538,7 @@
         "Right": 2
       }
     },
-    "query": "SELECT\n            s.id,\n            s.name,\n            ss.modified_at as \"modified_at!\",\n            ss.context\n        FROM studios s\n        INNER JOIN studio_snapshots ss ON s.id = ss.studio_id\n        INNER JOIN projects p ON p.id = s.project_id\n        WHERE s.project_id = ? AND p.user_id = ? AND (ss.studio_id, ss.modified_at) IN (\n            SELECT studio_id, MAX(modified_at)\n            FROM studio_snapshots\n            GROUP BY studio_id\n        )"
+    "query": "SELECT\n            s.id,\n            s.name,\n            ss.modified_at as \"modified_at!\",\n            ss.context,\n            ss.doc_context,\n            ss.messages\n        FROM studios s\n        INNER JOIN studio_snapshots ss ON s.id = ss.studio_id\n        INNER JOIN projects p ON p.id = s.project_id\n        WHERE s.project_id = ? AND p.user_id = ? AND (ss.studio_id, ss.modified_at) IN (\n            SELECT studio_id, MAX(modified_at)\n            FROM studio_snapshots\n            GROUP BY studio_id\n        )"
   },
   "ec193a038eb7fc3aaca3c3adebcc4dbde01b47ae34ac2df2227c5e5459617182": {
     "describe": {

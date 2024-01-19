@@ -357,14 +357,9 @@ pub struct ListItem {
     modified_at: NaiveDateTime,
     repos: Vec<String>,
     most_common_ext: String,
-    context: Vec<ListItemContextFile>,
-}
-
-#[derive(serde::Serialize)]
-struct ListItemContextFile {
-    path: String,
-    hidden: bool,
-    ranges: Vec<Range<usize>>,
+    context: Vec<ContextFile>,
+    doc_context: Vec<DocContextFile>,
+    token_counts: TokenCounts,
 }
 
 pub async fn list(
@@ -379,7 +374,9 @@ pub async fn list(
             s.id,
             s.name,
             ss.modified_at as \"modified_at!\",
-            ss.context
+            ss.context,
+            ss.doc_context,
+            ss.messages
         FROM studios s
         INNER JOIN studio_snapshots ss ON s.id = ss.studio_id
         INNER JOIN projects p ON p.id = s.project_id
@@ -399,6 +396,10 @@ pub async fn list(
     for studio in studios {
         let context: Vec<ContextFile> =
             serde_json::from_str(&studio.context).map_err(Error::internal)?;
+        let doc_context: Vec<DocContextFile> =
+            serde_json::from_str(&studio.doc_context).map_err(Error::internal)?;
+        let messages: Vec<Message> =
+            serde_json::from_str(&studio.messages).map_err(Error::internal)?;
 
         let repos: HashSet<String> = context.iter().map(|file| file.repo.name.clone()).collect();
 
@@ -423,20 +424,17 @@ pub async fn list(
             .unwrap_or_default()
             .to_owned();
 
+        let token_counts = token_counts((*app).clone(), &messages, &context, &doc_context).await?;
+
         let list_item = ListItem {
             id: studio.id,
             name: studio.name.unwrap_or_else(default_studio_name),
             modified_at: studio.modified_at,
             repos: repos.into_iter().collect::<Vec<_>>(),
             most_common_ext,
-            context: context
-                .iter()
-                .map(|c| ListItemContextFile {
-                    path: c.path.clone(),
-                    hidden: c.hidden,
-                    ranges: c.ranges.clone(),
-                })
-                .collect(),
+            context,
+            doc_context,
+            token_counts,
         };
 
         list_items.push(list_item);
