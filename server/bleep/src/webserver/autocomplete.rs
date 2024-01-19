@@ -125,9 +125,7 @@ pub(super) async fn handle(
         .restrict_repo_queries(queries.clone(), &app)
         .await?;
 
-    let restricted_queries = api_params
-        .restrict_queries(queries.clone(), &app)
-        .await?;
+    let restricted_queries = api_params.restrict_queries(queries.clone(), &app).await?;
 
     let mut engines = vec![];
     if ac_params.content {

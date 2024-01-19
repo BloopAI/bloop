@@ -424,13 +424,7 @@ pub async fn list(
             .unwrap_or_default()
             .to_owned();
 
-        let token_counts = token_counts(
-            (*app).clone(),
-            &messages,
-            &context,
-            &doc_context,
-        )
-        .await?;
+        let token_counts = token_counts((*app).clone(), &messages, &context, &doc_context).await?;
 
         let list_item = ListItem {
             id: studio.id,
