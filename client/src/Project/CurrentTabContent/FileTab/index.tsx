@@ -23,6 +23,7 @@ import {
   FileWithSparksIcon,
   MoreHorizontalIcon,
   SplitViewIcon,
+  StudioCloseSignIcon,
   StudioPlusSignIcon,
 } from '../../../icons';
 import { CodeStudioType, FileResponse } from '../../../types/api';
@@ -42,13 +43,14 @@ import { TabsContext } from '../../../context/tabsContext';
 import { checkEventKeys } from '../../../utils/keyboardUtils';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
 import { CommandBarContext } from '../../../context/commandBarContext';
-import { openInSplitViewShortcut } from '../../../consts/commandBar';
 import BreadcrumbsPathContainer from '../../../components/Breadcrumbs/PathContainer';
 import { RepositoriesContext } from '../../../context/repositoriesContext';
 import { UIContext } from '../../../context/uiContext';
 import {
-  addFileToStudioShortcut,
+  addToStudioShortcut,
   explainFileShortcut,
+  openInSplitViewShortcut,
+  removeFromStudioShortcut,
 } from '../../../consts/shortcuts';
 import { ProjectContext } from '../../../context/projectContext';
 import Badge from '../../../components/Badge';
@@ -122,7 +124,7 @@ const FileTab = ({
   const refreshStudio = useCallback(() => {
     if (studioId && project?.id) {
       getCodeStudio(project.id, studioId).then(setStudio);
-    } else if (project?.id) {
+    } else {
       setStudio(null);
     }
   }, [studioId, project?.id]);
@@ -278,11 +280,49 @@ const FileTab = ({
 
   const handleAddToStudio = useCallback(() => {
     setChosenStep({
-      id: CommandBarStepEnum.ADD_FILE_TO_STUDIO,
+      id: CommandBarStepEnum.ADD_TO_STUDIO,
       data: { path, repoRef, branch },
     });
     setIsVisible(true);
   }, [path, repoRef, branch]);
+
+  const handleRemoveFromStudio = useCallback(async () => {
+    if (project?.id && studioId && studio) {
+      const patchedFile = studio?.context.find(
+        (f) => f.path === path && f.repo === repoRef && f.branch === branch,
+      );
+      if (patchedFile) {
+        await patchCodeStudio(project.id, studioId, {
+          context: studio?.context.filter(
+            (f) => f.path !== path || f.repo !== repoRef || f.branch !== branch,
+          ),
+        });
+        refreshCurrentProjectStudios();
+        refreshStudio();
+        setIsEditingRanges(false);
+        updateTabProperty<FileTabType, 'isFileInContext'>(
+          tabKey,
+          'isFileInContext',
+          false,
+          side,
+        );
+        updateTabProperty<FileTabType, 'initialRanges'>(
+          tabKey,
+          'initialRanges',
+          undefined,
+          side,
+        );
+        updateTabProperty<FileTabType, 'studioId'>(
+          tabKey,
+          'studioId',
+          undefined,
+          side,
+        );
+        setStudio(null);
+        setSelectedLines([]);
+      }
+    }
+  }, [path, repoRef, branch, project?.id, studioId, studio]);
 
   const handleSubmitToStudio = useCallback(async () => {
     if (project?.id && studioId && studio) {
@@ -337,10 +377,10 @@ const FileTab = ({
 
   const hasChanges = useMemo(() => {
     return (
-      !isFileInContext ||
+      (studioId && !isFileInContext) ||
       JSON.stringify(initialRanges) !== JSON.stringify(selectedLines)
     );
-  }, [isFileInContext, initialRanges, selectedLines]);
+  }, [studioId, isFileInContext, initialRanges, selectedLines]);
 
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
@@ -348,10 +388,14 @@ const FileTab = ({
         handleExplain();
       } else if (checkEventKeys(e, openInSplitViewShortcut)) {
         handleMoveToAnotherSide();
-      } else if (checkEventKeys(e, addFileToStudioShortcut)) {
+      } else if (checkEventKeys(e, addToStudioShortcut)) {
         e.preventDefault();
         e.stopPropagation();
         handleAddToStudio();
+      } else if (checkEventKeys(e, removeFromStudioShortcut)) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleRemoveFromStudio();
       }
     },
     [handleExplain, handleMoveToAnotherSide, handleAddToStudio],
@@ -379,7 +423,18 @@ const FileTab = ({
           footerBtns: [{ label: t('Explain'), shortcut: ['entr'] }],
         },
         ...(studioId
-          ? []
+          ? [
+              {
+                label: t('Remove from studio'),
+                Icon: StudioCloseSignIcon,
+                id: 'file_from_studio',
+                key: 'file_from_studio',
+                onClick: handleRemoveFromStudio,
+                shortcut: removeFromStudioShortcut,
+                footerHint: t('Remove file from code studio context'),
+                footerBtns: [{ label: t('Remove'), shortcut: ['entr'] }],
+              },
+            ]
           : [
               {
                 label: t('Add to studio'),
@@ -387,7 +442,7 @@ const FileTab = ({
                 id: 'file_to_studio',
                 key: 'file_to_studio',
                 onClick: handleAddToStudio,
-                shortcut: addFileToStudioShortcut,
+                shortcut: addToStudioShortcut,
                 footerHint: t('Add file to code studio context'),
                 footerBtns: [{ label: t('Add'), shortcut: ['entr'] }],
               },
@@ -419,8 +474,16 @@ const FileTab = ({
       handleExplain,
       handleMoveToAnotherSide,
       handleAddToStudio,
+      handleRemoveFromStudio,
+      isFileInContext,
     };
-  }, [handleExplain, handleMoveToAnotherSide, handleAddToStudio]);
+  }, [
+    handleExplain,
+    handleMoveToAnotherSide,
+    handleAddToStudio,
+    handleRemoveFromStudio,
+    isFileInContext,
+  ]);
 
   return (
     <div
@@ -429,7 +492,7 @@ const FileTab = ({
       }`}
       onClick={handleClick}
     >
-      <div className="w-full h-10 px-4 flex justify-between items-center flex-shrink-0 border-b border-bg-border bg-bg-sub">
+      <div className="w-full h-10 px-4 flex justify-between gap-1 items-center flex-shrink-0 border-b border-bg-border bg-bg-sub">
         <div className="flex items-center gap-3 body-s text-label-title ellipsis">
           <FileIcon filename={path} noMargin />
           <BreadcrumbsPathContainer
@@ -437,11 +500,19 @@ const FileTab = ({
             repoRef={repoRef}
             nonInteractive
           />
-          {!!studio && (
+          {!!studio && studioId && (
             <>
               <div className="w-px h-4 bg-bg-border flex-shrink-0" />
               <Badge text={t('Whole file')} type="blue-subtle" size="small" />
-              <p className="select-none text-yellow code-mini">
+              <p
+                className={`select-none ${
+                  tokenCount < 18000 && tokenCount > 1500
+                    ? 'text-yellow'
+                    : tokenCount < 500
+                    ? 'text-green'
+                    : 'text-red'
+                } code-mini`}
+              >
                 {humanNumber(tokenCount)}{' '}
                 <Trans count={tokenCount}># tokens</Trans>
               </p>
@@ -449,37 +520,37 @@ const FileTab = ({
           )}
         </div>
         {focusedPanel === side &&
-          (studio ? (
-            hasChanges || isEditingRanges ? (
-              <div className="flex items-center gap-3">
-                {!isEditingRanges && (
-                  <>
-                    <Button
-                      variant="secondary"
-                      size="mini"
-                      onClick={handleEditRanges}
-                    >
-                      <Trans>Create ranges</Trans>
-                    </Button>
-                    <div className="w-px h-4 bg-bg-border flex-shrink-0" />
-                  </>
-                )}
-                <Button
-                  variant="tertiary"
-                  size="mini"
-                  onClick={handleCancelStudio}
-                >
-                  <Trans>Cancel</Trans>
-                </Button>
-                <Button
-                  variant="studio"
-                  size="mini"
-                  onClick={handleSubmitToStudio}
-                >
-                  <Trans>Submit</Trans>
-                </Button>
-              </div>
-            ) : (
+          (studioId && (hasChanges || isEditingRanges) ? (
+            <div className="flex items-center gap-3">
+              {!isEditingRanges && (
+                <>
+                  <Button
+                    variant="secondary"
+                    size="mini"
+                    onClick={handleEditRanges}
+                  >
+                    <Trans>Create ranges</Trans>
+                  </Button>
+                  <div className="w-px h-4 bg-bg-border flex-shrink-0" />
+                </>
+              )}
+              <Button
+                variant="tertiary"
+                size="mini"
+                onClick={handleCancelStudio}
+              >
+                <Trans>Cancel</Trans>
+              </Button>
+              <Button
+                variant={isFileInContext ? 'secondary' : 'studio'}
+                size="mini"
+                onClick={handleSubmitToStudio}
+              >
+                <Trans>{isFileInContext ? 'Save changes' : 'Submit'}</Trans>
+              </Button>
+            </div>
+          ) : (
+            studioId && (
               <div className="flex items-center gap-3">
                 <Button
                   variant="secondary"
@@ -490,23 +561,24 @@ const FileTab = ({
                 </Button>
               </div>
             )
-          ) : (
-            <Dropdown
-              DropdownComponent={ActionsDropdown}
-              dropdownComponentProps={dropdownComponentProps}
-              dropdownPlacement="bottom-end"
-              appendTo={document.body}
-            >
-              <Button
-                variant="tertiary"
-                size="mini"
-                onlyIcon
-                title={t('More actions')}
-              >
-                <MoreHorizontalIcon sizeClassName="w-3.5 h-3.5" />
-              </Button>
-            </Dropdown>
           ))}
+        {!isEditingRanges && (
+          <Dropdown
+            DropdownComponent={ActionsDropdown}
+            dropdownComponentProps={dropdownComponentProps}
+            dropdownPlacement="bottom-end"
+            appendTo={document.body}
+          >
+            <Button
+              variant="tertiary"
+              size="mini"
+              onlyIcon
+              title={t('More actions')}
+            >
+              <MoreHorizontalIcon sizeClassName="w-3.5 h-3.5" />
+            </Button>
+          </Dropdown>
+        )}
       </div>
       <div
         className="flex-1 h-full max-w-full pl-4 py-4 overflow-auto relative"

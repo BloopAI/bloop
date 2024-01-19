@@ -112,6 +112,7 @@ const RepoResult = ({ repoRef, isExpandable, index, focusedIndex }: Props) => {
               index={`${index}-${fi}`}
               lastIndex={''}
               isLeftSidebarFocused={isLeftSidebarFocused}
+              isCommandBarVisible={isCommandBarVisible}
             />
           ))}
         </div>

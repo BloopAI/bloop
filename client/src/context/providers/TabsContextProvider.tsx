@@ -10,9 +10,10 @@ import {
 import { useSearchParams } from 'react-router-dom';
 import { TabsContext } from '../tabsContext';
 import {
-  StudioTabType,
   ChatTabType,
+  DocTabType,
   FileTabType,
+  StudioTabType,
   TabType,
   TabTypesEnum,
 } from '../../types/general';
@@ -48,6 +49,7 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
       data:
         | Omit<FileTabType, 'key'>
         | Omit<ChatTabType, 'key'>
+        | Omit<DocTabType, 'key'>
         | Omit<StudioTabType, 'key'>,
       forceSide?: 'left' | 'right',
     ) => {
@@ -103,10 +105,16 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
                 conversationId: data.conversationId,
                 title: data.title,
               }
-            : {
+            : data.type === TabTypesEnum.STUDIO
+            ? {
                 type: TabTypesEnum.STUDIO,
                 key: data.studioId,
                 studioId: data.studioId,
+              }
+            : {
+                ...data,
+                type: TabTypesEnum.DOC,
+                key: data.docId + data.relativeUrl,
               };
         const previousTab = prev.find((t) =>
           newTab.type === TabTypesEnum.CHAT && newTab.conversationId
@@ -139,6 +147,22 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
               ...previousTab,
               scrollToLine: newTab.scrollToLine,
               tokenRange: newTab.tokenRange,
+              studioId: newTab.studioId,
+            };
+            newTabs[previousTabIndex] = t;
+            setActiveTabAction(t);
+            return newTabs;
+          } else if (
+            previousTab.type === TabTypesEnum.DOC &&
+            newTab.type === TabTypesEnum.DOC &&
+            previousTab.studioId !== newTab.studioId
+          ) {
+            const previousTabIndex = prev.findIndex(
+              (t) => t.key === newTab.key,
+            );
+            const newTabs = [...prev];
+            const t = {
+              ...previousTab,
               studioId: newTab.studioId,
             };
             newTabs[previousTabIndex] = t;
@@ -204,6 +228,19 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
           if (activeTab.title) {
             newParams.title = activeTab.title;
           }
+        } else if (activeTab.type === TabTypesEnum.DOC) {
+          if (activeTab.docId) {
+            newParams.docId = activeTab.docId;
+          }
+          if (activeTab.title) {
+            newParams.title = activeTab.title;
+          }
+          if (activeTab.favicon) {
+            newParams.favicon = activeTab.favicon;
+          }
+          if (activeTab.relativeUrl) {
+            newParams.relativeUrl = activeTab.relativeUrl;
+          }
         }
         setSearchParams(newParams, { replace: true });
       }
@@ -221,7 +258,8 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
       const path = searchParams.get('path');
       const conversationId = searchParams.get('conversationId');
       const studioId = searchParams.get('studioId');
-      if (!activeLeftTab && (path || conversationId || studioId)) {
+      const docId = searchParams.get('docId');
+      if (!activeLeftTab && (path || conversationId || studioId || docId)) {
         const repoRef = searchParams.get('repoRef');
         if (path && repoRef) {
           openNewTab({
@@ -237,6 +275,14 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
             type: TabTypesEnum.CHAT,
             conversationId,
             title: searchParams.get('title') || undefined,
+          });
+        } else if (docId) {
+          openNewTab({
+            type: TabTypesEnum.DOC,
+            docId,
+            title: searchParams.get('title') || undefined,
+            favicon: searchParams.get('favicon') || undefined,
+            relativeUrl: searchParams.get('relativeUrl')!,
           });
         } else if (studioId) {
           openNewTab({
@@ -275,7 +321,10 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
   }, []);
 
   const updateTabProperty = useCallback(
-    <T extends ChatTabType | FileTabType | StudioTabType, K extends keyof T>(
+    <
+      T extends ChatTabType | FileTabType | StudioTabType | DocTabType,
+      K extends keyof T,
+    >(
       tabKey: string,
       objectKey: K,
       newValue: T[K],

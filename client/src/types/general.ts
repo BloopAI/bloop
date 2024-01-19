@@ -92,6 +92,7 @@ export enum TabTypesEnum {
   FILE = 'file',
   CHAT = 'chat',
   STUDIO = 'studio',
+  DOC = 'doc',
 }
 
 export type FileTabType = {
@@ -128,7 +129,19 @@ export type StudioTabType = {
   title?: string;
 };
 
-export type TabType = FileTabType | ChatTabType | StudioTabType;
+export type DocTabType = {
+  type: TabTypesEnum.DOC;
+  key: string;
+  docId: string;
+  title?: string;
+  favicon?: string;
+  relativeUrl: string;
+  studioId?: string;
+  initialSections?: string[];
+  isDocInContext?: boolean;
+};
+
+export type TabType = FileTabType | ChatTabType | StudioTabType | DocTabType;
 
 export type DraggableTabItem = {
   id: string;
@@ -491,9 +504,9 @@ export type CommandBarStepType = {
 };
 
 export type CommandBarActiveStepType =
-  | AddFileToStudioStepType
+  | AddToStudioStepType
   | {
-      id: Exclude<CommandBarStepEnum, CommandBarStepEnum.ADD_FILE_TO_STUDIO>;
+      id: Exclude<CommandBarStepEnum, CommandBarStepEnum.ADD_TO_STUDIO>;
       data?: Record<string, any>;
     };
 
@@ -503,9 +516,16 @@ export type AddFileToStudioDataType = {
   branch?: string | null;
 };
 
-export type AddFileToStudioStepType = {
-  id: CommandBarStepEnum.ADD_FILE_TO_STUDIO;
-  data: AddFileToStudioDataType;
+export type AddDocToStudioDataType = {
+  docId: string;
+  relativeUrl: string;
+  title?: string;
+  favicon?: string;
+};
+
+export type AddToStudioStepType = {
+  id: CommandBarStepEnum.ADD_TO_STUDIO;
+  data: AddFileToStudioDataType | AddDocToStudioDataType;
 };
 
 export enum CommandBarStepEnum {
@@ -520,7 +540,7 @@ export enum CommandBarStepEnum {
   CREATE_PROJECT = 'create_project',
   TOGGLE_THEME = 'toggle_theme',
   SEARCH_FILES = 'search_files',
-  ADD_FILE_TO_STUDIO = 'add_file_to_studio',
+  ADD_TO_STUDIO = 'add_to_studio',
 }
 
 export enum SettingSections {

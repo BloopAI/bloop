@@ -19,8 +19,8 @@ import { TabsContext } from '../../../context/tabsContext';
 import { ChatTabType } from '../../../types/general';
 import { ProjectContext } from '../../../context/projectContext';
 import { CommandBarContext } from '../../../context/commandBarContext';
-import { openInSplitViewShortcut } from '../../../consts/commandBar';
 import { UIContext } from '../../../context/uiContext';
+import { openInSplitViewShortcut } from '../../../consts/shortcuts';
 import Conversation from './Conversation';
 import ActionsDropdown from './ActionsDropdown';
 
@@ -70,7 +70,7 @@ const ChatTab = ({
 
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
-      if (checkEventKeys(e, ['cmd', ']'])) {
+      if (checkEventKeys(e, openInSplitViewShortcut)) {
         handleMoveToAnotherSide();
       }
     },

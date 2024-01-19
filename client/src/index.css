@@ -1002,9 +1002,7 @@ h5, .h5 {
   scrollbar-width: initial;  /* Firefox */
 }
 
-.readme h1, .readme h2, .readme h3, .readme h4, .readme h5, .readme h6, .readme p, .readme span, .readme div,
-.doc-section h1, .doc-section h2, .doc-section h3, .doc-section h4, .doc-section h5, .doc-section h6,
-.doc-section p, .doc-section span, .doc-section div {
+.readme h1, .readme h2, .readme h3, .readme h4, .readme h5, .readme h6, .readme p, .readme span, .readme div {
   cursor: auto;
 }
 

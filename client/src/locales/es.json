@@ -611,6 +611,8 @@
 	"Add to existing": "Agregar a la existencia",
 	"Existing studio conversations": "Conversaciones de estudio existentes",
 	"{{count}} context files used": "{{count}} archivos de contexto utilizados",
+	"{{count}} context files used_one": "{{count}} archivo de contexto utilizado",
+	"{{count}} context files used_other": "{{count}} archivos de contexto utilizados",
 	"Add file to studio": "Agregar archivo al estudio",
 	"Search studio conversations...": "Buscar conversaciones de estudio...",
 	"Close all tabs": "Cierra todas las pestañas",
@@ -641,5 +643,15 @@
 	"Manage templates": "Administrar plantillas",
 	"Prompts": "Indicaciones",
 	"Manage docs": "Administrar documentos",
-	"Paste a link to any documentation web page": "Pegue un enlace a cualquier página web de documentación"
+	"Paste a link to any documentation web page": "Pegue un enlace a cualquier página web de documentación",
+	"Add doc to studio": "Agregar documento al estudio",
+	"Whole page": "Toda la pagina",
+	"Select sections": "Seleccionar secciones",
+	"Edit sections": "Editar secciones",
+	"Documentation in studio": "Documentación en estudio",
+	"# selected section_one": "{{count}} sección seleccionada",
+	"# selected section_other": "{{count}} secciónes seleccionadas",
+	"Remove from studio": "Retirar del estudio",
+	"Remove file from code studio context": "Eliminar el archivo del contexto de código de código",
+	"Remove page from code studio context": "Eliminar la página del contexto del estudio de código"
 }

@@ -599,6 +599,8 @@
 	"Search studio conversations...": "スタジオの会話を検索...",
 	"Existing studio conversations": "既存のスタジオの会話",
 	"{{count}} context files used": "{{count}}コンテキストファイルが使用されます",
+	"{{count}} context files used_one": "{{count}}コンテキストファイルが使用されます",
+	"{{count}} context files used_other": "{{count}}コンテキストファイルが使用されます",
 	"Add file to studio": "スタジオにファイルを追加します",
 	"Close all tabs": "すべてのタブを閉じます",
 	"Create ranges": "範囲を作成します",
@@ -622,5 +624,15 @@
 	"Search templates...": "テンプレートを検索...",
 	"Manage templates": "テンプレートを管理します",
 	"Prompts": "プロンプト",
-	"Manage docs": "ドキュメントを管理します"
+	"Manage docs": "ドキュメントを管理します",
+	"Add doc to studio": "スタジオにドキュメントを追加します",
+	"Whole page": "全てのページ",
+	"Select sections": "セクションを選択します",
+	"Edit sections": "編集セクション",
+	"Documentation in studio": "スタジオでのドキュメント",
+	"# selected section_one": "選択された {{count}} つのセクション",
+	"# selected section_other": "選択された {{count}} つのセクション",
+	"Remove from studio": "スタジオから取り出します",
+	"Remove file from code studio context": "コードスタジオコンテキストからファイルを削除します",
+	"Remove page from code studio context": "コードスタジオコンテキストからページを削除します"
 }

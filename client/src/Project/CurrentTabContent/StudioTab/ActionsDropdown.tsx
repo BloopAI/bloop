@@ -1,9 +1,10 @@
-import { memo, useCallback, useMemo } from 'react';
+import { memo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import DropdownSection from '../../../components/Dropdown/Section';
 import SectionItem from '../../../components/Dropdown/Section/SectionItem';
 import { BroomIcon, SplitViewIcon, TrashCanIcon } from '../../../icons';
-import { deleteCodeStudio, deleteConversation } from '../../../services/api';
+import { deleteCodeStudio } from '../../../services/api';
+import { openInSplitViewShortcut } from '../../../consts/shortcuts';
 
 type Props = {
   clearConversation: () => void;
@@ -43,18 +44,12 @@ const ActionsDropdown = ({
     side,
   ]);
 
-  const shortcuts = useMemo(() => {
-    return {
-      splitView: ['cmd', ']'],
-    };
-  }, []);
-
   return (
     <div>
       <DropdownSection borderBottom>
         <SectionItem
           label={t('Open in split view')}
-          shortcut={shortcuts.splitView}
+          shortcut={openInSplitViewShortcut}
           onClick={handleMoveToAnotherSide}
           // isFocused
           icon={<SplitViewIcon sizeClassName="w-4 h-4" />}

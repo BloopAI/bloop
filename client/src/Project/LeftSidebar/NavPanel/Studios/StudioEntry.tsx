@@ -163,10 +163,15 @@ const StudioEntry = ({
               key={`${d.doc_id}`}
               studioId={id}
               focusedIndex={focusedIndex}
-              index={`${index}-${d.doc_id}`}
+              index={`${index}-${d.doc_id}-${d.relative_url}`}
               studioName={name}
               isLeftSidebarFocused={isLeftSidebarFocused}
               isCommandBarVisible={isCommandBarVisible}
+              docId={d.doc_id}
+              relativeUrl={d.relative_url}
+              docTitle={d.doc_title || ''}
+              docFavicon={d.doc_icon || ''}
+              sections={d.ranges}
             >
               {d.doc_icon ? (
                 <img
@@ -180,14 +185,7 @@ const StudioEntry = ({
               <span className="flex-1 ellipsis">{d.doc_title}</span>
               {!!d.ranges.length && (
                 <Tooltip
-                  text={
-                    d.ranges.length === 1
-                      ? t('Lines # - #', {
-                          start: d.ranges[0] + 1,
-                          end: d.ranges[1],
-                        })
-                      : t('# ranges', { count: d.ranges.length })
-                  }
+                  text={t('# selected section', { count: d.ranges.length })}
                   placement={'top'}
                 >
                   <RangeIcon sizeClassName="w-3.5 h-3.5" />
@@ -195,8 +193,8 @@ const StudioEntry = ({
               )}
               <span
                 className={`code-mini w-10 text-right ${
-                  (token_counts.per_doc_file[i] || 0) < 2000 &&
-                  (token_counts.per_doc_file[i] || 0) > 500
+                  (token_counts.per_doc_file[i] || 0) < 18000 &&
+                  (token_counts.per_doc_file[i] || 0) > 1500
                     ? 'text-yellow'
                     : (token_counts.per_doc_file[i] || 0) < 500
                     ? 'text-green'

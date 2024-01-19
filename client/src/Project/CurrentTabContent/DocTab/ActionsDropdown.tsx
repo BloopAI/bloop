@@ -4,44 +4,34 @@ import DropdownSection from '../../../components/Dropdown/Section';
 import SectionItem from '../../../components/Dropdown/Section/SectionItem';
 import {
   SplitViewIcon,
-  FileWithSparksIcon,
-  StudioPlusSignIcon,
   StudioCloseSignIcon,
+  StudioPlusSignIcon,
 } from '../../../icons';
 import {
   addToStudioShortcut,
   openInSplitViewShortcut,
-  explainFileShortcut,
   removeFromStudioShortcut,
 } from '../../../consts/shortcuts';
 
 type Props = {
-  handleExplain: () => void;
   handleMoveToAnotherSide: () => void;
   handleAddToStudio: () => void;
   handleRemoveFromStudio: () => void;
-  isFileInContext: boolean;
+  isDocInContext: boolean;
 };
 
 const ActionsDropdown = ({
-  handleExplain,
   handleMoveToAnotherSide,
   handleAddToStudio,
   handleRemoveFromStudio,
-  isFileInContext,
+  isDocInContext,
 }: Props) => {
   const { t } = useTranslation();
 
   return (
     <div>
       <DropdownSection borderBottom>
-        <SectionItem
-          label={t('Explain file')}
-          onClick={handleExplain}
-          shortcut={explainFileShortcut}
-          icon={<FileWithSparksIcon sizeClassName="w-4 h-4" />}
-        />
-        {isFileInContext ? (
+        {isDocInContext ? (
           <SectionItem
             label={t('Remove from studio')}
             onClick={handleRemoveFromStudio}

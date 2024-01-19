@@ -15,6 +15,11 @@ type Props = {
   isLeftSidebarFocused: boolean;
   isCommandBarVisible: boolean;
   ranges?: Range[];
+  docId?: string;
+  relativeUrl?: string;
+  docTitle?: string;
+  docFavicon?: string;
+  sections?: string[];
 };
 
 const StudioSubItem = ({
@@ -29,11 +34,16 @@ const StudioSubItem = ({
   isLeftSidebarFocused,
   isCommandBarVisible,
   ranges,
+  relativeUrl,
+  docId,
+  docTitle,
+  docFavicon,
+  sections,
 }: PropsWithChildren<Props>) => {
   const { openNewTab } = useContext(TabsContext.Handlers);
 
   const handleClick = useCallback(() => {
-    if (!path) {
+    if (!path && !docId) {
       openNewTab({ type: TabTypesEnum.STUDIO, studioId, title: studioName });
     } else if (path && repoRef) {
       openNewTab({
@@ -45,8 +55,32 @@ const StudioSubItem = ({
         isFileInContext: true,
         initialRanges: ranges?.map((r) => [r.start, r.end]),
       });
+    } else if (docId && relativeUrl) {
+      openNewTab({
+        type: TabTypesEnum.DOC,
+        studioId,
+        title: docTitle,
+        relativeUrl,
+        docId,
+        favicon: docFavicon,
+        isDocInContext: true,
+        initialSections: sections,
+      });
     }
-  }, [path, openNewTab, studioId, studioName, repoRef, branch, ranges]);
+  }, [
+    path,
+    openNewTab,
+    studioId,
+    studioName,
+    repoRef,
+    branch,
+    ranges,
+    sections,
+    docId,
+    docTitle,
+    docFavicon,
+    relativeUrl,
+  ]);
 
   useEnterKey(
     handleClick,

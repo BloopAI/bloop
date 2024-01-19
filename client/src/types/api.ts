@@ -376,7 +376,7 @@ export type DocShortType = {
 };
 
 export type DocPageType = {
-  doc_id: number;
+  doc_id: string;
   doc_source: string;
   relative_url: string;
   absolute_url: string;

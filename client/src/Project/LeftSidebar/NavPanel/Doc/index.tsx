@@ -58,7 +58,6 @@ const DocNav = ({
 
   const fetchPages = useCallback(async () => {
     const resp = await getIndexedPages(docId);
-    console.log(resp);
     setPages(resp);
   }, [docId]);
 
@@ -126,9 +125,10 @@ const DocNav = ({
               key={p.absolute_url}
               {...p}
               focusedIndex={focusedIndex}
-              index={`${index}-${p.absolute_url}`}
+              index={`${index}-${p.relative_url}`}
               isLeftSidebarFocused={isLeftSidebarFocused}
               isCommandBarVisible={isCommandBarVisible}
+              favicon={favicon}
             />
           ))}
         </div>

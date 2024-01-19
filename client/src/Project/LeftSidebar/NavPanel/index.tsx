@@ -52,6 +52,15 @@ const NavPanel = ({ focusedIndex, setFocusedIndex }: Props) => {
     ) {
       setExpanded('conversations');
       setFocusedIndex(`conversations-${currentlyFocusedTab.conversationId}`);
+    } else if (currentlyFocusedTab?.type === TabTypesEnum.DOC) {
+      const { studioId, docId, relativeUrl } = currentlyFocusedTab;
+      if (studioId) {
+        setExpanded('studios');
+        setFocusedIndex(`studios-${studioId}-${docId}-${relativeUrl}`);
+      } else {
+        setExpanded(`doc-${docId}`);
+        setFocusedIndex(`doc-${docId}-${relativeUrl}`);
+      }
     }
   }, [currentlyFocusedTab]);
 

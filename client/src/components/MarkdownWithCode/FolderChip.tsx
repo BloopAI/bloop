@@ -66,6 +66,7 @@ const FolderChip = ({ onClick, path, repoRef }: Props) => {
             focusedIndex={''}
             index={'0'}
             isLeftSidebarFocused={false}
+            isCommandBarVisible
           />
         </OverflowTracker>
       </div>
