@@ -15,6 +15,7 @@ import { UIContext } from '../../../../context/uiContext';
 import { getFolderContent } from '../../../../services/api';
 import RepoEntry from '../../NavPanel/Repo/RepoEntry';
 import { useEnterKey } from '../../../../hooks/useEnterKey';
+import { CommandBarContext } from '../../../../context/commandBarContext';
 
 type Props = {
   relative_path: RepoFileNameItem;
@@ -35,6 +36,9 @@ const FileResult = ({
 }: Props) => {
   const { openNewTab } = useContext(TabsContext.Handlers);
   const { isLeftSidebarFocused } = useContext(UIContext.Focus);
+  const { isVisible: isCommandBarVisible } = useContext(
+    CommandBarContext.General,
+  );
   const ref = useRef<HTMLDivElement>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [files, setFiles] = useState<DirectoryEntry[]>([]);
@@ -80,7 +84,10 @@ const FileResult = ({
     }
   }, [relative_path, repo_ref, is_dir, openNewTab]);
 
-  useEnterKey(handleClick, focusedIndex !== index || !isLeftSidebarFocused);
+  useEnterKey(
+    handleClick,
+    focusedIndex !== index || !isLeftSidebarFocused || isCommandBarVisible,
+  );
 
   return (
     <span
@@ -133,6 +140,7 @@ const FileResult = ({
               index={`${index}-${fi}`}
               lastIndex={''}
               isLeftSidebarFocused={isLeftSidebarFocused}
+              isCommandBarVisible={isCommandBarVisible}
             />
           ))}
         </div>

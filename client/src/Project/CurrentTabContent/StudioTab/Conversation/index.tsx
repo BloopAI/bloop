@@ -21,6 +21,7 @@ import { useTemplateShortcut } from '../../../../consts/shortcuts';
 import useKeyboardNavigation from '../../../../hooks/useKeyboardNavigation';
 import { UIContext } from '../../../../context/uiContext';
 import KeyHintButton from '../../../../components/Button/KeyHintButton';
+import Button from '../../../../components/Button';
 import GeneratedDiff from './GeneratedDiff';
 import ConversationInput from './Input';
 import StarterMessage from './StarterMessage';
@@ -157,26 +158,44 @@ const Conversation = ({
           studioData.waitingForDiff ||
           studioData.isDiffGenFailed) && (
           <div
-            className={`w-full flex items-center rounded-6 justify-center gap-1 py-2 ${
+            className={`w-full flex items-center py-2 px-3 my-3 ${
+              studioData.waitingForDiff ? 'justify-between' : 'justify-center'
+            } rounded gap-3 border ${
               studioData.isDiffGenFailed
-                ? 'bg-bg-danger/12 text-bg-danger'
-                : 'bg-bg-main/12 text-label-link'
-            } caption`}
-          >
-            {studioData.isDiffGenFailed ? (
-              <WarningSignIcon raw sizeClassName="w-3.5 h-3.5" />
-            ) : studioData.waitingForDiff ? (
-              <SpinLoaderContainer sizeClassName="w-3.5 h-3.5" />
-            ) : (
-              <BranchIcon raw sizeClassName="w-3.5 h-3.5" />
-            )}
-            <Trans>
-              {studioData.isDiffGenFailed
-                ? 'Diff generation failed'
+                ? 'bg-red-subtle border-red-subtle-hover text-red'
                 : studioData.waitingForDiff
-                ? 'Generating diff...'
-                : 'The diff has been applied locally.'}
-            </Trans>
+                ? 'bg-bg-base border-bg-border text-green'
+                : 'bg-blue-subtle border-blue-subtle-hover text-blue'
+            } body-s-b`}
+          >
+            <div className="flex gap-3 items-center">
+              {studioData.isDiffGenFailed ? (
+                <WarningSignIcon sizeClassName="w-3.5 h-3.5" />
+              ) : studioData.waitingForDiff ? (
+                <SpinLoaderContainer
+                  sizeClassName="w-3.5 h-3.5"
+                  colorClassName="text-green"
+                />
+              ) : (
+                <BranchIcon sizeClassName="w-3.5 h-3.5" />
+              )}
+              <Trans>
+                {studioData.isDiffGenFailed
+                  ? 'Diff generation failed'
+                  : studioData.waitingForDiff
+                  ? 'Generating diff...'
+                  : 'The diff has been applied locally.'}
+              </Trans>
+            </div>
+            {studioData.waitingForDiff && (
+              <Button
+                onClick={studioData.handleCancelDiff}
+                variant="danger"
+                size="mini"
+              >
+                <Trans>Cancel</Trans>
+              </Button>
+            )}
           </div>
         )}
         {!studioData.isLoading &&
@@ -225,19 +244,12 @@ const Conversation = ({
           ) : (
             <>
               {(hasCodeBlock || studioData.diff) &&
-                (studioData.isDiffApplied ? null : !studioData.diff ? (
+                (studioData.isDiffApplied ||
+                studioData.waitingForDiff ? null : !studioData.diff ? (
                   <KeyHintButton
-                    text={t(
-                      studioData.waitingForDiff
-                        ? 'Cancel diff generation'
-                        : 'Apply changes',
-                    )}
+                    text={t('Apply changes')}
                     shortcut={noShortcut}
-                    onClick={
-                      studioData.waitingForDiff
-                        ? studioData.handleCancelDiff
-                        : studioData.handleApplyChanges
-                    }
+                    onClick={studioData.handleApplyChanges}
                   />
                 ) : (
                   <>
@@ -248,7 +260,7 @@ const Conversation = ({
                     />
                     {isDiffForLocalRepo && (
                       <KeyHintButton
-                        text={'Confirm'}
+                        text={'Apply locally'}
                         shortcut={noShortcut}
                         onClick={studioData.handleConfirmDiff}
                       />

@@ -8,6 +8,7 @@ import {
   useRef,
 } from 'react';
 import { UIContext } from '../context/uiContext';
+import { CommandBarContext } from '../context/commandBarContext';
 import { useEnterKey } from './useEnterKey';
 
 export const useNavPanel = (
@@ -17,6 +18,9 @@ export const useNavPanel = (
   focusedIndex: string,
 ) => {
   const { isLeftSidebarFocused } = useContext(UIContext.Focus);
+  const { isVisible: isCommandBarVisible } = useContext(
+    CommandBarContext.General,
+  );
   const containerRef = useRef<HTMLDivElement>(null);
 
   const toggleExpanded = useCallback(() => {
@@ -39,12 +43,16 @@ export const useNavPanel = (
     }
   }, [focusedIndex, index]);
 
-  useEnterKey(toggleExpanded, focusedIndex !== index || !isLeftSidebarFocused);
+  useEnterKey(
+    toggleExpanded,
+    focusedIndex !== index || !isLeftSidebarFocused || isCommandBarVisible,
+  );
 
   return {
     toggleExpanded,
     noPropagate,
     containerRef,
     isLeftSidebarFocused,
+    isCommandBarVisible,
   };
 };

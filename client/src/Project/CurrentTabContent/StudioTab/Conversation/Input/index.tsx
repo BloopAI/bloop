@@ -75,6 +75,14 @@ const ConversationInput = ({
   );
 
   useEffect(() => {
+    if (!isActiveTab) {
+      inputRef?.current?.blur();
+    } else {
+      inputRef?.current?.focus();
+    }
+  }, [isActiveTab]);
+
+  useEffect(() => {
     if (ref.current && cloneRef.current) {
       cloneRef.current.style.height = '19px';
       const scrollHeight = cloneRef.current.scrollHeight;
@@ -113,25 +121,27 @@ const ConversationInput = ({
               'bloop'
             )}
           </p>
-          <Dropdown
-            DropdownComponent={TemplatesDropdown}
-            dropdownComponentProps={dropdownProps}
-            dropdownPlacement="bottom-end"
-            appendTo={document.body}
-            size="auto"
-            onVisibilityChange={setIsDropdownShown}
-          >
-            <Button
-              variant="tertiary"
-              size="small"
-              title={t('Use template')}
-              shortcut={useTemplateShortcut}
-              ref={templatesRef}
+          {i === undefined && (
+            <Dropdown
+              DropdownComponent={TemplatesDropdown}
+              dropdownComponentProps={dropdownProps}
+              dropdownPlacement="bottom-end"
+              appendTo={document.body}
+              size="auto"
+              onVisibilityChange={setIsDropdownShown}
             >
-              <TemplatesIcon sizeClassName="w-4 h-4" />
-              <Trans>Templates</Trans>
-            </Button>
-          </Dropdown>
+              <Button
+                variant="tertiary"
+                size="small"
+                title={t('Use template')}
+                shortcut={useTemplateShortcut}
+                ref={templatesRef}
+              >
+                <TemplatesIcon sizeClassName="w-4 h-4" />
+                <Trans>Templates</Trans>
+              </Button>
+            </Dropdown>
+          )}
         </div>
         <div
           className={`w-full code-studio-md break-words body-base relative ${

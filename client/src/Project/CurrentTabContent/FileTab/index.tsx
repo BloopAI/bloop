@@ -104,6 +104,9 @@ const FileTab = ({
   const { setFocusedTabItems, setIsVisible, setChosenStep } = useContext(
     CommandBarContext.Handlers,
   );
+  const { isVisible: isCommandBarVisible } = useContext(
+    CommandBarContext.General,
+  );
   const [isPending, startTransition] = useTransition();
   const { openNewTab, updateTabProperty } = useContext(TabsContext.Handlers);
   const { focusedPanel } = useContext(TabsContext.All);
@@ -355,7 +358,10 @@ const FileTab = ({
   );
   useKeyboardNavigation(
     handleKeyEvent,
-    !file?.contents || focusedPanel !== side || isLeftSidebarFocused,
+    !file?.contents ||
+      focusedPanel !== side ||
+      isLeftSidebarFocused ||
+      isCommandBarVisible,
   );
 
   useEffect(() => {

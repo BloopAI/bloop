@@ -299,6 +299,7 @@ const CodeFullSelectable = ({
             hoveredLines={hoveredLines}
             isDiff={isDiff}
             isEditingRanges={isEditingRanges}
+            side={side}
           />
         </code>
       </pre>

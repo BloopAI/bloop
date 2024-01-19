@@ -16,6 +16,7 @@ import { ProjectContext } from '../../context/projectContext';
 import { UIContext } from '../../context/uiContext';
 import { checkEventKeys } from '../../utils/keyboardUtils';
 import useKeyboardNavigation from '../../hooks/useKeyboardNavigation';
+import { CommandBarContext } from '../../context/commandBarContext';
 import RegexSearchPanel from './RegexSearchPanel';
 import NavPanel from './NavPanel';
 
@@ -27,6 +28,9 @@ const LeftSidebar = ({}: Props) => {
   const { isRegexSearchEnabled } = useContext(ProjectContext.RegexSearch);
   const { setIsLeftSidebarFocused, isLeftSidebarFocused } = useContext(
     UIContext.Focus,
+  );
+  const { isVisible: isCommandBarVisible } = useContext(
+    CommandBarContext.General,
   );
   const ref = useRef<HTMLDivElement>(null);
   const [focusedIndexFull, setFocusedIndexFull] = useState('');
@@ -76,7 +80,7 @@ const LeftSidebar = ({}: Props) => {
     },
     [isLeftSidebarFocused],
   );
-  useKeyboardNavigation(handleKeyEvent);
+  useKeyboardNavigation(handleKeyEvent, isCommandBarVisible);
 
   const handleClick = useCallback((e: MouseEvent) => {
     e.stopPropagation();

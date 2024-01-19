@@ -67,6 +67,9 @@ const RegexSearchPanel = ({
   const { isLeftSidebarFocused, setIsLeftSidebarFocused } = useContext(
     UIContext.Focus,
   );
+  const { isVisible: isCommandBarVisible } = useContext(
+    CommandBarContext.General,
+  );
 
   const onChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
@@ -190,7 +193,10 @@ const RegexSearchPanel = ({
   );
   useKeyboardNavigation(
     handleKeyEvent,
-    isVisible || !isRegexEnabled || !isLeftSidebarFocused,
+    isVisible ||
+      !isRegexEnabled ||
+      !isLeftSidebarFocused ||
+      isCommandBarVisible,
   );
 
   useEffect(() => {

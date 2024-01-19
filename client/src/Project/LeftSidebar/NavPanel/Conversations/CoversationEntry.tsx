@@ -8,6 +8,7 @@ type Props = ConversationShortType & {
   index: string;
   focusedIndex: string;
   isLeftSidebarFocused: boolean;
+  isCommandBarVisible: boolean;
 };
 
 const ConversationEntry = ({
@@ -16,6 +17,7 @@ const ConversationEntry = ({
   index,
   focusedIndex,
   isLeftSidebarFocused,
+  isCommandBarVisible,
 }: Props) => {
   const { openNewTab } = useContext(TabsContext.Handlers);
 
@@ -23,7 +25,10 @@ const ConversationEntry = ({
     openNewTab({ type: TabTypesEnum.CHAT, conversationId: id, title });
   }, [openNewTab, id, title]);
 
-  useEnterKey(handleClick, focusedIndex !== index || !isLeftSidebarFocused);
+  useEnterKey(
+    handleClick,
+    focusedIndex !== index || !isLeftSidebarFocused || isCommandBarVisible,
+  );
 
   return (
     <a

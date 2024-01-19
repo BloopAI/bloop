@@ -28,6 +28,7 @@ type Props = CodeStudioType & {
   expandedIndex: string;
   setExpandedIndex: Dispatch<SetStateAction<string>>;
   isLeftSidebarFocused: boolean;
+  isCommandBarVisible: boolean;
 };
 
 const StudioEntry = ({
@@ -41,6 +42,7 @@ const StudioEntry = ({
   token_counts,
   doc_context,
   isLeftSidebarFocused,
+  isCommandBarVisible,
 }: Props) => {
   const { t } = useTranslation();
 
@@ -54,7 +56,10 @@ const StudioEntry = ({
     setExpandedIndex((prev) => (prev === index ? '' : index));
   }, [index]);
 
-  useEnterKey(handleExpand, focusedIndex !== index || !isLeftSidebarFocused);
+  useEnterKey(
+    handleExpand,
+    focusedIndex !== index || !isLeftSidebarFocused || isCommandBarVisible,
+  );
 
   return (
     <div className="body-mini">
@@ -90,6 +95,7 @@ const StudioEntry = ({
             index={`${index}-prompts`}
             studioName={name}
             isLeftSidebarFocused={isLeftSidebarFocused}
+            isCommandBarVisible={isCommandBarVisible}
           >
             <PromptIcon sizeClassName="w-3.5 h-3.5" />
             <span className="flex-1 ellipsis">
@@ -110,6 +116,7 @@ const StudioEntry = ({
               index={`${index}-${f.path}-${f.repo}-${f.branch}`}
               studioName={name}
               isLeftSidebarFocused={isLeftSidebarFocused}
+              isCommandBarVisible={isCommandBarVisible}
               path={f.path}
               repoRef={f.repo}
               branch={f.branch}
@@ -159,6 +166,7 @@ const StudioEntry = ({
               index={`${index}-${d.doc_id}`}
               studioName={name}
               isLeftSidebarFocused={isLeftSidebarFocused}
+              isCommandBarVisible={isCommandBarVisible}
             >
               {d.doc_icon ? (
                 <img
