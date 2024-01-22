@@ -646,5 +646,14 @@
 	"# selected section_one": "{{count}} 个选定部分",
 	"# selected section_other": "{{count}} 个选定部分",
 	"Remove file from code studio context": "从代码工作室上下文中删除文件",
-	"Remove page from code studio context": "从代码工作室上下文中删除页面"
+	"Remove page from code studio context": "从代码工作室上下文中删除页面",
+	"Studio conversation require at least one context file.": "工作室对话至少需要一个上下文文件。",
+	"Create line ranges": "创建线路范围",
+	"Edit selected lines": "编辑选定的行",
+	"Edit selected sections": "编辑选定的部分",
+	"Add at least one context file before submitting your first request.": "在提交第一个请求之前，至少添加一个上下文文件。",
+	"Add files": "添加文件",
+	"No uses left. Uses reset at": "没有剩下的用途。 使用重置",
+	"Missing source": "缺少源",
+	"We can’t generate a response because some files have a missing source in your Context files.": "我们无法生成响应，因为某些文件在您的上下文文件中具有丢失的源。"
 }

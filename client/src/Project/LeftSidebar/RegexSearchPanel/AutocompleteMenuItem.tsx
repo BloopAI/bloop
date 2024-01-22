@@ -65,7 +65,7 @@ const AutocompleteMenuItem = ({
     >
       {item.type === ResultItemType.FLAG ||
       item.type === ResultItemType.LANG ? (
-        <span className="caption flex-1 pl-6">{item.data}</span>
+        <span className="body-mini flex-1 pl-6">{item.data}</span>
       ) : item.type === ResultItemType.CODE ? (
         <span className="-ml-4">
           <CodeResult
@@ -80,15 +80,15 @@ const AutocompleteMenuItem = ({
         </span>
       ) : item.type === ResultItemType.FILE ? (
         <>
-          <span className="caption flex-1">{item.relativePath}</span>
-          <span className="p-1 bg-bg-base rounded-sm caption text-label-muted group-hover:bg-bg-base-hover group-hover:text-label-title group-focus:bg-bg-base-hover group-focus:text-label-title transition duration-150 ease-in-slow">
+          <span className="body-mini flex-1">{item.relativePath}</span>
+          <span className="p-1 bg-bg-base rounded-sm body-mini text-label-muted group-hover:bg-bg-base-hover group-hover:text-label-title group-focus:bg-bg-base-hover group-focus:text-label-title transition duration-150 ease-in-slow">
             <Trans>File</Trans>
           </span>
         </>
       ) : item.type === ResultItemType.REPO ? (
         <>
-          <span className="caption flex-1">{item.repoName}</span>
-          <span className="p-1 bg-bg-base rounded-sm caption text-label-muted group-hover:bg-bg-base-hover group-hover:text-label-title group-focus:bg-bg-base-hover group-focus:text-label-title transition duration-150 ease-in-slow">
+          <span className="body-mini flex-1">{item.repoName}</span>
+          <span className="p-1 bg-bg-base rounded-sm body-mini text-label-muted group-hover:bg-bg-base-hover group-hover:text-label-title group-focus:bg-bg-base-hover group-focus:text-label-title transition duration-150 ease-in-slow">
             <Trans>Repository</Trans>
           </span>
         </>

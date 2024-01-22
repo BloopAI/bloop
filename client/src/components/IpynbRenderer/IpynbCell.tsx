@@ -25,7 +25,7 @@ const Cell: React.FC<CellProps> = ({ cell, seq }) => {
       <div className="flex gap-2">
         {cell.cell_type === 'code' ? (
           <div className="prompt input_prompt">
-            <div className="caption flex-shrink-0 w-13 mt-1">
+            <div className="body-mini flex-shrink-0 w-13 mt-1">
               In [{cell.execution_count || cell.prompt_number || ' '}]:
             </div>
           </div>
@@ -95,16 +95,16 @@ const Cell: React.FC<CellProps> = ({ cell, seq }) => {
       </div>
 
       <div className="output_wrapper">
-        <div className="output caption">
+        <div className="output body-mini">
           {(cell.outputs || []).map((output, j) => (
             <div className="flex gap-2 mt-2" key={j}>
               <div className="prompt output_prompt">
                 {output.execution_count || output.prompt_number ? (
-                  <div className="caption flex-shrink-0 w-13 mt-1">
+                  <div className="body-mini flex-shrink-0 w-13 mt-1">
                     Out [{output.execution_count || output.prompt_number}]:
                   </div>
                 ) : (
-                  <div className="caption flex-shrink-0 w-13 mt-1" />
+                  <div className="body-mini flex-shrink-0 w-13 mt-1" />
                 )}
               </div>
               <div className="overflow-auto w-full">

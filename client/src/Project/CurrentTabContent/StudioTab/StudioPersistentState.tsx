@@ -25,6 +25,7 @@ import {
 import { StudiosContext } from '../../../context/studiosContext';
 import {
   CodeStudioMessageType,
+  CodeStudioTokenCountType,
   CodeStudioType,
   GeneratedCodeDiff,
 } from '../../../types/api';
@@ -104,7 +105,9 @@ const StudioPersistentState = ({ tabKey, side }: Props) => {
     });
   }, [inputAuthor]);
 
-  const [tokenCount, setTokenCount] = useState(0);
+  const [tokenCount, setTokenCount] = useState<CodeStudioTokenCountType | null>(
+    null,
+  );
   useEffect(() => {
     setStudios((prev) => {
       return { ...prev, [tabKey]: { ...prev[tabKey], tokenCount } };
@@ -165,7 +168,7 @@ const StudioPersistentState = ({ tabKey, side }: Props) => {
         return getCodeStudio(project.id, tabKey).then((s) => {
           if (key) {
             if (key === 'token_counts') {
-              setTokenCount(s.token_counts.total);
+              setTokenCount(s.token_counts);
             }
             if (key === 'messages') {
               const mappedConv = mapConversation(s.messages);
@@ -173,7 +176,7 @@ const StudioPersistentState = ({ tabKey, side }: Props) => {
             }
           } else {
             const mappedConv = mapConversation(s.messages);
-            setTokenCount(s.token_counts.total);
+            setTokenCount(s.token_counts);
             setName(s.name);
             if (
               mappedConv[mappedConv.length - 1]?.author ===
@@ -197,7 +200,7 @@ const StudioPersistentState = ({ tabKey, side }: Props) => {
 
   useEffect(() => {
     refetchCodeStudio();
-  }, [refetchCodeStudio]);
+  }, [refetchCodeStudio, project?.repos, project?.studios]);
 
   useEffect(() => {
     if (name) {

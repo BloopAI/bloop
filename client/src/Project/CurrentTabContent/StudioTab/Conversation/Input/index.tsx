@@ -178,7 +178,7 @@ const ConversationInput = ({
                 isTokenLimitExceeded && (
                   <div
                     className={
-                      'flex p-2 gap-2 items-start rounded bg-bg-danger/12 text-bg-danger caption'
+                      'flex p-2 gap-2 items-start rounded bg-bg-danger/12 text-bg-danger body-mini'
                     }
                   >
                     <WarningSignIcon sizeClassName="w-5 h-5" />

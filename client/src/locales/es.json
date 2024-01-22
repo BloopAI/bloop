@@ -630,7 +630,7 @@
 	"Manage your studio settings.": "Administre la configuración de su estudio.",
 	"Prompt templates": "Plantillas de inmediato",
 	"Write studio prompts faster with pre-written templates": "Escriba las indicaciones de estudio más rápido con plantillas preescritas",
-	"New": "Nueva",
+	"New": "Nuevo",
 	"Edit template": "Plantilla de edición",
 	"All templates": "Todas las plantillas",
 	"Create template": "Crear plantilla",
@@ -653,5 +653,14 @@
 	"# selected section_other": "{{count}} secciónes seleccionadas",
 	"Remove from studio": "Retirar del estudio",
 	"Remove file from code studio context": "Eliminar el archivo del contexto de código de código",
-	"Remove page from code studio context": "Eliminar la página del contexto del estudio de código"
+	"Remove page from code studio context": "Eliminar la página del contexto del estudio de código",
+	"Studio conversation require at least one context file.": "La conversación de estudio requiere al menos un archivo de contexto.",
+	"Create line ranges": "Crear rangos de línea",
+	"Edit selected lines": "Editar líneas seleccionadas",
+	"Edit selected sections": "Editar secciones seleccionadas",
+	"Add at least one context file before submitting your first request.": "Agregue al menos un archivo de contexto antes de enviar su primera solicitud.",
+	"Add files": "Agregar archivos",
+	"No uses left. Uses reset at": "No quedan usos. Usa restablecer en",
+	"Missing source": "Fuente faltante",
+	"We can’t generate a response because some files have a missing source in your Context files.": "No podemos generar una respuesta porque algunos archivos tienen una fuente faltante en sus archivos de contexto."
 }

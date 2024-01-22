@@ -55,7 +55,7 @@ const SearchOnPage = ({
         inputClassName="pr-24"
         onEscape={onCancel}
       />
-      <div className="flex items-center absolute top-0 right-9 caption text-label-base">
+      <div className="flex items-center absolute top-0 right-9 body-mini text-label-base">
         {resultNum ? (
           <span>
             {currentResult}/{resultNum}

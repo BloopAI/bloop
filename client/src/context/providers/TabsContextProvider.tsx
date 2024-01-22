@@ -22,6 +22,7 @@ import { CommandBarContext } from '../commandBarContext';
 import { checkEventKeys } from '../../utils/keyboardUtils';
 import useKeyboardNavigation from '../../hooks/useKeyboardNavigation';
 import { openTabsCache } from '../../services/cache';
+import { RECENT_FILES_KEY, updateArrayInStorage } from '../../services/storage';
 
 type Props = {};
 
@@ -60,7 +61,7 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
       if (
         data.type === TabTypesEnum.FILE &&
         leftTabs.length === 1 &&
-        leftTabs[0].type === TabTypesEnum.CHAT &&
+        [TabTypesEnum.CHAT, TabTypesEnum.STUDIO].includes(leftTabs[0].type) &&
         !rightTabs.length
       ) {
         sideForNewTab = 'left';
@@ -116,6 +117,12 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
                 type: TabTypesEnum.DOC,
                 key: data.docId + data.relativeUrl,
               };
+        if (newTab.type === TabTypesEnum.FILE) {
+          updateArrayInStorage(
+            RECENT_FILES_KEY,
+            `${newTab.repoRef}:${newTab.path}`,
+          );
+        }
         const previousTab = prev.find((t) =>
           newTab.type === TabTypesEnum.CHAT && newTab.conversationId
             ? t.type === TabTypesEnum.CHAT &&

@@ -653,5 +653,14 @@
 	"# selected section_other": "{{count}} selected sections",
 	"Remove from studio": "Remove from studio",
 	"Remove file from code studio context": "Remove file from code studio context",
-	"Remove page from code studio context": "Remove page from code studio context"
+	"Remove page from code studio context": "Remove page from code studio context",
+	"Studio conversation require at least one context file.": "Studio conversation require at least one context file.",
+	"Create line ranges": "Create line ranges",
+	"Edit selected lines": "Edit selected lines",
+	"Edit selected sections": "Edit selected sections",
+	"Add at least one context file before submitting your first request.": "Add at least one context file before submitting your first request.",
+	"Add files": "Add files",
+	"No uses left. Uses reset at": "No uses left. Uses reset at",
+	"Missing source": "Missing source",
+	"We can’t generate a response because some files have a missing source in your Context files.": "We can’t generate a response because some files have a missing source in your Context files."
 }

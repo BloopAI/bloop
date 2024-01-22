@@ -99,7 +99,7 @@ ${editedValue}
           {filePath ? (
             <BreadcrumbsPathContainer path={filePath} nonInteractive />
           ) : (
-            <span className="caption-strong">
+            <span className="body-mini-b">
               {getPrettyLangName(language) || language}
             </span>
           )}

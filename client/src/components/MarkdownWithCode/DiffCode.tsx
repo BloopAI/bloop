@@ -50,7 +50,7 @@ const DiffCode = ({ data }: Props) => {
         </div>
         <div className="flex items-center justify-center p-0.5 gap-0.5 bg-bg-sub rounded-4">
           <button
-            className={`px-2 h-6 rounded-4 caption flex items-center justify-center outline-none focus:outline-none focus:border-bg-border ${
+            className={`px-2 h-6 rounded-4 body-mini flex items-center justify-center outline-none focus:outline-none focus:border-bg-border ${
               !showRaw
                 ? 'text-label-title bg-bg-base border-bg-border shadow-low'
                 : 'text-label-base border-transparent'
@@ -60,7 +60,7 @@ const DiffCode = ({ data }: Props) => {
             Diff
           </button>
           <button
-            className={`px-2 h-6 rounded-4 caption flex items-center justify-center outline-none focus:outline-none focus:border-bg-border ${
+            className={`px-2 h-6 rounded-4 body-mini flex items-center justify-center outline-none focus:outline-none focus:border-bg-border ${
               showRaw
                 ? 'text-label-title bg-bg-base border-bg-border shadow-low'
                 : 'text-label-base border-transparent'

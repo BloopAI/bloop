@@ -131,7 +131,7 @@ const RefsDefsPopup = ({
                 <p className="body-s text-label-title">
                   <Trans>No references or definitions found</Trans>
                 </p>
-                <p className="caption text-label-muted">
+                <p className="body-mini text-label-muted">
                   <Trans>
                     We weren&apos;t able to identify any references at the
                     moment

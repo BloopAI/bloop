@@ -47,7 +47,7 @@ const GeneratedDiff = ({
             applyError
               ? 'bg-bg-danger/12 text-bg-danger'
               : ' bg-bg-main/15 text-label-link'
-          } caption`}
+          } body-mini`}
         >
           {applyError ? (
             <WarningSignIcon raw sizeClassName="w-3.5 h-3.5" />

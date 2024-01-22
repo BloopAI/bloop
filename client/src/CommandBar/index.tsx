@@ -78,7 +78,7 @@ const CommandBar = ({}: Props) => {
       ) : chosenStep.id === CommandBarStepEnum.TOGGLE_THEME ? (
         <ToggleTheme />
       ) : chosenStep.id === CommandBarStepEnum.SEARCH_FILES ? (
-        <SearchFiles />
+        <SearchFiles {...(chosenStep.data || {})} />
       ) : chosenStep.id === CommandBarStepEnum.ADD_TO_STUDIO ? (
         <AddFileToStudio {...chosenStep.data} />
       ) : null}

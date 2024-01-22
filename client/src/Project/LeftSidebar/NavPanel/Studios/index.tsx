@@ -15,6 +15,7 @@ import {
 import Button from '../../../../components/Button';
 import { ProjectContext } from '../../../../context/projectContext';
 import { useNavPanel } from '../../../../hooks/useNavPanel';
+import { IndexingStatusType } from '../../../../types/general';
 import StudioEntry from './StudioEntry';
 import StudiosDropdown from './StudiosDropdown';
 
@@ -23,6 +24,7 @@ type Props = {
   isExpanded: boolean;
   focusedIndex: string;
   index: string;
+  indexingStatus: IndexingStatusType;
 };
 
 const reactRoot = document.getElementById('root')!;
@@ -32,6 +34,7 @@ const StudiosNav = ({
   setExpanded,
   focusedIndex,
   index,
+  indexingStatus,
 }: Props) => {
   const { t } = useTranslation();
   const [expandedIndex, setExpandedIndex] = useState('');
@@ -51,7 +54,9 @@ const StudiosNav = ({
         tabIndex={0}
         className={`h-10 flex items-center gap-3 px-4 ellipsis ${
           isExpanded ? 'sticky z-10 top-0 left-0' : ''
-        } ${focusedIndex === index ? 'bg-bg-sub-hover' : 'bg-bg-sub'}`}
+        } ${
+          focusedIndex === index ? 'bg-bg-sub-hover' : 'bg-bg-sub'
+        } outline-0 outline-none focus:outline-0 focus:outline-none`}
         onClick={toggleExpanded}
         ref={containerRef}
         data-node-index={index}
@@ -103,6 +108,7 @@ const StudiosNav = ({
               setExpandedIndex={setExpandedIndex}
               isLeftSidebarFocused={isLeftSidebarFocused}
               isCommandBarVisible={isCommandBarVisible}
+              indexingStatus={indexingStatus}
             />
           ))}
         </div>
