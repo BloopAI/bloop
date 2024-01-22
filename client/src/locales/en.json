@@ -662,5 +662,12 @@
 	"Add files": "Add files",
 	"No uses left. Uses reset at": "No uses left. Uses reset at",
 	"Missing source": "Missing source",
-	"We can’t generate a response because some files have a missing source in your Context files.": "We can’t generate a response because some files have a missing source in your Context files."
+	"We can’t generate a response because some files have a missing source in your Context files.": "We can’t generate a response because some files have a missing source in your Context files.",
+	"Collapse": "Collapse",
+	"The amount of times you can generate responses in Studio conversations.": "The amount of times you can generate responses in Studio conversations.",
+	"Usage status": "Usage status",
+	"Studio requests": "Studio requests",
+	"Usage exceeded": "Usage exceeded",
+	"Usage resets at": "Usage resets at",
+	"Expand": "Expand"
 }

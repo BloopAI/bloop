@@ -17,6 +17,7 @@ import { UIContext } from '../../context/uiContext';
 import { checkEventKeys } from '../../utils/keyboardUtils';
 import useKeyboardNavigation from '../../hooks/useKeyboardNavigation';
 import { CommandBarContext } from '../../context/commandBarContext';
+import UsagePopover from '../../components/UsagePopover';
 import RegexSearchPanel from './RegexSearchPanel';
 import NavPanel from './NavPanel';
 
@@ -122,6 +123,7 @@ const LeftSidebar = ({}: Props) => {
           />
         )}
       </div>
+      <UsagePopover />
       <div
         ref={dividerRef}
         className="absolute top-0 right-0 transform group translate-x-1/2 w-2.5 h-full bottom-0 cursor-col-resize flex-shrink-0 z-10"

@@ -24,6 +24,8 @@ export { default as CopyTextIcon } from './CopyText';
 export { default as DefIcon } from './Def';
 export { default as DocumentsIcon } from './Documents';
 export { default as DoorOutIcon } from './DoorOut';
+export { default as DoubleChevronInIcon } from './DoubleChevronIn';
+export { default as DoubleChevronOutIcon } from './DoubleChevronOut';
 export { default as EyeCutIcon } from './EyeCut';
 export { default as FolderIcon } from './Folder';
 export { default as FileIcon } from './File';

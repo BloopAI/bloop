@@ -624,5 +624,12 @@
 	"Add files": "Aggiungere i file",
 	"No uses left. Uses reset at": "Nessun usato a sinistra. Usa il ripristino a",
 	"Missing source": "Fonte mancante",
-	"We can’t generate a response because some files have a missing source in your Context files.": "Non possiamo generare una risposta perché alcuni file hanno una fonte mancante nei file di contesto."
+	"We can’t generate a response because some files have a missing source in your Context files.": "Non possiamo generare una risposta perché alcuni file hanno una fonte mancante nei file di contesto.",
+	"Studio requests": "Richieste in studio",
+	"Usage exceeded": "Utilizzo superato",
+	"Expand": "Espandere",
+	"Collapse": "Crollo",
+	"Usage status": "Stato di utilizzo",
+	"The amount of times you can generate responses in Studio conversations.": "La quantità di volte in cui è possibile generare risposte nelle conversazioni in studio.",
+	"Close tab": "Chiudi scheda"
 }

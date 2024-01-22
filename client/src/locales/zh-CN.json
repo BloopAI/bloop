@@ -655,5 +655,11 @@
 	"Add files": "添加文件",
 	"No uses left. Uses reset at": "没有剩下的用途。 使用重置",
 	"Missing source": "缺少源",
-	"We can’t generate a response because some files have a missing source in your Context files.": "我们无法生成响应，因为某些文件在您的上下文文件中具有丢失的源。"
+	"We can’t generate a response because some files have a missing source in your Context files.": "我们无法生成响应，因为某些文件在您的上下文文件中具有丢失的源。",
+	"The amount of times you can generate responses in Studio conversations.": "您可以在工作室对话中产生响应的次数。",
+	"Usage exceeded": "用法超出了",
+	"Expand": "扩张",
+	"Usage status": "使用状态",
+	"Collapse": "坍塌",
+	"Studio requests": "工作室请求"
 }

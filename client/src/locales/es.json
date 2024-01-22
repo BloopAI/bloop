@@ -662,5 +662,11 @@
 	"Add files": "Agregar archivos",
 	"No uses left. Uses reset at": "No quedan usos. Usa restablecer en",
 	"Missing source": "Fuente faltante",
-	"We can’t generate a response because some files have a missing source in your Context files.": "No podemos generar una respuesta porque algunos archivos tienen una fuente faltante en sus archivos de contexto."
+	"We can’t generate a response because some files have a missing source in your Context files.": "No podemos generar una respuesta porque algunos archivos tienen una fuente faltante en sus archivos de contexto.",
+	"Studio requests": "Solicitudes de estudio",
+	"Usage exceeded": "El uso superado",
+	"Expand": "Expandir",
+	"Usage status": "Estado de uso",
+	"The amount of times you can generate responses in Studio conversations.": "La cantidad de veces que puede generar respuestas en las conversaciones de estudio.",
+	"Collapse": "Colapsar"
 }
