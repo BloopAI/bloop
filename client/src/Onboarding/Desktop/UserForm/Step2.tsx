@@ -121,7 +121,7 @@ const UserFormStep2 = ({ onContinue }: Props) => {
       >
         <div className="flex gap-3 items-center">
           <GitHubLogo raw sizeClassName="w-8 h-8" />
-          <p className="callout text-label-title">
+          <p className="body-s-b text-label-title">
             {isGithubConnected ? envConfig.user_login : 'GitHub'}
           </p>
         </div>
@@ -141,7 +141,7 @@ const UserFormStep2 = ({ onContinue }: Props) => {
         </Button>
       </div>
       {!isGithubConnected && (
-        <div className="text-center caption text-label-base">
+        <div className="text-center body-mini text-label-base">
           {isLinkShown ? (
             <Tooltip
               text={isLinkCopied ? t('Copied') : t('Click to copy')}

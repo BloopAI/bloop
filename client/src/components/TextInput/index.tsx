@@ -117,7 +117,7 @@ const TextInput = forwardRef(function TextInputWithRef(
       {label || helperText ? (
         <div className={`flex justify-between items-center w-full`}>
           <label className={`${sizesMap[size].label}`}>{label}</label>
-          <span className={`text-label-base caption`}>{helperText}</span>
+          <span className={`text-label-base body-mini`}>{helperText}</span>
         </div>
       ) : null}
       <div
@@ -203,7 +203,7 @@ const TextInput = forwardRef(function TextInputWithRef(
         ) : null}
         {endIcon}
       </div>
-      {error ? <span className="text-red caption">{error}</span> : null}
+      {error ? <span className="text-red body-mini">{error}</span> : null}
     </div>
   );
 });

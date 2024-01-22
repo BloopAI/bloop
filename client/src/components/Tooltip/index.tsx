@@ -7,6 +7,7 @@ type Props = {
   shortcut?: string[];
   placement: TippyProps['placement'];
   delay?: TippyProps['delay'];
+  wrapperClassName?: string;
 };
 
 const Tooltip = ({
@@ -15,6 +16,7 @@ const Tooltip = ({
   children,
   delay,
   shortcut,
+  wrapperClassName,
 }: PropsWithChildren<Props>) => {
   const ref = useRef<HTMLDivElement>(null);
   const shortcutSymbols = useShortcuts(shortcut);
@@ -42,7 +44,9 @@ const Tooltip = ({
         </span>
       )}
     >
-      <div ref={ref}>{children}</div>
+      <div ref={ref} className={wrapperClassName}>
+        {children}
+      </div>
     </Tippy>
   );
 };

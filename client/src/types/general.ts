@@ -505,8 +505,12 @@ export type CommandBarStepType = {
 
 export type CommandBarActiveStepType =
   | AddToStudioStepType
+  | SearchFilesStepType
   | {
-      id: Exclude<CommandBarStepEnum, CommandBarStepEnum.ADD_TO_STUDIO>;
+      id: Exclude<
+        CommandBarStepEnum,
+        CommandBarStepEnum.ADD_TO_STUDIO | CommandBarStepEnum.SEARCH_FILES
+      >;
       data?: Record<string, any>;
     };
 
@@ -526,6 +530,11 @@ export type AddDocToStudioDataType = {
 export type AddToStudioStepType = {
   id: CommandBarStepEnum.ADD_TO_STUDIO;
   data: AddFileToStudioDataType | AddDocToStudioDataType;
+};
+
+export type SearchFilesStepType = {
+  id: CommandBarStepEnum.SEARCH_FILES;
+  data?: { studioId: string };
 };
 
 export enum CommandBarStepEnum {

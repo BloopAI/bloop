@@ -129,7 +129,7 @@ const UserFormStep1 = ({ form, setForm, onContinue }: Props) => {
       <Button onClick={handleSubmit}>
         <Trans>Continue</Trans>
       </Button>
-      <p className="caption text-label-base text-center">
+      <p className="body-mini text-label-base text-center">
         <Trans>By continuing you accept our</Trans>
         <br />
         <button

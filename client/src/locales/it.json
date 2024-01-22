@@ -615,5 +615,14 @@
 	"# selected section_other": "{{count}} sezioni selezionate",
 	"Remove from studio": "Togliere dallo studio",
 	"Remove file from code studio context": "Rimuovi il file dal contesto Code Studio",
-	"Remove page from code studio context": "Rimuovi la pagina dal contesto di Code Studio"
+	"Remove page from code studio context": "Rimuovi la pagina dal contesto di Code Studio",
+	"Studio conversation require at least one context file.": "La conversazione in studio richiede almeno un file di contesto.",
+	"Create line ranges": "Crea intervalli di linea",
+	"Edit selected lines": "Modifica righe selezionate",
+	"Edit selected sections": "Modifica sezioni selezionate",
+	"Add at least one context file before submitting your first request.": "Aggiungi almeno un file di contesto prima di inviare la prima richiesta.",
+	"Add files": "Aggiungere i file",
+	"No uses left. Uses reset at": "Nessun usato a sinistra. Usa il ripristino a",
+	"Missing source": "Fonte mancante",
+	"We can’t generate a response because some files have a missing source in your Context files.": "Non possiamo generare una risposta perché alcuni file hanno una fonte mancante nei file di contesto."
 }

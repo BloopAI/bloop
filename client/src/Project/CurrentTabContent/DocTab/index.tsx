@@ -24,8 +24,11 @@ import { UIContext } from '../../../context/uiContext';
 import { CommandBarContext } from '../../../context/commandBarContext';
 import {
   addToStudioShortcut,
+  escapeShortcut,
   openInSplitViewShortcut,
   removeFromStudioShortcut,
+  saveShortcut,
+  selectLinesShortcut,
 } from '../../../consts/shortcuts';
 import {
   getCodeStudio,
@@ -352,9 +355,33 @@ const DocTab = ({
         e.preventDefault();
         e.stopPropagation();
         handleRemoveFromStudio();
+      } else if (checkEventKeys(e, escapeShortcut) && studioId) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleCancelStudio();
+      } else if (checkEventKeys(e, saveShortcut) && studioId) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleSubmitToStudio();
+      } else if (
+        checkEventKeys(e, selectLinesShortcut) &&
+        studioId &&
+        !isEditingSelection
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleEditRanges();
       }
     },
-    [handleMoveToAnotherSide, handleAddToStudio],
+    [
+      handleMoveToAnotherSide,
+      handleAddToStudio,
+      handleRemoveFromStudio,
+      handleCancelStudio,
+      studioId,
+      handleSubmitToStudio,
+      handleEditRanges,
+    ],
   );
   useKeyboardNavigation(
     handleKeyEvent,
@@ -378,12 +405,22 @@ const DocTab = ({
           {!!studio && studioId && (
             <>
               <div className="w-px h-4 bg-bg-border flex-shrink-0" />
-              <Badge text={t('Whole page')} type="blue-subtle" size="small" />
+              <Badge
+                text={
+                  selectedSections.length
+                    ? t('# selected section', {
+                        count: selectedSections.length,
+                      })
+                    : t('Whole page')
+                }
+                type="blue-subtle"
+                size="small"
+              />
               <p
                 className={`select-none ${
                   tokenCount < 18000 && tokenCount > 1500
                     ? 'text-yellow'
-                    : tokenCount < 500
+                    : tokenCount <= 1500
                     ? 'text-green'
                     : 'text-red'
                 } code-mini`}
@@ -403,6 +440,8 @@ const DocTab = ({
                     variant="secondary"
                     size="mini"
                     onClick={handleEditRanges}
+                    shortcut={selectLinesShortcut}
+                    title={t('Select sections')}
                   >
                     <Trans>Select sections</Trans>
                   </Button>
@@ -413,6 +452,8 @@ const DocTab = ({
                 variant="tertiary"
                 size="mini"
                 onClick={handleCancelStudio}
+                title={t('Cancel')}
+                shortcut={escapeShortcut}
               >
                 <Trans>Cancel</Trans>
               </Button>
@@ -420,6 +461,8 @@ const DocTab = ({
                 variant={isDocInContext ? 'secondary' : 'studio'}
                 size="mini"
                 onClick={handleSubmitToStudio}
+                title={t(isDocInContext ? 'Save changes' : 'Submit')}
+                shortcut={saveShortcut}
               >
                 <Trans>{isDocInContext ? 'Save changes' : 'Submit'}</Trans>
               </Button>
@@ -431,6 +474,8 @@ const DocTab = ({
                   variant="secondary"
                   size="mini"
                   onClick={handleEditRanges}
+                  shortcut={selectLinesShortcut}
+                  title={t('Edit selected sections')}
                 >
                   <Trans>Edit sections</Trans>
                 </Button>

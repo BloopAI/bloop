@@ -82,7 +82,7 @@ const InputCore = ({
                 (i) =>
                   `<div>${
                     i.isFirst
-                      ? `<div class="flex items-center gap-2 px-2 py-1 text-label-muted caption-strong cursor-default">
+                      ? `<div class="flex items-center gap-2 px-2 py-1 text-label-muted body-mini-b cursor-default">
                         ${t(
                           i.type === 'repo'
                             ? 'Repositories'

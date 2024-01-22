@@ -35,7 +35,7 @@ const NewCode = ({
           {filePath ? (
             <span>BreadcrumbsPath nonInteractive</span>
           ) : (
-            <span className="caption-strong">
+            <span className="body-mini-b">
               {getPrettyLangName(language) || language}
             </span>
           )}

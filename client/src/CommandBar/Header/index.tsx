@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 import Tooltip from '../../components/Tooltip';
 import useKeyboardNavigation from '../../hooks/useKeyboardNavigation';
 import { CommandBarContext } from '../../context/commandBarContext';
+import { CommandBarStepEnum } from '../../types/general';
 import ChipItem from './ChipItem';
 
 type PropsWithoutInput = {
@@ -50,7 +51,9 @@ const CommandBarHeader = ({
 }: Props) => {
   const { t } = useTranslation();
   const { isVisible } = useContext(CommandBarContext.General);
-  const { setIsVisible } = useContext(CommandBarContext.Handlers);
+  const { setIsVisible, setChosenStep } = useContext(
+    CommandBarContext.Handlers,
+  );
   const [isComposing, setIsComposing] = useState(false);
 
   const onCompositionStart = useCallback(() => {
@@ -73,6 +76,7 @@ const CommandBarHeader = ({
         if (handleBack) {
           handleBack();
         } else {
+          setChosenStep({ id: CommandBarStepEnum.INITIAL });
           setIsVisible(false);
         }
       } else if (e.key === 'Enter' && customSubmitHandler && !isComposing) {

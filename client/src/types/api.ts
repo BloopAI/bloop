@@ -306,6 +306,13 @@ export type CodeStudioMessageType =
     }
   | { Assistant: string };
 
+export type CodeStudioTokenCountType = {
+  total: number;
+  per_file: (number | null)[];
+  per_doc_file: (number | null)[];
+  messages: number;
+};
+
 export type CodeStudioType = {
   id: string;
   name: string;
@@ -313,12 +320,7 @@ export type CodeStudioType = {
   messages: CodeStudioMessageType[];
   context: StudioContextFile[];
   doc_context: StudioContextDoc[];
-  token_counts: {
-    total: number;
-    per_file: (number | null)[];
-    per_doc_file: (number | null)[];
-    messages: number;
-  };
+  token_counts: CodeStudioTokenCountType;
 };
 
 export interface SuggestionsResponse {

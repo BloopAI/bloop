@@ -6,11 +6,12 @@ import React, {
   useMemo,
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
+import { format } from 'date-fns';
 import Button from '../../../components/Button';
 import {
-  CodeStudioIcon,
   InfoBadgeIcon,
   MoreHorizontalIcon,
+  PromptIcon,
   SplitViewIcon,
 } from '../../../icons';
 import Dropdown from '../../../components/Dropdown';
@@ -39,7 +40,6 @@ type Props = StudioTabType & {
 const StudioTab = ({
   noBorder,
   side,
-  title,
   studioId,
   tabKey,
   handleMoveToAnotherSide,
@@ -48,7 +48,7 @@ const StudioTab = ({
   const { focusedPanel } = useContext(TabsContext.All);
   const { studios } = useContext(StudiosContext);
   const { closeTab } = useContext(TabsContext.Handlers);
-  const { requestsLeft, isSubscribed, hasCheckedQuota } = useContext(
+  const { requestsLeft, isSubscribed, hasCheckedQuota, resetAt } = useContext(
     PersonalQuotaContext.Values,
   );
   const { setSettingsSection, setSettingsOpen } = useContext(
@@ -129,25 +129,40 @@ const StudioTab = ({
         noBorder ? '' : 'border-l border-bg-border'
       }`}
     >
+      {!requestsLeft && (
+        <div className="w-full h-10 px-4 flex items-center justify-center gap-2 flex-shrink-0 bg-red-subtle text-red body-s-b select-none">
+          <span>
+            <Trans>No uses left. Uses reset at</Trans>{' '}
+            {format(new Date(resetAt), 'dd/MM hh:mm')}.
+          </span>
+          <Button size="mini" onClick={onUpgradeClick}>
+            <Trans>Upgrade</Trans>
+          </Button>
+        </div>
+      )}
       <div className="w-full h-10 px-4 flex justify-between gap-2 items-center flex-shrink-0 border-b border-bg-border bg-bg-sub">
         <div className="flex items-center gap-3 body-s text-label-title ellipsis">
-          <CodeStudioIcon
-            sizeClassName="w-4 h-4"
-            className="text-brand-studio"
-          />
+          <PromptIcon sizeClassName="w-4 h-4" />
           <span className="ellipsis">
-            {title || t('New studio conversation')}
+            <Trans>Prompts</Trans>
           </span>
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          <TokenUsage percent={(studioData?.tokenCount / TOKEN_LIMIT) * 100} />
+          <TokenUsage
+            percent={((studioData?.tokenCount?.total || 0) / TOKEN_LIMIT) * 100}
+          />
           <span className="body-mini-b text-label-base">
             <Trans
-              values={{ count: studioData?.tokenCount, total: TOKEN_LIMIT }}
+              values={{
+                count: studioData?.tokenCount?.total || 0,
+                total: TOKEN_LIMIT,
+              }}
             >
               <span
                 className={
-                  studioData?.tokenCount > TOKEN_LIMIT ? 'text-bg-danger' : ''
+                  (studioData?.tokenCount?.total || 0) > TOKEN_LIMIT
+                    ? 'text-bg-danger'
+                    : ''
                 }
               >
                 #
@@ -196,6 +211,7 @@ const StudioTab = ({
             tabKey={tabKey}
             studioData={studioData}
             requestsLeft={requestsLeft}
+            studioId={studioId}
             isActiveTab={focusedPanel === side && !isLeftSidebarFocused}
           />
         )}

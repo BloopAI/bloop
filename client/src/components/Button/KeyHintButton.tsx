@@ -20,8 +20,12 @@ const KeyHintButton = ({
     <button
       type="button"
       className={`flex items-center gap-1 h-7 p-1 pl-2 rounded-6 body-mini group
-      bg-bg-base text-label-muted
-      hover:bg-bg-base-hover hover:text-label-title
+      bg-bg-base text-label-muted ${
+        !btnProps.disabled
+          ? 'hover:bg-bg-base-hover hover:text-label-title cursor-pointer'
+          : 'cursor-default'
+      }
+      
       transition-all ease-in-out duration-150
       outline-0 outline-none focus:outline-0 focus:outline-none`}
       {...btnProps}
@@ -32,7 +36,9 @@ const KeyHintButton = ({
           key={k}
           className={`min-w-[1.25rem] h-5 flex items-center justify-center px-1 rounded 
           transition-all ease-in-out duration-150
-          bg-bg-base-hover group-hover:bg-bg-border-hover body-mini text-label-base`}
+          bg-bg-base-hover ${
+            !btnProps.disabled ? 'group-hover:bg-bg-border-hover' : ''
+          } body-mini text-label-base`}
         >
           {k}
         </span>

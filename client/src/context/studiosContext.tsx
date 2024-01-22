@@ -3,15 +3,15 @@ import {
   StudioConversationMessage,
   StudioConversationMessageAuthor,
 } from '../types/general';
-import { GeneratedCodeDiff } from '../types/api';
+import { CodeStudioTokenCountType, GeneratedCodeDiff } from '../types/api';
 
 export type StudioContext = {
   conversation: StudioConversationMessage[];
   setConversation: Dispatch<SetStateAction<StudioConversationMessage[]>>;
   inputValue: string;
   setInputValue: Dispatch<SetStateAction<string>>;
-  tokenCount: number;
-  setTokenCount: Dispatch<SetStateAction<number>>;
+  tokenCount: CodeStudioTokenCountType | null;
+  setTokenCount: Dispatch<SetStateAction<CodeStudioTokenCountType | null>>;
   onMessageChange: (message: string, i?: number) => void;
   onMessageRemoved: (i: number, andSubsequent?: boolean) => void;
   diff: GeneratedCodeDiff | null;

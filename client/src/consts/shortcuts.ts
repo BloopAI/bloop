@@ -6,3 +6,6 @@ export const addToStudioShortcut = ['cmd', 'shift', '+'];
 export const removeFromStudioShortcut = ['cmd', 'shift', '-'];
 export const useTemplateShortcut = ['cmd', 'T'];
 export const openInSplitViewShortcut = ['cmd', ']'];
+export const escapeShortcut = ['Esc'];
+export const saveShortcut = ['cmd', 'S'];
+export const selectLinesShortcut = ['cmd', 'L'];

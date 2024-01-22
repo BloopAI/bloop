@@ -18,10 +18,16 @@ import Body from '../Body';
 import FileIcon from '../../components/FileIcon';
 import { TabsContext } from '../../context/tabsContext';
 import { ProjectContext } from '../../context/projectContext';
+import Footer from '../Footer';
+import { splitPath } from '../../utils';
+import { getJsonFromStorage, RECENT_FILES_KEY } from '../../services/storage';
+import { UIContext } from '../../context/uiContext';
 
-type Props = {};
+type Props = {
+  studioId?: string;
+};
 
-const SearchFiles = ({}: Props) => {
+const SearchFiles = ({ studioId }: Props) => {
   const { t } = useTranslation();
   const [inputValue, setInputValue] = useState('');
   const { setChosenStep, setIsVisible } = useContext(
@@ -29,6 +35,7 @@ const SearchFiles = ({}: Props) => {
   );
   const { project } = useContext(ProjectContext.Current);
   const { openNewTab } = useContext(TabsContext.Handlers);
+  const { setIsLeftSidebarFocused } = useContext(UIContext.Focus);
   const [files, setFiles] = useState<{ path: string; repo: string }[]>([]);
   const searchValue = useDeferredValue(inputValue);
 
@@ -37,6 +44,20 @@ const SearchFiles = ({}: Props) => {
   }, []);
 
   useEffect(() => {
+    if (!searchValue) {
+      const recentFiles = getJsonFromStorage<string[]>(RECENT_FILES_KEY);
+      const newFiles: { path: string; repo: string }[] = [];
+      recentFiles?.forEach((f) => {
+        const [repo, path] = f.split(':');
+        if (project?.repos.find((r) => r.repo.ref === repo)) {
+          newFiles.push({ repo, path });
+        }
+      });
+      if (newFiles.length > 1) {
+        setFiles(newFiles.reverse());
+        return;
+      }
+    }
     if (project?.id) {
       getAutocomplete(project.id, `path:${searchValue}&content=false`).then(
         (respPath) => {
@@ -56,8 +77,8 @@ const SearchFiles = ({}: Props) => {
   }, [searchValue, project?.id]);
 
   const breadcrumbs = useMemo(() => {
-    return [t('Search files')];
-  }, [t]);
+    return studioId ? [t('Add file to studio')] : [t('Search files')];
+  }, [t, studioId]);
 
   const handleBack = useCallback(() => {
     setChosenStep({ id: CommandBarStepEnum.INITIAL });
@@ -71,13 +92,23 @@ const SearchFiles = ({}: Props) => {
           key: `${path}-${repo}`,
           id: `${path}-${repo}`,
           onClick: () => {
-            openNewTab({ type: TabTypesEnum.FILE, path, repoRef: repo });
+            openNewTab({
+              type: TabTypesEnum.FILE,
+              path,
+              repoRef: repo,
+              studioId,
+            });
+            setIsLeftSidebarFocused(false);
             setIsVisible(false);
             setChosenStep({ id: CommandBarStepEnum.INITIAL });
           },
           label: path,
-          footerHint: t('Open'),
-          footerBtns: [{ label: t('Open'), shortcut: ['entr'] }],
+          footerHint: `${splitPath(repo)
+            .slice(repo.startsWith('local//') ? -1 : -2)
+            .join('/')} / ${path}`,
+          footerBtns: [
+            { label: studioId ? t('Add file') : t('Open'), shortcut: ['entr'] },
+          ],
           Icon: (props: { sizeClassName?: string }) => (
             <FileIcon filename={path} noMargin />
           ),
@@ -85,13 +116,13 @@ const SearchFiles = ({}: Props) => {
         itemsOffset: 0,
       },
     ];
-  }, [files]);
+  }, [files, studioId]);
 
   return (
     <div className="w-full flex flex-col h-[28.875rem] max-w-[40rem] overflow-auto">
       <Header
         breadcrumbs={breadcrumbs}
-        handleBack={handleBack}
+        handleBack={studioId ? undefined : handleBack}
         placeholder={t('Search files...')}
         value={inputValue}
         onChange={handleInputChange}
@@ -103,6 +134,7 @@ const SearchFiles = ({}: Props) => {
           <Trans>No files found...</Trans>
         </div>
       )}
+      <Footer />
     </div>
   );
 };

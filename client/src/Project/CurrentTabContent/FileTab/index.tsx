@@ -48,9 +48,12 @@ import { RepositoriesContext } from '../../../context/repositoriesContext';
 import { UIContext } from '../../../context/uiContext';
 import {
   addToStudioShortcut,
+  escapeShortcut,
   explainFileShortcut,
   openInSplitViewShortcut,
   removeFromStudioShortcut,
+  saveShortcut,
+  selectLinesShortcut,
 } from '../../../consts/shortcuts';
 import { ProjectContext } from '../../../context/projectContext';
 import Badge from '../../../components/Badge';
@@ -80,7 +83,7 @@ const FileTab = ({
   noBorder,
   repoRef,
   scrollToLine,
-  branch,
+  branch = null,
   side,
   tokenRange,
   handleMoveToAnotherSide,
@@ -396,9 +399,33 @@ const FileTab = ({
         e.preventDefault();
         e.stopPropagation();
         handleRemoveFromStudio();
+      } else if (checkEventKeys(e, escapeShortcut) && studioId) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleCancelStudio();
+      } else if (checkEventKeys(e, saveShortcut) && studioId) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleSubmitToStudio();
+      } else if (
+        checkEventKeys(e, selectLinesShortcut) &&
+        studioId &&
+        !isEditingRanges
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleEditRanges();
       }
     },
-    [handleExplain, handleMoveToAnotherSide, handleAddToStudio],
+    [
+      handleExplain,
+      handleMoveToAnotherSide,
+      handleAddToStudio,
+      handleCancelStudio,
+      studioId,
+      handleSubmitToStudio,
+      handleEditRanges,
+    ],
   );
   useKeyboardNavigation(
     handleKeyEvent,
@@ -503,12 +530,27 @@ const FileTab = ({
           {!!studio && studioId && (
             <>
               <div className="w-px h-4 bg-bg-border flex-shrink-0" />
-              <Badge text={t('Whole file')} type="blue-subtle" size="small" />
+              <Badge
+                text={
+                  selectedLines.length
+                    ? selectedLines.length === 1
+                      ? t('Lines # - #', {
+                          start: selectedLines[0][0] + 1,
+                          end: selectedLines[0][1]
+                            ? selectedLines[0][1] + 1
+                            : '',
+                        })
+                      : t('# ranges', { count: selectedLines.length })
+                    : t('Whole file')
+                }
+                type="blue-subtle"
+                size="small"
+              />
               <p
                 className={`select-none ${
                   tokenCount < 18000 && tokenCount > 1500
                     ? 'text-yellow'
-                    : tokenCount < 500
+                    : tokenCount <= 1500
                     ? 'text-green'
                     : 'text-red'
                 } code-mini`}
@@ -528,6 +570,8 @@ const FileTab = ({
                     variant="secondary"
                     size="mini"
                     onClick={handleEditRanges}
+                    shortcut={selectLinesShortcut}
+                    title={t('Create line ranges')}
                   >
                     <Trans>Create ranges</Trans>
                   </Button>
@@ -538,6 +582,8 @@ const FileTab = ({
                 variant="tertiary"
                 size="mini"
                 onClick={handleCancelStudio}
+                title={t('Cancel')}
+                shortcut={escapeShortcut}
               >
                 <Trans>Cancel</Trans>
               </Button>
@@ -545,6 +591,8 @@ const FileTab = ({
                 variant={isFileInContext ? 'secondary' : 'studio'}
                 size="mini"
                 onClick={handleSubmitToStudio}
+                title={t(isFileInContext ? 'Save changes' : 'Submit')}
+                shortcut={saveShortcut}
               >
                 <Trans>{isFileInContext ? 'Save changes' : 'Submit'}</Trans>
               </Button>
@@ -556,6 +604,8 @@ const FileTab = ({
                   variant="secondary"
                   size="mini"
                   onClick={handleEditRanges}
+                  shortcut={selectLinesShortcut}
+                  title={t('Edit selected lines')}
                 >
                   <Trans>Edit ranges</Trans>
                 </Button>

@@ -72,6 +72,7 @@ const NavPanel = ({ focusedIndex, setFocusedIndex }: Props) => {
           isExpanded={expanded === 'studios'}
           focusedIndex={focusedIndex}
           index={`studios`}
+          indexingStatus={indexingStatus}
         />
       )}
       {!!project?.conversations.length && (

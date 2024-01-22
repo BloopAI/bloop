@@ -56,6 +56,7 @@ const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
       setProject((prev) => (prev ? { ...prev, repos: r } : null));
       setIsReposLoaded(true);
     });
+    refreshCurrentProjectStudios();
   }, [currentProjectId]);
   const refreshCurrentProjectConversations = useCallback(async () => {
     getProjectConversations(currentProjectId).then((r) => {

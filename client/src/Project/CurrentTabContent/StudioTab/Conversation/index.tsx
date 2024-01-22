@@ -25,6 +25,8 @@ import Button from '../../../../components/Button';
 import GeneratedDiff from './GeneratedDiff';
 import ConversationInput from './Input';
 import StarterMessage from './StarterMessage';
+import NoFilesMessage from './NoFilesMessage';
+import ContextError from './ContextError';
 
 type Props = {
   side: 'left' | 'right';
@@ -32,6 +34,7 @@ type Props = {
   studioData: StudioContext;
   isActiveTab: boolean;
   requestsLeft: number;
+  studioId: string;
 };
 
 const generateShortcut = ['cmd', 'entr'];
@@ -43,6 +46,7 @@ const Conversation = ({
   studioData,
   isActiveTab,
   requestsLeft,
+  studioId,
 }: Props) => {
   const { t } = useTranslation();
   const scrollableRef = useRef<HTMLDivElement>(null);
@@ -74,6 +78,17 @@ const Conversation = ({
     }, 100);
   }, [studioData?.conversation]);
 
+  const hasContextError = useMemo(() => {
+    return (
+      studioData.tokenCount?.per_file?.includes(null) ||
+      studioData.tokenCount?.per_doc_file?.includes(null)
+    );
+  }, [studioData.tokenCount]);
+
+  const isTokenLimitExceeded = useMemo(() => {
+    return (studioData.tokenCount?.total || 0) < TOKEN_LIMIT;
+  }, [studioData.tokenCount?.total]);
+
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
       if (checkEventKeys(e, generateShortcut)) {
@@ -81,8 +96,8 @@ const Conversation = ({
         e.stopPropagation();
         if (
           studioData.inputValue &&
-          studioData.tokenCount < TOKEN_LIMIT &&
-          // !hasContextError &&
+          isTokenLimitExceeded &&
+          !hasContextError &&
           requestsLeft
           // && !isChangeUnsaved
         ) {
@@ -102,7 +117,7 @@ const Conversation = ({
     },
     [
       studioData.inputValue,
-      studioData.tokenCount,
+      isTokenLimitExceeded,
       studioData.onSubmit,
       studioData.isLoading,
       studioData.handleCancel,
@@ -130,6 +145,7 @@ const Conversation = ({
         wrapperRef={scrollableRef}
       >
         <StarterMessage />
+        <NoFilesMessage studioId={studioId} />
         {studioData.conversation.map((m, i) => (
           <ConversationInput
             key={i}
@@ -138,7 +154,7 @@ const Conversation = ({
             onMessageChange={studioData.onMessageChange}
             onMessageRemoved={studioData.onMessageRemoved}
             i={i}
-            isTokenLimitExceeded={studioData.tokenCount > TOKEN_LIMIT}
+            isTokenLimitExceeded={isTokenLimitExceeded}
             isLast={i === studioData.conversation.length - 1}
             side={side}
             templates={templates}
@@ -198,6 +214,7 @@ const Conversation = ({
             )}
           </div>
         )}
+        {hasContextError && <ContextError />}
         {!studioData.isLoading &&
           // !studioData.isPreviewing &&
           !studioData.waitingForDiff &&
@@ -212,7 +229,7 @@ const Conversation = ({
               message={studioData.inputValue}
               onMessageChange={studioData.onMessageChange}
               inputRef={inputRef}
-              isTokenLimitExceeded={studioData.tokenCount > TOKEN_LIMIT}
+              isTokenLimitExceeded={isTokenLimitExceeded}
               isLast
               side={side}
               templates={templates}
@@ -272,6 +289,12 @@ const Conversation = ({
                   text={t('Generate')}
                   shortcut={generateShortcut}
                   onClick={studioData.onSubmit}
+                  disabled={
+                    hasContextError ||
+                    isTokenLimitExceeded ||
+                    !studioData.inputValue ||
+                    !requestsLeft
+                  }
                 />
               )}
             </>

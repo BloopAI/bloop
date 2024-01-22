@@ -634,5 +634,14 @@
 	"# selected section_other": "選択された {{count}} つのセクション",
 	"Remove from studio": "スタジオから取り出します",
 	"Remove file from code studio context": "コードスタジオコンテキストからファイルを削除します",
-	"Remove page from code studio context": "コードスタジオコンテキストからページを削除します"
+	"Remove page from code studio context": "コードスタジオコンテキストからページを削除します",
+	"Studio conversation require at least one context file.": "Studioの会話には、少なくとも1つのコンテキストファイルが必要です。",
+	"Create line ranges": "ライン範囲を作成します",
+	"Edit selected lines": "選択した行を編集します",
+	"Edit selected sections": "選択したセクションを編集します",
+	"Add at least one context file before submitting your first request.": "最初のリクエストを送信する前に、少なくとも1つのコンテキストファイルを追加します。",
+	"Add files": "追加ファイル",
+	"No uses left. Uses reset at": "使用は残っていません。 でリセットを使用します",
+	"Missing source": "不足しているソース",
+	"We can’t generate a response because some files have a missing source in your Context files.": "一部のファイルにはコンテキストファイルにソースが欠落しているため、応答を生成できません。"
 }
