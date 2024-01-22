@@ -643,5 +643,12 @@
 	"Add files": "追加ファイル",
 	"No uses left. Uses reset at": "使用は残っていません。 でリセットを使用します",
 	"Missing source": "不足しているソース",
-	"We can’t generate a response because some files have a missing source in your Context files.": "一部のファイルにはコンテキストファイルにソースが欠落しているため、応答を生成できません。"
+	"We can’t generate a response because some files have a missing source in your Context files.": "一部のファイルにはコンテキストファイルにソースが欠落しているため、応答を生成できません。",
+	"Collapse": "崩壊",
+	"Usage exceeded": "使用量を超えました",
+	"Expand": "拡大する",
+	"Usage status": "使用状況",
+	"Close tab": "タブを閉じる",
+	"Studio requests": "スタジオリクエスト",
+	"The amount of times you can generate responses in Studio conversations.": "スタジオの会話で応答を生成できる回数。"
 }

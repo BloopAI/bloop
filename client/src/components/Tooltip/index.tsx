@@ -8,6 +8,8 @@ type Props = {
   placement: TippyProps['placement'];
   delay?: TippyProps['delay'];
   wrapperClassName?: string;
+  variant?: 'contrast' | 'standard';
+  appendTo?: TippyProps['appendTo'];
 };
 
 const Tooltip = ({
@@ -17,6 +19,8 @@ const Tooltip = ({
   delay,
   shortcut,
   wrapperClassName,
+  variant = 'contrast',
+  appendTo,
 }: PropsWithChildren<Props>) => {
   const ref = useRef<HTMLDivElement>(null);
   const shortcutSymbols = useShortcuts(shortcut);
@@ -25,12 +29,17 @@ const Tooltip = ({
     <Tippy
       placement={placement}
       delay={delay}
+      appendTo={appendTo}
       render={(attrs) => (
         <span
           {...attrs}
-          className={`w-fit h-6 inline-flex items-center gap-1.5 pl-1.5 ${
-            shortcutSymbols ? 'pr-0.5' : 'pr-1.5'
-          } flex-shrink-0 rounded bg-bg-contrast shadow-medium body-mini text-label-contrast z-50`}
+          className={`inline-flex items-center gap-1.5 flex-shrink-0 rounded ${
+            variant === 'contrast'
+              ? `w-fit h-6 bg-bg-contrast text-label-contrast pl-1.5 ${
+                  shortcutSymbols ? 'pr-0.5' : 'pr-1.5'
+                }`
+              : 'bg-bg-shade text-label-base border border-bg-border p-3'
+          } shadow-medium body-mini z-50`}
         >
           {text}
           {!!shortcutSymbols && (
