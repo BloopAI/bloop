@@ -280,24 +280,26 @@ const InitialCommandBar = ({ shouldShowTutorial }: Props) => {
       },
     ];
     const commandsItems = [...themeItems, ...otherCommands];
-    const newTabItems = [
-      {
-        label: t('New chat'),
-        Icon: ChatBubblesIcon,
-        id: 'new chat',
-        key: 'new_chat',
-        onClick: () => openNewTab({ type: TabTypesEnum.CHAT }),
-        shortcut: ['option', 'N'],
-        closeOnClick: true,
-        footerHint: '',
-        footerBtns: [
+    const newTabItems = project?.repos.length
+      ? [
           {
-            label: t('Open'),
-            shortcut: ['entr'],
+            label: t('New chat'),
+            Icon: ChatBubblesIcon,
+            id: 'new chat',
+            key: 'new_chat',
+            onClick: () => openNewTab({ type: TabTypesEnum.CHAT }),
+            shortcut: ['option', 'N'],
+            closeOnClick: true,
+            footerHint: '',
+            footerBtns: [
+              {
+                label: t('Open'),
+                shortcut: ['entr'],
+              },
+            ],
           },
-        ],
-      },
-    ];
+        ]
+      : [];
     const chatItems: CommandBarItemGeneralType[] = (
       project?.conversations || []
     )

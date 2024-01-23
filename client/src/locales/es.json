@@ -625,7 +625,6 @@
 	"Project": "Proyecto",
 	"Project title": "Título del Proyecto",
 	"Delete project": "Proyecto Eliminar",
-	"Permanently delete <2>Proyecto predeterminado</2> and remove all the data associated to it. Repositories will remain accessible in your GitHub account.": "Elimine permanentemente <2> Proyecto predeterminado </2> y elimine todos los datos asociados a él. Los repositorios seguirán siendo accesibles en su cuenta de GitHub.",
 	"Studio": "Estudio",
 	"Manage your studio settings.": "Administre la configuración de su estudio.",
 	"Prompt templates": "Plantillas de inmediato",
@@ -685,5 +684,6 @@
 	"<0>When viewing a file you can ask bloop to quickly explain it by hitting <2></2> on your keyboard or by selecting \"Explain file\" from the <7></7> popup menu.</0>": "<0> Al ver un archivo, puede pedirle a Bloop que lo explique rápidamente presionando <2> </2> en su teclado o seleccionando \"Explicar archivo\" en el menú emergente <7> </7> emergente. </0>",
 	"Explain code": "Código de explicación",
 	"Navigate your codebase": "Navegue su base de código",
-	"Search docs": "Documentos de búsqueda"
+	"Search docs": "Documentos de búsqueda",
+	"Permanently delete <2>{{projectName}}</2> and remove all the data associated to it. Repositories will remain accessible in your GitHub account.": "Eliminar permanentemente <2>{{projectName}}</2> y eliminar todos los datos asociados a él. Los repositorios seguirán siendo accesibles en su cuenta de GitHub."
 }

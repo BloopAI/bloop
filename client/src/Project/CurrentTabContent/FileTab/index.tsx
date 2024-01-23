@@ -561,74 +561,76 @@ const FileTab = ({
             </>
           )}
         </div>
-        {focusedPanel === side &&
-          (studioId && (hasChanges || isEditingRanges) ? (
-            <div className="flex items-center gap-3">
-              {!isEditingRanges && (
-                <>
+        <div className="flex items-center gap-3">
+          {focusedPanel === side &&
+            (studioId && (hasChanges || isEditingRanges) ? (
+              <div className="flex items-center gap-3">
+                {!isEditingRanges && (
+                  <>
+                    <Button
+                      variant="secondary"
+                      size="mini"
+                      onClick={handleEditRanges}
+                      shortcut={selectLinesShortcut}
+                      title={t('Create line ranges')}
+                    >
+                      <Trans>Create ranges</Trans>
+                    </Button>
+                    <div className="w-px h-4 bg-bg-border flex-shrink-0" />
+                  </>
+                )}
+                <Button
+                  variant="tertiary"
+                  size="mini"
+                  onClick={handleCancelStudio}
+                  title={t('Cancel')}
+                  shortcut={escapeShortcut}
+                >
+                  <Trans>Cancel</Trans>
+                </Button>
+                <Button
+                  variant={isFileInContext ? 'secondary' : 'studio'}
+                  size="mini"
+                  onClick={handleSubmitToStudio}
+                  title={t(isFileInContext ? 'Save changes' : 'Submit')}
+                  shortcut={saveShortcut}
+                >
+                  <Trans>{isFileInContext ? 'Save changes' : 'Submit'}</Trans>
+                </Button>
+              </div>
+            ) : (
+              studioId && (
+                <div className="flex items-center gap-3">
                   <Button
                     variant="secondary"
                     size="mini"
                     onClick={handleEditRanges}
                     shortcut={selectLinesShortcut}
-                    title={t('Create line ranges')}
+                    title={t('Edit selected lines')}
                   >
-                    <Trans>Create ranges</Trans>
+                    <Trans>Edit ranges</Trans>
                   </Button>
-                  <div className="w-px h-4 bg-bg-border flex-shrink-0" />
-                </>
-              )}
+                </div>
+              )
+            ))}
+          {!isEditingRanges && (
+            <Dropdown
+              DropdownComponent={ActionsDropdown}
+              dropdownComponentProps={dropdownComponentProps}
+              dropdownPlacement="bottom-end"
+              appendTo={document.body}
+            >
               <Button
                 variant="tertiary"
                 size="mini"
-                onClick={handleCancelStudio}
-                title={t('Cancel')}
-                shortcut={escapeShortcut}
+                onlyIcon
+                title={t('More actions')}
               >
-                <Trans>Cancel</Trans>
+                <MoreHorizontalIcon sizeClassName="w-3.5 h-3.5" />
               </Button>
-              <Button
-                variant={isFileInContext ? 'secondary' : 'studio'}
-                size="mini"
-                onClick={handleSubmitToStudio}
-                title={t(isFileInContext ? 'Save changes' : 'Submit')}
-                shortcut={saveShortcut}
-              >
-                <Trans>{isFileInContext ? 'Save changes' : 'Submit'}</Trans>
-              </Button>
-            </div>
-          ) : (
-            studioId && (
-              <div className="flex items-center gap-3">
-                <Button
-                  variant="secondary"
-                  size="mini"
-                  onClick={handleEditRanges}
-                  shortcut={selectLinesShortcut}
-                  title={t('Edit selected lines')}
-                >
-                  <Trans>Edit ranges</Trans>
-                </Button>
-              </div>
-            )
-          ))}
-        {!isEditingRanges && (
-          <Dropdown
-            DropdownComponent={ActionsDropdown}
-            dropdownComponentProps={dropdownComponentProps}
-            dropdownPlacement="bottom-end"
-            appendTo={document.body}
-          >
-            <Button
-              variant="tertiary"
-              size="mini"
-              onlyIcon
-              title={t('More actions')}
-            >
-              <MoreHorizontalIcon sizeClassName="w-3.5 h-3.5" />
-            </Button>
-          </Dropdown>
-        )}
+            </Dropdown>
+          )}
+        </div>
       </div>
       <div
         className="flex-1 h-full max-w-full pl-4 py-4 overflow-auto relative"

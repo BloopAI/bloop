@@ -610,7 +610,6 @@
 	"The whole file will be used as context.": "ファイル全体がコンテキストとして使用されます。",
 	"Selected ranges will be used as context.": "選択した範囲はコンテキストとして使用されます。",
 	"Project": "プロジェクト",
-	"Permanently delete <2>Proyecto predeterminado</2> and remove all the data associated to it. Repositories will remain accessible in your GitHub account.": "<2> <2> proyecto predeterminado </2>を永続的に削除し、それに関連付けられたすべてのデータを削除します。 リポジトリは、GitHubアカウントでアクセスできます。",
 	"Studio": "スタジオ",
 	"Manage your studio settings.": "スタジオ設定を管理します。",
 	"Prompt templates": "プロンプトテンプレート",
@@ -667,5 +666,6 @@
 	"<0>When viewing a file you can ask bloop to quickly explain it by hitting <2></2> on your keyboard or by selecting \"Explain file\" from the <7></7> popup menu.</0>": "<0>ファイルを表示するときは、キーボードで<2> </2>を押すか、<7> </7>ポップアップメニューから「ファイルを説明」を選択して、すぐに説明するように依頼することができます。</0>",
 	"<0>Use your cursor to select any piece of code within a file and ask bloop to explain it by pressing \"Explain\" in the floating toolbar.</0>": "<0>カーソルを使用してファイル内のコードを選択し、フローティングツールバーで「説明」を押してBloopに説明するように依頼します。</0>",
 	"Dismiss tutorial": "チュートリアルを却下します",
-	"Search docs": "ドキュメントを検索します"
+	"Search docs": "ドキュメントを検索します",
+	"Permanently delete <2>{{projectName}}</2> and remove all the data associated to it. Repositories will remain accessible in your GitHub account.": "永続的に<2>{{projectName}}</2>を削除し、それに関連付けられたすべてのデータを削除します。 リポジトリは、GitHubアカウントでアクセスできます。"
 }

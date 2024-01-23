@@ -626,7 +626,6 @@
 	"Edit ranges": "Edit ranges",
 	"The whole file will be used as context.": "The whole file will be used as context.",
 	"Selected ranges will be used as context.": "Selected ranges will be used as context.",
-	"Permanently delete <2>Proyecto predeterminado</2> and remove all the data associated to it. Repositories will remain accessible in your GitHub account.": "Permanently delete <2>Proyecto predeterminado</2> and remove all the data associated to it. Repositories will remain accessible in your GitHub account.",
 	"Studio": "Studio",
 	"Manage your studio settings.": "Manage your studio settings.",
 	"Prompt templates": "Prompt templates",
@@ -697,5 +696,6 @@
 	"Navigate your codebase": "Navigate your codebase",
 	"Dismiss tutorial": "Dismiss tutorial",
 	"Click on an identifier and jump to its references and definition in a heart beat.": "Click on an identifier and jump to its references and definition in a heart beat.",
-	"Search docs": "Search docs"
+	"Search docs": "Search docs",
+	"Permanently delete <2>{{projectName}}</2> and remove all the data associated to it. Repositories will remain accessible in your GitHub account.": "Permanently delete <2>{{projectName}}</2> and remove all the data associated to it. Repositories will remain accessible in your GitHub account."
 }

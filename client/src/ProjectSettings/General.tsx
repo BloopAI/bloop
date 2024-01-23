@@ -80,9 +80,11 @@ const General = ({}: Props) => {
       <hr className="border-bg-divider my-8" />
       <div className="flex items-start gap-8 w-full">
         <p className="body-s text-label-base">
-          <Trans>
+          <Trans values={{ projectName: project?.name }}>
             Permanently delete{' '}
-            <span className="body-s-b text-label-title">{project?.name}</span>{' '}
+            <span className="body-s-b text-label-title">
+              {'{{projectName}}'}
+            </span>{' '}
             and remove all the data associated to it. Repositories will remain
             accessible in your GitHub account.
           </Trans>

@@ -620,7 +620,6 @@
 	"Selected ranges will be used as context.": "选定的范围将用作上下文。",
 	"Project": "项目",
 	"Project title": "项目名称",
-	"Permanently delete <2>Proyecto predeterminado</2> and remove all the data associated to it. Repositories will remain accessible in your GitHub account.": "永久删除<2> Proyecto Prederminado </2>并删除与之关联的所有数据。 存储库将在您的GitHub帐户中保持访问。",
 	"Studio": "工作室",
 	"Manage your studio settings.": "管理您的工作室设置。",
 	"Prompt templates": "提示模板",
@@ -678,5 +677,6 @@
 	"<0>When viewing a file you can ask bloop to quickly explain it by hitting <2></2> on your keyboard or by selecting \"Explain file\" from the <7></7> popup menu.</0>": "<0>查看文件时，您可以要求Bloop通过在键盘上击中<2> </2>快速解释它，或者通过从<7> </7>弹出菜单中选择“说明文件”。</0>",
 	"Explain code": "解释代码",
 	"Dismiss tutorial": "解雇教程",
-	"Search docs": "搜索文档"
+	"Search docs": "搜索文档",
+	"Permanently delete <2>{{projectName}}</2> and remove all the data associated to it. Repositories will remain accessible in your GitHub account.": "永久删除<2>{{projectName}}</2>并删除与之关联的所有数据。 存储库将在您的GitHub帐户中保持访问。"
 }
