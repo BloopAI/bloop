@@ -32,6 +32,7 @@ type Props = CommandBarItemGeneralType & {
   focusedItemProps?: Record<string, any>;
   disableKeyNav?: boolean;
   itemKey: string;
+  onlyOneClickable?: string;
 };
 
 const CommandBarItem = ({
@@ -53,6 +54,7 @@ const CommandBarItem = ({
   isWithCheckmark,
   closeOnClick,
   itemKey,
+  onlyOneClickable,
 }: Props) => {
   const ref = useRef<HTMLButtonElement>(null);
   const shortcutKeys = useShortcuts(shortcut);
@@ -76,6 +78,9 @@ const CommandBarItem = ({
   }, [i, setFocusedIndex]);
 
   const handleClick = useCallback(() => {
+    if (onlyOneClickable && onlyOneClickable !== itemKey) {
+      return;
+    }
     if (onClick) {
       onClick();
       if (closeOnClick) {
@@ -88,7 +93,7 @@ const CommandBarItem = ({
       });
     }
     updateArrayInStorage(RECENT_COMMANDS_KEY, itemKey);
-  }, [id, onClick, closeOnClick, itemKey]);
+  }, [id, onClick, closeOnClick, itemKey, onlyOneClickable]);
 
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
@@ -110,16 +115,22 @@ const CommandBarItem = ({
     },
     [isFocused, shortcut, footerBtns, handleClick],
   );
-  useKeyboardNavigation(handleKeyEvent, disableKeyNav);
+  useKeyboardNavigation(
+    handleKeyEvent,
+    disableKeyNav || (!!onlyOneClickable && onlyOneClickable !== itemKey),
+  );
 
   return (
     <button
       className={`flex items-center gap-3 rounded-md px-2 h-10 ${
-        isFocused ? 'bg-bg-base-hover text-label-title' : 'text-label-base'
+        isFocused && !(onlyOneClickable && onlyOneClickable !== itemKey)
+          ? 'bg-bg-base-hover text-label-title'
+          : 'text-label-base'
       } text-left ${isFirst ? 'scroll-mt-8' : ''}`}
       onMouseOver={handleMouseOver}
       onClick={handleClick}
       ref={ref}
+      disabled={!!onlyOneClickable && onlyOneClickable !== itemKey}
     >
       <div
         className={`rounded-6 w-6 h-6 flex items-center justify-center relative ${

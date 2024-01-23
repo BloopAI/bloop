@@ -1,4 +1,4 @@
-import {
+import React, {
   ChangeEvent,
   memo,
   useCallback,
@@ -21,11 +21,20 @@ import Header from '../../Header';
 import Body from '../../Body';
 import Footer from '../../Footer';
 import RepoItem from '../items/RepoItem';
+import TutorialBody from '../../Tutorial/TutorialBody';
+import TutorialTooltip from '../../Tutorial/TutorialTooltip';
+import { tutorialSteps } from '../../../consts/tutorialSteps';
+import {
+  CMD_BAR_TUTORIAL_FINISHED_KEY,
+  savePlainToStorage,
+} from '../../../services/storage';
 import ActionsDropdown from './ActionsDropdown';
 
-type Props = {};
+type Props = {
+  shouldShowTutorial?: boolean;
+};
 
-const PrivateReposStep = ({}: Props) => {
+const PrivateReposStep = ({ shouldShowTutorial }: Props) => {
   const { t } = useTranslation();
   const [sections, setSections] = useState<CommandBarSectionType[]>([]);
   const [sectionsToShow, setSectionsToShow] = useState<CommandBarSectionType[]>(
@@ -33,7 +42,10 @@ const PrivateReposStep = ({}: Props) => {
   );
   const { setChosenStep } = useContext(CommandBarContext.Handlers);
   const [inputValue, setInputValue] = useState('');
+  const [tutorialStep, setTutorialStep] = useState(2);
   const [isDropdownVisible, setIsDropdownVisible] = useState(false);
+  const [selectedRepo, setSelectedRepo] = useState('');
+  const [indexedRepo, setIndexedRepo] = useState('');
 
   const handleInputChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
@@ -46,7 +58,22 @@ const PrivateReposStep = ({}: Props) => {
     ).map((o) => ({
       items: o.items.map((r) => ({
         Component: RepoItem,
-        componentProps: { repo: r, refetchRepos },
+        componentProps: {
+          repo: r,
+          refetchRepos,
+          onSync: () => {
+            setSelectedRepo(r.shortName);
+            setTutorialStep(3);
+          },
+          onDone: () => {
+            setIndexedRepo(r.shortName);
+            setTutorialStep(4);
+          },
+          onAddToProject: () => {
+            savePlainToStorage(CMD_BAR_TUTORIAL_FINISHED_KEY, 'true');
+            setTutorialStep(5);
+          },
+        },
         key: r.ref,
       })),
       itemsOffset: o.offset,
@@ -105,6 +132,23 @@ const PrivateReposStep = ({}: Props) => {
         placeholder={t('Search private repos...')}
         disableKeyNav={isDropdownVisible}
       />
+      {shouldShowTutorial && tutorialStep < 5 ? (
+        <TutorialTooltip
+          content={
+            <TutorialBody
+              stepNumber={tutorialStep + 1}
+              title={t(tutorialSteps[tutorialStep].title)}
+              description={t(tutorialSteps[tutorialStep].description, {
+                repoName: tutorialStep === 3 ? selectedRepo : indexedRepo,
+              })}
+              hint={t(tutorialSteps[tutorialStep].hint[0])}
+            />
+          }
+          wrapperClassName="absolute top-[8.5rem] left-0 right-0"
+        >
+          <div className="" />
+        </TutorialTooltip>
+      ) : null}
       {sectionsToShow.length ? (
         <Body sections={sectionsToShow} disableKeyNav={isDropdownVisible} />
       ) : (

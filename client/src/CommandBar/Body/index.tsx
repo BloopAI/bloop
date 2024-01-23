@@ -6,10 +6,30 @@ import Section from './Section';
 type Props = {
   sections: CommandBarSectionType[];
   disableKeyNav?: boolean;
+  onlyOneClickable?: string;
 };
 
-const CommandBarBody = ({ sections, disableKeyNav }: Props) => {
+const CommandBarBody = ({
+  sections,
+  disableKeyNav,
+  onlyOneClickable,
+}: Props) => {
   const [focusedIndex, setFocusedIndex] = useState(0);
+
+  useEffect(() => {
+    if (onlyOneClickable) {
+      let itemIndex = -1;
+      const clickableSectionIndex = sections.findIndex((s) => {
+        itemIndex = s.items.findIndex((i) => i.key === onlyOneClickable);
+        return itemIndex > -1;
+      });
+      if (itemIndex > -1) {
+        setFocusedIndex(
+          sections[clickableSectionIndex].itemsOffset + itemIndex,
+        );
+      }
+    }
+  }, [onlyOneClickable, sections]);
 
   useEffect(() => {
     setFocusedIndex(0);
@@ -38,7 +58,7 @@ const CommandBarBody = ({ sections, disableKeyNav }: Props) => {
     },
     [sections],
   );
-  useKeyboardNavigation(handleKeyEvent, disableKeyNav);
+  useKeyboardNavigation(handleKeyEvent, disableKeyNav || !!onlyOneClickable);
 
   return (
     <div className="flex flex-col gap-1 flex-1 w-full p-2 overflow-auto show-scrollbar">
@@ -51,6 +71,7 @@ const CommandBarBody = ({ sections, disableKeyNav }: Props) => {
           setFocusedIndex={setFocusedIndex}
           offset={s.itemsOffset}
           disableKeyNav={disableKeyNav}
+          onlyOneClickable={onlyOneClickable}
         />
       ))}
     </div>

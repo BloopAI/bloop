@@ -1,9 +1,10 @@
-import {
+import React, {
   Dispatch,
   memo,
   SetStateAction,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -45,6 +46,10 @@ type Props = {
   refetchRepos: () => void;
   disableKeyNav?: boolean;
   indexingStatus?: RepoIndexingStatusType;
+  tutorialPopup?: React.ReactElement;
+  onSync: () => void;
+  onDone: () => void;
+  onAddToProject: () => void;
 };
 
 const RepoItem = ({
@@ -56,6 +61,9 @@ const RepoItem = ({
   refetchRepos,
   disableKeyNav,
   indexingStatus,
+  onSync,
+  onDone,
+  onAddToProject,
 }: Props) => {
   const { t } = useTranslation();
   const { project, refreshCurrentProjectRepos } = useContext(
@@ -68,16 +76,24 @@ const RepoItem = ({
       e?.preventDefault();
       e?.stopPropagation();
       await syncRepo(repo.ref);
+      onSync();
     },
-    [repo.ref],
+    [repo.ref, onSync],
   );
 
   const status = useMemo(() => {
     return indexingStatus?.status || repo.sync_status;
   }, [indexingStatus]);
 
+  useEffect(() => {
+    if (status === SyncStatus.Done) {
+      onDone();
+    }
+  }, [status]);
+
   const handleAddToProject = useCallback(() => {
     if (project?.id) {
+      onAddToProject();
       return addRepoToProject(
         project.id,
         repo.ref,

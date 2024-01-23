@@ -661,5 +661,21 @@
 	"Expand": "扩张",
 	"Usage status": "使用状态",
 	"Collapse": "坍塌",
-	"Studio requests": "工作室请求"
+	"Studio requests": "工作室请求",
+	"Adding repository": "添加存储库",
+	"Projects require at least one synced repository.": "项目至少需要一个同步存储库。",
+	"Start by selecting ": "首先选择",
+	"Repository types": "存储库类型",
+	"You can add 3 types of repositories, private, public and local.": "您可以添加3种类型的存储库，即私人，公共和本地。",
+	"Indexing repositories": "索引存储库",
+	"Skip": "跳过",
+	"{{repoName}} has finished indexing and you can use it in your projects now.": "{{reponame}}已完成索引，您可以立即在项目中使用它。",
+	"{{repoName}} is currently indexing as soon as it is finished you will be able to add it to your project.": "{{reponame}}当前，一旦完成后，您就可以将其添加到项目中。",
+	"Ask a question": "问一个问题",
+	"Ask your first question": "问你的第一个问题",
+	"<0>Create a new conversation with bloop by hitting <2></2> on your keyboard or by pressing the <4></4> in the header bar.</0>": "<0>通过在键盘上击打<2> </2>或按下标题栏中的<4> </4>来创建一个新的对话。</0>。</0>",
+	"<0>When viewing a file you can ask bloop to quickly explain it by hitting <2></2> on your keyboard or by selecting \"Explain file\" from the <5></5> popup menu.</0>": "<0>查看文件时，您可以要求Bloop通过键盘上的<2> </2>快速解释它，或者通过从<5> </5>弹出菜单中选择“说明文件”。</0>",
+	"<0>When viewing a file you can ask bloop to quickly explain it by hitting <2></2> on your keyboard or by selecting \"Explain file\" from the <7></7> popup menu.</0>": "<0>查看文件时，您可以要求Bloop通过在键盘上击中<2> </2>快速解释它，或者通过从<7> </7>弹出菜单中选择“说明文件”。</0>",
+	"Explain code": "解释代码",
+	"Dismiss tutorial": "解雇教程"
 }

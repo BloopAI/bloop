@@ -879,6 +879,14 @@ h5, .h5 {
   letter-spacing: -0.12px;
 }
 
+.code-tiny-b {
+  font-family: "Fira Code", sans-serif;
+  font-size: 0.625rem;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 180%;
+}
+
 .ellipsis {
   @apply overflow-ellipsis whitespace-nowrap overflow-hidden;
 }

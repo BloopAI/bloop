@@ -1,16 +1,22 @@
-import React, { memo, useCallback, useContext } from 'react';
+import React, { memo, useCallback, useContext, useMemo } from 'react';
 import { useDrop } from 'react-dnd';
 import { Trans } from 'react-i18next';
 import { TabsContext } from '../../context/tabsContext';
 import { DraggableTabItem, TabType, TabTypesEnum } from '../../types/general';
 import { SplitViewIcon } from '../../icons';
 import { UIContext } from '../../context/uiContext';
+import {
+  CMD_BAR_TUTORIAL_FINISHED_KEY,
+  getPlainFromStorage,
+} from '../../services/storage';
+import { EnvContext } from '../../context/envContext';
 import EmptyTab from './EmptyTab';
 import FileTab from './FileTab';
 import Header from './Header';
 import ChatTab from './ChatTab';
 import StudioTab from './StudioTab';
 import DocTab from './DocTab';
+import TutorialCards from './TutorialCards';
 
 type Props = {
   side: 'left' | 'right';
@@ -30,6 +36,7 @@ const CurrentTabContent = ({
   );
   const { setFocusedPanel } = useContext(TabsContext.Handlers);
   const { setIsLeftSidebarFocused } = useContext(UIContext.Focus);
+  const { setEnvConfig, envConfig } = useContext(EnvContext);
 
   const [{ isOver, canDrop }, drop] = useDrop(
     () => ({
@@ -45,6 +52,12 @@ const CurrentTabContent = ({
     }),
     [onDrop],
   );
+
+  const shouldShowTutorial = useMemo(() => {
+    return (
+      !envConfig?.bloop_user_profile?.is_tutorial_finished && side === 'left'
+    );
+  }, [envConfig?.bloop_user_profile]);
 
   const focusPanel = useCallback(() => {
     setFocusedPanel(side);
@@ -105,6 +118,7 @@ const CurrentTabContent = ({
         ) : (
           <EmptyTab />
         )}
+        {shouldShowTutorial && <TutorialCards />}
         {isOver && canDrop && (
           <div className="absolute top-0 bottom-0 left-0 right-0 bg-bg-sub">
             <div className="absolute w-full h-full bg-bg-selected flex flex-col">

@@ -631,5 +631,21 @@
 	"Collapse": "Crollo",
 	"Usage status": "Stato di utilizzo",
 	"The amount of times you can generate responses in Studio conversations.": "La quantità di volte in cui è possibile generare risposte nelle conversazioni in studio.",
-	"Close tab": "Chiudi scheda"
+	"Close tab": "Chiudi scheda",
+	"Adding repository": "Aggiunta di repository",
+	"Projects require at least one synced repository.": "I progetti richiedono almeno un repository sincronizzato.",
+	"Start by selecting ": "Inizia selezionando",
+	"Repository types": "Tipi di repository",
+	"You can add 3 types of repositories, private, public and local.": "Puoi aggiungere 3 tipi di repository, privati, pubblici e locali.",
+	"Start by selecting a repository and pressing Enter (↵) on your keyboard.": "Inizia selezionando un repository e premendo Invio (↵) sulla tastiera.",
+	"Skip": "Saltare",
+	"Start by selecting again and pressing Enter (↵) on your keyboard.": "Inizia selezionando di nuovo e premendo Invio (↵) sulla tastiera.",
+	"Indexing in progress": "Indicizzazione in corso",
+	"Ask a question": "Fai una domanda",
+	"Ask your first question": "Fai la tua prima domanda",
+	"<0>Create a new conversation with bloop by hitting <2></2> on your keyboard or by pressing the <4></4> in the header bar.</0>": "<0> Crea una nuova conversazione con Bloop toccando <2> </2> sulla tastiera o premendo <4> </4> nella barra di intestazione. </0>",
+	"<0>When viewing a file you can ask bloop to quickly explain it by hitting <2></2> on your keyboard or by selecting \"Explain file\" from the <5></5> popup menu.</0>": "<0> Quando si visualizza un file puoi chiedere a Bloop di spiegarlo rapidamente prendendo <2> </2> sulla tastiera o selezionando \"Spiega file\" dal menu popup <5> </5>. </0>",
+	"<0>When viewing a file you can ask bloop to quickly explain it by hitting <2></2> on your keyboard or by selecting \"Explain file\" from the <7></7> popup menu.</0>": "<0> Quando si visualizza un file puoi chiedere a Bloop di spiegarlo rapidamente prendendo <2> </2> sulla tastiera o selezionando \"File spiega\" dal menu popup <7> </7>. </0>",
+	"Explain code": "Spiega il codice",
+	"Navigate your codebase": "Naviga nella base del codice"
 }
