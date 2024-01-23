@@ -139,7 +139,7 @@ const CodeLine = ({
   return (
     <div
       className={`flex w-full flex-1 transition-all duration-150 ease-in-bounce group ${
-        isNewLine ? 'bg-bg-success/30' : isRemovedLine ? 'bg-bg-danger/30' : ''
+        isNewLine ? 'bg-green-subtle' : isRemovedLine ? 'bg-red-subtle' : ''
       } ${hoveredBackground ? 'bg-bg-base-hover' : ''} ${
         isEditingRanges
           ? isSelectionDisabled

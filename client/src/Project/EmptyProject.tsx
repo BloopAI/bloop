@@ -12,12 +12,9 @@ type Props = {};
 const EmptyProject = ({}: Props) => {
   useTranslation();
   const shortcut = useShortcuts(['cmd']);
-  const { setIsVisible, setChosenStep } = useContext(
-    CommandBarContext.Handlers,
-  );
+  const { setIsVisible } = useContext(CommandBarContext.Handlers);
 
   const openCommandBar = useCallback(() => {
-    setChosenStep({ id: CommandBarStepEnum.MANAGE_REPOS });
     setIsVisible(true);
   }, []);
 

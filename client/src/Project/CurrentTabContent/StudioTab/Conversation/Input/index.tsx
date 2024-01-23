@@ -60,7 +60,8 @@ const ConversationInput = ({
 }: Props) => {
   const { t } = useTranslation();
   const { envConfig } = useContext(EnvContext);
-  const [isFocused, setFocused] = useState(false);
+  const [isFocused, setFocused] = useState(i === undefined);
+  const [value, setValue] = useState(message);
   const ref = useRef<HTMLTextAreaElement | null>(null);
   const cloneRef = useRef<HTMLTextAreaElement | null>(null);
   useImperativeHandle(inputRef, () => ref.current!);
@@ -68,11 +69,28 @@ const ConversationInput = ({
   const handleChange = useCallback(
     (e: ChangeEvent<HTMLTextAreaElement>) => {
       if (isActiveTab) {
-        onMessageChange(e.target.value, i);
+        setValue(e.target.value);
       }
     },
     [i, onMessageChange, isActiveTab],
   );
+
+  useEffect(() => {
+    if (isFocused) {
+      setValue(message);
+    }
+  }, [isFocused, message]);
+
+  useEffect(() => {
+    if (i === undefined) {
+      setFocused(true);
+    }
+  }, [i, message]);
+
+  const handleBlur = useCallback(() => {
+    setTimeout(() => setFocused(false), 100); // to allow press on top buttons
+    onMessageChange(value, i);
+  }, [onMessageChange, value, i]);
 
   useEffect(() => {
     if (!isActiveTab) {
@@ -153,18 +171,18 @@ const ConversationInput = ({
               <textarea
                 className={`w-full bg-transparent outline-none focus:outline-0 resize-none body-base placeholder:text-label-muted`}
                 placeholder={t('Start typing...')}
-                value={message}
+                value={value}
                 onChange={handleChange}
                 autoComplete="off"
                 spellCheck="false"
                 ref={ref}
                 rows={1}
-                onBlur={() => setTimeout(() => setFocused(false), 100)} // to allow press on top buttons
+                onBlur={handleBlur}
                 autoFocus
               />
               <textarea
                 className={`resize-none body-base absolute top-0 left-0 right-0 -z-10 opacity-0`}
-                value={message}
+                value={value}
                 disabled
                 rows={1}
                 ref={cloneRef}
@@ -178,7 +196,7 @@ const ConversationInput = ({
                 isTokenLimitExceeded && (
                   <div
                     className={
-                      'flex p-2 gap-2 items-start rounded bg-bg-danger/12 text-bg-danger body-mini'
+                      'flex p-2 gap-2 items-start rounded bg-red-subtle text-red body-mini'
                     }
                   >
                     <WarningSignIcon sizeClassName="w-5 h-5" />

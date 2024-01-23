@@ -40,13 +40,11 @@ const GeneratedDiff = ({
   const onDiffClick = useCallback(() => {}, []);
 
   return (
-    <div className="flex flex-col rounded-6 overflow-hidden border border-transparent hover:shadow-medium hover:border-bg-border-hover focus-within:border-bg-main bg-bg-base hover:focus-within:border-bg-main focus-within:shadow-medium transition-all duration-150 ease-in-out">
+    <div className="my-4 flex flex-col rounded-md overflow-hidden hover:bg-bg-sub-hover transition-all duration-150 ease-in-out">
       <div className="w-full bg-bg-shade">
         <div
           className={`w-full flex items-center justify-center gap-1 py-2 ${
-            applyError
-              ? 'bg-bg-danger/12 text-bg-danger'
-              : ' bg-bg-main/15 text-label-link'
+            applyError ? 'bg-red-subtle text-red' : ' bg-blue-subtle text-blue'
           } body-mini`}
         >
           {applyError ? (

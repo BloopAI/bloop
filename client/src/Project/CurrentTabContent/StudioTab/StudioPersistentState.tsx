@@ -296,6 +296,7 @@ const StudioPersistentState = ({ tabKey, side }: Props) => {
   }, [handleCancel]);
 
   const onSubmit = useCallback(async () => {
+    console.log('inputValue', inputValue, 'project?.id', project?.id);
     if (!inputValue || !project?.id) {
       return;
     }

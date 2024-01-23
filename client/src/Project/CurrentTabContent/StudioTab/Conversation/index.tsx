@@ -86,7 +86,7 @@ const Conversation = ({
   }, [studioData.tokenCount]);
 
   const isTokenLimitExceeded = useMemo(() => {
-    return (studioData.tokenCount?.total || 0) < TOKEN_LIMIT;
+    return (studioData.tokenCount?.total || 0) > TOKEN_LIMIT;
   }, [studioData.tokenCount?.total]);
 
   const handleKeyEvent = useCallback(
@@ -96,7 +96,7 @@ const Conversation = ({
         e.stopPropagation();
         if (
           studioData.inputValue &&
-          isTokenLimitExceeded &&
+          !isTokenLimitExceeded &&
           !hasContextError &&
           requestsLeft
           // && !isChangeUnsaved
@@ -240,7 +240,7 @@ const Conversation = ({
           )}
       </ScrollToBottom>
       <div
-        className={`flex items-start justify-between flex-shrink-0 w-full p-4 gap-4 border-t border-bg-border shadow-medium ${
+        className={`flex items-start justify-between flex-shrink-0 w-full p-4 gap-4 border-t border-bg-border ${
           isScrollable ? 'bg-bg-base border-x rounded-tl-md rounded-tr-md' : ''
         }`}
       >

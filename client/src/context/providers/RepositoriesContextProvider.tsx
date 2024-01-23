@@ -39,7 +39,6 @@ const RepositoriesContextProvider = ({
     );
     eventSourceRef.current.onmessage = (ev) => {
       const data = JSON.parse(ev.data);
-      console.log('data', data);
       if (data.ev?.status_change === SyncStatus.Done) {
         if (!data.rsync) {
           toast(t('Repository indexed'), {
