@@ -133,7 +133,7 @@ const DocTab = ({
               ?.point_id
           : '';
       findElementInCurrentTab(
-        `[data-active="true"][data-section-id="${firstSelectedSection}"]`,
+        `[data-active="true"] [data-section-id="${firstSelectedSection}"]`,
       )?.scrollIntoView();
     }
   }, [sections.length, initialSections]);

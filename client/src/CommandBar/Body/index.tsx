@@ -7,12 +7,14 @@ type Props = {
   sections: CommandBarSectionType[];
   disableKeyNav?: boolean;
   onlyOneClickable?: string;
+  onFocusedIndexChange?: (i: number) => void;
 };
 
 const CommandBarBody = ({
   sections,
   disableKeyNav,
   onlyOneClickable,
+  onFocusedIndexChange,
 }: Props) => {
   const [focusedIndex, setFocusedIndex] = useState(0);
 
@@ -30,6 +32,12 @@ const CommandBarBody = ({
       }
     }
   }, [onlyOneClickable, sections]);
+
+  useEffect(() => {
+    if (onFocusedIndexChange) {
+      onFocusedIndexChange(focusedIndex);
+    }
+  }, [focusedIndex]);
 
   useEffect(() => {
     setFocusedIndex(0);

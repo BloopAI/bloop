@@ -387,7 +387,7 @@ export type DocPageType = {
 
 export type DocSectionType = {
   ancestry: string[];
-  doc_id: number;
+  doc_id: string;
   doc_source: string;
   doc_title: string;
   header: string;
