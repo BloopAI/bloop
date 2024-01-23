@@ -13,7 +13,7 @@ type Props = {};
 
 const UsagePopover = ({}: Props) => {
   const { t } = useTranslation();
-  const { quota, isSubscribed, resetAt } = useContext(
+  const { quota, isSubscribed, resetAt, hasCheckedQuota } = useContext(
     PersonalQuotaContext.Values,
   );
   const { setSettingsSection, setSettingsOpen } = useContext(
@@ -30,7 +30,7 @@ const UsagePopover = ({}: Props) => {
     setSettingsOpen(true);
   }, []);
 
-  return !isSubscribed ? null : (
+  return !hasCheckedQuota || isSubscribed ? null : (
     <div className="absolute bottom-0 left-0 right-0 p-2">
       <div className="flex flex-col items-start gap-2.5 p-2.5 mx-auto w-full max-w-[16.875rem] rounded-md border border-bg-border bg-bg-base shadow-high select-none">
         <div className="w-full flex items-center gap-2 text-label-muted">

@@ -13,6 +13,7 @@ type Props = {
   setFocusedIndex: Dispatch<SetStateAction<number>>;
   offset: number;
   disableKeyNav?: boolean;
+  onlyOneClickable?: string;
 };
 
 const CommandBarBodySection = ({
@@ -22,9 +23,10 @@ const CommandBarBodySection = ({
   offset,
   focusedIndex,
   disableKeyNav,
+  onlyOneClickable,
 }: Props) => {
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col select-none">
       {!!title && <SectionDivider text={title} />}
       {items.map(({ key, ...Rest }, i) =>
         'Component' in Rest ? (
@@ -36,6 +38,7 @@ const CommandBarBodySection = ({
             isFirst={i === 0}
             i={i + offset}
             disableKeyNav={disableKeyNav}
+            onlyOneClickable={onlyOneClickable}
           />
         ) : (
           <Item
@@ -47,6 +50,7 @@ const CommandBarBodySection = ({
             isFirst={i === 0}
             disableKeyNav={disableKeyNav}
             itemKey={key}
+            onlyOneClickable={onlyOneClickable}
           />
         ),
       )}

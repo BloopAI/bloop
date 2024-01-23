@@ -283,6 +283,7 @@ export type EnvConfig = {
   bloop_user_profile?: {
     prompt_guide?: string;
     allow_session_recordings?: boolean;
+    is_tutorial_finished?: boolean;
   };
   credentials_upgrade?: boolean;
 };

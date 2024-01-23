@@ -1,4 +1,4 @@
-import {
+import React, {
   ChangeEvent,
   memo,
   useCallback,
@@ -41,10 +41,15 @@ import {
 } from '../../services/storage';
 import { bubbleUpRecentItems } from '../../utils/commandBarUtils';
 import { TabsContext } from '../../context/tabsContext';
+import TutorialBody from '../Tutorial/TutorialBody';
+import TutorialTooltip from '../Tutorial/TutorialTooltip';
+import { tutorialSteps } from '../../consts/tutorialSteps';
 
-type Props = {};
+type Props = {
+  shouldShowTutorial?: boolean;
+};
 
-const InitialCommandBar = ({}: Props) => {
+const InitialCommandBar = ({ shouldShowTutorial }: Props) => {
   const { t } = useTranslation();
   const { setIsVisible } = useContext(CommandBarContext.Handlers);
   const { tabItems } = useContext(CommandBarContext.FocusedTab);
@@ -68,15 +73,6 @@ const InitialCommandBar = ({}: Props) => {
     const recentKeys = getJsonFromStorage<string[]>(RECENT_COMMANDS_KEY);
     const contextItems: CommandBarItemGeneralType[] = [
       {
-        label: t('Manage repositories'),
-        Icon: RepositoryIcon,
-        id: CommandBarStepEnum.MANAGE_REPOS,
-        key: CommandBarStepEnum.MANAGE_REPOS,
-        shortcut: globalShortcuts.openManageRepos.shortcut,
-        footerHint: '',
-        footerBtns: [{ label: t('Manage'), shortcut: ['entr'] }],
-      },
-      {
         label: t('Add new repository'),
         Icon: PlusSignIcon,
         id: CommandBarStepEnum.ADD_NEW_REPO,
@@ -89,6 +85,15 @@ const InitialCommandBar = ({}: Props) => {
             shortcut: ['entr'],
           },
         ],
+      },
+      {
+        label: t('Manage repositories'),
+        Icon: RepositoryIcon,
+        id: CommandBarStepEnum.MANAGE_REPOS,
+        key: CommandBarStepEnum.MANAGE_REPOS,
+        shortcut: globalShortcuts.openManageRepos.shortcut,
+        footerHint: '',
+        footerBtns: [{ label: t('Manage'), shortcut: ['entr'] }],
       },
       {
         label: t('Manage docs'),
@@ -374,7 +379,16 @@ const InitialCommandBar = ({}: Props) => {
       recentKeys || [],
       t('Recently used'),
     );
-  }, [t, projects, project, theme, globalShortcuts, tabItems, openNewTab]);
+  }, [
+    t,
+    projects,
+    project,
+    theme,
+    globalShortcuts,
+    tabItems,
+    openNewTab,
+    shouldShowTutorial,
+  ]);
 
   const sectionsToShow = useMemo(() => {
     if (!inputValue) {
@@ -406,8 +420,30 @@ const InitialCommandBar = ({}: Props) => {
         value={inputValue}
         onChange={handleInputChange}
       />
+      {shouldShowTutorial ? (
+        <TutorialTooltip
+          content={
+            <TutorialBody
+              stepNumber={1}
+              title={t(tutorialSteps[0].title)}
+              description={t(tutorialSteps[0].description)}
+              hint={
+                t(tutorialSteps[0].hint[0]) + t(tutorialSteps[0].hint[1]) + '.'
+              }
+            />
+          }
+          wrapperClassName="absolute top-[8.5rem] left-0 right-0"
+        >
+          <div className="" />
+        </TutorialTooltip>
+      ) : null}
       {!!sectionsToShow.length ? (
-        <Body sections={sectionsToShow} />
+        <Body
+          sections={sectionsToShow}
+          onlyOneClickable={
+            shouldShowTutorial ? CommandBarStepEnum.ADD_NEW_REPO : undefined
+          }
+        />
       ) : (
         <div className="flex-1 items-center justify-center text-label-muted text-center py-2">
           <Trans>No commands found...</Trans>

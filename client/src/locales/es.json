@@ -668,5 +668,21 @@
 	"Expand": "Expandir",
 	"Usage status": "Estado de uso",
 	"The amount of times you can generate responses in Studio conversations.": "La cantidad de veces que puede generar respuestas en las conversaciones de estudio.",
-	"Collapse": "Colapsar"
+	"Collapse": "Colapsar",
+	"Adding repository": "Agregar repositorio",
+	"Projects require at least one synced repository.": "Los proyectos requieren al menos un repositorio sincronizado.",
+	"Start by selecting ": "Comience por seleccionar",
+	"Repository types": "Tipos de repositorio",
+	"You can add 3 types of repositories, private, public and local.": "Puede agregar 3 tipos de repositorios, privados, públicos y locales.",
+	"Indexing repositories": "Repositorios de indexación",
+	"Skip": "Saltar",
+	"{{repoName}} has finished indexing and you can use it in your projects now.": "{{Reponame}} ha terminado de indexación y ahora puede usarla en sus proyectos.",
+	"{{repoName}} is currently indexing as soon as it is finished you will be able to add it to your project.": "{{Reponame}} actualmente está indexando tan pronto como esté terminado, podrá agregarlo a su proyecto.",
+	"Ask a question": "Hacer una pregunta",
+	"Ask your first question": "Haz tu primera pregunta",
+	"<0>Create a new conversation with bloop by hitting <2></2> on your keyboard or by pressing the <4></4> in the header bar.</0>": "<0> Crea una nueva conversación con Bloop presionando <2> </2> en tu teclado o presionando el <4> </4> en la barra de encabezado. </0>",
+	"<0>When viewing a file you can ask bloop to quickly explain it by hitting <2></2> on your keyboard or by selecting \"Explain file\" from the <5></5> popup menu.</0>": "<0> Al ver un archivo, puede pedirle a Bloop que lo explique rápidamente presionando <2> </2> en su teclado o seleccionando \"Explicar archivo\" en el menú emergente <5> </5> </0> </0>",
+	"<0>When viewing a file you can ask bloop to quickly explain it by hitting <2></2> on your keyboard or by selecting \"Explain file\" from the <7></7> popup menu.</0>": "<0> Al ver un archivo, puede pedirle a Bloop que lo explique rápidamente presionando <2> </2> en su teclado o seleccionando \"Explicar archivo\" en el menú emergente <7> </7> emergente. </0>",
+	"Explain code": "Código de explicación",
+	"Navigate your codebase": "Navegue su base de código"
 }

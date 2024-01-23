@@ -1,4 +1,4 @@
-import { memo, useCallback, useContext, useMemo } from 'react';
+import React, { memo, useCallback, useContext, useMemo } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useGlobalShortcuts } from '../../hooks/useGlobalShortcuts';
@@ -14,10 +14,15 @@ import { CommandBarContext } from '../../context/commandBarContext';
 import { DeviceContext } from '../../context/deviceContext';
 import { scanLocalRepos, syncRepo } from '../../services/api';
 import SpinLoaderContainer from '../../components/Loaders/SpinnerLoader';
+import TutorialBody from '../Tutorial/TutorialBody';
+import TutorialTooltip from '../Tutorial/TutorialTooltip';
+import { tutorialSteps } from '../../consts/tutorialSteps';
 
-type Props = {};
+type Props = {
+  shouldShowTutorial?: boolean;
+};
 
-const AddNewRepo = ({}: Props) => {
+const AddNewRepo = ({ shouldShowTutorial }: Props) => {
   const { t } = useTranslation();
   const globalShortcuts = useGlobalShortcuts();
   const { setChosenStep } = useContext(CommandBarContext.Handlers);
@@ -123,7 +128,27 @@ const AddNewRepo = ({}: Props) => {
         noInput
         handleBack={handleBack}
       />
-      <Body sections={initialSections} />
+      {shouldShowTutorial ? (
+        <TutorialTooltip
+          content={
+            <TutorialBody
+              stepNumber={2}
+              title={t(tutorialSteps[1].title)}
+              description={t(tutorialSteps[1].description)}
+              hint={
+                t(tutorialSteps[1].hint[0]) + t(tutorialSteps[1].hint[1]) + '.'
+              }
+            />
+          }
+          wrapperClassName="absolute top-[5rem] left-0 right-0"
+        >
+          <div className="" />
+        </TutorialTooltip>
+      ) : null}
+      <Body
+        sections={initialSections}
+        onlyOneClickable={shouldShowTutorial ? 'private' : undefined}
+      />
       <Footer />
     </div>
   );
