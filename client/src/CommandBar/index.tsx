@@ -21,6 +21,7 @@ import AddNewRepo from './steps/AddNewRepo';
 import ToggleTheme from './steps/ToggleTheme';
 import SearchFiles from './steps/SeachFiles';
 import AddFileToStudio from './steps/AddToStudio';
+import SearchDocs from './steps/SeachDocs';
 
 type Props = {};
 
@@ -72,7 +73,7 @@ const CommandBar = ({}: Props) => {
       onClose={handleClose}
       noBg
       containerClassName={
-        'h-[28.875rem] w-full max-w-[40rem] !z-90 bg-bg-base border border-bg-border backdrop-blur-8 shadow-float'
+        'h-[28.875rem] !z-90 bg-bg-base border border-bg-border backdrop-blur-8 shadow-float'
       }
     >
       {chosenStep.id === CommandBarStepEnum.INITIAL ? (
@@ -95,6 +96,8 @@ const CommandBar = ({}: Props) => {
         <ToggleTheme />
       ) : chosenStep.id === CommandBarStepEnum.SEARCH_FILES ? (
         <SearchFiles {...(chosenStep.data || {})} />
+      ) : chosenStep.id === CommandBarStepEnum.SEARCH_DOCS ? (
+        <SearchDocs {...chosenStep.data} />
       ) : chosenStep.id === CommandBarStepEnum.ADD_TO_STUDIO ? (
         <AddFileToStudio {...chosenStep.data} />
       ) : null}

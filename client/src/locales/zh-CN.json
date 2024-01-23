@@ -677,5 +677,6 @@
 	"<0>When viewing a file you can ask bloop to quickly explain it by hitting <2></2> on your keyboard or by selecting \"Explain file\" from the <5></5> popup menu.</0>": "<0>查看文件时，您可以要求Bloop通过键盘上的<2> </2>快速解释它，或者通过从<5> </5>弹出菜单中选择“说明文件”。</0>",
 	"<0>When viewing a file you can ask bloop to quickly explain it by hitting <2></2> on your keyboard or by selecting \"Explain file\" from the <7></7> popup menu.</0>": "<0>查看文件时，您可以要求Bloop通过在键盘上击中<2> </2>快速解释它，或者通过从<7> </7>弹出菜单中选择“说明文件”。</0>",
 	"Explain code": "解释代码",
-	"Dismiss tutorial": "解雇教程"
+	"Dismiss tutorial": "解雇教程",
+	"Search docs": "搜索文档"
 }

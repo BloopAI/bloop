@@ -507,10 +507,13 @@ export type CommandBarStepType = {
 export type CommandBarActiveStepType =
   | AddToStudioStepType
   | SearchFilesStepType
+  | SearchDocsStepType
   | {
       id: Exclude<
         CommandBarStepEnum,
-        CommandBarStepEnum.ADD_TO_STUDIO | CommandBarStepEnum.SEARCH_FILES
+        | CommandBarStepEnum.ADD_TO_STUDIO
+        | CommandBarStepEnum.SEARCH_FILES
+        | CommandBarStepEnum.SEARCH_DOCS
       >;
       data?: Record<string, any>;
     };
@@ -538,6 +541,11 @@ export type SearchFilesStepType = {
   data?: { studioId: string };
 };
 
+export type SearchDocsStepType = {
+  id: CommandBarStepEnum.SEARCH_DOCS;
+  data: { studioId?: string; docId: string };
+};
+
 export enum CommandBarStepEnum {
   INITIAL = 'initial',
   MANAGE_REPOS = 'manage_repos',
@@ -550,6 +558,7 @@ export enum CommandBarStepEnum {
   CREATE_PROJECT = 'create_project',
   TOGGLE_THEME = 'toggle_theme',
   SEARCH_FILES = 'search_files',
+  SEARCH_DOCS = 'search_docs',
   ADD_TO_STUDIO = 'add_to_studio',
 }
 

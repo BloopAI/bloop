@@ -64,7 +64,7 @@ const CreateProject = ({}: Props) => {
   );
 
   return (
-    <div className="w-full flex flex-col h-[28.875rem] max-w-[40rem] overflow-auto">
+    <div className="flex flex-col h-[28.875rem] w-[40rem] overflow-auto">
       <Header
         breadcrumbs={breadcrumbs}
         handleBack={handleBack}

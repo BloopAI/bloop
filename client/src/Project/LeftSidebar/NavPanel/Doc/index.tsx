@@ -3,6 +3,7 @@ import React, {
   memo,
   SetStateAction,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useState,
@@ -14,10 +15,13 @@ import { getIndexedPages } from '../../../../services/api';
 import {
   ArrowTriangleBottomIcon,
   MagazineIcon,
+  MagnifyToolIcon,
   MoreHorizontalIcon,
 } from '../../../../icons';
 import Dropdown from '../../../../components/Dropdown';
 import Button from '../../../../components/Button';
+import { CommandBarContext } from '../../../../context/commandBarContext';
+import { CommandBarStepEnum } from '../../../../types/general';
 import DocDropdown from './DocDropdown';
 import DocEntry from './DocEntry';
 
@@ -55,6 +59,9 @@ const DocNav = ({
     isLeftSidebarFocused,
     isCommandBarVisible,
   } = useNavPanel(index, setExpanded, isExpanded, focusedIndex);
+  const { setChosenStep, setIsVisible } = useContext(
+    CommandBarContext.Handlers,
+  );
 
   const fetchPages = useCallback(async () => {
     const resp = await getIndexedPages(docId);
@@ -70,6 +77,11 @@ const DocNav = ({
       key: docId,
       docId,
     };
+  }, [docId]);
+
+  const onSearch = useCallback(() => {
+    setChosenStep({ id: CommandBarStepEnum.SEARCH_DOCS, data: { docId } });
+    setIsVisible(true);
   }, [docId]);
 
   return (
@@ -90,11 +102,20 @@ const DocNav = ({
           <MagazineIcon sizeClassName="w-3.5 h-3.5" />
         )}
         <p className="flex items-center gap-1 body-s-b flex-1 ellipsis">
-          <span className="text-label-title">{title}</span>
+          <span className="text-label-title ellipsis">{title}</span>
           {isExpanded && <ArrowTriangleBottomIcon sizeClassName="w-2 h-2" />}
         </p>
         {isExpanded && (
-          <div onClick={noPropagate}>
+          <div onClick={noPropagate} className="flex gap-1 items-center">
+            <Button
+              size="mini"
+              variant="tertiary"
+              onlyIcon
+              title={t('Search')}
+              onClick={onSearch}
+            >
+              <MagnifyToolIcon sizeClassName="w-3.5 h-3.5" />
+            </Button>
             <Dropdown
               DropdownComponent={DocDropdown}
               dropdownComponentProps={dropdownComponentProps}

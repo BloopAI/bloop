@@ -486,10 +486,10 @@ export const getIndexedDocs = (): Promise<DocShortType[]> =>
 export const getDocById = (id: string): Promise<DocShortType> =>
   http(`/docs/${id}`).then((r) => r.data);
 export const getIndexedPages = (id: number | string): Promise<DocPageType[]> =>
-  http(`docs/${id}/list`, { params: { limit: 100 } }).then((r) => r.data);
+  http(`/docs/${id}/list`, { params: { limit: 100 } }).then((r) => r.data);
 export const deleteDocProvider = (
   id: number | string,
-): Promise<DocPageType[]> => http.delete(`docs/${id}`).then((r) => r.data);
+): Promise<DocPageType[]> => http.delete(`/docs/${id}`).then((r) => r.data);
 export const searchDocSections = (
   id: string,
   q: string,

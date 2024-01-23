@@ -647,5 +647,6 @@
 	"<0>When viewing a file you can ask bloop to quickly explain it by hitting <2></2> on your keyboard or by selecting \"Explain file\" from the <5></5> popup menu.</0>": "<0> Quando si visualizza un file puoi chiedere a Bloop di spiegarlo rapidamente prendendo <2> </2> sulla tastiera o selezionando \"Spiega file\" dal menu popup <5> </5>. </0>",
 	"<0>When viewing a file you can ask bloop to quickly explain it by hitting <2></2> on your keyboard or by selecting \"Explain file\" from the <7></7> popup menu.</0>": "<0> Quando si visualizza un file puoi chiedere a Bloop di spiegarlo rapidamente prendendo <2> </2> sulla tastiera o selezionando \"File spiega\" dal menu popup <7> </7>. </0>",
 	"Explain code": "Spiega il codice",
-	"Navigate your codebase": "Naviga nella base del codice"
+	"Navigate your codebase": "Naviga nella base del codice",
+	"Search docs": "Cerca documenti"
 }

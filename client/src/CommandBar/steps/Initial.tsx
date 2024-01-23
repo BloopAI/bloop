@@ -414,7 +414,7 @@ const InitialCommandBar = ({ shouldShowTutorial }: Props) => {
   }, [inputValue, initialSections]);
 
   return (
-    <div className="w-full flex flex-col h-[28.875rem] max-w-[40rem] overflow-auto">
+    <div className="flex flex-col h-[28.875rem] w-[40rem] overflow-auto">
       <Header
         breadcrumbs={[project?.name || 'Default project']}
         value={inputValue}
