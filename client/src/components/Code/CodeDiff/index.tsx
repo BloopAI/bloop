@@ -65,14 +65,14 @@ const CodeDiff = ({
       e.stopPropagation();
       onDiffChanged(
         i,
-        `--- ${filePath}
-+++ ${filePath}
+        `--- ${repo}:${filePath}
++++ ${repo}:${filePath}
 ${editedValue}
 `,
       );
       setIsEditMode(false);
     },
-    [i, editedValue, onDiffChanged],
+    [i, editedValue, onDiffChanged, repo],
   );
 
   const onRemove = useCallback(
