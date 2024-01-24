@@ -43,4 +43,3 @@ export const USER_FONT_SIZE_KEY = 'user_font_size';
 export const PROJECT_KEY = 'project';
 export const RECENT_COMMANDS_KEY = 'recent_commands';
 export const RECENT_FILES_KEY = 'recent_files';
-export const CMD_BAR_TUTORIAL_FINISHED_KEY = 'cmd_bar_tutorial_finished';

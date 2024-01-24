@@ -1,4 +1,11 @@
-import { memo, useCallback, useContext, useMemo, useState } from 'react';
+import {
+  memo,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { Trans } from 'react-i18next';
 import {
   ChatBubblesIcon,
@@ -17,6 +24,7 @@ import { getConfig, putConfig } from '../../services/api';
 import { TabsContext } from '../../context/tabsContext';
 import { TabTypesEnum } from '../../types/general';
 import { CommandBarContext } from '../../context/commandBarContext';
+import { UIContext } from '../../context/uiContext';
 
 type Props = {};
 
@@ -32,14 +40,15 @@ const cards = [
         the header bar.
       </>
     ),
-    btnTitle: 'New chat',
+    btnTitle: 'New conversation',
   },
   {
     Icon: FileWithSparksIcon,
     title: 'Explain a file',
     description: (
       <>
-        When viewing a file you can ask bloop to quickly explain it by hitting{' '}
+        To begin, open a file from the sidebar on the left. Once you have a file
+        open, you can ask bloop to quickly explain it by hitting{' '}
         <MultiKeyHint shortcut={explainFileShortcut} variant="outlined" /> on{' '}
         {/* eslint-disable-next-line react/no-unescaped-entities */}
         your keyboard or by selecting "Explain file" from the{' '}
@@ -72,6 +81,8 @@ const TutorialCards = ({}: Props) => {
   const { setEnvConfig, envConfig } = useContext(EnvContext);
   const { openNewTab } = useContext(TabsContext.Handlers);
   const { tabItems } = useContext(CommandBarContext.FocusedTab);
+  const { onBoardingState } = useContext(UIContext.Onboarding);
+  const [isManualControl, setIsManualControl] = useState(false);
 
   const onSkip = useCallback(() => {
     setEnvConfig((prevState) => ({
@@ -91,8 +102,27 @@ const TutorialCards = ({}: Props) => {
     });
   }, [envConfig]);
 
+  useEffect(() => {
+    if (!isManualControl) {
+      if (step === 0 && onBoardingState.isChatOpened) {
+        setStep(1);
+      } else if (step === 1 && onBoardingState.isFileExplained) {
+        setStep(2);
+      } else if (step === 2 && onBoardingState.isCodeExplained) {
+        setStep(3);
+      } else if (step === 3 && onBoardingState.isCodeNavigated) {
+        onSkip();
+      }
+    }
+  }, [onBoardingState, step, onSkip, isManualControl]);
+
   const handleNext = useCallback(() => {
     setStep((prev) => prev + 1);
+  }, []);
+
+  const handleBack = useCallback(() => {
+    setStep((prev) => Math.max(prev - 1, 0));
+    setIsManualControl(true);
   }, []);
 
   const { Icon, title, description, btnTitle } = useMemo(() => {
@@ -104,7 +134,7 @@ const TutorialCards = ({}: Props) => {
   }, [tabItems]);
 
   const onBtnClick = useCallback(() => {
-    if (btnTitle === 'New chat') {
+    if (btnTitle === 'New conversation') {
       openNewTab({ type: TabTypesEnum.CHAT });
       handleNext();
     } else if (btnTitle === 'Explain current file' && explainCurrentFile) {
@@ -151,20 +181,38 @@ const TutorialCards = ({}: Props) => {
           ) : (
             <span />
           )}
-          {step < cards.length - 1 ? (
-            <div className="flex items-center gap-3">
-              <button className="body-mini text-label-faint" onClick={onSkip}>
-                <Trans>Skip</Trans>
-              </button>
-              <Button variant="secondary" size="mini" onClick={handleNext}>
-                <Trans>Next</Trans>
-              </Button>
-            </div>
-          ) : (
-            <Button variant="danger" size="mini" onClick={onSkip}>
-              <Trans>Dismiss tutorial</Trans>
-            </Button>
-          )}
+          <div className="flex items-center gap-3">
+            {step < cards.length - 1 ? (
+              <>
+                <button className="body-mini text-label-faint" onClick={onSkip}>
+                  <Trans>Skip</Trans>
+                </button>
+                {step !== 0 && (
+                  <button
+                    className="body-mini text-label-faint"
+                    onClick={handleBack}
+                  >
+                    <Trans>Back</Trans>
+                  </button>
+                )}
+                <Button variant="secondary" size="mini" onClick={handleNext}>
+                  <Trans>Next</Trans>
+                </Button>
+              </>
+            ) : (
+              <>
+                <button
+                  className="body-mini text-label-faint"
+                  onClick={handleBack}
+                >
+                  <Trans>Back</Trans>
+                </button>
+                <Button variant="danger" size="mini" onClick={onSkip}>
+                  <Trans>Dismiss tutorial</Trans>
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>

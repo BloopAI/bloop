@@ -8,7 +8,7 @@ export const tutorialSteps = [
     title: 'Repository types',
     description:
       'You can add 3 types of repositories, private, public and local.',
-    hint: ['Start by selecting ', 'Private repository'],
+    hint: ['Start by selecting a type repository you would like to index.'],
   },
   {
     title: 'Indexing repositories',

@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useContext } from 'react';
+import React, { memo, useCallback, useContext, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDragLayer } from 'react-dnd';
 import { ProjectContext } from '../context/projectContext';
@@ -9,6 +9,7 @@ import { UIContext } from '../context/uiContext';
 import { checkEventKeys } from '../utils/keyboardUtils';
 import useKeyboardNavigation from '../hooks/useKeyboardNavigation';
 import StudiosContextProvider from '../context/providers/StudiosContextProvider';
+import { EnvContext } from '../context/envContext';
 import LeftSidebar from './LeftSidebar';
 import CurrentTabContent from './CurrentTabContent';
 import EmptyProject from './EmptyProject';
@@ -16,6 +17,7 @@ import DropTarget from './CurrentTabContent/DropTarget';
 import RightTab from './RightTab';
 import ChatPersistentState from './CurrentTabContent/ChatTab/ChatPersistentState';
 import StudioPersistentState from './CurrentTabContent/StudioTab/StudioPersistentState';
+import TutorialCards from './CurrentTabContent/TutorialCards';
 
 type Props = {};
 
@@ -24,6 +26,9 @@ const Project = ({}: Props) => {
   const { project } = useContext(ProjectContext.Current);
   const { rightTabs, leftTabs } = useContext(TabsContext.All);
   const { setIsLeftSidebarFocused } = useContext(UIContext.Focus);
+  const { setOnBoardingState, onBoardingState } = useContext(
+    UIContext.Onboarding,
+  );
   const {
     setActiveRightTab,
     setActiveLeftTab,
@@ -34,6 +39,7 @@ const Project = ({}: Props) => {
   const { isDragging } = useDragLayer((monitor) => ({
     isDragging: monitor.isDragging(),
   }));
+  const { setEnvConfig, envConfig } = useContext(EnvContext);
 
   const onDropToRight = useCallback((tab: TabType) => {
     setRightTabs((prev) =>
@@ -74,6 +80,13 @@ const Project = ({}: Props) => {
     setActiveLeftTab(tab);
     setFocusedPanel('left');
   }, []);
+
+  const shouldShowTutorial = useMemo(() => {
+    return (
+      !envConfig?.bloop_user_profile?.is_tutorial_finished &&
+      onBoardingState.isCommandBarTutorialFinished
+    );
+  }, [envConfig?.bloop_user_profile, onBoardingState]);
 
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
@@ -117,6 +130,7 @@ const Project = ({}: Props) => {
               moveToAnotherSide={onDropToLeft}
             />
           )}
+          {shouldShowTutorial && <TutorialCards />}
           {[...leftTabs, ...rightTabs].map((t, i) =>
             t.type === TabTypesEnum.CHAT ? (
               <ChatPersistentState

@@ -667,5 +667,8 @@
 	"<0>Use your cursor to select any piece of code within a file and ask bloop to explain it by pressing \"Explain\" in the floating toolbar.</0>": "<0>カーソルを使用してファイル内のコードを選択し、フローティングツールバーで「説明」を押してBloopに説明するように依頼します。</0>",
 	"Dismiss tutorial": "チュートリアルを却下します",
 	"Search docs": "ドキュメントを検索します",
-	"Permanently delete <2>{{projectName}}</2> and remove all the data associated to it. Repositories will remain accessible in your GitHub account.": "永続的に<2>{{projectName}}</2>を削除し、それに関連付けられたすべてのデータを削除します。 リポジトリは、GitHubアカウントでアクセスできます。"
+	"Permanently delete <2>{{projectName}}</2> and remove all the data associated to it. Repositories will remain accessible in your GitHub account.": "永続的に<2>{{projectName}}</2>を削除し、それに関連付けられたすべてのデータを削除します。 リポジトリは、GitHubアカウントでアクセスできます。",
+	"New conversation": "新しい会話",
+	"Start by selecting a type repository you would like to index.": "インデックスを作成するタイプリポジトリを選択することから始めます。",
+	"<0>To begin, open a file from the sidebar on the left. Once you have a file open, you can ask bloop to quickly explain it by hitting <2></2> on your keyboard or by selecting \"Explain file\" from the <7></7> popup menu.</0>": "<0>開始するには、左側のサイドバーからファイルを開きます。 ファイルを開いたら、キーボードで<2> </2>を押すか、<7> </7>ポップアップメニューから「ファイルの説明」を選択することで、Bloopにすばやく説明するように依頼することができます。</0>"
 }

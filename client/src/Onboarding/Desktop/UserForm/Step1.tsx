@@ -126,7 +126,7 @@ const UserFormStep1 = ({ form, setForm, onContinue }: Props) => {
           </Button>
         </Dropdown>
       </div>
-      <Button onClick={handleSubmit}>
+      <Button onClick={handleSubmit} type="submit">
         <Trans>Continue</Trans>
       </Button>
       <p className="body-mini text-label-base text-center">
@@ -135,6 +135,7 @@ const UserFormStep1 = ({ form, setForm, onContinue }: Props) => {
         <button
           onClick={() => openLink('https://bloop.ai/terms')}
           className="text-label-link"
+          type="button"
         >
           <Trans>Terms & conditions</Trans>
         </button>{' '}
@@ -142,6 +143,7 @@ const UserFormStep1 = ({ form, setForm, onContinue }: Props) => {
         <button
           onClick={() => openLink('https://bloop.ai/privacy')}
           className="text-label-link"
+          type="button"
         >
           <Trans>Privacy policy</Trans>
         </button>

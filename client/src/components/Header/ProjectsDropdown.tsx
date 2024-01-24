@@ -12,6 +12,8 @@ import {
 import { UIContext } from '../../context/uiContext';
 import FileIcon from '../FileIcon';
 import { getFileExtensionForLang } from '../../utils';
+import { TabsContext } from '../../context/tabsContext';
+import { newProjectShortcut } from '../../consts/shortcuts';
 
 type Props = {};
 
@@ -25,6 +27,8 @@ const ProjectsDropdown = ({}: Props) => {
   const { setProjectSettingsSection, setProjectSettingsOpen } = useContext(
     UIContext.ProjectSettings,
   );
+  const { setLeftTabs, setRightTabs, setActiveRightTab, setActiveLeftTab } =
+    useContext(TabsContext.Handlers);
 
   const createNewProject = useCallback(() => {
     setChosenStep({ id: CommandBarStepEnum.CREATE_PROJECT });
@@ -36,6 +40,14 @@ const ProjectsDropdown = ({}: Props) => {
     setProjectSettingsSection(ProjectSettingSections.GENERAL);
   }, []);
 
+  const handleProjectSwitch = useCallback((projectId: string) => {
+    setCurrentProjectId(projectId);
+    setLeftTabs([]);
+    setRightTabs([]);
+    setActiveLeftTab(null);
+    setActiveRightTab(null);
+  }, []);
+
   return (
     <div className="">
       <div className="flex flex-col p-1 items-start border-b border-bg-border">
@@ -44,7 +56,7 @@ const ProjectsDropdown = ({}: Props) => {
           <SectionItem
             key={p.id}
             isSelected={p.id === project?.id}
-            onClick={() => setCurrentProjectId(p.id)}
+            onClick={() => handleProjectSwitch(p.id)}
             label={p.name}
             icon={
               p.most_common_langs?.[0] ? (
@@ -72,7 +84,7 @@ const ProjectsDropdown = ({}: Props) => {
           onClick={createNewProject}
           label={t('New project')}
           icon={<PlusSignIcon sizeClassName="w-4 h-4" />}
-          shortcut={['cmd', 'N']}
+          shortcut={newProjectShortcut}
         />
       </div>
     </div>

@@ -4,6 +4,7 @@ import {
   CommandBarItemGeneralType,
   CommandBarItemCustomType,
 } from '../types/general';
+import { newProjectShortcut } from '../consts/shortcuts';
 import { bubbleUpRecentItems } from './commandBarUtils';
 
 const items1: CommandBarItemGeneralType[] = [
@@ -30,7 +31,7 @@ const items1: CommandBarItemGeneralType[] = [
     Icon: RepositoryIcon,
     id: CommandBarStepEnum.CREATE_PROJECT,
     key: CommandBarStepEnum.CREATE_PROJECT,
-    shortcut: ['cmd', 'N'],
+    shortcut: newProjectShortcut,
     footerHint: '',
     footerBtns: [],
   },

@@ -7,6 +7,12 @@ import { TabTypesEnum } from '../../../types/general';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
 import { TabsContext } from '../../../context/tabsContext';
 import Dropdown from '../../../components/Dropdown';
+import {
+  newChatTabShortcut,
+  newStudioTabShortcut,
+} from '../../../consts/shortcuts';
+import { postCodeStudio } from '../../../services/api';
+import { ProjectContext } from '../../../context/projectContext';
 import AddTabDropdown from './AddTabDropdown';
 
 type Props = {
@@ -15,11 +21,12 @@ type Props = {
   focusedPanel: 'left' | 'right';
 };
 
-const newTabShortcut = ['option', 'N'];
-
 const AddTabButton = ({ side, focusedPanel, tabsLength }: Props) => {
   const { t } = useTranslation();
   const { openNewTab } = useContext(TabsContext.Handlers);
+  const { refreshCurrentProjectStudios, project } = useContext(
+    ProjectContext.Current,
+  );
 
   const dropdownComponentProps = useMemo(() => {
     return { side };
@@ -29,12 +36,24 @@ const AddTabButton = ({ side, focusedPanel, tabsLength }: Props) => {
     openNewTab({ type: TabTypesEnum.CHAT }, side);
   }, [openNewTab, side]);
 
+  const openStudioTab = useCallback(async () => {
+    if (project?.id) {
+      const newId = await postCodeStudio(project?.id);
+      refreshCurrentProjectStudios();
+      openNewTab({ type: TabTypesEnum.STUDIO, studioId: newId }, side);
+    }
+  }, [openNewTab, side, project?.id]);
+
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
-      if (checkEventKeys(e, newTabShortcut)) {
+      if (checkEventKeys(e, newChatTabShortcut)) {
         e.stopPropagation();
         e.preventDefault();
         openChatTab();
+      } else if (checkEventKeys(e, newStudioTabShortcut)) {
+        e.stopPropagation();
+        e.preventDefault();
+        openStudioTab();
       }
     },
     [openNewTab],

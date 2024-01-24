@@ -23,6 +23,7 @@ import { checkEventKeys } from '../../utils/keyboardUtils';
 import useKeyboardNavigation from '../../hooks/useKeyboardNavigation';
 import { openTabsCache } from '../../services/cache';
 import { RECENT_FILES_KEY, updateArrayInStorage } from '../../services/storage';
+import { UIContext } from '../uiContext';
 
 type Props = {};
 
@@ -33,6 +34,7 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
     isLoading: isLoadingProjects,
   } = useContext(ProjectContext.Current);
   const { setFocusedTabItems } = useContext(CommandBarContext.Handlers);
+  const { setOnBoardingState } = useContext(UIContext.Onboarding);
   const [leftTabs, setLeftTabs] = useState<TabType[]>([]);
   const [rightTabs, setRightTabs] = useState<TabType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -68,6 +70,11 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
         setRightTabs(leftTabs);
         setActiveRightTab(leftTabs[0]);
         setLeftTabs(() => []);
+      }
+      if (data.type === TabTypesEnum.CHAT) {
+        setOnBoardingState((prev) =>
+          prev.isChatOpened ? prev : { ...prev, isChatOpened: true },
+        );
       }
       if (
         data.type === TabTypesEnum.CHAT &&

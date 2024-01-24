@@ -97,7 +97,11 @@ ${editedValue}
             noMargin
           />
           {filePath ? (
-            <BreadcrumbsPathContainer path={filePath} nonInteractive />
+            <BreadcrumbsPathContainer
+              path={filePath}
+              repoRef={repo}
+              nonInteractive
+            />
           ) : (
             <span className="body-mini-b">
               {getPrettyLangName(language) || language}

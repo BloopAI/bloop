@@ -111,7 +111,7 @@ const ChatTab = ({
             sizeClassName="w-4 h-4"
             className="text-brand-default"
           />
-          {title || t('New chat')}
+          {title || t('New conversation')}
         </div>
         {focusedPanel === side && (
           <Dropdown

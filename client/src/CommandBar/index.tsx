@@ -6,10 +6,7 @@ import { CommandBarContext } from '../context/commandBarContext';
 import { useGlobalShortcuts } from '../hooks/useGlobalShortcuts';
 import { checkEventKeys } from '../utils/keyboardUtils';
 import { EnvContext } from '../context/envContext';
-import {
-  CMD_BAR_TUTORIAL_FINISHED_KEY,
-  getPlainFromStorage,
-} from '../services/storage';
+import { UIContext } from '../context/uiContext';
 import Initial from './steps/Initial';
 import PrivateRepos from './steps/PrivateRepos';
 import PublicRepos from './steps/PublicRepos';
@@ -31,7 +28,8 @@ const CommandBar = ({}: Props) => {
   const { setChosenStep, setIsVisible } = useContext(
     CommandBarContext.Handlers,
   );
-  const { setEnvConfig, envConfig } = useContext(EnvContext);
+  const { envConfig } = useContext(EnvContext);
+  const { onBoardingState } = useContext(UIContext.Onboarding);
   const globalShortcuts = useGlobalShortcuts();
 
   const handleClose = useCallback(() => {
@@ -44,9 +42,9 @@ const CommandBar = ({}: Props) => {
   const shouldShowTutorial = useMemo(() => {
     return (
       !envConfig?.bloop_user_profile?.is_tutorial_finished &&
-      !getPlainFromStorage(CMD_BAR_TUTORIAL_FINISHED_KEY)
+      !onBoardingState.isCommandBarTutorialFinished
     );
-  }, [envConfig?.bloop_user_profile, isVisible]);
+  }, [envConfig?.bloop_user_profile, onBoardingState]);
 
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
@@ -89,7 +87,7 @@ const CommandBar = ({}: Props) => {
       ) : chosenStep.id === CommandBarStepEnum.CREATE_PROJECT ? (
         <CreateProject />
       ) : chosenStep.id === CommandBarStepEnum.MANAGE_REPOS ? (
-        <ManageRepos />
+        <ManageRepos shouldShowTutorial={shouldShowTutorial} />
       ) : chosenStep.id === CommandBarStepEnum.ADD_NEW_REPO ? (
         <AddNewRepo shouldShowTutorial={shouldShowTutorial} />
       ) : chosenStep.id === CommandBarStepEnum.TOGGLE_THEME ? (

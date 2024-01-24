@@ -270,7 +270,7 @@ const TabButton = ({
         {type === TabTypesEnum.FILE
           ? splitPath(path).pop()
           : type === TabTypesEnum.CHAT
-          ? title || t('New chat')
+          ? title || t('New conversation')
           : type === TabTypesEnum.STUDIO
           ? title || t('New studio conversation')
           : title || relativeUrl}

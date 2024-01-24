@@ -116,6 +116,7 @@ const FileTab = ({
   const { openNewTab, updateTabProperty } = useContext(TabsContext.Handlers);
   const { focusedPanel } = useContext(TabsContext.All);
   const { isLeftSidebarFocused } = useContext(UIContext.Focus);
+  const { setOnBoardingState } = useContext(UIContext.Onboarding);
   const { project, refreshCurrentProjectStudios } = useContext(
     ProjectContext.Current,
   );
@@ -278,6 +279,9 @@ const FileTab = ({
         },
       },
       side === 'left' ? 'right' : 'left',
+    );
+    setOnBoardingState((prev) =>
+      prev.isFileExplained ? prev : { ...prev, isFileExplained: true },
     );
   }, [path, repoRef, branch, linesNumber, side, openNewTab]);
 

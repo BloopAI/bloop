@@ -1,4 +1,4 @@
-import {
+import React, {
   ChangeEvent,
   memo,
   useCallback,
@@ -26,9 +26,15 @@ import { mapReposBySections } from '../../../utils/mappers';
 import { ProjectContext } from '../../../context/projectContext';
 import { CommandBarContext } from '../../../context/commandBarContext';
 import RepoItem from '../items/RepoItem';
+import TutorialTooltip from '../../Tutorial/TutorialTooltip';
+import TutorialBody from '../../Tutorial/TutorialBody';
+import { tutorialSteps } from '../../../consts/tutorialSteps';
+import { UIContext } from '../../../context/uiContext';
 import ActionsDropdown from './ActionsDropdown';
 
-type Props = {};
+type Props = {
+  shouldShowTutorial?: boolean;
+};
 
 export enum Filter {
   All = 'All',
@@ -43,10 +49,11 @@ export enum Provider {
   Local = 'Local',
 }
 
-const ManageRepos = ({}: Props) => {
+const ManageRepos = ({ shouldShowTutorial }: Props) => {
   const { t } = useTranslation();
   const { project } = useContext(ProjectContext.Current);
   const { setChosenStep } = useContext(CommandBarContext.Handlers);
+  const { setOnBoardingState } = useContext(UIContext.Onboarding);
   const [sections, setSections] = useState<CommandBarSectionType[]>([]);
   const [sectionsToShow, setSectionsToShow] = useState<CommandBarSectionType[]>(
     [],
@@ -55,6 +62,9 @@ const ManageRepos = ({}: Props) => {
   const [filter, setFilter] = useState<Filter>(Filter.All);
   const [repoType, setRepoType] = useState<Provider>(Provider.All);
   const [inputValue, setInputValue] = useState('');
+  const [tutorialStep, setTutorialStep] = useState(0);
+  const [selectedRepo, setSelectedRepo] = useState('');
+  const [indexedRepo, setIndexedRepo] = useState('');
 
   const handleInputChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
@@ -88,7 +98,25 @@ const ManageRepos = ({}: Props) => {
       const mapped = mapReposBySections(data.list).map((o) => ({
         items: o.items.map((r) => ({
           Component: RepoItem,
-          componentProps: { repo: r, refetchRepos },
+          componentProps: {
+            repo: r,
+            refetchRepos,
+            onSync: () => {
+              setSelectedRepo(r.shortName);
+              setTutorialStep(3);
+            },
+            onDone: () => {
+              setIndexedRepo(r.shortName);
+              setTutorialStep(4);
+            },
+            onAddToProject: () => {
+              setOnBoardingState((prev) => ({
+                ...prev,
+                isCommandBarTutorialFinished: true,
+              }));
+              setTutorialStep(5);
+            },
+          },
           key: r.ref,
         })),
         itemsOffset: o.offset + 1,
@@ -175,6 +203,17 @@ const ManageRepos = ({}: Props) => {
     refetchRepos();
   }, []);
 
+  useEffect(() => {
+    // if user started with non-private repo
+    if (shouldShowTutorial && tutorialStep === 0 && sections.length > 1) {
+      const firstRepo = (sections[1].items[0] as CommandBarItemCustomType)
+        .componentProps.repo;
+      setTutorialStep(firstRepo.isSyncing ? 3 : 4);
+      setSelectedRepo(firstRepo.shortName);
+      setIndexedRepo(firstRepo.shortName);
+    }
+  }, [sections, tutorialStep, shouldShowTutorial]);
+
   const handleBack = useCallback(() => {
     setChosenStep({ id: CommandBarStepEnum.INITIAL });
   }, []);
@@ -198,6 +237,29 @@ const ManageRepos = ({}: Props) => {
         placeholder={t('')}
         disableKeyNav={isDropdownVisible}
       />
+      {shouldShowTutorial && tutorialStep < 5 ? (
+        <TutorialTooltip
+          content={
+            <TutorialBody
+              stepNumber={tutorialStep + 1}
+              title={t(tutorialSteps[tutorialStep].title)}
+              description={t(tutorialSteps[tutorialStep].description, {
+                repoName: tutorialStep === 3 ? selectedRepo : indexedRepo,
+              })}
+              hint={
+                tutorialStep > 0
+                  ? t(tutorialSteps[tutorialStep].hint[0])
+                  : t(tutorialSteps[tutorialStep].hint[0]) +
+                    t(tutorialSteps[0].hint[1]) +
+                    '.'
+              }
+            />
+          }
+          wrapperClassName="absolute top-[7.5rem] left-0 right-0"
+        >
+          <div className="" />
+        </TutorialTooltip>
+      ) : null}
       {sectionsToShow.length ? (
         <Body sections={sectionsToShow} disableKeyNav={isDropdownVisible} />
       ) : (

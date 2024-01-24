@@ -1,6 +1,10 @@
-import { createContext } from 'react';
+import { createContext, Dispatch, SetStateAction } from 'react';
 import { Theme } from '../types';
-import { ProjectSettingSections, SettingSections } from '../types/general';
+import {
+  OnboardingStateType,
+  ProjectSettingSections,
+  SettingSections,
+} from '../types/general';
 
 export const UIContext = {
   Settings: createContext({
@@ -15,11 +19,16 @@ export const UIContext = {
     projectSettingsSection: ProjectSettingSections.GENERAL,
     setProjectSettingsSection: (s: ProjectSettingSections) => {},
   }),
-  Onboarding: createContext({
+  Onboarding: createContext<{
+    shouldShowWelcome: boolean;
+    setShouldShowWelcome: Dispatch<SetStateAction<boolean>>;
+    onBoardingState: OnboardingStateType;
+    setOnBoardingState: Dispatch<SetStateAction<OnboardingStateType>>;
+  }>({
     shouldShowWelcome: false,
-    setShouldShowWelcome: (b: boolean) => {},
+    setShouldShowWelcome: () => {},
     onBoardingState: {},
-    setOnBoardingState: (state: Record<string, any>) => {},
+    setOnBoardingState: () => {},
   }),
   BugReport: createContext({
     isBugReportModalOpen: false,

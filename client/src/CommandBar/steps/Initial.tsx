@@ -44,6 +44,7 @@ import { TabsContext } from '../../context/tabsContext';
 import TutorialBody from '../Tutorial/TutorialBody';
 import TutorialTooltip from '../Tutorial/TutorialTooltip';
 import { tutorialSteps } from '../../consts/tutorialSteps';
+import { newChatTabShortcut } from '../../consts/shortcuts';
 
 type Props = {
   shouldShowTutorial?: boolean;
@@ -283,12 +284,12 @@ const InitialCommandBar = ({ shouldShowTutorial }: Props) => {
     const newTabItems = project?.repos.length
       ? [
           {
-            label: t('New chat'),
+            label: t('New conversation'),
             Icon: ChatBubblesIcon,
             id: 'new chat',
             key: 'new_chat',
             onClick: () => openNewTab({ type: TabTypesEnum.CHAT }),
-            shortcut: ['option', 'N'],
+            shortcut: newChatTabShortcut,
             closeOnClick: true,
             footerHint: '',
             footerBtns: [
@@ -440,12 +441,7 @@ const InitialCommandBar = ({ shouldShowTutorial }: Props) => {
         </TutorialTooltip>
       ) : null}
       {!!sectionsToShow.length ? (
-        <Body
-          sections={sectionsToShow}
-          onlyOneClickable={
-            shouldShowTutorial ? CommandBarStepEnum.ADD_NEW_REPO : undefined
-          }
-        />
+        <Body sections={sectionsToShow} />
       ) : (
         <div className="flex-1 items-center justify-center text-label-muted text-center py-2">
           <Trans>No commands found...</Trans>

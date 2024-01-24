@@ -15,6 +15,7 @@ import { copyToClipboard } from '../../../utils';
 import Button from '../../../components/Button';
 import { polling } from '../../../utils/requestUtils';
 import { EnvContext } from '../../../context/envContext';
+import { useEnterKey } from '../../../hooks/useEnterKey';
 
 type Props = {
   onContinue: () => void;
@@ -113,6 +114,8 @@ const UserFormStep2 = ({ onContinue }: Props) => {
       checkGHAuth();
     }
   }, [loginUrl, checkGHAuth]);
+
+  useEnterKey(onClick, isBtnClicked && !isGithubConnected && !isTimedOut);
 
   return (
     <div className="w-full flex flex-col gap-4">
