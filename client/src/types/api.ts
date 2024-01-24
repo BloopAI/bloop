@@ -80,6 +80,7 @@ export interface SearchResponseFile {
   repo_name: string;
   repo_ref: string;
   lang: string;
+  branches: string;
   is_dir: boolean;
 }
 

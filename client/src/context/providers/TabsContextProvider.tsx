@@ -128,7 +128,7 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
         if (newTab.type === TabTypesEnum.FILE) {
           updateArrayInStorage(
             RECENT_FILES_KEY,
-            `${newTab.repoRef}:${newTab.path}`,
+            `${newTab.repoRef}:${newTab.path}:${newTab.branch || ''}`,
           );
         }
         const previousTab = prev.find((t) =>

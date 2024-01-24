@@ -36,7 +36,9 @@ const SearchFiles = ({ studioId }: Props) => {
   const { project } = useContext(ProjectContext.Current);
   const { openNewTab } = useContext(TabsContext.Handlers);
   const { setIsLeftSidebarFocused } = useContext(UIContext.Focus);
-  const [files, setFiles] = useState<{ path: string; repo: string }[]>([]);
+  const [files, setFiles] = useState<
+    { path: string; repo: string; branch: string | null }[]
+  >([]);
   const searchValue = useDeferredValue(inputValue);
 
   const handleInputChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
@@ -46,11 +48,12 @@ const SearchFiles = ({ studioId }: Props) => {
   useEffect(() => {
     if (!searchValue) {
       const recentFiles = getJsonFromStorage<string[]>(RECENT_FILES_KEY);
-      const newFiles: { path: string; repo: string }[] = [];
+      const newFiles: { path: string; repo: string; branch: string | null }[] =
+        [];
       recentFiles?.forEach((f) => {
-        const [repo, path] = f.split(':');
+        const [repo, path, branch] = f.split(':');
         if (project?.repos.find((r) => r.repo.ref === repo)) {
-          newFiles.push({ repo, path });
+          newFiles.push({ repo, path, branch: branch || null });
         }
       });
       if (newFiles.length > 1) {
@@ -59,20 +62,21 @@ const SearchFiles = ({ studioId }: Props) => {
       }
     }
     if (project?.id) {
-      getAutocomplete(project.id, `path:${searchValue}&content=false`).then(
-        (respPath) => {
-          const fileResults = respPath.data
-            .filter(
-              (d): d is FileResItem =>
-                d.kind === 'file_result' && !d.data.is_dir,
-            )
-            .map((d) => ({
-              path: d.data.relative_path.text,
-              repo: d.data.repo_ref,
-            }));
-          setFiles(fileResults);
-        },
-      );
+      getAutocomplete(
+        project.id,
+        `path:${searchValue}&content=false&page_size=20`,
+      ).then((respPath) => {
+        const fileResults = respPath.data
+          .filter(
+            (d): d is FileResItem => d.kind === 'file_result' && !d.data.is_dir,
+          )
+          .map((d) => ({
+            path: d.data.relative_path.text,
+            repo: d.data.repo_ref,
+            branch: d.data.branches || null,
+          }));
+        setFiles(fileResults);
+      });
     }
   }, [searchValue, project?.id]);
 
@@ -88,14 +92,15 @@ const SearchFiles = ({ studioId }: Props) => {
     return [
       {
         key: 'files',
-        items: files.map(({ path, repo }) => ({
-          key: `${path}-${repo}`,
-          id: `${path}-${repo}`,
+        items: files.map(({ path, repo, branch }) => ({
+          key: `${path}-${repo}-${branch}`,
+          id: `${path}-${repo}-${branch}`,
           onClick: () => {
             openNewTab({
               type: TabTypesEnum.FILE,
               path,
               repoRef: repo,
+              branch,
               studioId,
             });
             setIsLeftSidebarFocused(false);
@@ -105,7 +110,9 @@ const SearchFiles = ({ studioId }: Props) => {
           label: path,
           footerHint: `${splitPath(repo)
             .slice(repo.startsWith('local//') ? -1 : -2)
-            .join('/')} / ${path}`,
+            .join('/')} ${
+            branch ? `/ ${splitPath(branch).pop()} ` : ''
+          }/ ${path}`,
           footerBtns: [
             { label: studioId ? t('Add file') : t('Open'), shortcut: ['entr'] },
           ],
