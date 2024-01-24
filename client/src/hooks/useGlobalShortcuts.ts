@@ -8,7 +8,7 @@ import {
 import { CommandBarContext } from '../context/commandBarContext';
 import { DeviceContext } from '../context/deviceContext';
 import { ProjectContext } from '../context/projectContext';
-import { regexToggleShortcut } from '../consts/shortcuts';
+import { newProjectShortcut, regexToggleShortcut } from '../consts/shortcuts';
 import { TabsContext } from '../context/tabsContext';
 import { useSignOut } from './useSignOut';
 
@@ -106,7 +106,7 @@ export const useGlobalShortcuts = () => {
 
   const createNewProject = useMemo(() => {
     return {
-      shortcut: ['cmd', 'N'],
+      shortcut: newProjectShortcut,
       action: () => {
         setChosenStep({ id: CommandBarStepEnum.CREATE_PROJECT });
         setIsVisible(true);

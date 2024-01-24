@@ -617,3 +617,11 @@ export type RepoIndexingStatusType = {
 };
 
 export type IndexingStatusType = Record<string, RepoIndexingStatusType>;
+
+export type OnboardingStateType = {
+  isCommandBarTutorialFinished?: boolean;
+  isChatOpened?: boolean;
+  isFileExplained?: boolean;
+  isCodeExplained?: boolean;
+  isCodeNavigated?: boolean;
+};

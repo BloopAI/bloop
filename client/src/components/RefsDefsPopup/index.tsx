@@ -1,8 +1,15 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { TippyProps } from '@tippyjs/react';
 import { Trans, useTranslation } from 'react-i18next';
 import { TokenInfoType, TokenInfoWrapped } from '../../types/results';
 import LiteLoaderContainer from '../Loaders/LiteLoader';
+import { UIContext } from '../../context/uiContext';
 import RefDefFileItem from './RefDefFileItem';
 import Badge from './Badge';
 
@@ -70,6 +77,7 @@ const RefsDefsPopup = ({
   const [filters, setFilters] = useState<TokenInfoType>(
     !data.data?.definitions?.length ? TypeMap.REF : TypeMap.DEF,
   );
+  const { setOnBoardingState } = useContext(UIContext.Onboarding);
 
   useEffect(() => {
     setFilters(!data.data?.definitions?.length ? TypeMap.REF : TypeMap.DEF);
@@ -80,6 +88,16 @@ const RefsDefsPopup = ({
   }, []);
 
   const tailPosition = useMemo(() => getTailPosition(placement), [placement]);
+
+  const handleClickOnRefDef = useCallback(
+    (lineNum: number, filePath: string, tokenRange: string) => {
+      onRefDefClick(lineNum, filePath, tokenRange);
+      setOnBoardingState((prev) =>
+        prev.isCodeNavigated ? prev : { ...prev, isCodeNavigated: true },
+      );
+    },
+    [onRefDefClick],
+  );
 
   return (
     <div className="relative py-2.5 w-fit z-10 drop-shadow-md">
@@ -146,7 +164,7 @@ const RefsDefsPopup = ({
               filters === TypeMap.DEF ? 'definitions' : 'references'
             ].map((item, i) => (
               <RefDefFileItem
-                onRefDefClick={onRefDefClick}
+                onRefDefClick={handleClickOnRefDef}
                 data={item.data}
                 file={item.file}
                 language={language}

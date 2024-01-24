@@ -135,9 +135,7 @@ const AddNewRepo = ({ shouldShowTutorial }: Props) => {
               stepNumber={2}
               title={t(tutorialSteps[1].title)}
               description={t(tutorialSteps[1].description)}
-              hint={
-                t(tutorialSteps[1].hint[0]) + t(tutorialSteps[1].hint[1]) + '.'
-              }
+              hint={t(tutorialSteps[1].hint[0])}
             />
           }
           wrapperClassName="absolute top-[5rem] left-0 right-0"
@@ -145,10 +143,7 @@ const AddNewRepo = ({ shouldShowTutorial }: Props) => {
           <div className="" />
         </TutorialTooltip>
       ) : null}
-      <Body
-        sections={initialSections}
-        onlyOneClickable={shouldShowTutorial ? 'private' : undefined}
-      />
+      <Body sections={initialSections} />
       <Footer />
     </div>
   );

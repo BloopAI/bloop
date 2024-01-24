@@ -24,10 +24,7 @@ import RepoItem from '../items/RepoItem';
 import TutorialBody from '../../Tutorial/TutorialBody';
 import TutorialTooltip from '../../Tutorial/TutorialTooltip';
 import { tutorialSteps } from '../../../consts/tutorialSteps';
-import {
-  CMD_BAR_TUTORIAL_FINISHED_KEY,
-  savePlainToStorage,
-} from '../../../services/storage';
+import { UIContext } from '../../../context/uiContext';
 import ActionsDropdown from './ActionsDropdown';
 
 type Props = {
@@ -41,6 +38,7 @@ const PrivateReposStep = ({ shouldShowTutorial }: Props) => {
     [],
   );
   const { setChosenStep } = useContext(CommandBarContext.Handlers);
+  const { setOnBoardingState } = useContext(UIContext.Onboarding);
   const [inputValue, setInputValue] = useState('');
   const [tutorialStep, setTutorialStep] = useState(2);
   const [isDropdownVisible, setIsDropdownVisible] = useState(false);
@@ -70,7 +68,10 @@ const PrivateReposStep = ({ shouldShowTutorial }: Props) => {
             setTutorialStep(4);
           },
           onAddToProject: () => {
-            savePlainToStorage(CMD_BAR_TUTORIAL_FINISHED_KEY, 'true');
+            setOnBoardingState((prev) => ({
+              ...prev,
+              isCommandBarTutorialFinished: true,
+            }));
             setTutorialStep(5);
           },
         },

@@ -11,6 +11,7 @@ import { TabTypesEnum } from '../../../types/general';
 import { TabsContext } from '../../../context/tabsContext';
 import Button from '../../Button';
 import { copyToClipboard } from '../../../utils';
+import { UIContext } from '../../../context/uiContext';
 
 type Props = {
   selectedLines?: [number, number];
@@ -36,6 +37,7 @@ const SelectionPopup = ({
   const { t } = useTranslation();
   const { isSelfServe } = useContext(DeviceContext);
   const { openNewTab } = useContext(TabsContext.Handlers);
+  const { setOnBoardingState } = useContext(UIContext.Onboarding);
 
   const handleExplain = useCallback(
     (e: MouseEvent) => {
@@ -55,6 +57,9 @@ const SelectionPopup = ({
         );
       }
       closePopup();
+      setOnBoardingState((prev) =>
+        prev.isCodeExplained ? prev : { ...prev, isCodeExplained: true },
+      );
     },
     [path, repoRef, branch, selectedLines, side, closePopup],
   );

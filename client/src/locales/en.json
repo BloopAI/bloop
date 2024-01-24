@@ -697,5 +697,8 @@
 	"Dismiss tutorial": "Dismiss tutorial",
 	"Click on an identifier and jump to its references and definition in a heart beat.": "Click on an identifier and jump to its references and definition in a heart beat.",
 	"Search docs": "Search docs",
-	"Permanently delete <2>{{projectName}}</2> and remove all the data associated to it. Repositories will remain accessible in your GitHub account.": "Permanently delete <2>{{projectName}}</2> and remove all the data associated to it. Repositories will remain accessible in your GitHub account."
+	"Permanently delete <2>{{projectName}}</2> and remove all the data associated to it. Repositories will remain accessible in your GitHub account.": "Permanently delete <2>{{projectName}}</2> and remove all the data associated to it. Repositories will remain accessible in your GitHub account.",
+	"New conversation": "New conversation",
+	"Start by selecting a type repository you would like to index.": "Start by selecting a type repository you would like to index.",
+	"<0>To begin, open a file from the sidebar on the left. Once you have a file open, you can ask bloop to quickly explain it by hitting <2></2> on your keyboard or by selecting \"Explain file\" from the <7></7> popup menu.</0>": "<0>To begin, open a file from the sidebar on the left. Once you have a file open, you can ask bloop to quickly explain it by hitting <2></2> on your keyboard or by selecting \"Explain file\" from the <7></7> popup menu.</0>"
 }

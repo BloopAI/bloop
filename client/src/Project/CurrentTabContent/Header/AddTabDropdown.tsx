@@ -1,11 +1,9 @@
-import React, { memo, useCallback, useContext, MouseEvent } from 'react';
+import React, { memo, useCallback, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import SectionItem from '../../../components/Dropdown/Section/SectionItem';
 import { ChatBubblesIcon, CodeStudioIcon } from '../../../icons';
 import { TabsContext } from '../../../context/tabsContext';
 import { TabTypesEnum } from '../../../types/general';
-import { checkEventKeys } from '../../../utils/keyboardUtils';
-import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
 import { postCodeStudio } from '../../../services/api';
 import { ProjectContext } from '../../../context/projectContext';
 import {
@@ -20,7 +18,6 @@ type Props = {
 const AddTabDropdown = ({ side }: Props) => {
   const { t } = useTranslation();
   const { openNewTab } = useContext(TabsContext.Handlers);
-  const { focusedPanel } = useContext(TabsContext.All);
   const { refreshCurrentProjectStudios, project } = useContext(
     ProjectContext.Current,
   );
@@ -37,26 +34,6 @@ const AddTabDropdown = ({ side }: Props) => {
     }
   }, [openNewTab, side, project?.id]);
 
-  const handleKeyEvent = useCallback(
-    (e: KeyboardEvent) => {
-      if (checkEventKeys(e, newChatTabShortcut)) {
-        e.stopPropagation();
-        e.preventDefault();
-        openChatTab();
-      } else if (checkEventKeys(e, newStudioTabShortcut)) {
-        e.stopPropagation();
-        e.preventDefault();
-        openStudioTab();
-      }
-    },
-    [openChatTab, openStudioTab],
-  );
-  useKeyboardNavigation(handleKeyEvent, side !== focusedPanel);
-
-  const noPropagate = useCallback((e?: MouseEvent) => {
-    e?.stopPropagation();
-  }, []);
-
   return (
     <div>
       <div className="flex flex-col p-1 items-start border-y border-bg-border">
@@ -67,7 +44,7 @@ const AddTabDropdown = ({ side }: Props) => {
               className="text-brand-default"
             />
           }
-          label={t('New Chat')}
+          label={t('New conversation')}
           shortcut={newChatTabShortcut}
           onClick={openChatTab}
         />
@@ -78,7 +55,7 @@ const AddTabDropdown = ({ side }: Props) => {
               className="text-brand-studio"
             />
           }
-          label={t('New Code Studio')}
+          label={t('New studio conversation')}
           shortcut={newStudioTabShortcut}
           onClick={openStudioTab}
         />
