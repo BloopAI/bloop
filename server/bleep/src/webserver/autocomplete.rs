@@ -23,6 +23,10 @@ fn default_true() -> bool {
     true
 }
 
+fn default_page_size() -> usize {
+    8
+}
+
 #[derive(Deserialize)]
 pub struct AutocompleteParams {
     #[serde(default = "default_true")]
@@ -33,6 +37,8 @@ pub struct AutocompleteParams {
     repo: bool,
     #[serde(default = "default_true")]
     lang: bool,
+    #[serde(default = "default_page_size")]
+    page_size: usize,
 }
 
 pub(super) async fn handle(
@@ -43,7 +49,7 @@ pub(super) async fn handle(
 ) -> Result<impl IntoAxumResponse> {
     // Override page_size and set to low value
     api_params.page = 0;
-    api_params.page_size = 8;
+    api_params.page_size = ac_params.page_size;
 
     api_params.project_id = project_id;
 
