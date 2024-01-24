@@ -636,57 +636,63 @@ const FileTab = ({
           )}
         </div>
       </div>
-      <div
-        className="flex-1 h-full max-w-full pl-4 py-4 overflow-auto relative"
-        data-active={(focusedPanel === side).toString()}
-      >
-        {file?.lang === 'jupyter notebook' ? (
-          <IpynbRenderer data={file.contents} />
-        ) : file ? (
-          <CodeFullSelectable
-            code={file.contents}
-            language={file.lang}
-            isSearchDisabled={focusedPanel !== side}
-            currentSelection={selectedLines}
-            setCurrentSelection={setSelectedLines}
-            relativePath={path}
-            repoRef={repoRef}
-            hoverableRanges={hoverableRanges}
-            scrollToLine={scrollToLine}
-            branch={branch}
-            tokenRange={tokenRange}
-            highlights={highlights}
-            hoveredLines={hoveredLines}
-            side={side}
-            isEditingRanges={isEditingRanges}
-          />
-        ) : isFetched && !file ? (
-          <div className="flex-1 h-full flex flex-col items-center justify-center gap-6">
-            <div className="w-15 h-15 flex items-center justify-center rounded-xl border border-bg-divider">
-              <EyeCutIcon sizeClassName="w-5 h-5" />
-            </div>
-            <div className="flex flex-col gap-2 items-center text-center max-w-[18.75rem]">
-              <p className="body-base-b text-label-title">
-                <Trans>File not indexed</Trans>
-              </p>
-              <p className="body-s text-label-base !leading-5">
-                <Trans>
-                  This might be because the file is too big or it has one of
-                  bloop&apos;s excluded file types.
-                </Trans>
-              </p>
-            </div>
-            {!indexRequested ? (
-              <Button size="large" variant="primary" onClick={onIndexRequested}>
-                <Trans>Index</Trans>
-              </Button>
-            ) : (
-              <div className="text-bg-main mt-6">
-                <SpinLoaderContainer sizeClassName="w-8 h-8" />
+      <div className="relative flex-1 h-full max-w-full">
+        <div
+          className="flex-1 h-full max-w-full pl-4 py-4 overflow-auto"
+          data-active={(focusedPanel === side).toString()}
+        >
+          {file?.lang === 'jupyter notebook' ? (
+            <IpynbRenderer data={file.contents} />
+          ) : file ? (
+            <CodeFullSelectable
+              code={file.contents}
+              language={file.lang}
+              isSearchDisabled={focusedPanel !== side}
+              currentSelection={selectedLines}
+              setCurrentSelection={setSelectedLines}
+              relativePath={path}
+              repoRef={repoRef}
+              hoverableRanges={hoverableRanges}
+              scrollToLine={scrollToLine}
+              branch={branch}
+              tokenRange={tokenRange}
+              highlights={highlights}
+              hoveredLines={hoveredLines}
+              side={side}
+              isEditingRanges={isEditingRanges}
+            />
+          ) : isFetched && !file ? (
+            <div className="flex-1 h-full flex flex-col items-center justify-center gap-6">
+              <div className="w-15 h-15 flex items-center justify-center rounded-xl border border-bg-divider">
+                <EyeCutIcon sizeClassName="w-5 h-5" />
               </div>
-            )}
-          </div>
-        ) : null}
+              <div className="flex flex-col gap-2 items-center text-center max-w-[18.75rem]">
+                <p className="body-base-b text-label-title">
+                  <Trans>File not indexed</Trans>
+                </p>
+                <p className="body-s text-label-base !leading-5">
+                  <Trans>
+                    This might be because the file is too big or it has one of
+                    bloop&apos;s excluded file types.
+                  </Trans>
+                </p>
+              </div>
+              {!indexRequested ? (
+                <Button
+                  size="large"
+                  variant="primary"
+                  onClick={onIndexRequested}
+                >
+                  <Trans>Index</Trans>
+                </Button>
+              ) : (
+                <div className="text-bg-main mt-6">
+                  <SpinLoaderContainer sizeClassName="w-8 h-8" />
+                </div>
+              )}
+            </div>
+          ) : null}
+        </div>
       </div>
     </div>
   );

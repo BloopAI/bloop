@@ -16,7 +16,7 @@ const SelectionHint = ({ currentSelection, setCurrentSelection }: Props) => {
   }, []);
 
   return (
-    <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 rounded-full flex h-8 items-center gap-2 p-2 pr-2.5 border border-bg-border bg-bg-base shadow-float body-mini text-label-title flex-shrink-0 w-fit z-20">
+    <div className="absolute bottom-14 left-1/2 transform -translate-x-1/2 rounded-full flex h-8 items-center gap-2 p-2 pr-2.5 border border-bg-border bg-bg-base shadow-float body-mini text-label-title flex-shrink-0 w-fit z-20">
       {!currentSelection.length ? (
         <FileIcon sizeClassName="w-4.5 h-4.5" />
       ) : (
