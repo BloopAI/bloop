@@ -147,7 +147,7 @@ const ConversationInput = ({
     async (search: string) => {
       const respPath = await getAutocomplete(
         projectId,
-        `path:${search}&content=false`,
+        `path:${search}&content=false&page_size=8`,
       );
       const fileResults = respPath.data.filter(
         (d): d is FileResItem => d.kind === 'file_result',
@@ -212,7 +212,7 @@ const ConversationInput = ({
     ) => {
       const respLang = await getAutocomplete(
         projectId,
-        `lang:${search}&content=false`,
+        `lang:${search}&content=false&page_size=8`,
       );
       const langResults = respLang.data
         .filter((d): d is LangItem => d.kind === 'lang')
@@ -233,7 +233,7 @@ const ConversationInput = ({
     ) => {
       const respRepo = await getAutocomplete(
         projectId,
-        `repo:${search}&content=false&path=false&file=false`,
+        `repo:${search}&content=false&path=false&file=false&page_size=8`,
       );
       const repoResults = respRepo.data
         .filter((d): d is RepoItem => d.kind === 'repository_result')
