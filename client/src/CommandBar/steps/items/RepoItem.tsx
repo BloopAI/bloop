@@ -47,9 +47,9 @@ type Props = {
   disableKeyNav?: boolean;
   indexingStatus?: RepoIndexingStatusType;
   tutorialPopup?: React.ReactElement;
-  onSync: () => void;
-  onDone: () => void;
-  onAddToProject: () => void;
+  onSync?: () => void;
+  onDone?: () => void;
+  onAddToProject?: () => void;
 };
 
 const RepoItem = ({
@@ -76,7 +76,7 @@ const RepoItem = ({
       e?.preventDefault();
       e?.stopPropagation();
       await syncRepo(repo.ref);
-      onSync();
+      onSync?.();
     },
     [repo.ref, onSync],
   );
@@ -87,13 +87,13 @@ const RepoItem = ({
 
   useEffect(() => {
     if (status === SyncStatus.Done) {
-      onDone();
+      onDone?.();
     }
   }, [status]);
 
   const handleAddToProject = useCallback(() => {
     if (project?.id) {
-      onAddToProject();
+      onAddToProject?.();
       return addRepoToProject(
         project.id,
         repo.ref,
