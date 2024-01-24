@@ -43,7 +43,6 @@ pub(super) async fn handle(
 ) -> Result<impl IntoAxumResponse> {
     // Override page_size and set to low value
     api_params.page = 0;
-    api_params.page_size = 8;
 
     api_params.project_id = project_id;
 
