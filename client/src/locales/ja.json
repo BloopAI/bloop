@@ -670,5 +670,9 @@
 	"Permanently delete <2>{{projectName}}</2> and remove all the data associated to it. Repositories will remain accessible in your GitHub account.": "永続的に<2>{{projectName}}</2>を削除し、それに関連付けられたすべてのデータを削除します。 リポジトリは、GitHubアカウントでアクセスできます。",
 	"New conversation": "新しい会話",
 	"Start by selecting a type repository you would like to index.": "インデックスを作成するタイプリポジトリを選択することから始めます。",
-	"<0>To begin, open a file from the sidebar on the left. Once you have a file open, you can ask bloop to quickly explain it by hitting <2></2> on your keyboard or by selecting \"Explain file\" from the <7></7> popup menu.</0>": "<0>開始するには、左側のサイドバーからファイルを開きます。 ファイルを開いたら、キーボードで<2> </2>を押すか、<7> </7>ポップアップメニューから「ファイルの説明」を選択することで、Bloopにすばやく説明するように依頼することができます。</0>"
+	"<0>To begin, open a file from the sidebar on the left. Once you have a file open, you can ask bloop to quickly explain it by hitting <2></2> on your keyboard or by selecting \"Explain file\" from the <7></7> popup menu.</0>": "<0>開始するには、左側のサイドバーからファイルを開きます。 ファイルを開いたら、キーボードで<2> </2>を押すか、<7> </7>ポップアップメニューから「ファイルの説明」を選択することで、Bloopにすばやく説明するように依頼することができます。</0>",
+	"Add files to studio": "スタジオにファイルを追加します",
+	"The amount of times you can generate responses in Studio conversations per day.": "スタジオでの会話で1日あたりの回答を生成できる回数。",
+	"Code search": "コード検索",
+	"Close current tab": "現在のタブを閉じます"
 }

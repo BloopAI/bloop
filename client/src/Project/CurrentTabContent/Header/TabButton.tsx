@@ -22,6 +22,7 @@ import {
   MagazineIcon,
 } from '../../../icons';
 import { TabsContext } from '../../../context/tabsContext';
+import { closeTabShortcut } from '../../../consts/shortcuts';
 
 type Props = TabType & {
   tabKey: string;
@@ -57,8 +58,6 @@ type Props = TabType & {
   favicon?: string;
   relativeUrl?: string;
 };
-
-const closeTabShortcut = ['cmd', 'W'];
 
 const TabButton = ({
   isActive,

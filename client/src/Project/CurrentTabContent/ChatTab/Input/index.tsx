@@ -26,6 +26,7 @@ import { focusInput } from '../../../../utils/domUtils';
 import { MentionOptionType } from '../../../../types/results';
 import { splitPath } from '../../../../utils';
 import { openTabsCache } from '../../../../services/cache';
+import { CommandBarContext } from '../../../../context/commandBarContext';
 import InputCore from './InputCore';
 import { mapEditorContentToInputValue } from './utils';
 
@@ -74,6 +75,7 @@ const ConversationInput = ({
 }: Props) => {
   const { t } = useTranslation();
   const { envConfig } = useContext(EnvContext);
+  const { isVisible } = useContext(CommandBarContext.General);
   const [initialValue, setInitialValue] = useState<
     Record<string, any> | null | undefined
   >({
@@ -264,7 +266,10 @@ const ConversationInput = ({
     },
     [onMessageEditCancel, isStoppable, onStop],
   );
-  useKeyboardNavigation(handleKeyEvent, !queryIdToEdit && !isStoppable);
+  useKeyboardNavigation(
+    handleKeyEvent,
+    (!queryIdToEdit && !isStoppable) || isVisible,
+  );
 
   return (
     <div

@@ -17,7 +17,7 @@ import DropTarget from './CurrentTabContent/DropTarget';
 import RightTab from './RightTab';
 import ChatPersistentState from './CurrentTabContent/ChatTab/ChatPersistentState';
 import StudioPersistentState from './CurrentTabContent/StudioTab/StudioPersistentState';
-import TutorialCards from './CurrentTabContent/TutorialCards';
+import TutorialCards from './TutorialCards';
 
 type Props = {};
 

@@ -29,11 +29,13 @@ type OnlyIconProps = {
   title: string;
   shortcut?: string[];
   tooltipPlacement?: TippyProps['placement'];
+  tooltipClassName?: string;
 };
 
 type TextBtnProps = {
   onlyIcon?: false;
-  tooltipPlacement?: never;
+  tooltipPlacement?: TippyProps['placement'];
+  tooltipClassName?: string;
   title?: string;
   shortcut?: string[];
 };
@@ -118,6 +120,7 @@ const Button = forwardRef<
       className,
       title,
       tooltipPlacement,
+      tooltipClassName,
       type = 'button',
       shortcut,
       ...rest
@@ -134,7 +137,12 @@ const Button = forwardRef<
       [variant, className, size, onlyIcon],
     );
     return (onlyIcon && !rest.disabled) || title ? (
-      <Tooltip text={title} placement={tooltipPlacement} shortcut={shortcut}>
+      <Tooltip
+        text={title}
+        placement={tooltipPlacement}
+        shortcut={shortcut}
+        wrapperClassName={tooltipClassName}
+      >
         <button {...rest} type={type} ref={ref} className={buttonClassName}>
           {children}
         </button>

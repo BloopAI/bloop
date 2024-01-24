@@ -24,6 +24,7 @@ import useKeyboardNavigation from '../../hooks/useKeyboardNavigation';
 import { openTabsCache } from '../../services/cache';
 import { RECENT_FILES_KEY, updateArrayInStorage } from '../../services/storage';
 import { UIContext } from '../uiContext';
+import { closeTabShortcut } from '../../consts/shortcuts';
 
 type Props = {};
 
@@ -334,6 +335,14 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
     });
   }, []);
 
+  const closeCurrentTab = useCallback(() => {
+    if (focusedPanel === 'left' && activeLeftTab) {
+      closeTab(activeLeftTab.key, focusedPanel);
+    } else if (focusedPanel === 'right' && activeRightTab) {
+      closeTab(activeRightTab.key, focusedPanel);
+    }
+  }, [activeLeftTab, activeRightTab, focusedPanel, closeTab]);
+
   const updateTabProperty = useCallback(
     <
       T extends ChatTabType | FileTabType | StudioTabType | DocTabType,
@@ -376,6 +385,7 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
   const handlersContextValue = useMemo(
     () => ({
       closeTab,
+      closeCurrentTab,
       openNewTab,
       setActiveLeftTab,
       setActiveRightTab,
@@ -384,12 +394,12 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
       setRightTabs,
       updateTabProperty,
     }),
-    [closeTab, openNewTab, updateTabProperty],
+    [closeTab, openNewTab, updateTabProperty, closeCurrentTab],
   );
 
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
-      if (checkEventKeys(e, ['cmd', 'W'])) {
+      if (checkEventKeys(e, closeTabShortcut)) {
         e.preventDefault();
         e.stopPropagation();
         closeTab(
