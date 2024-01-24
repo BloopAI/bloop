@@ -681,5 +681,9 @@
 	"Permanently delete <2>{{projectName}}</2> and remove all the data associated to it. Repositories will remain accessible in your GitHub account.": "永久删除<2>{{projectName}}</2>并删除与之关联的所有数据。 存储库将在您的GitHub帐户中保持访问。",
 	"New conversation": "新对话",
 	"Start by selecting a type repository you would like to index.": "首先选择要索引的类型存储库。",
-	"<0>To begin, open a file from the sidebar on the left. Once you have a file open, you can ask bloop to quickly explain it by hitting <2></2> on your keyboard or by selecting \"Explain file\" from the <7></7> popup menu.</0>": "<0>开始，从左侧的侧边栏上打开文件。 打开文件后，您可以要求Bloop快速通过在键盘上击中<2> </2>或从<7> </7>弹出菜单中选择“说明文件”。</0>。"
+	"<0>To begin, open a file from the sidebar on the left. Once you have a file open, you can ask bloop to quickly explain it by hitting <2></2> on your keyboard or by selecting \"Explain file\" from the <7></7> popup menu.</0>": "<0>开始，从左侧的侧边栏上打开文件。 打开文件后，您可以要求Bloop快速通过在键盘上击中<2> </2>或从<7> </7>弹出菜单中选择“说明文件”。</0>。",
+	"Add files to studio": "将文件添加到工作室",
+	"The amount of times you can generate responses in Studio conversations per day.": "您每天可以在工作室对话中产生响应的次数。",
+	"Code search": "代码搜索",
+	"Close current tab": "关闭当前选项卡"
 }

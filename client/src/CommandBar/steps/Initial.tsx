@@ -12,6 +12,7 @@ import {
   BugIcon,
   ChatBubblesIcon,
   CloseSignInCircleIcon,
+  CodeStudioIcon,
   CogIcon,
   ColorSwitchIcon,
   DocumentsIcon,
@@ -44,7 +45,12 @@ import { TabsContext } from '../../context/tabsContext';
 import TutorialBody from '../Tutorial/TutorialBody';
 import TutorialTooltip from '../Tutorial/TutorialTooltip';
 import { tutorialSteps } from '../../consts/tutorialSteps';
-import { newChatTabShortcut } from '../../consts/shortcuts';
+import {
+  closeTabShortcut,
+  newChatTabShortcut,
+  newStudioTabShortcut,
+} from '../../consts/shortcuts';
+import { postCodeStudio } from '../../services/api';
 
 type Props = {
   shouldShowTutorial?: boolean;
@@ -54,7 +60,9 @@ const InitialCommandBar = ({ shouldShowTutorial }: Props) => {
   const { t } = useTranslation();
   const { setIsVisible } = useContext(CommandBarContext.Handlers);
   const { tabItems } = useContext(CommandBarContext.FocusedTab);
-  const { openNewTab } = useContext(TabsContext.Handlers);
+  const { openNewTab, closeCurrentTab } = useContext(TabsContext.Handlers);
+  const { tab: leftTab } = useContext(TabsContext.CurrentLeft);
+  const { tab: rightTab } = useContext(TabsContext.CurrentRight);
   const { projects } = useContext(ProjectContext.All);
   const { setCurrentProjectId, project } = useContext(ProjectContext.Current);
   const { theme } = useContext(UIContext.Theme);
@@ -160,21 +168,42 @@ const InitialCommandBar = ({ shouldShowTutorial }: Props) => {
       },
     ];
     const otherCommands: CommandBarItemGeneralType[] = [
-      {
-        label: t(`Close all tabs`),
-        Icon: CloseSignInCircleIcon,
-        id: `close-tabs`,
-        key: `close-tabs`,
-        onClick: globalShortcuts.closeAllTabs.action,
-        shortcut: globalShortcuts.closeAllTabs.shortcut,
-        footerHint: t(`Close all open tabs`),
-        footerBtns: [
-          {
-            label: t('Close'),
-            shortcut: ['entr'],
-          },
-        ],
-      },
+      ...(!!leftTab || !!rightTab
+        ? [
+            {
+              label: t(`Close current tab`),
+              Icon: CloseSignInCircleIcon,
+              id: `close-tab`,
+              key: `close-tab`,
+              onClick: closeCurrentTab,
+              shortcut: closeTabShortcut,
+              closeOnClick: true,
+              footerHint: t(`Close currently focused tab`),
+              footerBtns: [
+                {
+                  label: t('Close'),
+                  shortcut: ['entr'],
+                },
+              ],
+            },
+            {
+              label: t(`Close all tabs`),
+              Icon: CloseSignInCircleIcon,
+              id: `close-tabs`,
+              key: `close-tabs`,
+              onClick: globalShortcuts.closeAllTabs.action,
+              shortcut: globalShortcuts.closeAllTabs.shortcut,
+              closeOnClick: true,
+              footerHint: t(`Close all open tabs`),
+              footerBtns: [
+                {
+                  label: t('Close'),
+                  shortcut: ['entr'],
+                },
+              ],
+            },
+          ]
+        : []),
       {
         label: t(`Account settings`),
         Icon: CogIcon,
@@ -236,22 +265,7 @@ const InitialCommandBar = ({ shouldShowTutorial }: Props) => {
         ],
       },
       {
-        label: t(`Sign out`),
-        Icon: DoorOutIcon,
-        id: `sign-out`,
-        key: `sign-out`,
-        onClick: globalShortcuts.signOut.action,
-        shortcut: globalShortcuts.signOut.shortcut,
-        footerHint: t(`Sign out`),
-        footerBtns: [
-          {
-            label: t('Sign out'),
-            shortcut: ['entr'],
-          },
-        ],
-      },
-      {
-        label: t(`Regex search`),
+        label: t(`Code search`),
         Icon: RegexIcon,
         id: `toggle-regex`,
         key: `toggle-regex`,
@@ -266,7 +280,7 @@ const InitialCommandBar = ({ shouldShowTutorial }: Props) => {
         ],
       },
       {
-        label: t(`Search files`),
+        label: t(`File search`),
         Icon: MagnifyToolIcon,
         id: CommandBarStepEnum.SEARCH_FILES,
         key: CommandBarStepEnum.SEARCH_FILES,
@@ -275,6 +289,21 @@ const InitialCommandBar = ({ shouldShowTutorial }: Props) => {
         footerBtns: [
           {
             label: t('Search'),
+            shortcut: ['entr'],
+          },
+        ],
+      },
+      {
+        label: t(`Sign out`),
+        Icon: DoorOutIcon,
+        id: `sign-out`,
+        key: `sign-out`,
+        onClick: globalShortcuts.signOut.action,
+        shortcut: globalShortcuts.signOut.shortcut,
+        footerHint: t(`Sign out`),
+        footerBtns: [
+          {
+            label: t('Sign out'),
             shortcut: ['entr'],
           },
         ],
@@ -290,6 +319,25 @@ const InitialCommandBar = ({ shouldShowTutorial }: Props) => {
             key: 'new_chat',
             onClick: () => openNewTab({ type: TabTypesEnum.CHAT }),
             shortcut: newChatTabShortcut,
+            closeOnClick: true,
+            footerHint: '',
+            footerBtns: [
+              {
+                label: t('Open'),
+                shortcut: ['entr'],
+              },
+            ],
+          },
+          {
+            label: t('New studio conversation'),
+            Icon: CodeStudioIcon,
+            id: 'new studio',
+            key: 'new_studio',
+            onClick: async () => {
+              const newId = await postCodeStudio(project.id);
+              openNewTab({ type: TabTypesEnum.STUDIO, studioId: newId });
+            },
+            shortcut: newStudioTabShortcut,
             closeOnClick: true,
             footerHint: '',
             footerBtns: [
@@ -391,6 +439,8 @@ const InitialCommandBar = ({ shouldShowTutorial }: Props) => {
     tabItems,
     openNewTab,
     shouldShowTutorial,
+    closeCurrentTab,
+    !!leftTab || !!rightTab,
   ]);
 
   const sectionsToShow = useMemo(() => {

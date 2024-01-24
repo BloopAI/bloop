@@ -166,7 +166,7 @@ const FileTab = ({
         setTimeout(
           () => {
             const line = findElementInCurrentTab(
-              `[data-active="true"][data-line-number="${
+              `[data-active="true"] [data-line-number="${
                 initialRanges?.[0] ? initialRanges[0][0] : 0
               }"]`,
             );
@@ -453,7 +453,7 @@ const FileTab = ({
           footerHint: '',
           footerBtns: [{ label: t('Explain'), shortcut: ['entr'] }],
         },
-        ...(studioId
+        ...(studioId && isFileInContext
           ? [
               {
                 label: t('Remove from studio'),
@@ -472,8 +472,9 @@ const FileTab = ({
                 Icon: StudioPlusSignIcon,
                 id: 'file_to_studio',
                 key: 'file_to_studio',
-                onClick: handleAddToStudio,
-                shortcut: addToStudioShortcut,
+                onClick: studioId ? handleSubmitToStudio : handleAddToStudio,
+                shortcut: studioId ? saveShortcut : addToStudioShortcut,
+                closeOnClick: !!studio,
                 footerHint: t('Add file to code studio context'),
                 footerBtns: [{ label: t('Add'), shortcut: ['entr'] }],
               },
@@ -596,25 +597,24 @@ const FileTab = ({
                   variant={isFileInContext ? 'secondary' : 'studio'}
                   size="mini"
                   onClick={handleSubmitToStudio}
-                  title={t(isFileInContext ? 'Save changes' : 'Submit')}
+                  title={t(isFileInContext ? 'Save changes' : 'Add to studio')}
                   shortcut={saveShortcut}
                 >
-                  <Trans>{isFileInContext ? 'Save changes' : 'Submit'}</Trans>
+                  <Trans>{isFileInContext ? 'Save changes' : 'Add'}</Trans>
                 </Button>
               </div>
             ) : (
               studioId && (
-                <div className="flex items-center gap-3">
-                  <Button
-                    variant="secondary"
-                    size="mini"
-                    onClick={handleEditRanges}
-                    shortcut={selectLinesShortcut}
-                    title={t('Edit selected lines')}
-                  >
-                    <Trans>Edit ranges</Trans>
-                  </Button>
-                </div>
+                <Button
+                  variant="secondary"
+                  size="mini"
+                  onClick={handleEditRanges}
+                  shortcut={selectLinesShortcut}
+                  title={t('Edit selected lines')}
+                  tooltipClassName="flex-shrink-0"
+                >
+                  <Trans>Edit ranges</Trans>
+                </Button>
               )
             ))}
           {!isEditingRanges && (

@@ -651,5 +651,9 @@
 	"Permanently delete <2>{{projectName}}</2> and remove all the data associated to it. Repositories will remain accessible in your GitHub account.": "Elimina permanentemente <2>{{projectName}}</2> e rimuovere tutti i dati associati ad esso. I repository rimarranno accessibili nel tuo account GitHub.",
 	"New conversation": "Nuova conversazione",
 	"Start by selecting a type repository you would like to index.": "Inizia selezionando un repository di tipo che si desidera indicizzare.",
-	"<0>To begin, open a file from the sidebar on the left. Once you have a file open, you can ask bloop to quickly explain it by hitting <2></2> on your keyboard or by selecting \"Explain file\" from the <7></7> popup menu.</0>": "<0> Per iniziare, aprire un file dalla barra laterale a sinistra. Una volta aperto un file, puoi chiedere a Bloop di spiegarlo rapidamente premendo <2> </2> sulla tastiera o selezionando \"Spiega file\" dal menu popup <7> </7>. </0>"
+	"<0>To begin, open a file from the sidebar on the left. Once you have a file open, you can ask bloop to quickly explain it by hitting <2></2> on your keyboard or by selecting \"Explain file\" from the <7></7> popup menu.</0>": "<0> Per iniziare, aprire un file dalla barra laterale a sinistra. Una volta aperto un file, puoi chiedere a Bloop di spiegarlo rapidamente premendo <2> </2> sulla tastiera o selezionando \"Spiega file\" dal menu popup <7> </7>. </0>",
+	"Add files to studio": "Aggiungi file a Studio",
+	"The amount of times you can generate responses in Studio conversations per day.": "La quantità di volte in cui è possibile generare risposte nelle conversazioni in studio al giorno.",
+	"Code search": "Ricerca del codice",
+	"Close current tab": "Chiudi la finestra attuale"
 }

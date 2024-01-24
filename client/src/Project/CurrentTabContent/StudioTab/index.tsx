@@ -9,6 +9,7 @@ import { Trans, useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
 import Button from '../../../components/Button';
 import {
+  FileWithSparksIcon,
   InfoBadgeIcon,
   MoreHorizontalIcon,
   PromptIcon,
@@ -18,7 +19,11 @@ import Dropdown from '../../../components/Dropdown';
 import { checkEventKeys } from '../../../utils/keyboardUtils';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
 import { TabsContext } from '../../../context/tabsContext';
-import { SettingSections, StudioTabType } from '../../../types/general';
+import {
+  CommandBarStepEnum,
+  SettingSections,
+  StudioTabType,
+} from '../../../types/general';
 import { ProjectContext } from '../../../context/projectContext';
 import { CommandBarContext } from '../../../context/commandBarContext';
 import { UIContext } from '../../../context/uiContext';
@@ -26,7 +31,11 @@ import TokenUsage from '../../../components/TokenUsage';
 import { StudioContext, StudiosContext } from '../../../context/studiosContext';
 import { TOKEN_LIMIT } from '../../../consts/codeStudio';
 import { PersonalQuotaContext } from '../../../context/personalQuotaContext';
-import { openInSplitViewShortcut } from '../../../consts/shortcuts';
+import {
+  addToStudioShortcut,
+  openInSplitViewShortcut,
+} from '../../../consts/shortcuts';
+import Tooltip from '../../../components/Tooltip';
 import ActionsDropdown from './ActionsDropdown';
 import Conversation from './Conversation';
 
@@ -55,7 +64,9 @@ const StudioTab = ({
     UIContext.Settings,
   );
   const { isLeftSidebarFocused } = useContext(UIContext.Focus);
-  const { setFocusedTabItems } = useContext(CommandBarContext.Handlers);
+  const { setFocusedTabItems, setChosenStep, setIsVisible } = useContext(
+    CommandBarContext.Handlers,
+  );
   const { project, refreshCurrentProjectStudios } = useContext(
     ProjectContext.Current,
   );
@@ -87,13 +98,23 @@ const StudioTab = ({
     side,
   ]);
 
+  const handleAddFiles = useCallback(() => {
+    setChosenStep({
+      id: CommandBarStepEnum.SEARCH_FILES,
+      data: { studioId },
+    });
+    setIsVisible(true);
+  }, [studioId]);
+
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
       if (checkEventKeys(e, openInSplitViewShortcut)) {
         handleMoveToAnotherSide();
+      } else if (checkEventKeys(e, addToStudioShortcut)) {
+        handleAddFiles();
       }
     },
-    [handleMoveToAnotherSide],
+    [handleMoveToAnotherSide, handleAddFiles],
   );
   useKeyboardNavigation(
     handleKeyEvent,
@@ -113,6 +134,16 @@ const StudioTab = ({
           shortcut: openInSplitViewShortcut,
           footerHint: '',
           footerBtns: [{ label: t('Move'), shortcut: ['entr'] }],
+        },
+        {
+          label: t('Add files to studio'),
+          Icon: FileWithSparksIcon,
+          id: 'add_file_to_studio',
+          key: 'add_file_to_studio',
+          onClick: handleAddFiles,
+          shortcut: addToStudioShortcut,
+          footerHint: '',
+          footerBtns: [{ label: t('Search files'), shortcut: ['entr'] }],
         },
       ]);
     }
@@ -171,14 +202,21 @@ const StudioTab = ({
             </Trans>
           </span>
         </div>
-        <div className="flex gap-2 items-center flex-shrink-0">
+        <div className="flex gap-2 items-center flex-shrink-0 select-none">
           {hasCheckedQuota && !isSubscribed && (
             <div className="flex gap-2 items-center">
               <div className="flex items-center gap-1 body-mini text-label-muted">
                 <span>
                   {requestsLeft} <Trans count={requestsLeft}>uses left</Trans>
                 </span>
-                <InfoBadgeIcon sizeClassName="w-3.5 h-3.5" />
+                <Tooltip
+                  text={t(
+                    'The amount of times you can generate responses in Studio conversations per day.',
+                  )}
+                  placement={'bottom'}
+                >
+                  <InfoBadgeIcon sizeClassName="w-3.5 h-3.5" />
+                </Tooltip>
               </div>
               <Button size="mini" onClick={onUpgradeClick}>
                 <Trans>Upgrade</Trans>

@@ -10,3 +10,4 @@ export const escapeShortcut = ['Esc'];
 export const saveShortcut = ['cmd', 'S'];
 export const selectLinesShortcut = ['cmd', 'L'];
 export const newProjectShortcut = ['option', 'N'];
+export const closeTabShortcut = ['cmd', 'W'];

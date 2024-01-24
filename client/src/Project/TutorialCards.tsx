@@ -12,19 +12,16 @@ import {
   CodeLineWithSparkleIcon,
   FileWithSparksIcon,
   RefIcon,
-} from '../../icons';
-import MultiKeyHint from '../../components/KeyboardHint/MultiKey';
-import {
-  explainFileShortcut,
-  newChatTabShortcut,
-} from '../../consts/shortcuts';
-import Button from '../../components/Button';
-import { EnvContext } from '../../context/envContext';
-import { getConfig, putConfig } from '../../services/api';
-import { TabsContext } from '../../context/tabsContext';
-import { TabTypesEnum } from '../../types/general';
-import { CommandBarContext } from '../../context/commandBarContext';
-import { UIContext } from '../../context/uiContext';
+} from '../icons';
+import MultiKeyHint from '../components/KeyboardHint/MultiKey';
+import { explainFileShortcut, newChatTabShortcut } from '../consts/shortcuts';
+import Button from '../components/Button';
+import { EnvContext } from '../context/envContext';
+import { getConfig, putConfig } from '../services/api';
+import { TabsContext } from '../context/tabsContext';
+import { TabTypesEnum } from '../types/general';
+import { CommandBarContext } from '../context/commandBarContext';
+import { UIContext } from '../context/uiContext';
 
 type Props = {};
 
@@ -120,8 +117,8 @@ const TutorialCards = ({}: Props) => {
     setStep((prev) => prev + 1);
   }, []);
 
-  const handleBack = useCallback(() => {
-    setStep((prev) => Math.max(prev - 1, 0));
+  const handleBack = useCallback((i: number) => {
+    setStep(i);
     setIsManualControl(true);
   }, []);
 
@@ -155,10 +152,11 @@ const TutorialCards = ({}: Props) => {
             </p>
             <div className="flex gap-1 items-start">
               {cards.map((c, i) => (
-                <span
-                  className={`w-1 h-1 rounded-full ${
+                <button
+                  className={`w-1.5 h-1.5 rounded-full ${
                     step === i ? 'bg-label-link' : 'bg-label-faint'
                   }`}
+                  onClick={() => handleBack(i)}
                   key={i}
                 />
               ))}
@@ -181,38 +179,20 @@ const TutorialCards = ({}: Props) => {
           ) : (
             <span />
           )}
-          <div className="flex items-center gap-3">
-            {step < cards.length - 1 ? (
-              <>
-                <button className="body-mini text-label-faint" onClick={onSkip}>
-                  <Trans>Skip</Trans>
-                </button>
-                {step !== 0 && (
-                  <button
-                    className="body-mini text-label-faint"
-                    onClick={handleBack}
-                  >
-                    <Trans>Back</Trans>
-                  </button>
-                )}
-                <Button variant="secondary" size="mini" onClick={handleNext}>
-                  <Trans>Next</Trans>
-                </Button>
-              </>
-            ) : (
-              <>
-                <button
-                  className="body-mini text-label-faint"
-                  onClick={handleBack}
-                >
-                  <Trans>Back</Trans>
-                </button>
-                <Button variant="danger" size="mini" onClick={onSkip}>
-                  <Trans>Dismiss tutorial</Trans>
-                </Button>
-              </>
-            )}
-          </div>
+          {step < cards.length - 1 ? (
+            <div className="flex items-center gap-3">
+              <button className="body-mini text-label-faint" onClick={onSkip}>
+                <Trans>Skip</Trans>
+              </button>
+              <Button variant="secondary" size="mini" onClick={handleNext}>
+                <Trans>Next</Trans>
+              </Button>
+            </div>
+          ) : (
+            <Button variant="danger" size="mini" onClick={onSkip}>
+              <Trans>Dismiss tutorial</Trans>
+            </Button>
+          )}
         </div>
       </div>
     </div>

@@ -90,13 +90,24 @@ const CodeContainerSelectable = ({
     if (scrollToIndex && ref.current) {
       let scrollToItem = scrollToIndex[0];
       scrollToItem = Math.max(0, Math.min(scrollToItem, tokens.length - 1));
-      const line = findElementInCurrentTab(
-        `[data-active="true"][data-line-number="${scrollToItem}"]`,
+      setTimeout(
+        () => {
+          const line = findElementInCurrentTab(
+            `[data-active="true"] [data-line-number="${scrollToItem}"]`,
+          );
+          line?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+          });
+        },
+        scrollToItem < 300
+          ? 500
+          : scrollToItem < 500
+          ? 800
+          : scrollToItem < 1000
+          ? 1000
+          : 1500,
       );
-      line?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center',
-      });
     }
   }, [scrollToIndex, tokens.length]);
 

@@ -22,6 +22,7 @@ import useKeyboardNavigation from '../../../../hooks/useKeyboardNavigation';
 import { UIContext } from '../../../../context/uiContext';
 import KeyHintButton from '../../../../components/Button/KeyHintButton';
 import Button from '../../../../components/Button';
+import { CommandBarContext } from '../../../../context/commandBarContext';
 import GeneratedDiff from './GeneratedDiff';
 import ConversationInput from './Input';
 import StarterMessage from './StarterMessage';
@@ -56,6 +57,7 @@ const Conversation = ({
   const { setIsUpgradeRequiredPopupOpen } = useContext(
     UIContext.UpgradeRequiredPopup,
   );
+  const { isVisible } = useContext(CommandBarContext.General);
   const templatesRef = useRef<HTMLButtonElement | null>(null);
 
   const refetchTemplates = useCallback(() => {
@@ -124,7 +126,10 @@ const Conversation = ({
       requestsLeft,
     ],
   );
-  useKeyboardNavigation(handleKeyEvent, !isActiveTab || isDropdownShown);
+  useKeyboardNavigation(
+    handleKeyEvent,
+    !isActiveTab || isDropdownShown || isVisible,
+  );
 
   const hasCodeBlock = useMemo(() => {
     return studioData.conversation.some(

@@ -17,6 +17,7 @@ type HandlersContextType = {
     forceSide?: 'left' | 'right',
   ) => void;
   closeTab: (key: string, side: 'left' | 'right') => void;
+  closeCurrentTab: () => void;
   setActiveLeftTab: Dispatch<SetStateAction<TabType | null>>;
   setActiveRightTab: Dispatch<SetStateAction<TabType | null>>;
   setFocusedPanel: (panel: 'left' | 'right') => void;
@@ -37,6 +38,7 @@ export const TabsContext = {
   Handlers: createContext<HandlersContextType>({
     openNewTab: () => {},
     closeTab: (key: string, side: 'left' | 'right') => {},
+    closeCurrentTab: () => {},
     setActiveLeftTab: () => {},
     setActiveRightTab: () => {},
     setFocusedPanel: (panel: 'left' | 'right') => {},
