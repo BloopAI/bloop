@@ -65,7 +65,18 @@ const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
   }, [currentProjectId]);
   const refreshCurrentProjectStudios = useCallback(async () => {
     getCodeStudios(currentProjectId).then((r) => {
-      setProject((prev) => (prev ? { ...prev, studios: r } : null));
+      setProject((prev) =>
+        prev
+          ? {
+              ...prev,
+              // as a precaution filter out duplicated studios
+              studios: r.filter(
+                (value, index, self) =>
+                  self.findIndex((v) => v.id === value.id) === index,
+              ),
+            }
+          : null,
+      );
     });
   }, [currentProjectId]);
   const refreshCurrentProjectDocs = useCallback(async () => {
