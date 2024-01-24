@@ -69,7 +69,11 @@ const ConversationInput = ({
   const handleChange = useCallback(
     (e: ChangeEvent<HTMLTextAreaElement>) => {
       if (isActiveTab) {
-        setValue(e.target.value);
+        if (i === undefined) {
+          onMessageChange(e.target.value, i);
+        } else {
+          setValue(e.target.value);
+        }
       }
     },
     [i, onMessageChange, isActiveTab],
@@ -89,7 +93,9 @@ const ConversationInput = ({
 
   const handleBlur = useCallback(() => {
     setTimeout(() => setFocused(false), 100); // to allow press on top buttons
-    onMessageChange(value, i);
+    if (i !== undefined) {
+      onMessageChange(value, i);
+    }
   }, [onMessageChange, value, i]);
 
   useEffect(() => {
@@ -171,7 +177,7 @@ const ConversationInput = ({
               <textarea
                 className={`w-full bg-transparent outline-none focus:outline-0 resize-none body-base placeholder:text-label-muted`}
                 placeholder={t('Start typing...')}
-                value={value}
+                value={i === undefined ? message : value}
                 onChange={handleChange}
                 autoComplete="off"
                 spellCheck="false"

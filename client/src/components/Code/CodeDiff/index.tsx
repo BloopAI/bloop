@@ -105,45 +105,46 @@ ${editedValue}
           )}
         </div>
         <div className="flex items-center gap-2">
-          {!repo.startsWith('local//') ? (
-            <CopyButton isInHeader code={raw_patch} />
-          ) : isEditMode ? (
-            <>
-              <Button size="mini" variant="secondary" onClick={onCancelEdit}>
-                <Trans>Cancel</Trans>
-              </Button>
-              <Button size="mini" onClick={onSaveEdit}>
-                <Trans>Save</Trans>
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button
-                variant="secondary"
-                size="mini"
-                onlyIcon
-                title={t('Edit')}
-                onClick={onEditClick}
-              >
-                <PencilIcon
-                  sizeClassName="w-3.5 h-3.5"
-                  className="text-label-muted"
-                />
-              </Button>
-              <Button
-                variant="secondary"
-                size="mini"
-                onlyIcon
-                title={t('Remove')}
-                onClick={onRemove}
-              >
-                <TrashCanIcon
-                  sizeClassName="w-3.5 h-3.5"
-                  className="text-label-muted"
-                />
-              </Button>
-            </>
-          )}
+          <CopyButton isInHeader code={raw_patch} btnVariant="tertiary" />
+          {repo.startsWith('local//') ? (
+            isEditMode ? (
+              <>
+                <Button size="mini" variant="secondary" onClick={onCancelEdit}>
+                  <Trans>Cancel</Trans>
+                </Button>
+                <Button size="mini" onClick={onSaveEdit}>
+                  <Trans>Save</Trans>
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="secondary"
+                  size="mini"
+                  onlyIcon
+                  title={t('Edit')}
+                  onClick={onEditClick}
+                >
+                  <PencilIcon
+                    sizeClassName="w-3.5 h-3.5"
+                    className="text-label-muted"
+                  />
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="mini"
+                  onlyIcon
+                  title={t('Remove')}
+                  onClick={onRemove}
+                >
+                  <TrashCanIcon
+                    sizeClassName="w-3.5 h-3.5"
+                    className="text-label-muted"
+                  />
+                </Button>
+              </>
+            )
+          ) : null}
         </div>
       </div>
       <div className={`overflow-auto py-2`}>
