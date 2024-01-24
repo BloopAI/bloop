@@ -23,7 +23,6 @@ fn default_true() -> bool {
     true
 }
 
-
 #[derive(Deserialize)]
 pub struct AutocompleteParams {
     #[serde(default = "default_true")]
