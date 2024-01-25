@@ -3,6 +3,7 @@ import React, {
   memo,
   SetStateAction,
   useContext,
+  useMemo,
   useState,
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
@@ -15,7 +16,8 @@ import {
 import Button from '../../../../components/Button';
 import { ProjectContext } from '../../../../context/projectContext';
 import { useNavPanel } from '../../../../hooks/useNavPanel';
-import { IndexingStatusType } from '../../../../types/general';
+import { IndexingStatusType, TabTypesEnum } from '../../../../types/general';
+import { TabsContext } from '../../../../context/tabsContext';
 import StudioEntry from './StudioEntry';
 import StudiosDropdown from './StudiosDropdown';
 
@@ -39,6 +41,9 @@ const StudiosNav = ({
   const { t } = useTranslation();
   const [expandedIndex, setExpandedIndex] = useState('');
   const { project } = useContext(ProjectContext.Current);
+  const { tab: tabLeft } = useContext(TabsContext.CurrentLeft);
+  const { tab: tabRight } = useContext(TabsContext.CurrentRight);
+  const { focusedPanel } = useContext(TabsContext.FocusedPanel);
   const {
     containerRef,
     toggleExpanded,
@@ -46,6 +51,16 @@ const StudiosNav = ({
     isLeftSidebarFocused,
     isCommandBarVisible,
   } = useNavPanel(index, setExpanded, isExpanded, focusedIndex);
+
+  const previewingSnapshot = useMemo(() => {
+    const focusedTab = focusedPanel === 'left' ? tabLeft : tabRight;
+    return focusedTab?.type === TabTypesEnum.STUDIO && focusedTab?.snapshot
+      ? {
+          studioId: focusedTab.studioId,
+          snapshot: focusedTab.snapshot,
+        }
+      : null;
+  }, [focusedPanel, tabLeft, tabRight]);
 
   return (
     <div className="select-none overflow-hidden w-full flex-shrink-0">
@@ -109,6 +124,12 @@ const StudiosNav = ({
               isLeftSidebarFocused={isLeftSidebarFocused}
               isCommandBarVisible={isCommandBarVisible}
               indexingStatus={indexingStatus}
+              projectId={project.id}
+              previewingSnapshot={
+                previewingSnapshot?.studioId.toString() === c.id.toString()
+                  ? previewingSnapshot.snapshot
+                  : null
+              }
             />
           ))}
         </div>

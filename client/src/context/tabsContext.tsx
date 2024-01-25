@@ -49,16 +49,17 @@ export const TabsContext = {
   All: createContext<{
     leftTabs: TabType[];
     rightTabs: TabType[];
-    focusedPanel: 'left' | 'right';
   }>({
     leftTabs: [],
     rightTabs: [],
-    focusedPanel: 'left',
   }),
   CurrentLeft: createContext<{ tab: TabType | null }>({
     tab: null,
   }),
   CurrentRight: createContext<{ tab: TabType | null }>({
     tab: null,
+  }),
+  FocusedPanel: createContext<{ focusedPanel: 'left' | 'right' }>({
+    focusedPanel: 'left',
   }),
 };

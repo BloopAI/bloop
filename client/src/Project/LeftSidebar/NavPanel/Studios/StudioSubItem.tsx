@@ -3,6 +3,7 @@ import { TabsContext } from '../../../../context/tabsContext';
 import { TabTypesEnum } from '../../../../types/general';
 import { useEnterKey } from '../../../../hooks/useEnterKey';
 import { Range } from '../../../../types/results';
+import { HistoryConversationTurn } from '../../../../types/api';
 
 type Props = {
   index: string;
@@ -20,6 +21,8 @@ type Props = {
   docTitle?: string;
   docFavicon?: string;
   sections?: string[];
+  morePadding?: boolean;
+  snapshot?: HistoryConversationTurn | null;
 };
 
 const StudioSubItem = ({
@@ -39,13 +42,13 @@ const StudioSubItem = ({
   docTitle,
   docFavicon,
   sections,
+  morePadding,
+  snapshot,
 }: PropsWithChildren<Props>) => {
   const { openNewTab } = useContext(TabsContext.Handlers);
 
   const handleClick = useCallback(() => {
-    if (!path && !docId) {
-      openNewTab({ type: TabTypesEnum.STUDIO, studioId, title: studioName });
-    } else if (path && repoRef) {
+    if (path && repoRef) {
       openNewTab({
         type: TabTypesEnum.FILE,
         path,
@@ -66,6 +69,15 @@ const StudioSubItem = ({
         isDocInContext: true,
         initialSections: sections,
       });
+    } else if (snapshot !== undefined) {
+      openNewTab({
+        type: TabTypesEnum.STUDIO,
+        studioId,
+        title: studioName,
+        snapshot: snapshot || undefined,
+      });
+    } else if (!path && !docId) {
+      openNewTab({ type: TabTypesEnum.STUDIO, studioId, title: studioName });
     }
   }, [
     path,
@@ -80,6 +92,7 @@ const StudioSubItem = ({
     docTitle,
     docFavicon,
     relativeUrl,
+    snapshot,
   ]);
 
   useEnterKey(
@@ -90,12 +103,13 @@ const StudioSubItem = ({
   return (
     <a
       href="#"
-      className={`w-full h-7 flex items-center gap-3 pl-10.5 pr-4 
-        hover:text-label-title hover:bg-bg-base-hover ${
-          focusedIndex.startsWith(index)
-            ? 'bg-bg-sub-hover text-label-title'
-            : 'text-label-base'
-        }`}
+      className={`w-full h-7 flex items-center gap-3 ${
+        morePadding ? 'pl-[4.25rem]' : 'pl-10.5'
+      } pr-4 hover:text-label-title hover:bg-bg-base-hover ${
+        focusedIndex.startsWith(index)
+          ? 'bg-bg-sub-hover text-label-title'
+          : 'text-label-base'
+      }`}
       onClick={handleClick}
       data-node-index={index}
     >

@@ -1,5 +1,6 @@
 import React, { memo, useCallback, useContext, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import * as Sentry from '@sentry/react';
 import { useDragLayer } from 'react-dnd';
 import { ProjectContext } from '../context/projectContext';
 import { TabsContext } from '../context/tabsContext';
@@ -10,6 +11,7 @@ import { checkEventKeys } from '../utils/keyboardUtils';
 import useKeyboardNavigation from '../hooks/useKeyboardNavigation';
 import StudiosContextProvider from '../context/providers/StudiosContextProvider';
 import { EnvContext } from '../context/envContext';
+import ErrorFallback from '../components/ErrorFallback';
 import LeftSidebar from './LeftSidebar';
 import CurrentTabContent from './CurrentTabContent';
 import EmptyProject from './EmptyProject';
@@ -155,4 +157,8 @@ const Project = ({}: Props) => {
   );
 };
 
-export default memo(Project);
+export default memo(
+  Sentry.withErrorBoundary(Project, {
+    fallback: (props) => <ErrorFallback {...props} />,
+  }),
+);

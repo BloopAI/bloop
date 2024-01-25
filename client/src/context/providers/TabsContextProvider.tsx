@@ -117,8 +117,9 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
             : data.type === TabTypesEnum.STUDIO
             ? {
                 type: TabTypesEnum.STUDIO,
-                key: data.studioId,
-                studioId: data.studioId,
+                key: data.studioId.toString(),
+                studioId: data.studioId.toString(),
+                snapshot: data.snapshot,
               }
             : {
                 ...data,
@@ -179,6 +180,22 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
             const t = {
               ...previousTab,
               studioId: newTab.studioId,
+            };
+            newTabs[previousTabIndex] = t;
+            setActiveTabAction(t);
+            return newTabs;
+          } else if (
+            previousTab.type === TabTypesEnum.STUDIO &&
+            newTab.type === TabTypesEnum.STUDIO &&
+            previousTab.snapshot !== newTab.snapshot
+          ) {
+            const previousTabIndex = prev.findIndex(
+              (t) => t.key === newTab.key,
+            );
+            const newTabs = [...prev];
+            const t = {
+              ...previousTab,
+              snapshot: newTab.snapshot,
             };
             newTabs[previousTabIndex] = t;
             setActiveTabAction(t);
@@ -418,9 +435,8 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
     () => ({
       leftTabs,
       rightTabs,
-      focusedPanel,
     }),
-    [leftTabs, rightTabs, focusedPanel],
+    [leftTabs, rightTabs],
   );
 
   const currentLeftContextValue = useMemo(
@@ -437,12 +453,21 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
     [activeRightTab],
   );
 
+  const focusedPanelContextValue = useMemo(
+    () => ({
+      focusedPanel,
+    }),
+    [focusedPanel],
+  );
+
   return (
     <TabsContext.Handlers.Provider value={handlersContextValue}>
       <TabsContext.All.Provider value={allContextValue}>
         <TabsContext.CurrentLeft.Provider value={currentLeftContextValue}>
           <TabsContext.CurrentRight.Provider value={currentRightContextValue}>
-            {children}
+            <TabsContext.FocusedPanel.Provider value={focusedPanelContextValue}>
+              {children}
+            </TabsContext.FocusedPanel.Provider>
           </TabsContext.CurrentRight.Provider>
         </TabsContext.CurrentLeft.Provider>
       </TabsContext.All.Provider>

@@ -25,13 +25,13 @@ type Props = {
 const typeMap = {
   outlined: 'border border-bg-border text-label-base',
   filled: 'bg-bg-border text-label-base',
-  green: 'bg-bg-green text-label-control',
+  green: 'bg-green text-label-control',
   'green-subtle': 'bg-green-subtle text-green',
-  red: 'bg-bg-red text-label-control',
+  red: 'bg-red text-label-control',
   'red-subtle': 'bg-red-subtle text-red',
-  yellow: 'bg-bg-yellow text-label-control',
+  yellow: 'bg-yellow text-label-control',
   'yellow-subtle': 'bg-yellow-subtle text-yellow',
-  blue: 'bg-bg-blue text-label-control',
+  blue: 'bg-blue text-label-control',
   'blue-subtle': 'bg-blue-subtle text-blue',
   studio:
     'bg-[linear-gradient(110deg,#D92037_1.23%,#D9009D_77.32%)] text-label-control',

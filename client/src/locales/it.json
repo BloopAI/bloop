@@ -655,5 +655,9 @@
 	"Add files to studio": "Aggiungi file a Studio",
 	"The amount of times you can generate responses in Studio conversations per day.": "La quantità di volte in cui è possibile generare risposte nelle conversazioni in studio al giorno.",
 	"Code search": "Ricerca del codice",
-	"Close current tab": "Chiudi la finestra attuale"
+	"Close current tab": "Chiudi la finestra attuale",
+	"Current": "Attuale",
+	"Back to current": "Torna alla corrente",
+	"Go to current state": "Vai allo stato attuale",
+	"Continue from this state": "Continua da questo stato"
 }

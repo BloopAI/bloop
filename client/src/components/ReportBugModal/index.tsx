@@ -94,8 +94,17 @@ const ReportBugModal = ({
     (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
       e.preventDefault();
       if (serverCrashedMessage) {
+        const userData: {
+          email: string;
+          firstName: string;
+          lastName: string;
+        } | null = getJsonFromStorage(USER_DATA_FORM);
         saveCrashReport({
           text: form.text,
+          name: userData
+            ? `${userData.firstName} ${userData.lastName}`
+            : undefined,
+          email: userData?.email,
           unique_id: envConfig.tracking_id || '',
           info: serverCrashedMessage,
           metadata: JSON.stringify(os),
@@ -151,7 +160,7 @@ const ReportBugModal = ({
             <CloseSignIcon sizeClassName="w-3.5 h-3.5" />
           </Button>
         </div>
-        <div className="flex flex-col p-3 gap-4">
+        <div className="flex flex-col p-3 gap-4 overflow-auto">
           <p className="select-none body-base text-label-base">
             {serverCrashedMessage ? (
               <Trans>

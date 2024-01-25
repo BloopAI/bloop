@@ -15,7 +15,10 @@ import { BranchIcon, WarningSignIcon } from '../../../../icons';
 import SpinLoaderContainer from '../../../../components/Loaders/SpinnerLoader';
 import { StudioConversationMessageAuthor } from '../../../../types/general';
 import { getTemplates } from '../../../../services/api';
-import { StudioTemplateType } from '../../../../types/api';
+import {
+  HistoryConversationTurn,
+  StudioTemplateType,
+} from '../../../../types/api';
 import { checkEventKeys } from '../../../../utils/keyboardUtils';
 import { useTemplateShortcut } from '../../../../consts/shortcuts';
 import useKeyboardNavigation from '../../../../hooks/useKeyboardNavigation';
@@ -23,6 +26,7 @@ import { UIContext } from '../../../../context/uiContext';
 import KeyHintButton from '../../../../components/Button/KeyHintButton';
 import Button from '../../../../components/Button';
 import { CommandBarContext } from '../../../../context/commandBarContext';
+import { mapConversation } from '../../../../utils/mappers';
 import GeneratedDiff from './GeneratedDiff';
 import ConversationInput from './Input';
 import StarterMessage from './StarterMessage';
@@ -36,6 +40,7 @@ type Props = {
   isActiveTab: boolean;
   requestsLeft: number;
   studioId: string;
+  snapshot?: HistoryConversationTurn | null;
 };
 
 const generateShortcut = ['cmd', 'entr'];
@@ -48,6 +53,7 @@ const Conversation = ({
   isActiveTab,
   requestsLeft,
   studioId,
+  snapshot,
 }: Props) => {
   const { t } = useTranslation();
   const scrollableRef = useRef<HTMLDivElement>(null);
@@ -100,7 +106,8 @@ const Conversation = ({
           studioData.inputValue &&
           !isTokenLimitExceeded &&
           !hasContextError &&
-          requestsLeft
+          requestsLeft &&
+          !snapshot
           // && !isChangeUnsaved
         ) {
           studioData.onSubmit();
@@ -124,11 +131,12 @@ const Conversation = ({
       studioData.isLoading,
       studioData.handleCancel,
       requestsLeft,
+      snapshot,
     ],
   );
   useKeyboardNavigation(
     handleKeyEvent,
-    !isActiveTab || isDropdownShown || isVisible,
+    !isActiveTab || isDropdownShown || isVisible || !!snapshot,
   );
 
   const hasCodeBlock = useMemo(() => {
@@ -143,15 +151,23 @@ const Conversation = ({
     return studioData.diff?.chunks.find((c) => c.repo.startsWith('local//'));
   }, [studioData.diff]);
 
+  const mappedSnapshotConversation = useMemo(() => {
+    if (!snapshot) {
+      return null;
+    }
+    return mapConversation(snapshot.messages);
+  }, [snapshot]);
+
   return !studioData ? null : (
     <div className="w-full max-w-2xl mx-auto flex flex-col flex-1 overflow-auto">
       <ScrollToBottom
         className="max-w-full flex flex-col overflow-auto"
         wrapperRef={scrollableRef}
+        key={snapshot?.id}
       >
         <StarterMessage />
         <NoFilesMessage studioId={studioId} />
-        {studioData.conversation.map((m, i) => (
+        {(mappedSnapshotConversation || studioData.conversation).map((m, i) => (
           <ConversationInput
             key={i}
             author={m.author}
@@ -222,7 +238,7 @@ const Conversation = ({
         )}
         {hasContextError && <ContextError />}
         {!studioData.isLoading &&
-          // !studioData.isPreviewing &&
+          !snapshot &&
           !studioData.waitingForDiff &&
           !studioData.diff &&
           !(
@@ -246,68 +262,75 @@ const Conversation = ({
             />
           )}
       </ScrollToBottom>
-      <div
-        className={`flex items-start justify-between flex-shrink-0 w-full p-4 gap-4 border-t border-bg-border ${
-          isScrollable ? 'bg-bg-base border-x rounded-tl-md rounded-tr-md' : ''
-        }`}
-      >
-        <div className="flex gap-2 items-center select-none">
-          <KeyHintButton
-            text={t('Clear conversation')}
-            shortcut={noShortcut}
-            onClick={studioData.clearConversation}
-          />
-        </div>
-        <div className="flex gap-2 items-center select-none">
-          {studioData.isLoading ? (
+      {!snapshot && (
+        <div
+          className={`flex items-start justify-between flex-shrink-0 w-full p-4 gap-4 border-t border-bg-border ${
+            isScrollable
+              ? 'bg-bg-base border-x rounded-tl-md rounded-tr-md'
+              : ''
+          }`}
+        >
+          <div className="flex gap-2 items-center select-none">
             <KeyHintButton
-              text={t('Stop generating')}
-              shortcut={stopShortcut}
-              onClick={studioData.handleCancel}
+              text={t('Clear conversation')}
+              shortcut={noShortcut}
+              onClick={studioData.clearConversation}
+              disabled={!!snapshot}
             />
-          ) : (
-            <>
-              {(hasCodeBlock || studioData.diff) &&
-                (studioData.isDiffApplied ||
-                studioData.waitingForDiff ? null : !studioData.diff ? (
-                  <KeyHintButton
-                    text={t('Apply changes')}
-                    shortcut={noShortcut}
-                    onClick={studioData.handleApplyChanges}
-                  />
-                ) : (
-                  <>
+          </div>
+          <div className="flex gap-2 items-center select-none">
+            {studioData.isLoading ? (
+              <KeyHintButton
+                text={t('Stop generating')}
+                shortcut={stopShortcut}
+                onClick={studioData.handleCancel}
+              />
+            ) : (
+              <>
+                {(hasCodeBlock || studioData.diff) &&
+                  (studioData.isDiffApplied ||
+                  studioData.waitingForDiff ? null : !studioData.diff ? (
                     <KeyHintButton
-                      text={t(isDiffForLocalRepo ? 'Cancel' : 'Close')}
+                      text={t('Apply changes')}
                       shortcut={noShortcut}
-                      onClick={() => studioData.setDiff(null)}
+                      onClick={studioData.handleApplyChanges}
+                      disabled={!!snapshot}
                     />
-                    {isDiffForLocalRepo && (
+                  ) : (
+                    <>
                       <KeyHintButton
-                        text={'Apply locally'}
+                        text={t(isDiffForLocalRepo ? 'Cancel' : 'Close')}
                         shortcut={noShortcut}
-                        onClick={studioData.handleConfirmDiff}
+                        onClick={() => studioData.setDiff(null)}
                       />
-                    )}
-                  </>
-                ))}
-              {!studioData.diff && (
-                <KeyHintButton
-                  text={t('Generate')}
-                  shortcut={generateShortcut}
-                  onClick={studioData.onSubmit}
-                  disabled={
-                    hasContextError ||
-                    isTokenLimitExceeded ||
-                    !studioData.inputValue ||
-                    !requestsLeft
-                  }
-                />
-              )}
-            </>
-          )}
+                      {isDiffForLocalRepo && (
+                        <KeyHintButton
+                          text={'Apply locally'}
+                          shortcut={noShortcut}
+                          onClick={studioData.handleConfirmDiff}
+                        />
+                      )}
+                    </>
+                  ))}
+                {!studioData.diff && (
+                  <KeyHintButton
+                    text={t('Generate')}
+                    shortcut={generateShortcut}
+                    onClick={studioData.onSubmit}
+                    disabled={
+                      hasContextError ||
+                      isTokenLimitExceeded ||
+                      !studioData.inputValue ||
+                      !requestsLeft ||
+                      !!snapshot
+                    }
+                  />
+                )}
+              </>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

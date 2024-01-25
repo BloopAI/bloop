@@ -10,7 +10,8 @@ type Props = {
 };
 
 const ProjectHeader = ({ side }: Props) => {
-  const { leftTabs, rightTabs, focusedPanel } = useContext(TabsContext.All);
+  const { leftTabs, rightTabs } = useContext(TabsContext.All);
+  const { focusedPanel } = useContext(TabsContext.FocusedPanel);
   const { tab } = useContext(
     TabsContext[side === 'left' ? 'CurrentLeft' : 'CurrentRight'],
   );

@@ -9,6 +9,7 @@ import { Trans, useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
 import Button from '../../../components/Button';
 import {
+  DateTimeCalendarIcon,
   FileWithSparksIcon,
   InfoBadgeIcon,
   MoreHorizontalIcon,
@@ -33,9 +34,14 @@ import { TOKEN_LIMIT } from '../../../consts/codeStudio';
 import { PersonalQuotaContext } from '../../../context/personalQuotaContext';
 import {
   addToStudioShortcut,
+  escapeShortcut,
   openInSplitViewShortcut,
+  saveShortcut,
 } from '../../../consts/shortcuts';
 import Tooltip from '../../../components/Tooltip';
+import { getDateFnsLocale } from '../../../utils';
+import { LocaleContext } from '../../../context/localeContext';
+import { patchCodeStudio } from '../../../services/api';
 import ActionsDropdown from './ActionsDropdown';
 import Conversation from './Conversation';
 
@@ -52,11 +58,13 @@ const StudioTab = ({
   studioId,
   tabKey,
   handleMoveToAnotherSide,
+  snapshot,
 }: Props) => {
   const { t } = useTranslation();
-  const { focusedPanel } = useContext(TabsContext.All);
+  const { locale } = useContext(LocaleContext);
+  const { focusedPanel } = useContext(TabsContext.FocusedPanel);
   const { studios } = useContext(StudiosContext);
-  const { closeTab } = useContext(TabsContext.Handlers);
+  const { closeTab, updateTabProperty } = useContext(TabsContext.Handlers);
   const { requestsLeft, isSubscribed, hasCheckedQuota, resetAt } = useContext(
     PersonalQuotaContext.Values,
   );
@@ -106,15 +114,44 @@ const StudioTab = ({
     setIsVisible(true);
   }, [studioId]);
 
+  const cancelSnapshot = useCallback(() => {
+    updateTabProperty<StudioTabType, 'snapshot'>(
+      tabKey,
+      'snapshot',
+      undefined,
+      side,
+    );
+  }, [updateTabProperty, side, tabKey]);
+
+  const saveSnapshot = useCallback(async () => {
+    if (snapshot && project?.id) {
+      await patchCodeStudio(project.id, tabKey, {
+        context: snapshot.context,
+        messages: snapshot.messages,
+      });
+      studioData?.refetchCodeStudio?.();
+      refreshCurrentProjectStudios();
+      cancelSnapshot();
+    }
+  }, [tabKey, snapshot, project?.id, studioData, cancelSnapshot]);
+
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
       if (checkEventKeys(e, openInSplitViewShortcut)) {
         handleMoveToAnotherSide();
       } else if (checkEventKeys(e, addToStudioShortcut)) {
         handleAddFiles();
+      } else if (checkEventKeys(e, escapeShortcut) && snapshot) {
+        e.preventDefault();
+        e.stopPropagation();
+        cancelSnapshot();
+      } else if (checkEventKeys(e, saveShortcut) && snapshot) {
+        e.preventDefault();
+        e.stopPropagation();
+        saveSnapshot();
       }
     },
-    [handleMoveToAnotherSide, handleAddFiles],
+    [handleMoveToAnotherSide, handleAddFiles, snapshot, cancelSnapshot],
   );
   useKeyboardNavigation(
     handleKeyEvent,
@@ -173,25 +210,45 @@ const StudioTab = ({
       )}
       <div className="w-full h-10 px-4 flex justify-between gap-2 items-center flex-shrink-0 border-b border-bg-border bg-bg-sub">
         <div className="flex items-center gap-3 body-s text-label-title ellipsis">
-          <PromptIcon sizeClassName="w-4 h-4" />
+          {snapshot ? (
+            <DateTimeCalendarIcon sizeClassName="w-4 h-4" />
+          ) : (
+            <PromptIcon sizeClassName="w-4 h-4" />
+          )}
           <span className="ellipsis">
-            <Trans>Prompts</Trans>
+            {snapshot ? (
+              format(
+                new Date(snapshot.modified_at + '.000Z'),
+                'd MMM yyyy · hh:mm a',
+                getDateFnsLocale(locale),
+              )
+            ) : (
+              <Trans>Prompts</Trans>
+            )}
           </span>
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <TokenUsage
-            percent={((studioData?.tokenCount?.total || 0) / TOKEN_LIMIT) * 100}
+            percent={
+              (((snapshot?.token_counts || studioData?.tokenCount)?.total ||
+                0) /
+                TOKEN_LIMIT) *
+              100
+            }
           />
           <span className="body-mini-b text-label-base">
             <Trans
               values={{
-                count: studioData?.tokenCount?.total || 0,
+                count:
+                  (snapshot?.token_counts || studioData?.tokenCount)?.total ||
+                  0,
                 total: TOKEN_LIMIT,
               }}
             >
               <span
                 className={
-                  (studioData?.tokenCount?.total || 0) > TOKEN_LIMIT
+                  ((snapshot?.token_counts || studioData?.tokenCount)?.total ||
+                    0) > TOKEN_LIMIT
                     ? 'text-bg-danger'
                     : ''
                 }
@@ -203,7 +260,7 @@ const StudioTab = ({
           </span>
         </div>
         <div className="flex gap-2 items-center flex-shrink-0 select-none">
-          {hasCheckedQuota && !isSubscribed && (
+          {hasCheckedQuota && !isSubscribed && !snapshot && (
             <div className="flex gap-2 items-center">
               <div className="flex items-center gap-1 body-mini text-label-muted">
                 <span>
@@ -223,7 +280,30 @@ const StudioTab = ({
               </Button>
             </div>
           )}
-          {focusedPanel === side && (
+          {focusedPanel === side && snapshot ? (
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Button
+                variant="tertiary"
+                size="mini"
+                title={t('Go to current state')}
+                shortcut={escapeShortcut}
+                tooltipPlacement="bottom"
+                onClick={cancelSnapshot}
+              >
+                <Trans>Back to current</Trans>
+              </Button>
+              <Button
+                variant="studio"
+                size="mini"
+                title={t('Continue from this state')}
+                tooltipPlacement="bottom"
+                shortcut={saveShortcut}
+                onClick={saveSnapshot}
+              >
+                <Trans>Restore session</Trans>
+              </Button>
+            </div>
+          ) : (
             <Dropdown
               DropdownComponent={ActionsDropdown}
               dropdownComponentProps={dropdownComponentProps}
@@ -251,6 +331,7 @@ const StudioTab = ({
             requestsLeft={requestsLeft}
             studioId={studioId}
             isActiveTab={focusedPanel === side && !isLeftSidebarFocused}
+            snapshot={snapshot}
           />
         )}
       </div>

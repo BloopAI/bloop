@@ -706,5 +706,10 @@
 	"Code search": "Code search",
 	"File search": "File search",
 	"Close current tab": "Close current tab",
-	"Close currently focused tab": "Close currently focused tab"
+	"Close currently focused tab": "Close currently focused tab",
+	"Current": "Current",
+	"Back to current": "Back to current",
+	"Go to current state": "Go to current state",
+	"Continue from this state": "Continue from this state",
+	"Restore session": "Restore session"
 }

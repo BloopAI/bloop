@@ -74,9 +74,8 @@ const ConversationInput = ({
       if (isActiveTab) {
         if (i === undefined) {
           onMessageChange(e.target.value, i);
-        } else {
-          setValue(e.target.value);
         }
+        setValue(e.target.value);
       }
     },
     [i, onMessageChange, isActiveTab],
@@ -187,7 +186,7 @@ const ConversationInput = ({
               <textarea
                 className={`w-full bg-transparent outline-none focus:outline-0 resize-none body-base placeholder:text-label-muted`}
                 placeholder={t('Start typing...')}
-                value={i === undefined ? message : value}
+                value={value}
                 onChange={handleChange}
                 autoComplete="off"
                 spellCheck="false"

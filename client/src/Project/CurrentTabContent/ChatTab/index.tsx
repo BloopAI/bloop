@@ -40,7 +40,7 @@ const ChatTab = ({
   handleMoveToAnotherSide,
 }: Props) => {
   const { t } = useTranslation();
-  const { focusedPanel } = useContext(TabsContext.All);
+  const { focusedPanel } = useContext(TabsContext.FocusedPanel);
   const { closeTab } = useContext(TabsContext.Handlers);
   const { isLeftSidebarFocused } = useContext(UIContext.Focus);
   const { setFocusedTabItems } = useContext(CommandBarContext.Handlers);
