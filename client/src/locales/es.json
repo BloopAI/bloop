@@ -696,5 +696,7 @@
 	"Current": "Actual",
 	"Back to current": "Volver a la corriente",
 	"Go to current state": "Ir al estado actual",
-	"Continue from this state": "Continuar desde este estado"
+	"Continue from this state": "Continuar desde este estado",
+	"<0>repoName</0> has finished indexing and was added to the context of the current project. You can also use it in your other projects now.": "<0> Reponame </0> ha terminado de indexación y se agregó al contexto del proyecto actual. También puede usarlo en sus otros proyectos ahora.",
+	"{{repoName}} is currently indexing as soon as it is finished it will be added to your project.": "{{Reponame}} actualmente está indexando tan pronto como finalice, se agregará a su proyecto."
 }

@@ -689,5 +689,7 @@
 	"Current": "当前的",
 	"Back to current": "回到电流",
 	"Go to current state": "进入当前状态",
-	"Restore session": "还原会话"
+	"Restore session": "还原会话",
+	"<0>repoName</0> has finished indexing and was added to the context of the current project. You can also use it in your other projects now.": "<0> reponame </0>已完成索引，并已添加到当前项目的上下文中。 您现在也可以在其他项目中使用它。",
+	"{{repoName}} is currently indexing as soon as it is finished it will be added to your project.": "{{reponame}}当前索引一旦完成后，它将被添加到您的项目中。"
 }

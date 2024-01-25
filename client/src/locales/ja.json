@@ -678,5 +678,7 @@
 	"Current": "現在",
 	"Back to current": "現在に戻ります",
 	"Go to current state": "現在の状態に移動します",
-	"Continue from this state": "この状態から続けます"
+	"Continue from this state": "この状態から続けます",
+	"<0>repoName</0> has finished indexing and was added to the context of the current project. You can also use it in your other projects now.": "<0>レプネーム</0>はインデックス作成が終了し、現在のプロジェクトのコンテキストに追加されました。 今すぐ他のプロジェクトで使用することもできます。",
+	"{{repoName}} is currently indexing as soon as it is finished it will be added to your project.": "{{reponame}}は現在、完了するとすぐにインデックスを作成しています。プロジェクトに追加されます。"
 }

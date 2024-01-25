@@ -17,7 +17,7 @@ import { splitPath } from '../../utils';
 import { RepositoryIcon } from '../../icons';
 import { DeviceContext } from '../deviceContext';
 import { ProjectContext } from '../projectContext';
-import { getIndexedRepos } from '../../services/api';
+import { addRepoToProject, getIndexedRepos } from '../../services/api';
 
 type Props = {};
 
@@ -41,6 +41,11 @@ const RepositoriesContextProvider = ({
       const data = JSON.parse(ev.data);
       if (data.ev?.status_change === SyncStatus.Done) {
         if (!data.rsync) {
+          if (project?.id) {
+            addRepoToProject(project.id, data.ref).finally(() => {
+              refreshCurrentProjectRepos();
+            });
+          }
           toast(t('Repository indexed'), {
             id: `${data.ref}-indexed`,
             description: (
@@ -52,7 +57,8 @@ const RepositoriesContextProvider = ({
                 }}
               >
                 <span className="text-label-base body-s-b">repoName</span> has
-                finished indexing. You can use it in your projects now.
+                finished indexing and was added to the context of the current
+                project. You can also use it in your other projects now.
               </Trans>
             ),
             icon: <RepositoryIcon sizeClassName="w-4 h-4" />,

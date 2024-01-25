@@ -711,5 +711,7 @@
 	"Back to current": "Back to current",
 	"Go to current state": "Go to current state",
 	"Continue from this state": "Continue from this state",
-	"Restore session": "Restore session"
+	"Restore session": "Restore session",
+	"<0>repoName</0> has finished indexing and was added to the context of the current project. You can also use it in your other projects now.": "<0>repoName</0> has finished indexing and was added to the context of the current project. You can also use it in your other projects now.",
+	"{{repoName}} is currently indexing as soon as it is finished it will be added to your project.": "{{repoName}} is currently indexing as soon as it is finished it will be added to your project."
 }
