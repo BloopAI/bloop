@@ -286,6 +286,11 @@ const StudioPersistentState = ({ tabKey, side }: Props) => {
       setConversation(conversation.slice(0, -1));
       saveConversation(false, conversation.slice(0, -1));
     } else {
+      const newConv = [
+        ...conversation.slice(0, -1),
+        { ...conversation[conversation.length - 1], isLoading: false },
+      ];
+      setConversation(newConv);
       saveConversation();
     }
   }, [conversation]);
@@ -296,7 +301,6 @@ const StudioPersistentState = ({ tabKey, side }: Props) => {
   }, [handleCancel]);
 
   const onSubmit = useCallback(async () => {
-    console.log('inputValue', inputValue, 'project?.id', project?.id);
     if (!inputValue || !project?.id) {
       return;
     }
@@ -334,6 +338,7 @@ const StudioPersistentState = ({ tabKey, side }: Props) => {
           {
             author: StudioConversationMessageAuthor.ASSISTANT,
             message: '',
+            isLoading: false,
             error: t(
               "We couldn't answer your question. You can try asking again in a few moments, or rephrasing your question.",
             ),
@@ -345,11 +350,30 @@ const StudioPersistentState = ({ tabKey, side }: Props) => {
       setIsLoading(false);
       eventSource.current?.close();
     };
+    setConversation((prev) => {
+      return [
+        ...prev,
+        {
+          author: StudioConversationMessageAuthor.ASSISTANT,
+          isLoading: true,
+          message: '',
+        },
+      ];
+    });
     let i = 0;
     eventSource.current.onmessage = (ev) => {
       if (ev.data === '[DONE]') {
         eventSource.current?.close();
         setIsLoading(false);
+        setConversation((prev) => {
+          return [
+            ...prev.slice(0, -1),
+            {
+              ...prev[prev.length - 1],
+              isLoading: false,
+            },
+          ];
+        });
         refetchCodeStudio();
         return;
       }
@@ -359,30 +383,19 @@ const StudioPersistentState = ({ tabKey, side }: Props) => {
           const newMessage = data.Ok;
           if (i === 0) {
             refetchQuota();
-            setConversation((prev) => {
-              const newConv = [
-                ...prev,
-                {
-                  author: StudioConversationMessageAuthor.ASSISTANT,
-                  message: newMessage,
-                },
-              ];
-              saveConversation(false, newConv);
-              return newConv;
-            });
-          } else {
-            setConversation((prev) => {
-              const newConv = [
-                ...prev.slice(0, -1),
-                {
-                  author: StudioConversationMessageAuthor.ASSISTANT,
-                  message: newMessage,
-                },
-              ];
-              saveConversation(false, newConv);
-              return newConv;
-            });
           }
+          setConversation((prev) => {
+            const newConv = [
+              ...prev.slice(0, -1),
+              {
+                author: StudioConversationMessageAuthor.ASSISTANT,
+                isLoading: true,
+                message: newMessage,
+              },
+            ];
+            saveConversation(false, newConv);
+            return newConv;
+          });
           i++;
         } else if (data.Err) {
           refetchQuota();
@@ -391,6 +404,7 @@ const StudioPersistentState = ({ tabKey, side }: Props) => {
               ...prev,
               {
                 author: StudioConversationMessageAuthor.ASSISTANT,
+                isLoading: false,
                 message: data.Err,
               },
             ];
