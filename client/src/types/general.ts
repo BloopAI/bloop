@@ -351,6 +351,7 @@ export enum StudioConversationMessageAuthor {
 export type StudioConversationMessage = {
   author: StudioConversationMessageAuthor;
   message: string;
+  isLoading?: boolean;
   error?: string;
 };
 

@@ -25,11 +25,13 @@ import CopyButton from '../../../../../components/MarkdownWithCode/CopyButton';
 import { StudioTemplateType } from '../../../../../types/api';
 import Dropdown from '../../../../../components/Dropdown';
 import { useTemplateShortcut } from '../../../../../consts/shortcuts';
+import SpinLoaderContainer from '../../../../../components/Loaders/SpinnerLoader';
 import TemplatesDropdown from './TemplatesDropdown';
 
 type Props = {
   author: StudioConversationMessageAuthor;
   message: string;
+  isLoading?: boolean;
   onMessageChange: (m: string, i?: number) => void;
   onMessageRemoved?: (i: number, andSubsequent?: boolean) => void;
   i?: number;
@@ -57,6 +59,7 @@ const ConversationInput = ({
   setIsDropdownShown,
   templatesRef,
   isActiveTab,
+  isLoading,
 }: Props) => {
   const { t } = useTranslation();
   const { envConfig } = useContext(EnvContext);
@@ -133,7 +136,14 @@ const ConversationInput = ({
         </div>
       ) : (
         <div className="flex w-7 h-7 items-center justify-center rounded-full bg-brand-studio-subtle flex-shrink-0">
-          <img className="bloop-head-img w-7 h-7" alt="bloop" />
+          {isLoading ? (
+            <SpinLoaderContainer
+              sizeClassName="w-5 h-5"
+              colorClassName="text-brand-studio"
+            />
+          ) : (
+            <img className="bloop-head-img w-7 h-7" alt="bloop" />
+          )}
         </div>
       )}
       <div className="flex flex-col gap-1 flex-1 items-start overflow-auto">
