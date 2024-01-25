@@ -1,7 +1,7 @@
 import React, { memo, useCallback, useContext } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import Header from '../components/Header';
-import { PlusSignIcon, ShapesIcon } from '../icons';
+import { ShapesIcon } from '../icons';
 import Button from '../components/Button';
 import { CommandBarContext } from '../context/commandBarContext';
 import { CommandBarStepEnum } from '../types/general';
@@ -12,10 +12,13 @@ type Props = {};
 const EmptyProject = ({}: Props) => {
   useTranslation();
   const shortcut = useShortcuts(['cmd']);
-  const { setIsVisible } = useContext(CommandBarContext.Handlers);
+  const { setIsVisible, setChosenStep } = useContext(
+    CommandBarContext.Handlers,
+  );
 
   const openCommandBar = useCallback(() => {
     setIsVisible(true);
+    setChosenStep({ id: CommandBarStepEnum.MANAGE_REPOS });
   }, []);
 
   return (

@@ -64,7 +64,6 @@ const ManageRepos = ({ shouldShowTutorial }: Props) => {
   const [inputValue, setInputValue] = useState('');
   const [tutorialStep, setTutorialStep] = useState(0);
   const [selectedRepo, setSelectedRepo] = useState('');
-  const [indexedRepo, setIndexedRepo] = useState('');
 
   const handleInputChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
@@ -106,7 +105,10 @@ const ManageRepos = ({ shouldShowTutorial }: Props) => {
               setTutorialStep(3);
             },
             onDone: () => {
-              setIndexedRepo(r.shortName);
+              setOnBoardingState((prev) => ({
+                ...prev,
+                isCommandBarTutorialFinished: true,
+              }));
               setTutorialStep(4);
             },
             onAddToProject: () => {
@@ -114,7 +116,7 @@ const ManageRepos = ({ shouldShowTutorial }: Props) => {
                 ...prev,
                 isCommandBarTutorialFinished: true,
               }));
-              setTutorialStep(5);
+              setTutorialStep(4);
             },
           },
           key: r.ref,
@@ -210,7 +212,6 @@ const ManageRepos = ({ shouldShowTutorial }: Props) => {
         .componentProps.repo;
       setTutorialStep(firstRepo.isSyncing ? 3 : 4);
       setSelectedRepo(firstRepo.shortName);
-      setIndexedRepo(firstRepo.shortName);
     }
   }, [sections, tutorialStep, shouldShowTutorial]);
 
@@ -237,14 +238,14 @@ const ManageRepos = ({ shouldShowTutorial }: Props) => {
         placeholder={t('')}
         disableKeyNav={isDropdownVisible}
       />
-      {shouldShowTutorial && tutorialStep < 5 ? (
+      {shouldShowTutorial && tutorialStep < 4 ? (
         <TutorialTooltip
           content={
             <TutorialBody
               stepNumber={tutorialStep + 1}
               title={t(tutorialSteps[tutorialStep].title)}
               description={t(tutorialSteps[tutorialStep].description, {
-                repoName: tutorialStep === 3 ? selectedRepo : indexedRepo,
+                repoName: selectedRepo,
               })}
               hint={
                 tutorialStep > 0

@@ -43,7 +43,6 @@ const PrivateReposStep = ({ shouldShowTutorial }: Props) => {
   const [tutorialStep, setTutorialStep] = useState(2);
   const [isDropdownVisible, setIsDropdownVisible] = useState(false);
   const [selectedRepo, setSelectedRepo] = useState('');
-  const [indexedRepo, setIndexedRepo] = useState('');
 
   const handleInputChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
@@ -64,7 +63,10 @@ const PrivateReposStep = ({ shouldShowTutorial }: Props) => {
             setTutorialStep(3);
           },
           onDone: () => {
-            setIndexedRepo(r.shortName);
+            setOnBoardingState((prev) => ({
+              ...prev,
+              isCommandBarTutorialFinished: true,
+            }));
             setTutorialStep(4);
           },
           onAddToProject: () => {
@@ -72,7 +74,7 @@ const PrivateReposStep = ({ shouldShowTutorial }: Props) => {
               ...prev,
               isCommandBarTutorialFinished: true,
             }));
-            setTutorialStep(5);
+            setTutorialStep(4);
           },
         },
         key: r.ref,
@@ -133,14 +135,14 @@ const PrivateReposStep = ({ shouldShowTutorial }: Props) => {
         placeholder={t('Search private repos...')}
         disableKeyNav={isDropdownVisible}
       />
-      {shouldShowTutorial && tutorialStep < 5 ? (
+      {shouldShowTutorial && tutorialStep < 4 ? (
         <TutorialTooltip
           content={
             <TutorialBody
               stepNumber={tutorialStep + 1}
               title={t(tutorialSteps[tutorialStep].title)}
               description={t(tutorialSteps[tutorialStep].description, {
-                repoName: tutorialStep === 3 ? selectedRepo : indexedRepo,
+                repoName: selectedRepo,
               })}
               hint={t(tutorialSteps[tutorialStep].hint[0])}
             />
