@@ -685,5 +685,9 @@
 	"Add files to studio": "将文件添加到工作室",
 	"The amount of times you can generate responses in Studio conversations per day.": "您每天可以在工作室对话中产生响应的次数。",
 	"Code search": "代码搜索",
-	"Close current tab": "关闭当前选项卡"
+	"Close current tab": "关闭当前选项卡",
+	"Current": "当前的",
+	"Back to current": "回到电流",
+	"Go to current state": "进入当前状态",
+	"Restore session": "还原会话"
 }

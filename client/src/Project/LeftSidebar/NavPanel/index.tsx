@@ -16,7 +16,7 @@ type Props = {
 const NavPanel = ({ focusedIndex, setFocusedIndex }: Props) => {
   const [expanded, setExpanded] = useState('');
   const { project } = useContext(ProjectContext.Current);
-  const { focusedPanel } = useContext(TabsContext.All);
+  const { focusedPanel } = useContext(TabsContext.FocusedPanel);
   const { tab: leftTab } = useContext(TabsContext.CurrentLeft);
   const { tab: rightTab } = useContext(TabsContext.CurrentRight);
   const { indexingStatus } = useContext(RepositoriesContext);
@@ -45,7 +45,12 @@ const NavPanel = ({ focusedIndex, setFocusedIndex }: Props) => {
       }
     } else if (currentlyFocusedTab?.type === TabTypesEnum.STUDIO) {
       setExpanded('studios');
-      setFocusedIndex(`studios-${currentlyFocusedTab.studioId}-prompts`);
+      const { snapshot, studioId } = currentlyFocusedTab;
+      setFocusedIndex(
+        `studios-${studioId}-${
+          snapshot ? `history-${snapshot.id}` : 'prompts'
+        }`,
+      );
     } else if (
       currentlyFocusedTab?.type === TabTypesEnum.CHAT &&
       currentlyFocusedTab.conversationId

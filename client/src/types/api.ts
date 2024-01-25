@@ -360,7 +360,7 @@ export type StudioTemplateType = {
   is_default: boolean;
 };
 
-export type HistoryConversationTurn = CodeStudioType & {
+export type HistoryConversationTurn = Omit<CodeStudioType, 'name'> & {
   id: number;
   modified_at: string;
 };

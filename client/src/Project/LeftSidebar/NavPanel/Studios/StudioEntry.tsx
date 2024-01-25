@@ -6,7 +6,7 @@ import React, {
   useEffect,
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { CodeStudioType } from '../../../../types/api';
+import { CodeStudioType, HistoryConversationTurn } from '../../../../types/api';
 import {
   CodeStudioIcon,
   MagazineIcon,
@@ -24,6 +24,7 @@ import { IndexingStatusType } from '../../../../types/general';
 import StudioSubItem from './StudioSubItem';
 import AddContextFile from './AddContextFile';
 import StudioFile from './StudioFile';
+import StudioHistory from './StudioHistory';
 
 type Props = CodeStudioType & {
   index: string;
@@ -33,6 +34,8 @@ type Props = CodeStudioType & {
   isLeftSidebarFocused: boolean;
   isCommandBarVisible: boolean;
   indexingStatus: IndexingStatusType;
+  projectId: string;
+  previewingSnapshot: HistoryConversationTurn | null;
 };
 
 const StudioEntry = ({
@@ -48,6 +51,8 @@ const StudioEntry = ({
   isLeftSidebarFocused,
   isCommandBarVisible,
   indexingStatus,
+  projectId,
+  previewingSnapshot,
 }: Props) => {
   const { t } = useTranslation();
 
@@ -99,6 +104,16 @@ const StudioEntry = ({
       {expandedIndex === index && (
         <div className="relative">
           <div className="absolute top-0 bottom-0 left-[1.375rem] w-px bg-bg-border" />
+          <StudioHistory
+            studioName={name}
+            studioId={id}
+            projectId={projectId}
+            shouldRefresh={token_counts}
+            focusedIndex={focusedIndex}
+            index={`${index}-history`}
+            isLeftSidebarFocused={isLeftSidebarFocused}
+            isCommandBarVisible={isCommandBarVisible}
+          />
           <StudioSubItem
             studioId={id}
             focusedIndex={focusedIndex}
@@ -116,7 +131,7 @@ const StudioEntry = ({
           <div className="body-tiny text-label-base pl-10.5 pr-4 h-7 flex items-center">
             <Trans>Context files</Trans>
           </div>
-          {!context.length && (
+          {!context.length && !previewingSnapshot && (
             <AddContextFile
               studioId={id}
               focusedIndex={focusedIndex}
@@ -125,7 +140,7 @@ const StudioEntry = ({
               isCommandBarVisible={isCommandBarVisible}
             />
           )}
-          {context.map((f, i) => (
+          {(previewingSnapshot?.context || context).map((f, i) => (
             <StudioFile
               key={`${f.path}-${f.repo}-${f.branch}`}
               studioId={id}
@@ -139,12 +154,12 @@ const StudioEntry = ({
               {...f}
             />
           ))}
-          {!!doc_context.length && (
+          {!!(doc_context.length || previewingSnapshot?.doc_context.length) && (
             <div className="body-tiny text-label-base pl-10.5 pr-4 h-7 flex items-center">
               <Trans>Documentation in studio</Trans>
             </div>
           )}
-          {doc_context.map((d, i) => (
+          {(previewingSnapshot?.doc_context || doc_context).map((d, i) => (
             <StudioSubItem
               key={`${d.doc_id}-${d.doc_id}-${d.relative_url}`}
               studioId={id}

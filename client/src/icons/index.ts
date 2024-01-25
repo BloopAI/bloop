@@ -1,3 +1,4 @@
+export { default as ArrowHistoryIcon } from './ArrowHistory';
 export { default as ArrowLeftIcon } from './ArrowLeft';
 export { default as ArrowOutIcon } from './ArrowOut';
 export { default as ArrowTriangleBottomIcon } from './ArrowTriangleBottom';
@@ -21,6 +22,7 @@ export { default as CodeStudioIcon } from './CodeStudio';
 export { default as CogIcon } from './Cog';
 export { default as ColorSwitchIcon } from './ColorSwitch';
 export { default as CopyTextIcon } from './CopyText';
+export { default as DateTimeCalendarIcon } from './DateTimeCalendar';
 export { default as DefIcon } from './Def';
 export { default as DocumentsIcon } from './Documents';
 export { default as DoorOutIcon } from './DoorOut';

@@ -258,6 +258,8 @@ export const saveBugReport = (report: {
 
 export const saveCrashReport = (report: {
   text: string;
+  name?: string;
+  email?: string;
   unique_id: string;
   info: string;
   metadata: string;

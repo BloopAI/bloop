@@ -1,4 +1,12 @@
-import { RepoProvider, RepoType, RepoUi, SyncStatus } from '../types/general';
+import {
+  RepoProvider,
+  RepoType,
+  RepoUi,
+  StudioConversationMessage,
+  StudioConversationMessageAuthor,
+  SyncStatus,
+} from '../types/general';
+import { CodeStudioMessageType } from '../types/api';
 import { splitPath } from './index';
 
 export const mapReposBySections = (githubRepos: RepoType[]) => {
@@ -60,3 +68,12 @@ export const mapReposBySections = (githubRepos: RepoType[]) => {
     });
   return result;
 };
+
+export function mapConversation(
+  messages: CodeStudioMessageType[],
+): StudioConversationMessage[] {
+  return messages.map((m) => {
+    const author = Object.keys(m)[0] as StudioConversationMessageAuthor;
+    return { author, message: Object.values(m)[0] };
+  });
+}

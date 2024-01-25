@@ -31,6 +31,7 @@ import {
 } from '../../../types/api';
 import { PersonalQuotaContext } from '../../../context/personalQuotaContext';
 import { UIContext } from '../../../context/uiContext';
+import { mapConversation } from '../../../utils/mappers';
 
 type Props = {
   tabKey: string; //studioId
@@ -44,15 +45,6 @@ const throttledPatch = throttle(
   2000,
   { leading: false, trailing: true },
 );
-
-function mapConversation(
-  messages: CodeStudioMessageType[],
-): StudioConversationMessage[] {
-  return messages.map((m) => {
-    const author = Object.keys(m)[0] as StudioConversationMessageAuthor;
-    return { author, message: Object.values(m)[0] };
-  });
-}
 
 const StudioPersistentState = ({ tabKey, side }: Props) => {
   const { t } = useTranslation();
@@ -197,6 +189,11 @@ const StudioPersistentState = ({ tabKey, side }: Props) => {
     },
     [tabKey, project?.id, side],
   );
+  useEffect(() => {
+    setStudios((prev) => {
+      return { ...prev, [tabKey]: { ...prev[tabKey], refetchCodeStudio } };
+    });
+  }, [refetchCodeStudio]);
 
   useEffect(() => {
     refetchCodeStudio();

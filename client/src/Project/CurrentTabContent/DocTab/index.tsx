@@ -70,7 +70,7 @@ const DocTab = ({
   isDocInContext,
 }: Props) => {
   const { t } = useTranslation();
-  const { focusedPanel } = useContext(TabsContext.All);
+  const { focusedPanel } = useContext(TabsContext.FocusedPanel);
   const { updateTabProperty } = useContext(TabsContext.Handlers);
   const { isLeftSidebarFocused } = useContext(UIContext.Focus);
   const { setFocusedTabItems, setChosenStep, setIsVisible } = useContext(

@@ -30,6 +30,7 @@ export type StudioContext = {
   handleCancelDiff: () => void;
   handleApplyChanges: () => void;
   handleConfirmDiff: () => void;
+  refetchCodeStudio: () => void;
 };
 
 type ContextType = {

@@ -1,5 +1,5 @@
 import React, { MemoExoticComponent, ReactElement } from 'react';
-import { DocShortType, SearchStepType } from './api';
+import { DocShortType, HistoryConversationTurn, SearchStepType } from './api';
 
 export enum MenuItemType {
   DEFAULT = 'default',
@@ -127,6 +127,7 @@ export type StudioTabType = {
   key: string;
   studioId: string;
   title?: string;
+  snapshot?: HistoryConversationTurn;
 };
 
 export type DocTabType = {

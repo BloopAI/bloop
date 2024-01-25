@@ -80,7 +80,7 @@ const CodeContainerSelectable = ({
     false,
   );
   const [currentFocusedRange, setCurrentFocusedRange] = useState(-1);
-  const { focusedPanel } = useContext(TabsContext.All);
+  const { focusedPanel } = useContext(TabsContext.FocusedPanel);
   const { isLeftSidebarFocused } = useContext(UIContext.Focus);
   const { isVisible: isCommandBarVisible } = useContext(
     CommandBarContext.General,

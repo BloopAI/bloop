@@ -114,7 +114,7 @@ const FileTab = ({
   );
   const [isPending, startTransition] = useTransition();
   const { openNewTab, updateTabProperty } = useContext(TabsContext.Handlers);
-  const { focusedPanel } = useContext(TabsContext.All);
+  const { focusedPanel } = useContext(TabsContext.FocusedPanel);
   const { isLeftSidebarFocused } = useContext(UIContext.Focus);
   const { setOnBoardingState } = useContext(UIContext.Onboarding);
   const { project, refreshCurrentProjectStudios } = useContext(
