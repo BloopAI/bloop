@@ -66,7 +66,7 @@ impl<'a> Iterator for CommitIterator<'a> {
             return None;
         };
 
-        let parent_commit = parent_id.object().unwrap().into_commit();
+        let parent_commit = parent_id.object().ok()?.into_commit();
         let mut stats = DiffStat {
             commit_message: self
                 .commit
