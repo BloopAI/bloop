@@ -31,7 +31,7 @@ pub async fn list(
         Doc,
         "SELECT d.id, d.url, d.index_status, d.name, d.favicon, d.description, d.modified_at
         FROM project_docs pd
-        INNER JOIN docs d ON d.id = pd.id
+        INNER JOIN docs d ON d.id = pd.doc_id
         WHERE project_id = $1 AND EXISTS (
             SELECT p.id
             FROM projects p
