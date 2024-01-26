@@ -466,6 +466,9 @@ const ChatPersistentState = ({
               setSubmittedQuery({ plain: '', parsed: [] });
               return [...newConversation, lastMessage];
             });
+            eventSource.current?.close();
+            eventSource.current = null;
+            setLoading(false);
           }
         } catch (err) {
           console.log('failed to parse response', err);
