@@ -17,7 +17,7 @@ import { getConfig, initApi } from './services/api';
 import { useComponentWillMount } from './hooks/useComponentWillMount';
 
 const CloudApp = () => {
-  useComponentWillMount(() => initApi('/api', true));
+  useComponentWillMount(() => initApi(import.meta.env.API_URL || '/api', true));
   const [envConfig, setEnvConfig] = useState({});
   const [locale, setLocale] = useState<LocaleType>(
     (getPlainFromStorage(LANGUAGE_KEY) as LocaleType | null) || 'en',

@@ -60,7 +60,7 @@ const Documentation = ({}: Props) => {
       key: 'add-docs',
       items: [
         {
-          label: 'Add documentation',
+          label: t('Add documentation'),
           Icon: PlusSignIcon,
           footerHint: t('Add any library documentation'),
           footerBtns: [
@@ -75,7 +75,7 @@ const Documentation = ({}: Props) => {
         },
       ],
     };
-  }, []);
+  }, [t]);
   const [sections, setSections] = useState<CommandBarSectionType[]>([addItem]);
 
   const breadcrumbs = useMemo(() => {

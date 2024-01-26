@@ -6,7 +6,7 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { Trans } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import {
   ChatBubblesIcon,
   CodeLineWithSparkleIcon,
@@ -74,6 +74,7 @@ const cards = [
 ];
 
 const TutorialCards = ({}: Props) => {
+  useTranslation();
   const [step, setStep] = useState(0);
   const { setEnvConfig, envConfig } = useContext(EnvContext);
   const { openNewTab } = useContext(TabsContext.Handlers);
