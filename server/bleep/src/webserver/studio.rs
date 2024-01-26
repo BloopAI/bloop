@@ -70,7 +70,6 @@ pub struct Create {
 
 pub async fn create(
     app: Extension<Application>,
-    user: Extension<User>,
     Path(project_id): Path<i64>,
     Json(params): Json<Create>,
 ) -> webserver::Result<String> {
@@ -811,7 +810,6 @@ pub async fn generate(
     Ok(Sse::new(Box::pin(stream)))
 }
 
-#[allow(clippy::single_range_in_vec_init)]
 async fn generate_llm_context(
     app: Application,
     context: &[ContextFile],
@@ -1087,7 +1085,7 @@ pub async fn diff(
 
     for chunk in valid_chunks {
         let path = chunk.src.as_deref().or(chunk.dst.as_deref()).unwrap();
-        let (repo, path) = parse_diff_path(&path)?;
+        let (repo, path) = parse_diff_path(path)?;
         let lang = if let Some(l) = file_langs.get(path) {
             Some(l.clone())
         } else {
@@ -1147,21 +1145,6 @@ fn parse_diff_path(p: &str) -> Result<(RepoRef, &str)> {
     let repo = repo.parse().context("repo ref was invalid")?;
 
     Ok((repo, path))
-}
-
-fn context_repo_branch(context: &[ContextFile]) -> Result<(RepoRef, Option<String>)> {
-    let (repo, branch) = context
-        .first()
-        .map(|cf| (cf.repo.clone(), cf.branch.clone()))
-        // We make a hard assumption in the design of diffs that a studio can only contain files
-        // from one repository. This allows us to determine which repository to create new files
-        // or delete files in, without having to prefix file paths with repository names.
-        //
-        // If we can't find *any* files in the context to detect the current repository,
-        // creating/deleting a file like `index.js` is ambiguous, so we just return an error.
-        .context("could not determine studio repository, studio didn't contain any files")?;
-
-    Ok((repo, branch))
 }
 
 async fn rectify_hunks(
@@ -1304,7 +1287,7 @@ pub async fn diff_apply(
     .map(|row| row.context)
     .ok_or_else(studio_not_found)?;
 
-    let context =
+    let _context =
         serde_json::from_str::<Vec<ContextFile>>(&context_json).map_err(Error::internal)?;
 
     let diff_chunks = diff::relaxed_parse(&diff);
@@ -1329,7 +1312,7 @@ pub async fn diff_apply(
         let mut file_content = if chunk.src.is_some() {
             app.indexes
                 .file
-                .by_path(&repo, &path, None)
+                .by_path(&repo, path, None)
                 .await?
                 .context("path did not exist in the index")?
                 .content
@@ -1455,7 +1438,6 @@ pub struct Import {
 }
 
 /// Returns a new studio ID, or the `?studio_id=...` query param if present.
-#[allow(clippy::single_range_in_vec_init)]
 pub async fn import(
     app: Extension<Application>,
     user: Extension<User>,
@@ -1709,9 +1691,12 @@ pub async fn list_snapshots(
     .and_then(|r| {
         let app = (*app).clone();
         async move {
-            let context: Vec<ContextFile> = serde_json::from_str(&r.context).context("failed to deserialize context")?;
-            let doc_context: Vec<DocContextFile> = serde_json::from_str(&r.doc_context).context("failed to deserialize doc context")?;
-            let messages: Vec<Message> = serde_json::from_str(&r.messages).context("failed to deserialize messages")?;
+            let context: Vec<ContextFile> =
+                serde_json::from_str(&r.context).context("failed to deserialize context")?;
+            let doc_context: Vec<DocContextFile> = serde_json::from_str(&r.doc_context)
+                .context("failed to deserialize doc context")?;
+            let messages: Vec<Message> =
+                serde_json::from_str(&r.messages).context("failed to deserialize messages")?;
 
             let token_counts = token_counts(app, &messages, &context, &doc_context).await?;
 

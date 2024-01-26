@@ -1,20 +1,16 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use axum::{
-    extract::{Path, Query, State},
-    response::IntoResponse,
+    extract::{Path, State},
     Extension, Json,
 };
-use chrono::NaiveDateTime;
 use reqwest::StatusCode;
-use std::{fmt, mem};
-use tracing::info;
+use std::mem;
 use uuid::Uuid;
 
 use crate::{
-    agent::{exchange::Exchange, Project},
+    agent::exchange::Exchange,
     db::SqlDb,
-    repo::RepoRef,
-    webserver::{self, middleware::User, Error, ErrorKind},
+    webserver::{self, middleware::User, Error},
     Application,
 };
 
