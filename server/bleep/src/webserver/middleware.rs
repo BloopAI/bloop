@@ -75,7 +75,7 @@ impl User {
         }
 
         let access_token = self.access_token().map(str::to_owned);
-        Ok(llm_gateway::Client::new(&app.config.answer_api_url).bearer(access_token))
+        Ok(llm_gateway::Client::new(app.clone()).bearer(access_token))
     }
 
     pub(crate) async fn paid_features(&self, app: &Application) -> bool {

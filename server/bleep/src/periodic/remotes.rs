@@ -70,10 +70,14 @@ pub(crate) async fn sync_github_status(app: Application) {
     // credentials from CLI/config
     loop {
         // then retrieve username & other maintenance
-        update_credentials(&app).await;
-        update_repo_list(&app).await;
+        sync_github_status_once(&app).await;
         sleep_systime(POLL_PERIOD).await;
     }
+}
+
+pub async fn sync_github_status_once(app: &Application) {
+    update_credentials(app).await;
+    update_repo_list(app).await;
 }
 
 pub(crate) async fn update_repo_list(app: &Application) {
