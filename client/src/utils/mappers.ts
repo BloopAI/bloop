@@ -77,3 +77,10 @@ export function mapConversation(
     return { author, message: Object.values(m)[0] };
   });
 }
+
+export function filterOutDuplicates<T>(arr: T[], key: keyof T): T[] {
+  return arr.filter(
+    (value, index, self) =>
+      self.findIndex((v) => v[key] === value[key]) === index,
+  );
+}

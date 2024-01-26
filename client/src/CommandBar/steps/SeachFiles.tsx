@@ -22,6 +22,7 @@ import Footer from '../Footer';
 import { splitPath } from '../../utils';
 import { getJsonFromStorage, RECENT_FILES_KEY } from '../../services/storage';
 import { UIContext } from '../../context/uiContext';
+import { filterOutDuplicates } from '../../utils/mappers';
 
 type Props = {
   studioId?: string;
@@ -92,9 +93,12 @@ const SearchFiles = ({ studioId }: Props) => {
     return [
       {
         key: 'files',
-        items: files.map(({ path, repo, branch }) => ({
-          key: `${path}-${repo}-${branch}`,
-          id: `${path}-${repo}-${branch}`,
+        items: filterOutDuplicates(
+          files.map((f) => ({ ...f, key: `${f.path}-${f.repo}-${f.branch}` })),
+          'key',
+        ).map(({ path, repo, branch, key }) => ({
+          key,
+          id: key,
           onClick: () => {
             openNewTab({
               type: TabTypesEnum.FILE,
@@ -114,7 +118,10 @@ const SearchFiles = ({ studioId }: Props) => {
             branch ? `/ ${splitPath(branch).pop()} ` : ''
           }/ ${path}`,
           footerBtns: [
-            { label: studioId ? t('Add file') : t('Open'), shortcut: ['entr'] },
+            {
+              label: studioId ? t('Add file') : t('Open'),
+              shortcut: ['entr'],
+            },
           ],
           Icon: (props: { sizeClassName?: string }) => (
             <FileIcon filename={path} noMargin />

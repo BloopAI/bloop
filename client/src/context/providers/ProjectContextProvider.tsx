@@ -27,6 +27,7 @@ import {
 } from '../../services/api';
 import { ProjectFullType, ProjectShortType } from '../../types/api';
 import { UIContext } from '../uiContext';
+import { filterOutDuplicates } from '../../utils/mappers';
 
 type Props = {};
 
@@ -70,10 +71,7 @@ const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
           ? {
               ...prev,
               // as a precaution filter out duplicated studios
-              studios: r.filter(
-                (value, index, self) =>
-                  self.findIndex((v) => v.id === value.id) === index,
-              ),
+              studios: filterOutDuplicates(r, 'id'),
             }
           : null,
       );
