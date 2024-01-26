@@ -23,7 +23,9 @@ const NoFilesMessage = ({ studioId }: Props) => {
   }, [studioId]);
 
   const isEmptyContext = useMemo(() => {
-    const fullStudio = project?.studios.find((s) => s.id === studioId);
+    const fullStudio = project?.studios.find(
+      (s) => s.id.toString() === studioId.toString(),
+    );
     return !!fullStudio && !fullStudio.context.length;
   }, [project?.studios, studioId]);
 

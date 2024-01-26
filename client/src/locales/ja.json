@@ -658,7 +658,7 @@
 	"Bloop needs to index your repository first. This process takes a few seconds and happens only one time per repository.": "Bloopは最初にリポジトリをインデックス化する必要があります。 このプロセスには数秒かかり、リポジトリごとに1回しか発生しません。",
 	"Skip": "スキップ",
 	"Start by selecting again and pressing Enter (↵) on your keyboard.": "もう一度選択して、キーボードのEnter（‡）を押すことから始めます。",
-	"{{repoName}} is currently indexing as soon as it is finished you will be able to add it to your project.": "{{reponame}}は現在、完成したらすぐにインデックスを作成しています。プロジェクトに追加できるようになります。",
+	"{{repoName}} is currently indexing as soon as it is finished you will be able to add it to your project.": "{{repoName}}は現在、完成したらすぐにインデックスを作成しています。プロジェクトに追加できるようになります。",
 	"Ask a question": "質問する",
 	"Ask your first question": "あなたの最初の質問をしてください",
 	"<0>Create a new conversation with bloop by hitting <2></2> on your keyboard or by pressing the <4></4> in the header bar.</0>": "<0>キーボードで<2> </2>を押すか、ヘッダーバーの<4> </4>を押すことにより、Bloopとの新しい会話を作成します。</0>",
@@ -679,6 +679,6 @@
 	"Back to current": "現在に戻ります",
 	"Go to current state": "現在の状態に移動します",
 	"Continue from this state": "この状態から続けます",
-	"<0>repoName</0> has finished indexing and was added to the context of the current project. You can also use it in your other projects now.": "<0>レプネーム</0>はインデックス作成が終了し、現在のプロジェクトのコンテキストに追加されました。 今すぐ他のプロジェクトで使用することもできます。",
-	"{{repoName}} is currently indexing as soon as it is finished it will be added to your project.": "{{reponame}}は現在、完了するとすぐにインデックスを作成しています。プロジェクトに追加されます。"
+	"<0>repoName</0> has finished indexing and was added to the context of the current project. You can also use it in your other projects now.": "<0>{{repoName}}</0>はインデックス作成が終了し、現在のプロジェクトのコンテキストに追加されました。 今すぐ他のプロジェクトで使用することもできます。",
+	"{{repoName}} is currently indexing as soon as it is finished it will be added to your project.": "{{repoName}}は現在、完了するとすぐにインデックスを作成しています。プロジェクトに追加されます。"
 }

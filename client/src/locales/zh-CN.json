@@ -668,8 +668,8 @@
 	"You can add 3 types of repositories, private, public and local.": "您可以添加3种类型的存储库，即私人，公共和本地。",
 	"Indexing repositories": "索引存储库",
 	"Skip": "跳过",
-	"{{repoName}} has finished indexing and you can use it in your projects now.": "{{reponame}}已完成索引，您可以立即在项目中使用它。",
-	"{{repoName}} is currently indexing as soon as it is finished you will be able to add it to your project.": "{{reponame}}当前，一旦完成后，您就可以将其添加到项目中。",
+	"{{repoName}} has finished indexing and you can use it in your projects now.": "{{repoName}}已完成索引，您可以立即在项目中使用它。",
+	"{{repoName}} is currently indexing as soon as it is finished you will be able to add it to your project.": "{{repoName}}当前，一旦完成后，您就可以将其添加到项目中。",
 	"Ask a question": "问一个问题",
 	"Ask your first question": "问你的第一个问题",
 	"<0>Create a new conversation with bloop by hitting <2></2> on your keyboard or by pressing the <4></4> in the header bar.</0>": "<0>通过在键盘上击打<2> </2>或按下标题栏中的<4> </4>来创建一个新的对话。</0>。</0>",
@@ -690,6 +690,6 @@
 	"Back to current": "回到电流",
 	"Go to current state": "进入当前状态",
 	"Restore session": "还原会话",
-	"<0>repoName</0> has finished indexing and was added to the context of the current project. You can also use it in your other projects now.": "<0> reponame </0>已完成索引，并已添加到当前项目的上下文中。 您现在也可以在其他项目中使用它。",
-	"{{repoName}} is currently indexing as soon as it is finished it will be added to your project.": "{{reponame}}当前索引一旦完成后，它将被添加到您的项目中。"
+	"<0>repoName</0> has finished indexing and was added to the context of the current project. You can also use it in your other projects now.": "<0>{{repoName}}</0>已完成索引，并已添加到当前项目的上下文中。 您现在也可以在其他项目中使用它。",
+	"{{repoName}} is currently indexing as soon as it is finished it will be added to your project.": "{{repoName}}当前索引一旦完成后，它将被添加到您的项目中。"
 }

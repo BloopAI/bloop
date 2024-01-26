@@ -675,8 +675,8 @@
 	"You can add 3 types of repositories, private, public and local.": "Puede agregar 3 tipos de repositorios, privados, públicos y locales.",
 	"Indexing repositories": "Repositorios de indexación",
 	"Skip": "Saltar",
-	"{{repoName}} has finished indexing and you can use it in your projects now.": "{{Reponame}} ha terminado de indexación y ahora puede usarla en sus proyectos.",
-	"{{repoName}} is currently indexing as soon as it is finished you will be able to add it to your project.": "{{Reponame}} actualmente está indexando tan pronto como esté terminado, podrá agregarlo a su proyecto.",
+	"{{repoName}} has finished indexing and you can use it in your projects now.": "{{repoName}} ha terminado de indexación y ahora puede usarla en sus proyectos.",
+	"{{repoName}} is currently indexing as soon as it is finished you will be able to add it to your project.": "{{repoName}} actualmente está indexando tan pronto como esté terminado, podrá agregarlo a su proyecto.",
 	"Ask a question": "Hacer una pregunta",
 	"Ask your first question": "Haz tu primera pregunta",
 	"<0>Create a new conversation with bloop by hitting <2></2> on your keyboard or by pressing the <4></4> in the header bar.</0>": "<0> Crea una nueva conversación con Bloop presionando <2> </2> en tu teclado o presionando el <4> </4> en la barra de encabezado. </0>",
@@ -697,6 +697,6 @@
 	"Back to current": "Volver a la corriente",
 	"Go to current state": "Ir al estado actual",
 	"Continue from this state": "Continuar desde este estado",
-	"<0>repoName</0> has finished indexing and was added to the context of the current project. You can also use it in your other projects now.": "<0> Reponame </0> ha terminado de indexación y se agregó al contexto del proyecto actual. También puede usarlo en sus otros proyectos ahora.",
-	"{{repoName}} is currently indexing as soon as it is finished it will be added to your project.": "{{Reponame}} actualmente está indexando tan pronto como finalice, se agregará a su proyecto."
+	"<0>repoName</0> has finished indexing and was added to the context of the current project. You can also use it in your other projects now.": "<0>{{repoName}}</0> ha terminado de indexación y se agregó al contexto del proyecto actual. También puede usarlo en sus otros proyectos ahora.",
+	"{{repoName}} is currently indexing as soon as it is finished it will be added to your project.": "{{repoName}} actualmente está indexando tan pronto como finalice, se agregará a su proyecto."
 }

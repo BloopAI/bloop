@@ -32,6 +32,9 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
   const {
     project,
     isReposLoaded,
+    isChatsLoaded,
+    isStudiosLoaded,
+    isDocsLoaded,
     isLoading: isLoadingProjects,
   } = useContext(ProjectContext.Current);
   const { setFocusedTabItems } = useContext(CommandBarContext.Handlers);
@@ -387,17 +390,68 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
     [],
   );
 
+  const checkIfTabsShouldClose = useCallback(
+    (checkIfTabShouldClose: (t: TabType | null) => boolean) => {
+      if (!isLoading && !isLoadingProjects) {
+        setActiveLeftTab((prev) => (checkIfTabShouldClose(prev) ? null : prev));
+        setActiveRightTab((prev) =>
+          checkIfTabShouldClose(prev) ? null : prev,
+        );
+        setLeftTabs((prev) => prev.filter((t) => !checkIfTabShouldClose(t)));
+        setRightTabs((prev) => prev.filter((t) => !checkIfTabShouldClose(t)));
+      }
+    },
+    [isLoading, isLoadingProjects],
+  );
+
   useEffect(() => {
     if (isReposLoaded && project?.repos && !isLoading && !isLoadingProjects) {
       const checkIfTabShouldClose = (tab: TabType | null) =>
         tab?.type === TabTypesEnum.FILE &&
         !project.repos.find((r) => r.repo.ref === tab.repoRef);
-      setActiveLeftTab((prev) => (checkIfTabShouldClose(prev) ? null : prev));
-      setActiveRightTab((prev) => (checkIfTabShouldClose(prev) ? null : prev));
-      setLeftTabs((prev) => prev.filter((t) => !checkIfTabShouldClose(t)));
-      setRightTabs((prev) => prev.filter((t) => !checkIfTabShouldClose(t)));
+      checkIfTabsShouldClose(checkIfTabShouldClose);
     }
-  }, [isReposLoaded, project?.repos, isLoading, isLoadingProjects]);
+  }, [isReposLoaded, project?.repos, checkIfTabsShouldClose]);
+
+  useEffect(() => {
+    if (
+      isChatsLoaded &&
+      project?.conversations &&
+      !isLoading &&
+      !isLoadingProjects
+    ) {
+      const checkIfTabShouldClose = (tab: TabType | null) =>
+        tab?.type === TabTypesEnum.CHAT &&
+        !!tab.conversationId &&
+        !project.conversations.find((r) => r.id === tab.conversationId);
+      checkIfTabsShouldClose(checkIfTabShouldClose);
+    }
+  }, [isChatsLoaded, project?.conversations, checkIfTabsShouldClose]);
+
+  useEffect(() => {
+    if (
+      isStudiosLoaded &&
+      project?.studios &&
+      !isLoading &&
+      !isLoadingProjects
+    ) {
+      const checkIfTabShouldClose = (tab: TabType | null) =>
+        tab?.type === TabTypesEnum.STUDIO &&
+        !project.studios.find(
+          (r) => r.id.toString() === tab.studioId.toString(),
+        );
+      checkIfTabsShouldClose(checkIfTabShouldClose);
+    }
+  }, [isStudiosLoaded, project?.studios, checkIfTabsShouldClose]);
+
+  useEffect(() => {
+    if (isDocsLoaded && project?.docs && !isLoading && !isLoadingProjects) {
+      const checkIfTabShouldClose = (tab: TabType | null) =>
+        tab?.type === TabTypesEnum.DOC &&
+        !project.docs.find((r) => r.id === tab.docId);
+      checkIfTabsShouldClose(checkIfTabShouldClose);
+    }
+  }, [isDocsLoaded, project?.docs, checkIfTabsShouldClose]);
 
   const handlersContextValue = useMemo(
     () => ({
