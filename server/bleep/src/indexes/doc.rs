@@ -395,6 +395,7 @@ impl Doc {
             match handle {
                 Some(h) => {
                     let s = tokio_stream::wrappers::WatchStream::from_changes(h.progress_stream.clone());
+                    drop(lock);
                     for await progress in s {
                         yield progress;
                     }
