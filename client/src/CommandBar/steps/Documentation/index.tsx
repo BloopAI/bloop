@@ -107,7 +107,11 @@ const Documentation = ({}: Props) => {
   useEffect(() => {
     const mapped = indexedDocs.map((d) => ({
       Component: DocItem,
-      componentProps: { doc: d, isIndexed: !!d.id, refetchDocs },
+      componentProps: {
+        doc: d,
+        isIndexed: d.index_status === 'done',
+        refetchDocs,
+      },
       key: d.id,
     }));
     if (addedDoc) {

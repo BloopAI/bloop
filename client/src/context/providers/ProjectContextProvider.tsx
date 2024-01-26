@@ -40,6 +40,9 @@ const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
   const [project, setProject] = useState<ProjectFullType | null>(null);
   const [projects, setProjects] = useState<ProjectShortType[]>([]);
   const [isReposLoaded, setIsReposLoaded] = useState(false);
+  const [isChatsLoaded, setIsChatsLoaded] = useState(false);
+  const [isStudiosLoaded, setIsStudiosLoaded] = useState(false);
+  const [isDocsLoaded, setIsDocsLoaded] = useState(false);
   const [isRegexSearchEnabled, setIsRegexSearchEnabled] = useState(false);
   const [preferredAnswerSpeed, setPreferredAnswerSpeed] = useState<
     'normal' | 'fast'
@@ -62,6 +65,7 @@ const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
   const refreshCurrentProjectConversations = useCallback(async () => {
     getProjectConversations(currentProjectId).then((r) => {
       setProject((prev) => (prev ? { ...prev, conversations: r } : null));
+      setIsChatsLoaded(true);
     });
   }, [currentProjectId]);
   const refreshCurrentProjectStudios = useCallback(async () => {
@@ -75,11 +79,13 @@ const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
             }
           : null,
       );
+      setIsStudiosLoaded(true);
     });
   }, [currentProjectId]);
   const refreshCurrentProjectDocs = useCallback(async () => {
     getProjectDocs(currentProjectId).then((r) => {
       setProject((prev) => (prev ? { ...prev, docs: r } : null));
+      setIsDocsLoaded(true);
     });
   }, [currentProjectId]);
 
@@ -95,6 +101,9 @@ const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
 
   useEffect(() => {
     setIsReposLoaded(false);
+    setIsChatsLoaded(false);
+    setIsStudiosLoaded(false);
+    setIsDocsLoaded(false);
   }, [currentProjectId]);
 
   useEffect(() => {
@@ -172,6 +181,9 @@ const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
     () => ({
       project,
       isReposLoaded,
+      isChatsLoaded,
+      isStudiosLoaded,
+      isDocsLoaded,
       setCurrentProjectId,
       refreshCurrentProjectRepos,
       refreshCurrentProjectConversations,
@@ -183,6 +195,9 @@ const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
     [
       project,
       isReposLoaded,
+      isChatsLoaded,
+      isStudiosLoaded,
+      isDocsLoaded,
       refreshCurrentProjectRepos,
       refreshCurrentProjectConversations,
       refreshCurrentProjectStudios,

@@ -72,9 +72,11 @@ const DocItem = ({
 
   const startEventSource = useCallback(() => {
     setIsIndexingFinished(false);
+    eventSourceRef.current?.close();
     eventSourceRef.current = new EventSource(
       `${apiUrl.replace('https:', '')}/docs/${doc.id}/status`,
     );
+    setTimeout(refetchDocs, 1000);
     eventSourceRef.current.onmessage = (ev) => {
       try {
         const data = JSON.parse(ev.data);
@@ -151,6 +153,7 @@ const DocItem = ({
 
   const handleAddToProject = useCallback(() => {
     if (project?.id) {
+      console.log('handleAddToProject', project.id, doc.id);
       return addDocToProject(project.id, doc.id).finally(() => {
         refreshCurrentProjectDocs();
       });
@@ -256,7 +259,7 @@ const DocItem = ({
           ? favIconComponent
           : MagazineIcon
       }
-      label={docToShow.name}
+      label={`${docToShow.id} ${doc.id} ${docToShow.name}`}
       id={'doc_settings'}
       footerHint={
         isIndexing ? (
