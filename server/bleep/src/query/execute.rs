@@ -1,5 +1,4 @@
 use std::{
-    borrow::Cow,
     collections::{HashMap, HashSet},
     sync::Arc,
 };
@@ -283,7 +282,7 @@ impl ApiQuery {
         for q in queries {
             if let Some(r) = q.repo_str() {
                 // The branch that this project has loaded this repo with.
-                let project_branch = repo_branches.get(&r).map(Option::as_ref).flatten();
+                let project_branch = repo_branches.get(&r).and_then(Option::as_ref);
 
                 // If the branch doesn't match what we expect, drop the query.
                 if q.branch_str().as_ref() == project_branch {
@@ -293,7 +292,7 @@ impl ApiQuery {
                 for (r, b) in &repo_branches {
                     out.push(parser::Query {
                         repo: Some(parser::Literal::from(r)),
-                        branch: b.as_ref().map(|b| parser::Literal::from(b)),
+                        branch: b.as_ref().map(parser::Literal::from),
                         ..q.clone()
                     });
                 }

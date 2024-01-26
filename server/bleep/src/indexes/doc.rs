@@ -23,6 +23,7 @@ use std::{collections::HashSet, sync::Arc};
 #[derive(Clone)]
 pub struct Doc {
     sql: SqlDb,
+    #[allow(unused)]
     section_index: tantivy::Index,
     section_schema: schema::Section,
     index_writer: Arc<Mutex<tantivy::IndexWriter>>,
@@ -363,12 +364,15 @@ impl Doc {
             let _ = tx.send(Progress::Err(error.to_string()));
 
             // send job status to error
-            self.index_queue
+            if let Some(job) = self
+                .index_queue
                 .write()
                 .await
                 .iter_mut()
                 .find(|job| job.id == id)
-                .map(|job| job.status = STATUS_ERROR);
+            {
+                job.status = STATUS_ERROR;
+            }
 
             // return error
             Err(error)?;
@@ -452,7 +456,7 @@ impl Doc {
         // delete old docs from tantivy
         //
         // create a checkpoint before deletion, so we can revert to here if the job is cancelled
-        self.index_writer.lock().await.commit();
+        let _ = self.index_writer.lock().await.commit();
         self.index_writer
             .lock()
             .await
@@ -588,9 +592,7 @@ impl Doc {
             modified_at: record.modified_at,
         });
 
-        Ok(queued_item
-            .or(indexed_item)
-            .ok_or(Error::InvalidDocId(id))?)
+        queued_item.or(indexed_item).ok_or(Error::InvalidDocId(id))
     }
 
     /// Search for doc source by title

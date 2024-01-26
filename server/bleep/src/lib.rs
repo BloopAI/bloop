@@ -8,7 +8,7 @@
     unused_qualifications
 )]
 #![warn(unused_crate_dependencies)]
-#![allow(elided_lifetimes_in_paths)]
+#![allow(elided_lifetimes_in_paths, clippy::diverging_sub_expression)]
 
 #[cfg(all(feature = "onnx", feature = "metal"))]
 compile_error!("cannot enable `onnx` and `metal` at the same time");
