@@ -8,6 +8,8 @@ use futures::{Stream, StreamExt};
 use reqwest_eventsource::EventSource;
 use tracing::{debug, error, warn};
 
+use crate::{periodic::sync_github_status_once, Application};
+
 use self::api::FunctionCall;
 
 pub mod api {
@@ -213,13 +215,15 @@ impl From<&api::Message> for tiktoken_rs::ChatCompletionRequestMessage {
 enum ChatError {
     BadRequest(String),
     TooManyRequests(String),
+    InvalidToken,
     Other(anyhow::Error),
 }
 
 #[derive(Clone)]
 pub struct Client {
     http: reqwest::Client,
-    pub base_url: String,
+    app: Application,
+
     pub max_retries: u32,
 
     pub bearer_token: Option<String>,
@@ -234,10 +238,11 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn new(base_url: &str) -> Self {
+    pub fn new(app: Application) -> Self {
         Self {
+            app,
             http: reqwest::Client::new(),
-            base_url: base_url.to_owned(),
+
             max_retries: 5,
 
             bearer_token: None,
@@ -305,7 +310,10 @@ impl Client {
         version: semver::Version,
     ) -> Result<reqwest::Response, reqwest::Error> {
         self.http
-            .get(format!("{}/v1/compatibility", self.base_url))
+            .get(format!(
+                "{}/v1/compatibility",
+                self.app.config.answer_api_url
+            ))
             .query(&[("version", version)])
             .send()
             .await
@@ -365,6 +373,10 @@ impl Client {
                     error!("LLM request failed, request not eligible for retry: {body}");
                     bail!("request failed (not eligible for retry): {body}");
                 }
+                Err(ChatError::InvalidToken) => {
+                    warn!("invalid token, retrying LLM request");
+                    sync_github_status_once(&self.app).await;
+                }
                 Err(ChatError::Other(e)) => {
                     // We log the messages in a separate `debug!` statement so that they can be
                     // filtered out, due to their verbosity.
@@ -387,7 +399,9 @@ impl Client {
     ) -> Result<impl Stream<Item = anyhow::Result<String>>, ChatError> {
         let mut event_source = Box::pin(
             EventSource::new({
-                let mut builder = self.http.post(format!("{}/v2/q", self.base_url));
+                let mut builder = self
+                    .http
+                    .post(format!("{}/v2/q", self.app.config.answer_api_url));
 
                 if let Some(bearer) = &self.bearer_token {
                     builder = builder.bearer_auth(bearer);
@@ -432,6 +446,11 @@ impl Client {
                     .map_err(|e| ChatError::Other(anyhow!(e)))?;
                 warn!("bad request to LLM: {body}");
                 return Err(ChatError::BadRequest(body));
+            }
+            Some(Err(reqwest_eventsource::Error::InvalidStatusCode(status, _)))
+                if status == StatusCode::UNAUTHORIZED =>
+            {
+                return Err(ChatError::InvalidToken);
             }
             Some(Err(reqwest_eventsource::Error::InvalidStatusCode(status, response)))
                 if status == StatusCode::TOO_MANY_REQUESTS =>
