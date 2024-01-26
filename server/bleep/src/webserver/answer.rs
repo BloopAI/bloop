@@ -11,23 +11,20 @@ use axum::{
 };
 use futures::{future::Either, stream, StreamExt};
 use reqwest::StatusCode;
-use serde_json::json;
 use tracing::{debug, error, info, warn};
-
-use super::conversation::ConversationId;
 
 use super::middleware::User;
 use crate::{
     agent::{
         self,
         exchange::{CodeChunk, Exchange, FocusedChunk, RepoPath},
-        Action, Agent, ExchangeState, Project,
+        Action, Agent, ExchangeState,
     },
     analytics::{EventData, QueryEvent},
     db::QueryLog,
     query::parser::{self, Literal},
     repo::RepoRef,
-    webserver::conversation::{self, Conversation},
+    webserver::conversation::Conversation,
     Application,
 };
 
@@ -74,10 +71,6 @@ pub struct Answer {
     /// If this UUID is nil, then overwrite the first exchange in the thread
     pub parent_exchange_id: Option<uuid::Uuid>,
     pub conversation_id: Option<i64>,
-}
-
-fn default_thread_id() -> uuid::Uuid {
-    uuid::Uuid::new_v4()
 }
 
 fn default_answer_model() -> agent::model::LLMModel {
@@ -166,6 +159,7 @@ struct AgentExecutor {
     action: Action,
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(serde::Serialize)]
 enum AnswerEvent {
     ChatEvent(Exchange),

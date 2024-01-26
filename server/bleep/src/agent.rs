@@ -45,25 +45,6 @@ pub enum Error {
     Processing(anyhow::Error),
 }
 
-/// A unified way to track a collection of repositories
-#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
-pub struct Project(pub Vec<RepoRef>);
-
-impl Project {
-    /// This is a temporary thing to keep backwards compatibility.
-    /// We should have a UUID here to track this stuff consistently.
-    pub fn id(&self) -> String {
-        self.0
-            .get(0)
-            .map(ToString::to_string)
-            .expect("invalid project configuration")
-    }
-
-    pub fn repos(&self) -> impl Iterator<Item = String> + '_ {
-        self.0.iter().map(|r| r.display_name())
-    }
-}
-
 pub struct Agent {
     pub app: Application,
     pub conversation: Conversation,

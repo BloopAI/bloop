@@ -1,12 +1,8 @@
 use std::collections::HashMap;
 
 use crate::{webserver, Application};
-use axum::{
-    extract::{Path, Query},
-    Extension, Json,
-};
+use axum::{extract::Path, Extension, Json};
 use chrono::NaiveDateTime;
-use futures::TryStreamExt;
 
 use super::{middleware::User, repos::Repo, Error};
 
