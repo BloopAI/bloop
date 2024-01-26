@@ -1683,6 +1683,7 @@ pub struct Snapshot {
     context: Vec<ContextFile>,
     doc_context: Vec<DocContextFile>,
     messages: Vec<Message>,
+    token_counts: TokenCounts,
 }
 
 pub async fn list_snapshots(
@@ -1705,16 +1706,24 @@ pub async fn list_snapshots(
     }
     .fetch(&*app.sql)
     .map_err(Error::internal)
-    .and_then(|r| async move {
-        Ok(Snapshot {
-            id: r.id,
-            modified_at: r.modified_at,
-            context: serde_json::from_str(&r.context).context("failed to deserialize context")?,
-            doc_context: serde_json::from_str(&r.doc_context)
-                .context("failed to deserialize doc context")?,
-            messages: serde_json::from_str(&r.messages)
-                .context("failed to deserialize messages")?,
-        })
+    .and_then(|r| {
+        let app = (*app).clone();
+        async move {
+            let context: Vec<ContextFile> = serde_json::from_str(&r.context).context("failed to deserialize context")?;
+            let doc_context: Vec<DocContextFile> = serde_json::from_str(&r.doc_context).context("failed to deserialize doc context")?;
+            let messages: Vec<Message> = serde_json::from_str(&r.messages).context("failed to deserialize messages")?;
+
+            let token_counts = token_counts(app, &messages, &context, &doc_context).await?;
+
+            Ok(Snapshot {
+                id: r.id,
+                modified_at: r.modified_at,
+                context,
+                doc_context,
+                messages,
+                token_counts,
+            })
+        }
     })
     .try_collect::<Vec<_>>()
     .await
