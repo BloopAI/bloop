@@ -118,7 +118,7 @@ const ConversationInput = ({
       ref.current.style.height =
         Math.min(Math.max(scrollHeight, 19), 300) + 'px';
     }
-  }, [message, isFocused]);
+  }, [message, isFocused, value]);
 
   const dropdownProps = useMemo(() => {
     return {

@@ -509,5 +509,7 @@
 	"Add any library documentation": "ライブラリのドキュメントを追加します",
 	"Add documentation": "ドキュメントを追加します",
 	"Manage your general project settings": "一般的なプロジェクトの設定を管理します",
-	"Write your prompt...": "あなたのプロンプトを書く..."
+	"Write your prompt...": "あなたのプロンプトを書く...",
+	"Usage resets at": "使用法がリセットされます",
+	"Upgrade to Personal plan": "個人計画にアップグレードします"
 }
