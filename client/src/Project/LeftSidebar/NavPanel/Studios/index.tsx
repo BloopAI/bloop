@@ -24,10 +24,8 @@ import StudiosDropdown from './StudiosDropdown';
 type Props = {
   setExpanded: Dispatch<SetStateAction<string>>;
   isExpanded: boolean;
-  focusedIndex: string;
   index: string;
   indexingStatus: IndexingStatusType;
-  setFocusedIndex: (s: string) => void;
 };
 
 const reactRoot = document.getElementById('root')!;
@@ -35,10 +33,8 @@ const reactRoot = document.getElementById('root')!;
 const StudiosNav = ({
   isExpanded,
   setExpanded,
-  focusedIndex,
   index,
   indexingStatus,
-  setFocusedIndex,
 }: Props) => {
   const { t } = useTranslation();
   const [expandedIndex, setExpandedIndex] = useState('');
@@ -46,19 +42,10 @@ const StudiosNav = ({
   const { tab: tabLeft } = useContext(TabsContext.CurrentLeft);
   const { tab: tabRight } = useContext(TabsContext.CurrentRight);
   const { focusedPanel } = useContext(TabsContext.FocusedPanel);
-  const {
-    containerRef,
-    toggleExpanded,
-    noPropagate,
-    isLeftSidebarFocused,
-    isCommandBarVisible,
-    handleMouseMove,
-  } = useNavPanel(
+  const { noPropagate, itemProps } = useNavPanel(
     index,
     setExpanded,
     isExpanded,
-    focusedIndex,
-    setFocusedIndex,
   );
 
   const previewingSnapshot = useMemo(() => {
@@ -73,19 +60,7 @@ const StudiosNav = ({
 
   return (
     <div className="select-none overflow-hidden w-full flex-shrink-0">
-      <span
-        role="button"
-        tabIndex={0}
-        className={`h-10 flex items-center gap-3 px-4 ellipsis ${
-          isExpanded ? 'sticky z-10 top-0 left-0' : ''
-        } ${
-          focusedIndex === index ? 'bg-bg-sub-hover' : 'bg-bg-sub'
-        } outline-0 outline-none focus:outline-0 focus:outline-none`}
-        onClick={toggleExpanded}
-        onMouseMove={handleMouseMove}
-        ref={containerRef}
-        data-node-index={index}
-      >
+      <span {...itemProps}>
         <CodeStudioIcon
           sizeClassName="w-3.5 h-3.5"
           className="text-brand-studio"
@@ -128,11 +103,8 @@ const StudiosNav = ({
               key={c.id}
               {...c}
               index={`${index}-${c.id}`}
-              focusedIndex={focusedIndex}
               expandedIndex={expandedIndex}
               setExpandedIndex={setExpandedIndex}
-              isLeftSidebarFocused={isLeftSidebarFocused}
-              isCommandBarVisible={isCommandBarVisible}
               indexingStatus={indexingStatus}
               projectId={project.id}
               previewingSnapshot={
@@ -140,7 +112,6 @@ const StudiosNav = ({
                   ? previewingSnapshot.snapshot
                   : null
               }
-              setFocusedIndex={setFocusedIndex}
             />
           ))}
         </div>

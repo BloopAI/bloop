@@ -6,7 +6,7 @@ import { getPrismLanguage, tokenizeCode } from '../../../../utils/prism';
 import { HighlightMap, Range, TokensLine } from '../../../../types/results';
 import { Token } from '../../../../types/prism';
 import CodeToken from '../../../../components/Code/CodeToken';
-import { useEnterKey } from '../../../../hooks/useEnterKey';
+import { useArrowNavigationItemProps } from '../../../../hooks/useArrowNavigationItemProps';
 
 type Props = {
   path: string;
@@ -17,10 +17,6 @@ type Props = {
   language: string;
   highlights: Range[];
   index: string;
-  focusedIndex: string;
-  setFocusedIndex: (s: string) => void;
-  isLeftSidebarFocused: boolean;
-  isCommandBarVisible: boolean;
 };
 
 const noOp = () => {};
@@ -34,10 +30,6 @@ const CodeLine = ({
   language,
   highlights,
   index,
-  setFocusedIndex,
-  focusedIndex,
-  isLeftSidebarFocused,
-  isCommandBarVisible,
 }: Props) => {
   const { openNewTab } = useContext(TabsContext.Handlers);
 
@@ -49,9 +41,9 @@ const CodeLine = ({
       scrollToLine: `${lineStart}_${lineEnd}`,
     });
   }, [path, lineEnd, lineStart, repoRef, openNewTab]);
-  useEnterKey(
+  const { isFocused, props } = useArrowNavigationItemProps<HTMLLIElement>(
+    index,
     onClick,
-    focusedIndex !== index || !isLeftSidebarFocused || isCommandBarVisible,
   );
 
   const lang = useMemo(
@@ -149,23 +141,12 @@ const CodeLine = ({
     return ltr;
   }, [tokensMap]);
 
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
-      if (e.movementX || e.movementY) {
-        setFocusedIndex(index);
-      }
-    },
-    [index, setFocusedIndex],
-  );
-
   return (
     <li
       className={`flex min-w-full w-max pl-16 pr-4 h-7 items-center gap-3 text-label-base whitespace-nowrap cursor-pointer ${
-        focusedIndex === index ? 'bg-bg-shade-hover' : ''
+        isFocused ? 'bg-bg-shade-hover' : ''
       }`}
-      onClick={onClick}
-      onMouseMove={handleMouseMove}
-      data-node-index={index}
+      {...props}
     >
       <CodeIcon sizeClassName="w-3.5 h-3.5" />
       <p className={`code-mini prism-code language-${lang} ellipsis`}>

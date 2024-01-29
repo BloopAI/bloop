@@ -1,7 +1,6 @@
 import React, { memo, useEffect, useMemo, useRef } from 'react';
 import { Trans } from 'react-i18next';
 import { ResultItemType, SuggestionType } from '../../../types/results';
-import CodeBlockSearch from '../../../components/Code/CodeBlockSearch';
 import CodeResult from './Results/CodeResult';
 
 type Props = {
@@ -69,14 +68,12 @@ const AutocompleteMenuItem = ({
       ) : item.type === ResultItemType.CODE ? (
         <span className="-ml-4">
           <CodeResult
-            focusedIndex={'-1'}
             snippets={snippets}
             lang={item.language}
             relative_path={item.relativePath}
             repo_ref={item.repoRef}
             isFirst={false}
             index={`option-${index}`}
-            setFocusedIndex={() => {}}
           />
         </span>
       ) : item.type === ResultItemType.FILE ? (

@@ -3,7 +3,6 @@ import React, {
   useCallback,
   useContext,
   useEffect,
-  useRef,
   useState,
 } from 'react';
 import FileIcon from '../../../../components/FileIcon';
@@ -11,20 +10,16 @@ import { TabTypesEnum } from '../../../../types/general';
 import { TabsContext } from '../../../../context/tabsContext';
 import { DirectoryEntry, RepoFileNameItem } from '../../../../types/api';
 import { FolderIcon } from '../../../../icons';
-import { UIContext } from '../../../../context/uiContext';
 import { getFolderContent } from '../../../../services/api';
 import RepoEntry from '../../NavPanel/Repo/RepoEntry';
-import { useEnterKey } from '../../../../hooks/useEnterKey';
-import { CommandBarContext } from '../../../../context/commandBarContext';
+import { useArrowNavigationItemProps } from '../../../../hooks/useArrowNavigationItemProps';
 
 type Props = {
   relative_path: RepoFileNameItem;
   repo_ref: string;
   is_dir: boolean;
   index: string;
-  focusedIndex: string;
   isFirst: boolean;
-  setFocusedIndex: (s: string) => void;
 };
 
 const FileResult = ({
@@ -32,24 +27,11 @@ const FileResult = ({
   repo_ref,
   is_dir,
   index,
-  focusedIndex,
   isFirst,
-  setFocusedIndex,
 }: Props) => {
   const { openNewTab } = useContext(TabsContext.Handlers);
-  const { isLeftSidebarFocused } = useContext(UIContext.Focus);
-  const { isVisible: isCommandBarVisible } = useContext(
-    CommandBarContext.General,
-  );
-  const ref = useRef<HTMLDivElement>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [files, setFiles] = useState<DirectoryEntry[]>([]);
-
-  useEffect(() => {
-    if (focusedIndex === index) {
-      ref.current?.scrollIntoView({ block: 'nearest' });
-    }
-  }, [focusedIndex, index]);
 
   const fetchFiles = useCallback(
     async (path?: string) => {
@@ -74,7 +56,7 @@ const FileResult = ({
     }
   }, [fetchFiles, files, isExpanded, relative_path.text]);
 
-  const handleClick = useCallback(() => {
+  const onClick = useCallback(() => {
     if (is_dir) {
       setIsExpanded((prev) => !prev);
     } else {
@@ -86,19 +68,7 @@ const FileResult = ({
     }
   }, [relative_path, repo_ref, is_dir, openNewTab]);
 
-  useEnterKey(
-    handleClick,
-    focusedIndex !== index || !isLeftSidebarFocused || isCommandBarVisible,
-  );
-
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
-      if (e.movementX || e.movementY) {
-        setFocusedIndex(index);
-      }
-    },
-    [index, setFocusedIndex],
-  );
+  const { isFocused, props } = useArrowNavigationItemProps(index, onClick);
 
   return (
     <span
@@ -109,12 +79,8 @@ const FileResult = ({
       <span
         className={`flex items-center w-max gap-3 body-mini text-label-title h-7 flex-shrink-0 cursor-pointer  ${
           isFirst ? 'scroll-mt-10' : ''
-        } scroll-ml-10 ${
-          focusedIndex === index ? 'bg-bg-shade-hover' : ''
-        } pl-10 pr-4`}
-        ref={ref}
-        data-node-index={index}
-        onMouseMove={handleMouseMove}
+        } scroll-ml-10 ${isFocused ? 'bg-bg-shade-hover' : ''} pl-10 pr-4`}
+        {...props}
       >
         {is_dir ? (
           <FolderIcon sizeClassName="w-4 h-4" />
@@ -126,9 +92,7 @@ const FileResult = ({
         {/*  onClick={handleClick}*/}
         {/*  repo={repo_ref}*/}
         {/*/>*/}
-        <a href="#" onClick={handleClick}>
-          {relative_path.text}
-        </a>
+        <span>{relative_path.text}</span>
       </span>
       {isExpanded && (
         <div
@@ -148,12 +112,8 @@ const FileResult = ({
               fetchFiles={fetchFiles}
               fullPath={f.name}
               repoRef={repo_ref}
-              focusedIndex={focusedIndex}
               index={`${index}-${fi}`}
               lastIndex={''}
-              isLeftSidebarFocused={isLeftSidebarFocused}
-              isCommandBarVisible={isCommandBarVisible}
-              setFocusedIndex={setFocusedIndex}
             />
           ))}
         </div>

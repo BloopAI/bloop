@@ -1,39 +1,19 @@
-import React, {
-  memo,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-} from 'react';
+import React, { memo, useCallback, useEffect, useState } from 'react';
 import GitHubIcon from '../../../../icons/GitHubIcon';
 import { HardDriveIcon } from '../../../../icons';
 import { splitPath } from '../../../../utils';
 import { DirectoryEntry } from '../../../../types/api';
 import { getFolderContent } from '../../../../services/api';
 import RepoEntry from '../../NavPanel/Repo/RepoEntry';
-import { UIContext } from '../../../../context/uiContext';
-import { useEnterKey } from '../../../../hooks/useEnterKey';
-import { CommandBarContext } from '../../../../context/commandBarContext';
+import { useArrowNavigationItemProps } from '../../../../hooks/useArrowNavigationItemProps';
 
 type Props = {
   repoRef: string;
   index: string;
   isExpandable?: boolean;
-  focusedIndex: string;
-  setFocusedIndex: (s: string) => void;
 };
 
-const RepoResult = ({
-  repoRef,
-  isExpandable,
-  index,
-  focusedIndex,
-  setFocusedIndex,
-}: Props) => {
-  const { isLeftSidebarFocused } = useContext(UIContext.Focus);
-  const { isVisible: isCommandBarVisible } = useContext(
-    CommandBarContext.General,
-  );
+const RepoResult = ({ repoRef, isExpandable, index }: Props) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [files, setFiles] = useState<DirectoryEntry[]>([]);
 
@@ -66,21 +46,9 @@ const RepoResult = ({
     }
   }, [isExpandable]);
 
-  useEnterKey(
+  const { isFocused, props } = useArrowNavigationItemProps<HTMLAnchorElement>(
+    index,
     onClick,
-    focusedIndex !== index ||
-      !isExpandable ||
-      !isLeftSidebarFocused ||
-      isCommandBarVisible,
-  );
-
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
-      if ((e.movementX || e.movementY) && isExpandable) {
-        setFocusedIndex(index);
-      }
-    },
-    [index, setFocusedIndex, isExpandable],
   );
 
   return (
@@ -93,14 +61,12 @@ const RepoResult = ({
         href="#"
         className={`h-10 flex-shrink-0 ${
           isExpandable
-            ? focusedIndex === index
+            ? isFocused
               ? 'bg-bg-sub-hover'
-              : 'bg-bg-sub hover:bg-bg-sub-hover'
+              : 'bg-bg-sub'
             : 'bg-bg-sub'
         } flex items-center gap-3 px-4 body-s-b text-label-title`}
-        onClick={onClick}
-        onMouseMove={handleMouseMove}
-        data-node-index={isExpandable ? index : undefined}
+        {...(isExpandable ? props : {})}
       >
         {repoRef.startsWith('github.com/') ? (
           <GitHubIcon sizeClassName="w-3 h-3" />
@@ -125,12 +91,8 @@ const RepoResult = ({
               fetchFiles={fetchFiles}
               fullPath={f.name}
               repoRef={repoRef}
-              focusedIndex={focusedIndex}
               index={`${index}-${fi}`}
               lastIndex={''}
-              isLeftSidebarFocused={isLeftSidebarFocused}
-              isCommandBarVisible={isCommandBarVisible}
-              setFocusedIndex={setFocusedIndex}
             />
           ))}
         </div>

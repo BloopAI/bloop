@@ -502,5 +502,6 @@
 	"Prompt": "Richiesta",
 	"Write your prompt...": "Scrivi il tuo prompt ...",
 	"Usage resets at": "L'uso si ripristina a",
-	"Upgrade to Personal plan": "Aggiorna al piano personale"
+	"Upgrade to Personal plan": "Aggiorna al piano personale",
+	"Restore session": "Ripristina la sessione"
 }

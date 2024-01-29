@@ -3,50 +3,39 @@ import { Trans, useTranslation } from 'react-i18next';
 import Button from '../../../../components/Button';
 import { CommandBarContext } from '../../../../context/commandBarContext';
 import { CommandBarStepEnum } from '../../../../types/general';
-import { useEnterKey } from '../../../../hooks/useEnterKey';
+import { useArrowNavigationItemProps } from '../../../../hooks/useArrowNavigationItemProps';
 
 type Props = {
   studioId: string;
   index: string;
-  focusedIndex: string;
-  isLeftSidebarFocused: boolean;
-  isCommandBarVisible: boolean;
 };
 
-const AddContextFile = ({
-  studioId,
-  index,
-  focusedIndex,
-  isLeftSidebarFocused,
-  isCommandBarVisible,
-}: Props) => {
+const AddContextFile = ({ studioId, index }: Props) => {
   useTranslation();
   const { setChosenStep, setIsVisible } = useContext(
     CommandBarContext.Handlers,
   );
 
-  const onAddFile = useCallback(() => {
+  const handleClick = useCallback(() => {
     setChosenStep({ id: CommandBarStepEnum.SEARCH_FILES, data: { studioId } });
     setIsVisible(true);
   }, [studioId]);
 
-  useEnterKey(
-    onAddFile,
-    focusedIndex !== index || !isLeftSidebarFocused || isCommandBarVisible,
-  );
+  const {
+    isFocused,
+    props: { onClick, ...props },
+  } = useArrowNavigationItemProps<HTMLDivElement>(index, handleClick);
 
   return (
     <div
-      className={`pb-2 pr-4 pl-10.5 ${
-        focusedIndex === index ? 'bg-bg-sub-hover' : ''
-      }`}
-      data-node-index={index}
+      className={`pb-2 pr-4 pl-10.5 ${isFocused ? 'bg-bg-sub-hover' : ''}`}
+      {...props}
     >
       <div className="flex flex-col items-center p-4 gap-4 rounded-md border border-dashed border-bg-border">
         <p className="select-none body-mini text-label-base">
           <Trans>Studio conversation require at least one context file.</Trans>
         </p>
-        <Button variant="secondary" size="mini" onClick={onAddFile}>
+        <Button variant="secondary" size="mini" onClick={onClick}>
           <Trans>Add file</Trans>
         </Button>
       </div>

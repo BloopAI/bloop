@@ -11,22 +11,18 @@ import { HistoryConversationTurn } from '../../../../types/api';
 import { getCodeStudioHistory } from '../../../../services/api';
 import ChevronRight from '../../../../icons/ChevronRight';
 import { ArrowHistoryIcon, DateTimeCalendarIcon } from '../../../../icons';
-import { useEnterKey } from '../../../../hooks/useEnterKey';
 import { getDateFnsLocale } from '../../../../utils';
 import { LocaleContext } from '../../../../context/localeContext';
 import Badge from '../../../../components/Badge';
+import { useArrowNavigationItemProps } from '../../../../hooks/useArrowNavigationItemProps';
 import StudioSubItem from './StudioSubItem';
 
 type Props = {
   projectId: string;
   studioId: string;
   shouldRefresh: any;
-  focusedIndex: string;
   index: string;
   studioName: string;
-  isLeftSidebarFocused: boolean;
-  isCommandBarVisible: boolean;
-  setFocusedIndex: (s: string) => void;
 };
 
 const StudioHistory = ({
@@ -34,15 +30,19 @@ const StudioHistory = ({
   studioId,
   shouldRefresh,
   index,
-  focusedIndex,
   studioName,
-  isCommandBarVisible,
-  isLeftSidebarFocused,
-  setFocusedIndex,
 }: Props) => {
   const { t } = useTranslation();
   const { locale } = useContext(LocaleContext);
   const [snapshots, setSnapshots] = useState<HistoryConversationTurn[]>([]);
+
+  const onClick = useCallback(() => {
+    setIsExpanded((prev) => !prev);
+  }, []);
+
+  const { isFocused, focusedIndex, props } =
+    useArrowNavigationItemProps<HTMLAnchorElement>(index, onClick);
+
   const [isExpanded, setIsExpanded] = useState(focusedIndex.startsWith(index));
 
   useEffect(() => {
@@ -55,35 +55,13 @@ const StudioHistory = ({
     }
   }, [focusedIndex, index]);
 
-  const handleToggle = useCallback(() => {
-    setIsExpanded((prev) => !prev);
-  }, []);
-
-  useEnterKey(
-    handleToggle,
-    focusedIndex !== index || !isLeftSidebarFocused || isCommandBarVisible,
-  );
-
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
-      if (e.movementX || e.movementY) {
-        setFocusedIndex(index);
-      }
-    },
-    [index, setFocusedIndex],
-  );
-
   return !snapshots.length ? null : (
     <div>
       <a
         className={`w-full h-7 flex items-center gap-3 pl-10.5 pr-4 cursor-pointer ${
-          focusedIndex === index
-            ? 'bg-bg-sub-hover text-label-title'
-            : 'text-label-base'
+          isFocused ? 'bg-bg-sub-hover text-label-title' : 'text-label-base'
         }`}
-        onClick={handleToggle}
-        onMouseMove={handleMouseMove}
-        data-node-index={index}
+        {...props}
       >
         <span className="flex items-center gap-3">
           <ChevronRight
@@ -106,13 +84,9 @@ const StudioHistory = ({
               key={s.id}
               morePadding
               studioId={studioId}
-              focusedIndex={focusedIndex}
               index={`${index}-${s.id}`}
               studioName={studioName}
-              isLeftSidebarFocused={isLeftSidebarFocused}
-              isCommandBarVisible={isCommandBarVisible}
               snapshot={i === 0 ? null : s}
-              setFocusedIndex={setFocusedIndex}
             >
               <DateTimeCalendarIcon sizeClassName="w-3.5 h-3.5" />
               <span className="flex-1 ellipsis">
