@@ -19,6 +19,7 @@ import { CommandBarContext } from '../../context/commandBarContext';
 import UsagePopover from '../../components/UsagePopover';
 import { useArrowNavigation } from '../../hooks/useArrowNavigation';
 import { ArrowNavigationContext } from '../../context/arrowNavigationContext';
+import { noOp } from '../../utils';
 import RegexSearchPanel from './RegexSearchPanel';
 import NavPanel from './NavPanel';
 
@@ -68,6 +69,7 @@ const LeftSidebar = ({}: Props) => {
     () => ({
       focusedIndex,
       setFocusedIndex,
+      handleClose: noOp,
     }),
     [focusedIndex],
   );

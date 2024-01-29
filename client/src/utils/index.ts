@@ -481,3 +481,5 @@ type InputEditorMentionContent = {
 export type InputEditorContent =
   | InputEditorTextContent
   | InputEditorMentionContent;
+
+export const noOp = () => {};

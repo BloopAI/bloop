@@ -3,6 +3,7 @@ import { CommandBarSectionType } from '../../types/general';
 import useKeyboardNavigation from '../../hooks/useKeyboardNavigation';
 import { useArrowNavigation } from '../../hooks/useArrowNavigation';
 import { ArrowNavigationContext } from '../../context/arrowNavigationContext';
+import { noOp } from '../../utils';
 import Section from './Section';
 
 type Props = {
@@ -31,6 +32,7 @@ const CommandBarBody = ({
     () => ({
       focusedIndex,
       setFocusedIndex,
+      handleClose: noOp,
     }),
     [focusedIndex],
   );

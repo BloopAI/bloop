@@ -61,34 +61,40 @@ const UserDropdown = ({}: Props) => {
           icon={<CogIcon raw sizeClassName="w-4 h-4" />}
           label={t('Settings')}
           shortcut={['option', 'A']}
+          index={'settings'}
           onClick={openGeneralSettings}
         />
         <SectionItem
           icon={<WalletIcon raw sizeClassName="w-4 h-4" />}
           label={t('Subscription')}
           shortcut={['option', 'S']}
+          index={'subscription'}
           onClick={openSubscriptionSettings}
         />
         <SectionItem
           icon={<DocumentsIcon raw sizeClassName="w-4 h-4" />}
           label={t('Docs')}
           shortcut={['option', 'D']}
+          index={'docs'}
           onClick={() => openLink('https://bloop.ai/docs')}
         />
         <SectionItem
           icon={<BugIcon raw sizeClassName="w-4 h-4" />}
           label={t('Report a bug')}
           shortcut={['option', 'B']}
+          index={'bug-report'}
           onClick={reportBug}
         />
       </div>
       <div className="flex flex-col p-1 items-start border-b border-bg-border">
         <SectionItem
           label={t('Join Discord')}
+          index={'discord'}
           onClick={() => openLink(discordLink)}
         />
         <SectionItem
           label={t('Follow us on Twitter')}
+          index={'twitter'}
           onClick={() => openLink('https://twitter.com/bloopdotai')}
         />
       </div>
@@ -96,6 +102,7 @@ const UserDropdown = ({}: Props) => {
         <SectionItem
           icon={<DoorOutIcon raw sizeClassName="w-4 h-4" />}
           label={t('Sign out')}
+          index={'sign-out'}
           shortcut={['option', 'shift', 'Q']}
           onClick={handleSignOut}
         />

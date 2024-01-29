@@ -240,7 +240,7 @@
 	"Open account settings": "Apri le impostazioni dell'account",
 	"Open in GitHub": "Aperto in Github",
 	"Open in split view": "Aprire in vista divisa",
-	"Open in {{viewer}}": "Apri in {{Viewer}}",
+	"Open in {{viewer}}": "Apri in {{viewer}}",
 	"Open subscription settings": "Apri le impostazioni di abbonamento",
 	"Open": "Aprire",
 	"Paste a link to any documentation web page": "Incolla un link a qualsiasi pagina Web di documentazione",
@@ -503,5 +503,6 @@
 	"Write your prompt...": "Scrivi il tuo prompt ...",
 	"Usage resets at": "L'uso si ripristina a",
 	"Upgrade to Personal plan": "Aggiorna al piano personale",
-	"Restore session": "Ripristina la sessione"
+	"Restore session": "Ripristina la sessione",
+	"In this project": "In questo progetto"
 }

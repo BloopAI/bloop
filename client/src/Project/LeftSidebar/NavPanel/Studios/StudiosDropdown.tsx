@@ -27,6 +27,7 @@ const StudiosDropdown = ({}: Props) => {
     <div>
       <DropdownSection>
         <SectionItem
+          index={'del-chats'}
           onClick={handleRemoveAllStudios}
           label={t('Delete all conversations')}
           icon={<TrashCanIcon sizeClassName="w-4 h-4" />}

@@ -53,6 +53,7 @@ const BreadcrumbsCollapsed = ({ items, type }: Props) => {
           {items.map((part, i) => (
             <SectionItem
               key={i}
+              index={`b-${i}`}
               onClick={part?.onClick}
               label={part.label}
               icon={part.icon}
