@@ -8,7 +8,7 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { Trans, useTranslation } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 import Header from '../Header';
 import { CommandBarStepEnum, TabTypesEnum } from '../../types/general';
 import { CommandBarContext } from '../../context/commandBarContext';
@@ -36,7 +36,7 @@ const SearchDocs = ({ studioId, docId }: Props) => {
   const { setIsLeftSidebarFocused } = useContext(UIContext.Focus);
   const [docSections, setDocSections] = useState<DocSectionType[]>([]);
   const [fullDoc, setFullDoc] = useState<DocShortType | null>(null);
-  const [focusedIndex, setFocusedIndex] = useState(0);
+  const [focusedIndex, setFocusedIndex] = useState('');
   const searchValue = useDeferredValue(inputValue);
 
   const handleInputChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
@@ -139,6 +139,10 @@ const SearchDocs = ({ studioId, docId }: Props) => {
     ];
   }, [docSections, studioId]);
 
+  const focusedDoc = useMemo(() => {
+    return docSections.find((ds) => `docs-${ds.point_id}` === focusedIndex);
+  }, [docSections, focusedIndex]);
+
   return (
     <div className="flex flex-col h-[28.875rem] w-[50rem] overflow-auto">
       <Header
@@ -154,11 +158,11 @@ const SearchDocs = ({ studioId, docId }: Props) => {
             <Body sections={sections} onFocusedIndexChange={setFocusedIndex} />
           </div>
           <div className="flex-1 border-l border-bg-border h-full overflow-auto p-2">
-            {!!docSections[focusedIndex] && (
+            {!!focusedDoc && (
               <RenderedSection
-                text={docSections[focusedIndex].text}
+                text={focusedDoc.text}
                 isEditingSelection={false}
-                baseUrl={docSections[focusedIndex].doc_source}
+                baseUrl={focusedDoc.doc_source}
               />
             )}
           </div>

@@ -137,7 +137,6 @@ const Documentation = ({}: Props) => {
     setSections([
       addItem,
       {
-        itemsOffset: 1,
         key: 'indexed-docs',
         label: t('Indexed documentation web pages'),
         items: mapped,

@@ -1,4 +1,4 @@
-import {
+import React, {
   Dispatch,
   MouseEvent,
   SetStateAction,
@@ -16,6 +16,7 @@ export const useNavPanel = (
   setExpanded: Dispatch<SetStateAction<string>>,
   isExpanded: boolean,
   focusedIndex: string,
+  setFocusedIndex: (s: string) => void,
 ) => {
   const { isLeftSidebarFocused } = useContext(UIContext.Focus);
   const { isVisible: isCommandBarVisible } = useContext(
@@ -48,11 +49,21 @@ export const useNavPanel = (
     focusedIndex !== index || !isLeftSidebarFocused || isCommandBarVisible,
   );
 
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.movementX || e.movementY) {
+        setFocusedIndex(index);
+      }
+    },
+    [index, setFocusedIndex],
+  );
+
   return {
     toggleExpanded,
     noPropagate,
     containerRef,
     isLeftSidebarFocused,
     isCommandBarVisible,
+    handleMouseMove,
   };
 };

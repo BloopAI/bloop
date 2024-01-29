@@ -78,6 +78,7 @@ const NavPanel = ({ focusedIndex, setFocusedIndex }: Props) => {
           focusedIndex={focusedIndex}
           index={`studios`}
           indexingStatus={indexingStatus}
+          setFocusedIndex={setFocusedIndex}
         />
       )}
       {!!project?.conversations.length && (
@@ -86,6 +87,7 @@ const NavPanel = ({ focusedIndex, setFocusedIndex }: Props) => {
           isExpanded={expanded === 'conversations'}
           focusedIndex={focusedIndex}
           index={`conversations`}
+          setFocusedIndex={setFocusedIndex}
         />
       )}
       {project?.repos.map((r, i) => (
@@ -108,6 +110,7 @@ const NavPanel = ({ focusedIndex, setFocusedIndex }: Props) => {
           }
           focusedIndex={focusedIndex}
           index={`repo-${r.repo.ref}`}
+          setFocusedIndex={setFocusedIndex}
         />
       ))}
       {project?.docs.map((d) => (
@@ -122,6 +125,7 @@ const NavPanel = ({ focusedIndex, setFocusedIndex }: Props) => {
           title={d.name}
           favicon={d.favicon}
           url={d.url}
+          setFocusedIndex={setFocusedIndex}
         />
       ))}
     </div>

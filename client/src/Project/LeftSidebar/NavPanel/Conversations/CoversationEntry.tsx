@@ -1,4 +1,4 @@
-import { memo, useCallback, useContext } from 'react';
+import React, { memo, useCallback, useContext } from 'react';
 import { ConversationShortType } from '../../../../types/api';
 import { TabsContext } from '../../../../context/tabsContext';
 import { TabTypesEnum } from '../../../../types/general';
@@ -9,6 +9,7 @@ type Props = ConversationShortType & {
   focusedIndex: string;
   isLeftSidebarFocused: boolean;
   isCommandBarVisible: boolean;
+  setFocusedIndex: (s: string) => void;
 };
 
 const ConversationEntry = ({
@@ -18,6 +19,7 @@ const ConversationEntry = ({
   focusedIndex,
   isLeftSidebarFocused,
   isCommandBarVisible,
+  setFocusedIndex,
 }: Props) => {
   const { openNewTab } = useContext(TabsContext.Handlers);
 
@@ -30,17 +32,26 @@ const ConversationEntry = ({
     focusedIndex !== index || !isLeftSidebarFocused || isCommandBarVisible,
   );
 
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.movementX || e.movementY) {
+        setFocusedIndex(index);
+      }
+    },
+    [index, setFocusedIndex],
+  );
+
   return (
     <a
       href="#"
       className={`w-full text-left h-7 flex-shrink-0 flex items-center gap-3 pr-2 cursor-pointer
-        ellipsis body-mini group ${
+        ellipsis body-mini group pl-10.5 ${
           focusedIndex === index
             ? 'bg-bg-sub-hover text-label-title'
             : 'text-label-base'
-        }
-        hover:bg-bg-base-hover hover:text-label-title active:bg-transparent pl-10.5`}
+        }`}
       onClick={handleClick}
+      onMouseMove={handleMouseMove}
       data-node-index={index}
     >
       <span className="ellipsis">{title}</span>

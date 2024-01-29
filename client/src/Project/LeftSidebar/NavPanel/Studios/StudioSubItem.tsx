@@ -23,6 +23,7 @@ type Props = {
   sections?: string[];
   morePadding?: boolean;
   snapshot?: HistoryConversationTurn | null;
+  setFocusedIndex: (s: string) => void;
 };
 
 const StudioSubItem = ({
@@ -44,6 +45,7 @@ const StudioSubItem = ({
   sections,
   morePadding,
   snapshot,
+  setFocusedIndex,
 }: PropsWithChildren<Props>) => {
   const { openNewTab } = useContext(TabsContext.Handlers);
 
@@ -100,17 +102,27 @@ const StudioSubItem = ({
     focusedIndex !== index || !isLeftSidebarFocused || isCommandBarVisible,
   );
 
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.movementX || e.movementY) {
+        setFocusedIndex(index);
+      }
+    },
+    [index, setFocusedIndex],
+  );
+
   return (
     <a
       href="#"
       className={`w-full h-7 flex items-center gap-3 ${
         morePadding ? 'pl-[4.25rem]' : 'pl-10.5'
-      } pr-4 hover:text-label-title hover:bg-bg-base-hover ${
+      } pr-4 ${
         focusedIndex.startsWith(index)
           ? 'bg-bg-sub-hover text-label-title'
           : 'text-label-base'
       }`}
       onClick={handleClick}
+      onMouseMove={handleMouseMove}
       data-node-index={index}
     >
       {children}

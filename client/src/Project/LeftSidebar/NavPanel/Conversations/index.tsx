@@ -17,6 +17,7 @@ type Props = {
   isExpanded: boolean;
   focusedIndex: string;
   index: string;
+  setFocusedIndex: (s: string) => void;
 };
 
 const reactRoot = document.getElementById('root')!;
@@ -26,6 +27,7 @@ const ConversationsNav = ({
   setExpanded,
   focusedIndex,
   index,
+  setFocusedIndex,
 }: Props) => {
   const { t } = useTranslation();
   const { project } = useContext(ProjectContext.Current);
@@ -35,7 +37,14 @@ const ConversationsNav = ({
     noPropagate,
     isLeftSidebarFocused,
     isCommandBarVisible,
-  } = useNavPanel(index, setExpanded, isExpanded, focusedIndex);
+    handleMouseMove,
+  } = useNavPanel(
+    index,
+    setExpanded,
+    isExpanded,
+    focusedIndex,
+    setFocusedIndex,
+  );
 
   return (
     <div className="select-none overflow-hidden w-full flex-shrink-0">
@@ -44,8 +53,11 @@ const ConversationsNav = ({
         tabIndex={0}
         className={`h-10 flex items-center gap-3 px-4 ellipsis ${
           isExpanded ? 'sticky z-10 top-0 left-0' : ''
-        } ${focusedIndex === index ? 'bg-bg-sub-hover' : 'bg-bg-sub'}`}
+        } ${
+          focusedIndex === index ? 'bg-bg-sub-hover' : 'bg-bg-sub'
+        } outline-0 outline-none focus:outline-0 focus:outline-none`}
         onClick={toggleExpanded}
+        onMouseMove={handleMouseMove}
         ref={containerRef}
         data-node-index={index}
       >
@@ -94,6 +106,7 @@ const ConversationsNav = ({
               focusedIndex={focusedIndex}
               isLeftSidebarFocused={isLeftSidebarFocused}
               isCommandBarVisible={isCommandBarVisible}
+              setFocusedIndex={setFocusedIndex}
             />
           ))}
         </div>

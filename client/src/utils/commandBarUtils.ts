@@ -23,7 +23,6 @@ export const bubbleUpRecentItems = (
       items: recentItems.sort(
         (a, b) => recentKeys.indexOf(b.key) - recentKeys.indexOf(a.key),
       ),
-      itemsOffset: 0,
       key: 'recent-items',
     });
   }
@@ -33,10 +32,6 @@ export const bubbleUpRecentItems = (
       newSections.push({
         ...s,
         items: newItems,
-        itemsOffset: newSections[newSections.length - 1]
-          ? newSections[newSections.length - 1].items.length +
-            newSections[newSections.length - 1].itemsOffset
-          : 0,
       });
     }
   });

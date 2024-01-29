@@ -104,11 +104,8 @@ describe('commandBarUtils', () => {
       const result = bubbleUpRecentItems(sections, [], recentLabel);
       expect(result.length).toEqual(3);
       expect(result[0].items.length).toEqual(items1.length);
-      expect(result[0].itemsOffset).toEqual(0);
       expect(result[1].items.length).toEqual(items2.length);
-      expect(result[1].itemsOffset).toEqual(items1.length);
       expect(result[2].items.length).toEqual(items3.length);
-      expect(result[2].itemsOffset).toEqual(items1.length + items2.length);
     });
     test('irrelevant recent items', () => {
       const result = bubbleUpRecentItems(
@@ -126,16 +123,12 @@ describe('commandBarUtils', () => {
       const result = bubbleUpRecentItems(sections, [key], recentLabel);
       expect(result.length).toEqual(4);
       expect(result[0].items.length).toEqual(1);
-      expect(result[0].itemsOffset).toEqual(0);
       expect(result[0].label).toEqual(recentLabel);
       expect(result[0].items[0].key).toEqual(key);
       expect(result[1].items.length).toEqual(items1.length - 1);
-      expect(result[1].itemsOffset).toEqual(1);
       expect(testArrayIncludes(result[1].items, key)).toBe(false);
       expect(result[2].items.length).toEqual(items2.length);
-      expect(result[2].itemsOffset).toEqual(items1.length);
       expect(result[3].items.length).toEqual(items3.length);
-      expect(result[3].itemsOffset).toEqual(items1.length + items2.length);
     });
     test('1 recent item in section 1 + irrelevant', () => {
       const key = items1[1].key;
@@ -154,15 +147,10 @@ describe('commandBarUtils', () => {
       const result = bubbleUpRecentItems(sections, [key], recentLabel);
       expect(result.length).toEqual(3);
       expect(result[0].items.length).toEqual(1);
-      expect(result[0].itemsOffset).toEqual(0);
       expect(result[0].label).toEqual(recentLabel);
       expect(result[0].items[0].key).toEqual(key);
       expect(result[1].items.length).toEqual(items1.length);
-      expect(result[1].itemsOffset).toEqual(1);
       expect(result[2].items.length).toEqual(items2.length);
-      expect(result[2].itemsOffset).toEqual(
-        result[0].items.length + result[1].items.length,
-      );
     });
     test('recent items in different sections', () => {
       const key1 = items1[2].key;
@@ -172,18 +160,13 @@ describe('commandBarUtils', () => {
       const result = bubbleUpRecentItems(sections, recentKeysArr, recentLabel);
       expect(result.length).toEqual(3);
       expect(result[0].items.length).toEqual(recentKeysArr.length);
-      expect(result[0].itemsOffset).toEqual(0);
       expect(result[0].label).toEqual(recentLabel);
       expect(result[0].items[0].key).toEqual(key1);
       expect(result[0].items[1].key).toEqual(key2);
       expect(result[0].items[2].key).toEqual(key3);
       expect(result[1].items.length).toEqual(items1.length - 1);
-      expect(result[1].itemsOffset).toEqual(result[0].items.length);
       expect(testArrayIncludes(result[1].items, key1)).toBe(false);
       expect(result[2].items.length).toEqual(items2.length - 1);
-      expect(result[2].itemsOffset).toEqual(
-        result[0].items.length + result[1].items.length,
-      );
       expect(testArrayIncludes(result[2].items, key2)).toBe(false);
     });
     test('all keys are recent', () => {
@@ -195,7 +178,6 @@ describe('commandBarUtils', () => {
       const result = bubbleUpRecentItems(sections, recentKeysArr, recentLabel);
       expect(result.length).toEqual(1);
       expect(result[0].items.length).toEqual(recentKeysArr.length);
-      expect(result[0].itemsOffset).toEqual(0);
       expect(result[0].label).toEqual(recentLabel);
       expect(result[0].items[0].key).toEqual(items1[0].key);
     });

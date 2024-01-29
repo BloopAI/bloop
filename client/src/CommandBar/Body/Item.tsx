@@ -23,24 +23,23 @@ import {
 } from '../../services/storage';
 
 type Props = CommandBarItemGeneralType & {
-  isFocused?: boolean;
-  i: number;
+  index: string;
+  focusedIndex: string;
   isFirst?: boolean;
   isWithCheckmark?: boolean;
-  setFocusedIndex: Dispatch<SetStateAction<number>>;
+  setFocusedIndex: Dispatch<SetStateAction<string>>;
   customRightElement?: ReactElement;
   focusedItemProps?: Record<string, any>;
   disableKeyNav?: boolean;
   itemKey: string;
-  onlyOneClickable?: string;
 };
 
 const CommandBarItem = ({
-  isFocused,
+  focusedIndex,
   Icon,
   label,
   shortcut,
-  i,
+  index,
   setFocusedIndex,
   id,
   footerBtns,
@@ -54,7 +53,6 @@ const CommandBarItem = ({
   isWithCheckmark,
   closeOnClick,
   itemKey,
-  onlyOneClickable,
 }: Props) => {
   const ref = useRef<HTMLButtonElement>(null);
   const shortcutKeys = useShortcuts(shortcut);
@@ -63,7 +61,7 @@ const CommandBarItem = ({
   );
 
   useEffect(() => {
-    if (isFocused) {
+    if (focusedIndex === index) {
       setFocusedItem({
         footerHint,
         footerBtns,
@@ -71,21 +69,18 @@ const CommandBarItem = ({
       });
       ref.current?.scrollIntoView({ block: 'nearest' });
     }
-  }, [isFocused, footerBtns, footerHint, focusedItemProps]);
+  }, [focusedIndex, index, footerBtns, footerHint, focusedItemProps]);
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent) => {
       if (e.movementX || e.movementY) {
-        setFocusedIndex(i);
+        setFocusedIndex(index);
       }
     },
-    [i, setFocusedIndex],
+    [index, setFocusedIndex],
   );
 
   const handleClick = useCallback(() => {
-    if (onlyOneClickable && onlyOneClickable !== itemKey) {
-      return;
-    }
     if (onClick) {
       onClick();
       if (closeOnClick) {
@@ -101,13 +96,13 @@ const CommandBarItem = ({
       });
     }
     updateArrayInStorage(RECENT_COMMANDS_KEY, itemKey);
-  }, [id, onClick, closeOnClick, itemKey, onlyOneClickable]);
+  }, [id, onClick, closeOnClick, itemKey]);
 
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
       const shortAction = footerBtns.find((b) => checkEventKeys(e, b.shortcut));
       if (
-        (isFocused && shortAction && !shortAction.action) ||
+        (focusedIndex === index && shortAction && !shortAction.action) ||
         checkEventKeys(e, shortcut)
       ) {
         e.preventDefault();
@@ -115,30 +110,27 @@ const CommandBarItem = ({
         handleClick();
         return;
       }
-      if (isFocused && shortAction?.action) {
+      if (focusedIndex === index && shortAction?.action) {
         e.preventDefault();
         e.stopPropagation();
         shortAction.action();
       }
     },
-    [isFocused, shortcut, footerBtns, handleClick],
+    [focusedIndex === index, shortcut, footerBtns, handleClick],
   );
-  useKeyboardNavigation(
-    handleKeyEvent,
-    disableKeyNav || (!!onlyOneClickable && onlyOneClickable !== itemKey),
-  );
+  useKeyboardNavigation(handleKeyEvent, disableKeyNav);
 
   return (
     <button
       className={`flex items-center gap-3 rounded-md px-2 h-10 ${
-        isFocused && !(onlyOneClickable && onlyOneClickable !== itemKey)
+        focusedIndex === index
           ? 'bg-bg-base-hover text-label-title'
           : 'text-label-base'
       } text-left ${isFirst ? 'scroll-mt-8' : ''}`}
       onMouseMove={handleMouseMove}
       onClick={handleClick}
+      data-node-index={index}
       ref={ref}
-      disabled={!!onlyOneClickable && onlyOneClickable !== itemKey}
     >
       <div
         className={`rounded-6 w-6 h-6 flex items-center justify-center relative ${

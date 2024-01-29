@@ -1,4 +1,4 @@
-import {
+import React, {
   memo,
   useCallback,
   useContext,
@@ -24,6 +24,7 @@ type Props = {
   index: string;
   focusedIndex: string;
   isFirst: boolean;
+  setFocusedIndex: (s: string) => void;
 };
 
 const CodeResult = ({
@@ -34,6 +35,7 @@ const CodeResult = ({
   index,
   focusedIndex,
   isFirst,
+  setFocusedIndex,
 }: Props) => {
   const { openNewTab } = useContext(TabsContext.Handlers);
   const { isLeftSidebarFocused } = useContext(UIContext.Focus);
@@ -52,16 +54,8 @@ const CodeResult = ({
     }
   }, [focusedIndex, index]);
 
-  const handleEnter = useCallback(() => {
-    openNewTab({
-      type: TabTypesEnum.FILE,
-      path: relative_path,
-      repoRef: repo_ref,
-      scrollToLine: `${snippets[0].line_range.start}_${snippets[0].line_range.end}`,
-    });
-  }, [repo_ref, relative_path, openNewTab]);
   useEnterKey(
-    handleEnter,
+    toggleExpanded,
     focusedIndex !== index || !isLeftSidebarFocused || isCommandBarVisible,
   );
 
@@ -73,14 +67,26 @@ const CodeResult = ({
     });
   }, [repo_ref, relative_path, openNewTab]);
 
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.movementX || e.movementY) {
+        setFocusedIndex(index);
+      }
+    },
+    [index, setFocusedIndex],
+  );
+
   return (
     <div className="relative flex flex-col">
       <span className="absolute top-7 bottom-0 left-11.5 w-px bg-bg-border" />
       <div
         className={`flex w-max min-w-full items-center gap-3 whitespace-nowrap body-mini text-label-title h-7 flex-shrink-0 ${
           isFirst ? 'scroll-mt-10' : ''
-        } ${focusedIndex === index ? 'bg-bg-shade-hover' : ''} pl-10 pr-4`}
+        } ${
+          focusedIndex === index ? 'bg-bg-shade-hover' : ''
+        } pl-10 pr-4 cursor-pointer`}
         onClick={toggleExpanded}
+        onMouseMove={handleMouseMove}
         ref={ref}
         data-node-index={index}
       >
@@ -98,7 +104,7 @@ const CodeResult = ({
         {/*/>*/}
         <div onClick={handleClick}>{relative_path}</div>
       </div>
-      <ul className="pl-2.5 ml-10 pr-4">
+      <ul className="">
         {isExpanded
           ? snippets.map((s, i) => (
               <CodeLine
@@ -110,6 +116,11 @@ const CodeResult = ({
                 lineStart={s.line_range.start}
                 lineEnd={s.line_range.end}
                 highlights={s.highlights}
+                index={`${index}-${i}`}
+                focusedIndex={focusedIndex}
+                setFocusedIndex={setFocusedIndex}
+                isLeftSidebarFocused={isLeftSidebarFocused}
+                isCommandBarVisible={isCommandBarVisible}
               />
             ))
           : null}

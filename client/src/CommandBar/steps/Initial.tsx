@@ -375,7 +375,6 @@ const InitialCommandBar = ({ shouldShowTutorial }: Props) => {
           ? [
               {
                 items: newTabItems,
-                itemsOffset: 0,
                 key: 'new-tab-items',
               },
             ]
@@ -384,7 +383,6 @@ const InitialCommandBar = ({ shouldShowTutorial }: Props) => {
           ? [
               {
                 items: tabItems,
-                itemsOffset: newTabItems.length,
                 key: 'tab-items',
               },
             ]
@@ -394,35 +392,22 @@ const InitialCommandBar = ({ shouldShowTutorial }: Props) => {
               {
                 label: t('Recent conversations'),
                 items: chatItems,
-                itemsOffset: newTabItems.length + tabItems.length,
                 key: 'chat-items',
               },
             ]
           : []),
         {
           items: contextItems,
-          itemsOffset: newTabItems.length + tabItems.length + chatItems.length,
           label: t('Manage context'),
           key: 'context-items',
         },
         {
           items: projectItems,
-          itemsOffset:
-            newTabItems.length +
-            tabItems.length +
-            chatItems.length +
-            contextItems.length,
           label: t('Recent projects'),
           key: 'recent-projects',
         },
         {
           items: commandsItems,
-          itemsOffset:
-            newTabItems.length +
-            tabItems.length +
-            chatItems.length +
-            contextItems.length +
-            projectItems.length,
           label: t('Commands'),
           key: 'general-commands',
         },
@@ -456,10 +441,6 @@ const InitialCommandBar = ({ shouldShowTutorial }: Props) => {
         newSections.push({
           ...s,
           items: newItems,
-          itemsOffset: newSections[newSections.length - 1]
-            ? newSections[newSections.length - 1].items.length +
-              newSections[newSections.length - 1].itemsOffset
-            : 0,
         });
       }
     });

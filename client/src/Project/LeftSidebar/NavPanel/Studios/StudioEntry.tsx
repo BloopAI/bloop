@@ -36,6 +36,7 @@ type Props = CodeStudioType & {
   indexingStatus: IndexingStatusType;
   projectId: string;
   previewingSnapshot: HistoryConversationTurn | null;
+  setFocusedIndex: (s: string) => void;
 };
 
 const StudioEntry = ({
@@ -53,6 +54,7 @@ const StudioEntry = ({
   indexingStatus,
   projectId,
   previewingSnapshot,
+  setFocusedIndex,
 }: Props) => {
   const { t } = useTranslation();
 
@@ -71,6 +73,15 @@ const StudioEntry = ({
     focusedIndex !== index || !isLeftSidebarFocused || isCommandBarVisible,
   );
 
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.movementX || e.movementY) {
+        setFocusedIndex(index);
+      }
+    },
+    [index, setFocusedIndex],
+  );
+
   return (
     <div className="body-mini">
       <a
@@ -82,10 +93,10 @@ const StudioEntry = ({
             expandedIndex === index || focusedIndex.startsWith(index)
               ? 'text-label-title'
               : 'text-label-base'
-          }
-          hover:bg-bg-base-hover hover:text-label-title active:bg-transparent pl-4`}
+          } pl-4`}
         onClick={handleExpand}
         data-node-index={index}
+        onMouseMove={handleMouseMove}
       >
         <span className="flex items-center gap-3">
           <ChevronRight
@@ -113,6 +124,7 @@ const StudioEntry = ({
             index={`${index}-history`}
             isLeftSidebarFocused={isLeftSidebarFocused}
             isCommandBarVisible={isCommandBarVisible}
+            setFocusedIndex={setFocusedIndex}
           />
           <StudioSubItem
             studioId={id}
@@ -121,6 +133,7 @@ const StudioEntry = ({
             studioName={name}
             isLeftSidebarFocused={isLeftSidebarFocused}
             isCommandBarVisible={isCommandBarVisible}
+            setFocusedIndex={setFocusedIndex}
           >
             <PromptIcon sizeClassName="w-3.5 h-3.5" />
             <span className="flex-1 ellipsis">
@@ -151,6 +164,7 @@ const StudioEntry = ({
               isCommandBarVisible={isCommandBarVisible}
               tokens={token_counts.per_file[i]}
               indexingData={indexingStatus[f.repo]}
+              setFocusedIndex={setFocusedIndex}
               {...f}
             />
           ))}
@@ -173,6 +187,7 @@ const StudioEntry = ({
               docTitle={d.doc_title || ''}
               docFavicon={d.doc_icon || ''}
               sections={d.ranges}
+              setFocusedIndex={setFocusedIndex}
             >
               {d.doc_icon ? (
                 <img

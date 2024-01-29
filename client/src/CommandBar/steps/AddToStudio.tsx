@@ -163,10 +163,6 @@ const AddToStudio = (props: Props) => {
         newSectionsToShow.push({
           ...s,
           items,
-          itemsOffset: newSectionsToShow[newSectionsToShow.length - 1]
-            ? newSectionsToShow[newSectionsToShow.length - 1].itemsOffset +
-              newSectionsToShow[newSectionsToShow.length - 1].items.length
-            : 0,
         });
       }
     });

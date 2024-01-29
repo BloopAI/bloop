@@ -39,9 +39,9 @@ import { RepositoriesContext } from '../../../context/repositoriesContext';
 
 type Props = {
   repo: RepoUi;
-  i: number;
-  isFocused: boolean;
-  setFocusedIndex: Dispatch<SetStateAction<number>>;
+  index: string;
+  focusedIndex: string;
+  setFocusedIndex: Dispatch<SetStateAction<string>>;
   isFirst: boolean;
   refetchRepos: () => void;
   disableKeyNav?: boolean;
@@ -56,8 +56,8 @@ const RepoItem = ({
   repo,
   isFirst,
   setFocusedIndex,
-  isFocused,
-  i,
+  focusedIndex,
+  index,
   refetchRepos,
   disableKeyNav,
   indexingStatus,
@@ -244,8 +244,8 @@ const RepoItem = ({
     <Item
       key={repo.ref}
       setFocusedIndex={setFocusedIndex}
-      isFocused={isFocused}
-      i={i}
+      focusedIndex={focusedIndex}
+      index={index}
       isFirst={isFirst}
       itemKey={`repo-${repo.ref}`}
       Icon={isIndexing ? SpinLoaderContainer : RepositoryIcon}

@@ -122,7 +122,6 @@ const LocalRepos = ({}: Props) => {
       setSections([
         addItem,
         {
-          itemsOffset: 1,
           key: 'indexed-repos',
           label: t('Indexed local repositories'),
           items: mapped,

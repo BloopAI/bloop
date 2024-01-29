@@ -34,9 +34,9 @@ import { ProjectContext } from '../../../context/projectContext';
 
 type Props = {
   doc: DocShortType;
-  i: number;
-  isFocused: boolean;
-  setFocusedIndex: Dispatch<SetStateAction<number>>;
+  index: string;
+  focusedIndex: string;
+  setFocusedIndex: Dispatch<SetStateAction<string>>;
   isFirst: boolean;
   isIndexed: boolean;
   disableKeyNav?: boolean;
@@ -47,8 +47,8 @@ const DocItem = ({
   doc,
   isFirst,
   setFocusedIndex,
-  isFocused,
-  i,
+  focusedIndex,
+  index,
   isIndexed,
   disableKeyNav,
   refetchDocs,
@@ -246,8 +246,8 @@ const DocItem = ({
       key={docToShow.id || doc.url}
       itemKey={`doc-${docToShow.id || doc.url}`}
       setFocusedIndex={setFocusedIndex}
-      isFocused={isFocused}
-      i={i}
+      focusedIndex={focusedIndex}
+      index={index}
       isFirst={isFirst}
       isWithCheckmark={!!isInProject}
       Icon={

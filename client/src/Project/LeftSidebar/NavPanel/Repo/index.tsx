@@ -40,6 +40,7 @@ type Props = {
   indexingData?: RepoIndexingStatusType;
   focusedIndex: string;
   index: string;
+  setFocusedIndex: (s: string) => void;
 };
 
 const reactRoot = document.getElementById('root')!;
@@ -57,6 +58,7 @@ const RepoNav = ({
   indexingData,
   focusedIndex,
   index,
+  setFocusedIndex,
 }: Props) => {
   const { t } = useTranslation();
   const [files, setFiles] = useState<DirectoryEntry[]>([]);
@@ -66,7 +68,14 @@ const RepoNav = ({
     noPropagate,
     isLeftSidebarFocused,
     isCommandBarVisible,
-  } = useNavPanel(index, setExpanded, isExpanded, focusedIndex);
+    handleMouseMove,
+  } = useNavPanel(
+    index,
+    setExpanded,
+    isExpanded,
+    focusedIndex,
+    setFocusedIndex,
+  );
 
   const fetchFiles = useCallback(
     async (path?: string) => {
@@ -122,10 +131,13 @@ const RepoNav = ({
         tabIndex={0}
         className={`h-10 flex items-center gap-3 px-4 ellipsis ${
           isExpanded ? 'sticky z-10 top-0 left-0' : ''
-        } ${focusedIndex === index ? 'bg-bg-sub-hover' : 'bg-bg-sub'}`}
+        } ${
+          focusedIndex === index ? 'bg-bg-sub-hover' : 'bg-bg-sub'
+        } outline-0 outline-none focus:outline-0 focus:outline-none`}
         onClick={toggleExpanded}
         data-node-index={index}
         ref={containerRef}
+        onMouseMove={handleMouseMove}
       >
         {isIndexing && indexingData ? (
           <Tooltip
@@ -198,6 +210,7 @@ const RepoNav = ({
               index={`${index}-${fi}`}
               isLeftSidebarFocused={isLeftSidebarFocused}
               isCommandBarVisible={isCommandBarVisible}
+              setFocusedIndex={setFocusedIndex}
             />
           ))}
         </div>

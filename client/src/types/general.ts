@@ -497,7 +497,6 @@ export type CommandBarSectionType = {
   label?: string;
   key: string;
   items: (CommandBarItemGeneralType | CommandBarItemCustomType)[];
-  itemsOffset: number;
 };
 
 export type CommandBarStepType = {
