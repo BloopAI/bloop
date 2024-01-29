@@ -29,6 +29,7 @@ const ConversationsDropdown = ({}: Props) => {
         <SectionItem
           onClick={handleRemoveAllConversations}
           label={t('Delete all conversations')}
+          index={'del-chats'}
           icon={<TrashCanIcon sizeClassName="w-4 h-4" />}
         />
       </DropdownSection>

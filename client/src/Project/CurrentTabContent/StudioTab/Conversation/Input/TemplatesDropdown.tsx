@@ -15,7 +15,7 @@ import SectionItem from '../../../../../components/Dropdown/Section/SectionItem'
 import { CogIcon, TemplatesIcon } from '../../../../../icons';
 import { UIContext } from '../../../../../context/uiContext';
 import { ProjectSettingSections } from '../../../../../types/general';
-import useKeyboardNavigation from '../../../../../hooks/useKeyboardNavigation';
+import { ArrowNavigationContext } from '../../../../../context/arrowNavigationContext';
 
 type Props = {
   templates: StudioTemplateType[];
@@ -23,18 +23,15 @@ type Props = {
   handleClose: () => void;
 };
 
-const TemplatesDropdown = ({
-  templates,
-  onTemplateSelected,
-  handleClose,
-}: Props) => {
+const TemplatesDropdown = ({ templates, onTemplateSelected }: Props) => {
   const { t } = useTranslation();
   const [inputValue, setInputValue] = useState('');
-  const [focusedIndex, setFocusedIndex] = useState(0);
   const [templatesToShow, setTemplatesToShow] = useState(templates);
   const { setProjectSettingsOpen, setProjectSettingsSection } = useContext(
     UIContext.ProjectSettings,
   );
+  const { focusedIndex } = useContext(ArrowNavigationContext);
+
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -62,37 +59,8 @@ const TemplatesDropdown = ({
     e.stopPropagation();
   }, []);
 
-  const handleKeyEvent = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        e.stopPropagation();
-        setFocusedIndex((prev) =>
-          prev < templatesToShow.length + 1 ? prev + 1 : 0,
-        );
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        e.stopPropagation();
-        setFocusedIndex((prev) =>
-          prev > 0 ? prev - 1 : templatesToShow.length + 1,
-        );
-      } else if (e.key === 'Enter') {
-        e.preventDefault();
-        e.stopPropagation();
-        if (focusedIndex > 0 && focusedIndex - 1 < templatesToShow.length) {
-          onTemplateSelected(templatesToShow[focusedIndex - 1]?.content);
-        } else if (focusedIndex === templatesToShow.length + 1) {
-          handleManage();
-        }
-        handleClose();
-      }
-    },
-    [focusedIndex, handleManage, templatesToShow, onTemplateSelected],
-  );
-  useKeyboardNavigation(handleKeyEvent);
-
   useEffect(() => {
-    if (focusedIndex === 0) {
+    if (focusedIndex === 'search-templates') {
       inputRef.current?.focus();
     }
   }, [focusedIndex]);
@@ -112,14 +80,15 @@ const TemplatesDropdown = ({
           autoFocus
           onClick={noPropagate}
           ref={inputRef}
+          data-node-index={'search-templates'}
         />
       </DropdownSection>
       <DropdownSection borderBottom>
-        {templatesToShow.map((t, i) => (
+        {templatesToShow.map((t) => (
           <SectionItem
             label={t.name}
             key={t.id}
-            isFocused={focusedIndex === i + 1}
+            index={`templ-${t.id}`}
             onClick={() => onTemplateSelected(t.content)}
             icon={<TemplatesIcon sizeClassName="w-3.5 h-3.5" />}
           />
@@ -130,7 +99,7 @@ const TemplatesDropdown = ({
           label={t('Manage templates')}
           icon={<CogIcon sizeClassName="w-3.5 h-3.5" />}
           onClick={handleManage}
-          isFocused={focusedIndex === templatesToShow.length + 1}
+          index={'manage-templ'}
         />
       </DropdownSection>
     </div>

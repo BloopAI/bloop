@@ -55,6 +55,7 @@ const ProjectsDropdown = ({}: Props) => {
         {projects.map((p) => (
           <SectionItem
             key={p.id}
+            index={`proj-${p.id}`}
             isSelected={p.id === project?.id}
             onClick={() => handleProjectSwitch(p.id)}
             label={p.name}
@@ -74,6 +75,7 @@ const ProjectsDropdown = ({}: Props) => {
       <div className="flex flex-col p-1 items-start border-b border-bg-border">
         <SectionItem
           onClick={openProjectSettings}
+          index={'proj-settings'}
           label={t('Project settings')}
           icon={<CogIcon sizeClassName="w-4 h-4" />}
           shortcut={['option', 'P']}
@@ -82,6 +84,7 @@ const ProjectsDropdown = ({}: Props) => {
       <div className="flex flex-col p-1 items-start">
         <SectionItem
           onClick={createNewProject}
+          index={'new-proj'}
           label={t('New project')}
           icon={<PlusSignIcon sizeClassName="w-4 h-4" />}
           shortcut={newProjectShortcut}

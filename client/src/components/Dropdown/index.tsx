@@ -3,14 +3,16 @@ import React, {
   PropsWithChildren,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
 import Tippy, { TippyProps } from '@tippyjs/react/headless';
 import { Placement } from 'tippy.js';
-import { useArrowKeyNavigation } from '../../hooks/useArrowNavigationHook';
 import { useOnClickOutside } from '../../hooks/useOnClickOutsideHook';
 import useKeyboardNavigation from '../../hooks/useKeyboardNavigation';
+import { useArrowNavigation } from '../../hooks/useArrowNavigation';
+import { ArrowNavigationContext } from '../../context/arrowNavigationContext';
 
 type Props = {
   dropdownPlacement?: TippyProps['placement'];
@@ -62,7 +64,9 @@ const Dropdown = ({
   onVisibilityChange,
 }: PropsWithChildren<Props>) => {
   const [isVisible, setIsVisible] = useState(false);
-  const contextMenuRef = useArrowKeyNavigation({ selectors: 'button' });
+  const contextMenuRef = useRef(null);
+  const { focusedIndex, setFocusedIndex, handleArrowKey, navContainerRef } =
+    useArrowNavigation();
   const buttonRef = useRef(null);
 
   const handleClose = useCallback((e?: React.MouseEvent | MouseEvent) => {
@@ -82,6 +86,17 @@ const Dropdown = ({
       onVisibilityChange?.(false);
     };
   }, [isVisible]);
+
+  useKeyboardNavigation(handleArrowKey, !isVisible);
+
+  const contextValue = useMemo(
+    () => ({
+      focusedIndex,
+      setFocusedIndex,
+      handleClose,
+    }),
+    [focusedIndex, handleClose],
+  );
 
   const handleKeyEvent = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape') {
@@ -107,19 +122,29 @@ const Dropdown = ({
           } max-h-96 overflow-auto transition-transform duration-150
        rounded-md border border-bg-border ${
          color === 'base' ? 'bg-bg-base' : 'bg-bg-shade'
-       } shadow-high ${sizesMap[size]} flex flex-col gap-1 select-none`}
+       } shadow-high ${sizesMap[size]} select-none`}
           onClick={handleClose}
         >
           {isVisible && (
-            <DropdownComponent
-              {...dropdownComponentProps}
-              handleClose={handleClose}
-            />
+            <div ref={navContainerRef} className="flex flex-col gap-1">
+              <ArrowNavigationContext.Provider value={contextValue}>
+                <DropdownComponent
+                  {...dropdownComponentProps}
+                  handleClose={handleClose}
+                />
+              </ArrowNavigationContext.Provider>
+            </div>
           )}
         </div>
       );
     },
-    [DropdownComponent, dropdownComponentProps, isVisible, dropdownPlacement],
+    [
+      DropdownComponent,
+      dropdownComponentProps,
+      isVisible,
+      dropdownPlacement,
+      contextValue,
+    ],
   );
 
   return (

@@ -1,7 +1,6 @@
 import { memo, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import SectionItem from '../../components/Dropdown/Section/SectionItem';
-import { MacintoshIcon } from '../../icons';
 import { LocaleContext } from '../../context/localeContext';
 import { localesMap } from '../../consts/general';
 import { LocaleType } from '../../types/general';
@@ -9,7 +8,7 @@ import { LocaleType } from '../../types/general';
 type Props = {};
 
 const LanguageDropdown = ({}: Props) => {
-  const { t } = useTranslation();
+  useTranslation();
   const { locale, setLocale } = useContext(LocaleContext);
 
   return (
@@ -18,6 +17,7 @@ const LanguageDropdown = ({}: Props) => {
         {(Object.keys(localesMap) as LocaleType[]).map((k) => (
           <SectionItem
             key={k}
+            index={`lang-${k}`}
             isSelected={locale === k}
             onClick={() => setLocale(k)}
             label={localesMap[k].name}

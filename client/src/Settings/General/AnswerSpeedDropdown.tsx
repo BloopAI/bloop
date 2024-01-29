@@ -17,6 +17,7 @@ const AnswerSpeedDropdown = ({}: Props) => {
       <DropdownSection borderBottom>
         <SectionItem
           label={t('Normal')}
+          index={'speed-normal'}
           isSelected={preferredAnswerSpeed === 'normal'}
           onClick={() => setPreferredAnswerSpeed('normal')}
           icon={<WalkIcon sizeClassName="w-4 h-4" />}
@@ -26,6 +27,7 @@ const AnswerSpeedDropdown = ({}: Props) => {
       <DropdownSection>
         <SectionItem
           label={t('Fast')}
+          index={'speed-fast'}
           isSelected={preferredAnswerSpeed === 'fast'}
           onClick={() => setPreferredAnswerSpeed('fast')}
           icon={<RunIcon sizeClassName="w-4 h-4" />}

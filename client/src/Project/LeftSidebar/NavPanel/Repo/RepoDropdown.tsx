@@ -165,6 +165,7 @@ const RepoDropdown = ({
         <SectionItem
           onClick={onRepoSync}
           label={t('Re-sync')}
+          index={'re-sync'}
           icon={
             isSyncing ? (
               <SpinLoaderContainer sizeClassName="w-4 h-4" />
@@ -176,6 +177,7 @@ const RepoDropdown = ({
         <SectionItem
           onClick={toggleBranches}
           label={t('Branches')}
+          index={'branches'}
           icon={<BranchIcon sizeClassName="w-4 h-4" />}
           customRightElement={
             <span className="body-s text-label-muted overflow-hidden flex items-center gap-2">
@@ -218,6 +220,7 @@ const RepoDropdown = ({
                 icon={<BranchIcon sizeClassName="w-4 h-4" />}
                 key={b}
                 isSelected={selectedBranch === b}
+                index={`branch-${b}`}
               />
             ))}
           </DropdownSection>
@@ -238,6 +241,7 @@ const RepoDropdown = ({
                       : t('Queued...')}
                   </span>
                 }
+                index={`branch-${b}`}
               />
             ))}
           </DropdownSection>
@@ -268,6 +272,7 @@ const RepoDropdown = ({
                     {t('Sync')}
                   </Button>
                 }
+                index={`branch-${b}`}
               />
             ))}
           </DropdownSection>
@@ -276,6 +281,7 @@ const RepoDropdown = ({
       <DropdownSection>
         <SectionItem
           onClick={handleRemoveFromProject}
+          index={'del-from-project'}
           label={t('Remove from project')}
           icon={<TrashCanIcon sizeClassName="w-4 h-4" />}
         />

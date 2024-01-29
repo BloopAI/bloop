@@ -18,6 +18,7 @@ const ActionsDropdown = ({ handleEdit, handleDelete, isDefault }: Props) => {
       <DropdownSection borderBottom={!isDefault}>
         <SectionItem
           label={t('Edit template')}
+          index={'edit-template'}
           onClick={handleEdit}
           icon={<PencilIcon sizeClassName="w-4 h-4" />}
         />
@@ -26,6 +27,7 @@ const ActionsDropdown = ({ handleEdit, handleDelete, isDefault }: Props) => {
         <DropdownSection>
           <SectionItem
             label={t('Delete template')}
+            index={'delete-template'}
             onClick={handleDelete}
             icon={<TrashCanIcon sizeClassName="w-4 h-4" />}
           />

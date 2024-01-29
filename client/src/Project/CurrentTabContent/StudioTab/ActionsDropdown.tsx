@@ -51,7 +51,7 @@ const ActionsDropdown = ({
           label={t('Open in split view')}
           shortcut={openInSplitViewShortcut}
           onClick={handleMoveToAnotherSide}
-          // isFocused
+          index={'split-view'}
           icon={<SplitViewIcon sizeClassName="w-4 h-4" />}
         />
         {studioId && (
@@ -59,7 +59,7 @@ const ActionsDropdown = ({
             label={t('Clear conversation')}
             // shortcut={shortcuts.splitView}
             onClick={clearConversation}
-            // isFocused
+            index="clear-chat"
             icon={<BroomIcon sizeClassName="w-4 h-4" />}
           />
         )}
@@ -70,7 +70,7 @@ const ActionsDropdown = ({
             label={t('Delete conversation')}
             // shortcut={shortcuts.splitView}
             onClick={removeConversation}
-            // isFocused
+            index={'del-chat'}
             icon={<TrashCanIcon sizeClassName="w-4 h-4" />}
           />
         )}

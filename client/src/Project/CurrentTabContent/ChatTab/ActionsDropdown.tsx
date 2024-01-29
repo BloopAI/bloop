@@ -46,6 +46,7 @@ const ActionsDropdown = ({
     <div>
       <DropdownSection>
         <SectionItem
+          index={'split-view'}
           label={t('Open in split view')}
           shortcut={openInSplitViewShortcut}
           onClick={handleMoveToAnotherSide}
@@ -53,6 +54,7 @@ const ActionsDropdown = ({
         />
         {conversationId && (
           <SectionItem
+            index={'del-chat'}
             label={t('Delete conversation')}
             // shortcut={shortcuts.splitView}
             onClick={removeConversation}

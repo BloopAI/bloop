@@ -32,6 +32,7 @@ const ConversationsDropdown = ({ docId }: Props) => {
       <DropdownSection borderBottom>
         <SectionItem
           onClick={handleResync}
+          index={'re-sync'}
           label={t('Re-sync')}
           icon={<RefreshIcon sizeClassName="w-4 h-4" />}
         />
@@ -39,6 +40,7 @@ const ConversationsDropdown = ({ docId }: Props) => {
       <DropdownSection>
         <SectionItem
           onClick={handleRemoveFromProject}
+          index={'del-from-project'}
           label={t('Remove from project')}
           icon={<TrashCanIcon sizeClassName="w-4 h-4" />}
         />

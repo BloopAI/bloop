@@ -36,6 +36,7 @@ const ActionsDropdown = ({
     <div>
       <DropdownSection borderBottom>
         <SectionItem
+          index="explain-file"
           label={t('Explain file')}
           onClick={handleExplain}
           shortcut={explainFileShortcut}
@@ -43,6 +44,7 @@ const ActionsDropdown = ({
         />
         {isFileInContext ? (
           <SectionItem
+            index={'del-from-studio'}
             label={t('Remove from studio')}
             onClick={handleRemoveFromStudio}
             shortcut={removeFromStudioShortcut}
@@ -50,6 +52,7 @@ const ActionsDropdown = ({
           />
         ) : (
           <SectionItem
+            index={'add-to-studio'}
             label={t('Add to studio')}
             onClick={handleAddToStudio}
             shortcut={addToStudioShortcut}
@@ -59,6 +62,7 @@ const ActionsDropdown = ({
       </DropdownSection>
       <DropdownSection>
         <SectionItem
+          index={'split-view'}
           label={t('Open in split view')}
           shortcut={openInSplitViewShortcut}
           onClick={handleMoveToAnotherSide}

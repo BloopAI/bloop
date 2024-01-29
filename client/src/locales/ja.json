@@ -512,5 +512,6 @@
 	"Write your prompt...": "あなたのプロンプトを書く...",
 	"Usage resets at": "使用法がリセットされます",
 	"Upgrade to Personal plan": "個人計画にアップグレードします",
-	"Restore session": "セッションを復元します"
+	"Restore session": "セッションを復元します",
+	"In this project": "このプロジェクトで"
 }

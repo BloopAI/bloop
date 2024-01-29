@@ -47,6 +47,7 @@ const AddTabDropdown = ({ side }: Props) => {
           label={t('New conversation')}
           shortcut={newChatTabShortcut}
           onClick={openChatTab}
+          index={'chat'}
         />
         <SectionItem
           icon={
@@ -58,6 +59,7 @@ const AddTabDropdown = ({ side }: Props) => {
           label={t('New studio conversation')}
           shortcut={newStudioTabShortcut}
           onClick={openStudioTab}
+          index={'studio'}
         />
       </div>
     </div>
