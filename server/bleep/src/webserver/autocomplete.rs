@@ -52,6 +52,10 @@ pub(super) async fn handle(
     let queries = parser::parse(&api_params.q)
         .map_err(Error::user)?
         .into_iter()
+        .map(|q| parser::Query {
+            case_sensitive: Some(true),
+            ..q
+        })
         .map(|mut q| {
             let keywords = &["lang:", "path:", "repo:"];
 

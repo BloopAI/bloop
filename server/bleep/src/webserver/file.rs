@@ -100,6 +100,7 @@ pub(super) async fn folder(
         repo: Some(parser::Literal::from(&params.repo_ref.indexed_name())),
         path: Some(parser::Literal::from(params.path.to_string_lossy())),
         branch: params.branch.map(|b| parser::Literal::from(&b)),
+        case_sensitive: Some(true),
         ..Default::default()
     };
 

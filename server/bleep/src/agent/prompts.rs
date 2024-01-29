@@ -100,7 +100,7 @@ pub fn system<'a>(paths: impl IntoIterator<Item = &'a RepoPath>) -> String {
     if iter.peek().is_some() {
         s.push_str("\n## PATHS ##\nindex, repo, path\n");
         for (i, path) in iter.enumerate() {
-            let repo = path.repo.display_name();
+            let repo = path.repo.indexed_name();
             let path = &path.path;
             s.push_str(&format!("{}, {}, {}\n", i, repo, path));
         }

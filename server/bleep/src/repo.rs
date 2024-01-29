@@ -97,23 +97,14 @@ impl RepoRef {
 
     pub fn indexed_name(&self) -> String {
         // Local repos indexed as: dirname
-        // Github repos indexed as: github.com/org/repo
+        // Github repos indexed as: org/repo
         match self.backend {
             Backend::Local => Path::new(&self.name)
                 .file_name()
                 .expect("last component is `..`")
                 .to_string_lossy()
                 .into(),
-            Backend::Github => format!("{}", self),
-        }
-    }
-
-    pub fn display_name(&self) -> String {
-        match self.backend {
-            // org_name/repo_name
             Backend::Github => self.name.to_owned(),
-            // repo_name
-            Backend::Local => self.indexed_name(),
         }
     }
 

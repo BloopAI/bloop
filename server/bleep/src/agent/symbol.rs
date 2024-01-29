@@ -65,7 +65,7 @@ impl Agent {
                     .to_string(),
                 token_info_request: TokenInfoRequest {
                     relative_path: chunk.repo_path.path.clone(),
-                    repo_ref: chunk.repo_path.repo.display_name(),
+                    repo_ref: chunk.repo_path.repo.indexed_name(),
                     branch: None,
                     start: range.start.byte,
                     end: range.end.byte,
