@@ -524,5 +524,6 @@
 	"Click on an identifier and jump to its references and definition in a heart beat.": "Haga clic en un identificador y salte a sus referencias y definición en un latido cardíaco.",
 	"Hide search steps": "Ocultar pasos de búsqueda",
 	"Close currently focused tab": "Cerrar pestaña actualmente enfocada",
-	"Add documentation": "Agregar documentación"
+	"Add documentation": "Agregar documentación",
+	"Usage resets at": "Restablecimiento de uso en"
 }

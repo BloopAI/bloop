@@ -500,5 +500,7 @@
 	"We couldn't find any docs at that link. Try again or make sure the link is correct!": "Non siamo riusciti a trovare alcun documento a quel link. Riprova o assicurati che il collegamento sia corretto!",
 	"Manage your general project settings": "Gestisci le tue impostazioni generali del progetto",
 	"Prompt": "Richiesta",
-	"Write your prompt...": "Scrivi il tuo prompt ..."
+	"Write your prompt...": "Scrivi il tuo prompt ...",
+	"Usage resets at": "L'uso si ripristina a",
+	"Upgrade to Personal plan": "Aggiorna al piano personale"
 }

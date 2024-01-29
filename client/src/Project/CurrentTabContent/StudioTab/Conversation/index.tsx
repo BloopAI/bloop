@@ -22,7 +22,6 @@ import {
 import { checkEventKeys } from '../../../../utils/keyboardUtils';
 import { useTemplateShortcut } from '../../../../consts/shortcuts';
 import useKeyboardNavigation from '../../../../hooks/useKeyboardNavigation';
-import { UIContext } from '../../../../context/uiContext';
 import KeyHintButton from '../../../../components/Button/KeyHintButton';
 import Button from '../../../../components/Button';
 import { CommandBarContext } from '../../../../context/commandBarContext';
@@ -60,9 +59,6 @@ const Conversation = ({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [templates, setTemplates] = useState<StudioTemplateType[]>([]);
   const [isDropdownShown, setIsDropdownShown] = useState(false);
-  const { setIsUpgradeRequiredPopupOpen } = useContext(
-    UIContext.UpgradeRequiredPopup,
-  );
   const { isVisible } = useContext(CommandBarContext.General);
   const templatesRef = useRef<HTMLButtonElement | null>(null);
 
@@ -111,8 +107,6 @@ const Conversation = ({
           // && !isChangeUnsaved
         ) {
           studioData.onSubmit();
-        } else if (!requestsLeft) {
-          setIsUpgradeRequiredPopupOpen(true);
         }
       }
       if (checkEventKeys(e, stopShortcut) && studioData.isLoading) {
