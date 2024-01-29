@@ -17,12 +17,19 @@ import { CommandBarContext } from '../../../../context/commandBarContext';
 
 type Props = {
   repoRef: string;
-  index: number;
+  index: string;
   isExpandable?: boolean;
   focusedIndex: string;
+  setFocusedIndex: (s: string) => void;
 };
 
-const RepoResult = ({ repoRef, isExpandable, index, focusedIndex }: Props) => {
+const RepoResult = ({
+  repoRef,
+  isExpandable,
+  index,
+  focusedIndex,
+  setFocusedIndex,
+}: Props) => {
   const { isLeftSidebarFocused } = useContext(UIContext.Focus);
   const { isVisible: isCommandBarVisible } = useContext(
     CommandBarContext.General,
@@ -61,10 +68,19 @@ const RepoResult = ({ repoRef, isExpandable, index, focusedIndex }: Props) => {
 
   useEnterKey(
     onClick,
-    focusedIndex !== index.toString() ||
+    focusedIndex !== index ||
       !isExpandable ||
       !isLeftSidebarFocused ||
       isCommandBarVisible,
+  );
+
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      if ((e.movementX || e.movementY) && isExpandable) {
+        setFocusedIndex(index);
+      }
+    },
+    [index, setFocusedIndex, isExpandable],
   );
 
   return (
@@ -77,12 +93,13 @@ const RepoResult = ({ repoRef, isExpandable, index, focusedIndex }: Props) => {
         href="#"
         className={`h-10 flex-shrink-0 ${
           isExpandable
-            ? focusedIndex === index.toString()
+            ? focusedIndex === index
               ? 'bg-bg-sub-hover'
               : 'bg-bg-sub hover:bg-bg-sub-hover'
             : 'bg-bg-sub'
         } flex items-center gap-3 px-4 body-s-b text-label-title`}
         onClick={onClick}
+        onMouseMove={handleMouseMove}
         data-node-index={isExpandable ? index : undefined}
       >
         {repoRef.startsWith('github.com/') ? (
@@ -113,6 +130,7 @@ const RepoResult = ({ repoRef, isExpandable, index, focusedIndex }: Props) => {
               lastIndex={''}
               isLeftSidebarFocused={isLeftSidebarFocused}
               isCommandBarVisible={isCommandBarVisible}
+              setFocusedIndex={setFocusedIndex}
             />
           ))}
         </div>

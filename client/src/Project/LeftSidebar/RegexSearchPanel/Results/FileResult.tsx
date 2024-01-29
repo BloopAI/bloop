@@ -24,6 +24,7 @@ type Props = {
   index: string;
   focusedIndex: string;
   isFirst: boolean;
+  setFocusedIndex: (s: string) => void;
 };
 
 const FileResult = ({
@@ -33,6 +34,7 @@ const FileResult = ({
   index,
   focusedIndex,
   isFirst,
+  setFocusedIndex,
 }: Props) => {
   const { openNewTab } = useContext(TabsContext.Handlers);
   const { isLeftSidebarFocused } = useContext(UIContext.Focus);
@@ -89,6 +91,15 @@ const FileResult = ({
     focusedIndex !== index || !isLeftSidebarFocused || isCommandBarVisible,
   );
 
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.movementX || e.movementY) {
+        setFocusedIndex(index);
+      }
+    },
+    [index, setFocusedIndex],
+  );
+
   return (
     <span
       className={`flex flex-col flex-shrink-0 ${
@@ -103,6 +114,7 @@ const FileResult = ({
         } pl-10 pr-4`}
         ref={ref}
         data-node-index={index}
+        onMouseMove={handleMouseMove}
       >
         {is_dir ? (
           <FolderIcon sizeClassName="w-4 h-4" />
@@ -141,6 +153,7 @@ const FileResult = ({
               lastIndex={''}
               isLeftSidebarFocused={isLeftSidebarFocused}
               isCommandBarVisible={isCommandBarVisible}
+              setFocusedIndex={setFocusedIndex}
             />
           ))}
         </div>

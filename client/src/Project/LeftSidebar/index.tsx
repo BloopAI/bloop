@@ -1,11 +1,4 @@
-import React, {
-  memo,
-  useCallback,
-  useContext,
-  MouseEvent,
-  useRef,
-  useState,
-} from 'react';
+import React, { memo, useCallback, useContext, MouseEvent } from 'react';
 import useResizeableWidth from '../../hooks/useResizeableWidth';
 import { LEFT_SIDEBAR_WIDTH_KEY } from '../../services/storage';
 import ProjectsDropdown from '../../components/Header/ProjectsDropdown';
@@ -18,6 +11,7 @@ import { checkEventKeys } from '../../utils/keyboardUtils';
 import useKeyboardNavigation from '../../hooks/useKeyboardNavigation';
 import { CommandBarContext } from '../../context/commandBarContext';
 import UsagePopover from '../../components/UsagePopover';
+import { useArrowNavigation } from '../../hooks/useArrowNavigation';
 import RegexSearchPanel from './RegexSearchPanel';
 import NavPanel from './NavPanel';
 
@@ -33,8 +27,8 @@ const LeftSidebar = ({}: Props) => {
   const { isVisible: isCommandBarVisible } = useContext(
     CommandBarContext.General,
   );
-  const ref = useRef<HTMLDivElement>(null);
-  const [focusedIndexFull, setFocusedIndexFull] = useState('');
+  const { focusedIndex, setFocusedIndex, handleArrowKey, navContainerRef } =
+    useArrowNavigation();
 
   const { panelRef, dividerRef } = useResizeableWidth(
     true,
@@ -51,35 +45,10 @@ const LeftSidebar = ({}: Props) => {
         setIsLeftSidebarFocused(true);
       }
       if (isLeftSidebarFocused) {
-        if (ref.current) {
-          if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-            e.preventDefault();
-            e.stopPropagation();
-            // eslint-disable-next-line no-undef
-            const nodes: NodeListOf<HTMLElement> =
-              ref.current.querySelectorAll('[data-node-index]');
-            setFocusedIndexFull((prev) => {
-              const prevIndex = Array.from(nodes).findIndex(
-                (n) => n.dataset.nodeIndex === prev,
-              );
-              if (prevIndex > -1) {
-                const newIndex =
-                  e.key === 'ArrowDown'
-                    ? prevIndex < nodes.length - 1
-                      ? prevIndex + 1
-                      : 0
-                    : prevIndex > 0
-                    ? prevIndex - 1
-                    : nodes.length - 1;
-                return nodes[newIndex]?.dataset?.nodeIndex || '';
-              }
-              return nodes[0]?.dataset?.nodeIndex || '';
-            });
-          }
-        }
+        handleArrowKey(e);
       }
     },
-    [isLeftSidebarFocused],
+    [isLeftSidebarFocused, handleArrowKey],
   );
   useKeyboardNavigation(handleKeyEvent, isCommandBarVisible);
 
@@ -109,17 +78,21 @@ const LeftSidebar = ({}: Props) => {
           </div>
         </Dropdown>
       </div>
-      <div onClick={handleClick} className="flex-1 overflow-auto" ref={ref}>
+      <div
+        onClick={handleClick}
+        className="flex-1 overflow-auto"
+        ref={navContainerRef}
+      >
         <RegexSearchPanel
           projectId={project?.id}
           isRegexEnabled={isRegexSearchEnabled}
-          focusedIndex={focusedIndexFull}
-          setFocusedIndex={setFocusedIndexFull}
+          focusedIndex={focusedIndex}
+          setFocusedIndex={setFocusedIndex}
         />
         {!isRegexSearchEnabled && (
           <NavPanel
-            focusedIndex={focusedIndexFull}
-            setFocusedIndex={setFocusedIndexFull}
+            focusedIndex={focusedIndex}
+            setFocusedIndex={setFocusedIndex}
           />
         )}
       </div>

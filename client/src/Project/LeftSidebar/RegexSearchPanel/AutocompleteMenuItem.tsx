@@ -76,6 +76,7 @@ const AutocompleteMenuItem = ({
             repo_ref={item.repoRef}
             isFirst={false}
             index={`option-${index}`}
+            setFocusedIndex={() => {}}
           />
         </span>
       ) : item.type === ResultItemType.FILE ? (

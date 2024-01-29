@@ -35,6 +35,7 @@ type Props = {
   index: string;
   isLeftSidebarFocused: boolean;
   isCommandBarVisible: boolean;
+  setFocusedIndex: (s: string) => void;
 };
 
 const RepoEntry = ({
@@ -54,6 +55,7 @@ const RepoEntry = ({
   index,
   isLeftSidebarFocused,
   isCommandBarVisible,
+  setFocusedIndex,
 }: Props) => {
   const { openNewTab } = useContext(TabsContext.Handlers);
   const [isOpen, setOpen] = useState(
@@ -123,6 +125,15 @@ const RepoEntry = ({
     }
   }, [focusedIndex, index]);
 
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.movementX || e.movementY) {
+        setFocusedIndex(index);
+      }
+    },
+    [index, setFocusedIndex],
+  );
+
   return (
     <div
       style={{
@@ -139,7 +150,7 @@ const RepoEntry = ({
             : 'bg-bg-shade text-label-title'
           : isLeftSidebarFocused && focusedIndex === index
           ? 'bg-bg-sub-hover text-label-title'
-          : 'hover:bg-bg-base-hover hover:text-label-title active:bg-transparent'
+          : ''
       } ${
         isOpen && isDirectory
           ? 'text-label-title'
@@ -149,6 +160,7 @@ const RepoEntry = ({
       }`}
         style={{ paddingLeft: level * 27 }}
         onClick={handleClick}
+        onMouseMove={handleMouseMove}
         ref={ref}
         data-node-index={index}
       >
@@ -219,6 +231,7 @@ const RepoEntry = ({
               index={`${index}-${sii}`}
               isLeftSidebarFocused={isLeftSidebarFocused}
               isCommandBarVisible={isCommandBarVisible}
+              setFocusedIndex={setFocusedIndex}
             />
           ))}
         </div>

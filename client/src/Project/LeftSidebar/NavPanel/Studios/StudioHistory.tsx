@@ -26,6 +26,7 @@ type Props = {
   studioName: string;
   isLeftSidebarFocused: boolean;
   isCommandBarVisible: boolean;
+  setFocusedIndex: (s: string) => void;
 };
 
 const StudioHistory = ({
@@ -37,6 +38,7 @@ const StudioHistory = ({
   studioName,
   isCommandBarVisible,
   isLeftSidebarFocused,
+  setFocusedIndex,
 }: Props) => {
   const { t } = useTranslation();
   const { locale } = useContext(LocaleContext);
@@ -48,7 +50,7 @@ const StudioHistory = ({
   }, [shouldRefresh, projectId, studioId]);
 
   useEffect(() => {
-    if (focusedIndex.startsWith(index)) {
+    if (focusedIndex.startsWith(index) && focusedIndex !== index) {
       setIsExpanded(true);
     }
   }, [focusedIndex, index]);
@@ -62,16 +64,25 @@ const StudioHistory = ({
     focusedIndex !== index || !isLeftSidebarFocused || isCommandBarVisible,
   );
 
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.movementX || e.movementY) {
+        setFocusedIndex(index);
+      }
+    },
+    [index, setFocusedIndex],
+  );
+
   return !snapshots.length ? null : (
     <div>
       <a
-        className={`w-full h-7 flex items-center gap-3 pl-10.5 pr-4 cursor-pointer
-        hover:text-label-title hover:bg-bg-base-hover ${
+        className={`w-full h-7 flex items-center gap-3 pl-10.5 pr-4 cursor-pointer ${
           focusedIndex === index
             ? 'bg-bg-sub-hover text-label-title'
             : 'text-label-base'
         }`}
         onClick={handleToggle}
+        onMouseMove={handleMouseMove}
         data-node-index={index}
       >
         <span className="flex items-center gap-3">
@@ -101,6 +112,7 @@ const StudioHistory = ({
               isLeftSidebarFocused={isLeftSidebarFocused}
               isCommandBarVisible={isCommandBarVisible}
               snapshot={i === 0 ? null : s}
+              setFocusedIndex={setFocusedIndex}
             >
               <DateTimeCalendarIcon sizeClassName="w-3.5 h-3.5" />
               <span className="flex-1 ellipsis">

@@ -22,6 +22,7 @@ type Props = StudioContextFile & {
   isCommandBarVisible: boolean;
   tokens?: number | null;
   indexingData?: RepoIndexingStatusType;
+  setFocusedIndex: (s: string) => void;
 };
 
 const StudioFile = ({
@@ -37,6 +38,7 @@ const StudioFile = ({
   isCommandBarVisible,
   tokens,
   indexingData,
+  setFocusedIndex,
 }: Props) => {
   const { t } = useTranslation();
 
@@ -64,6 +66,7 @@ const StudioFile = ({
       repoRef={repo}
       branch={branch}
       ranges={ranges}
+      setFocusedIndex={setFocusedIndex}
     >
       {isIndexing && indexingData ? (
         <Tooltip

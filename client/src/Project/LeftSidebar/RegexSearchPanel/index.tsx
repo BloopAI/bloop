@@ -254,9 +254,10 @@ const RegexSearchPanel = ({
               <span className="absolute top-10 bottom-0 left-5 w-px bg-bg-border" />
               <RepoResult
                 repoRef={repoRef}
-                index={repoIndex}
+                index={repoIndex.toString()}
                 focusedIndex={focusedIndex}
                 isExpandable={results[repoRef][0].kind === 'repository_result'}
+                setFocusedIndex={setFocusedIndex}
               />
               <ul className="flex flex-col">
                 {results[repoRef].map((r, i) => (
@@ -267,6 +268,7 @@ const RegexSearchPanel = ({
                         isFirst={i === 0}
                         index={`${repoIndex}-code-${i}`}
                         focusedIndex={focusedIndex}
+                        setFocusedIndex={setFocusedIndex}
                       />
                     ) : r.kind === 'file_result' ? (
                       <FileResult
@@ -274,6 +276,7 @@ const RegexSearchPanel = ({
                         isFirst={i === 0}
                         index={`${repoIndex}-file-${i}`}
                         focusedIndex={focusedIndex}
+                        setFocusedIndex={setFocusedIndex}
                       />
                     ) : null}
                   </li>

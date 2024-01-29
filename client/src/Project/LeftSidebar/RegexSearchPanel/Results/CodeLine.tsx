@@ -6,6 +6,7 @@ import { getPrismLanguage, tokenizeCode } from '../../../../utils/prism';
 import { HighlightMap, Range, TokensLine } from '../../../../types/results';
 import { Token } from '../../../../types/prism';
 import CodeToken from '../../../../components/Code/CodeToken';
+import { useEnterKey } from '../../../../hooks/useEnterKey';
 
 type Props = {
   path: string;
@@ -15,6 +16,11 @@ type Props = {
   code: string;
   language: string;
   highlights: Range[];
+  index: string;
+  focusedIndex: string;
+  setFocusedIndex: (s: string) => void;
+  isLeftSidebarFocused: boolean;
+  isCommandBarVisible: boolean;
 };
 
 const noOp = () => {};
@@ -27,6 +33,11 @@ const CodeLine = ({
   code,
   language,
   highlights,
+  index,
+  setFocusedIndex,
+  focusedIndex,
+  isLeftSidebarFocused,
+  isCommandBarVisible,
 }: Props) => {
   const { openNewTab } = useContext(TabsContext.Handlers);
 
@@ -38,6 +49,10 @@ const CodeLine = ({
       scrollToLine: `${lineStart}_${lineEnd}`,
     });
   }, [path, lineEnd, lineStart, repoRef, openNewTab]);
+  useEnterKey(
+    onClick,
+    focusedIndex !== index || !isLeftSidebarFocused || isCommandBarVisible,
+  );
 
   const lang = useMemo(
     () => getPrismLanguage(language) || 'plaintext',
@@ -134,10 +149,23 @@ const CodeLine = ({
     return ltr;
   }, [tokensMap]);
 
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.movementX || e.movementY) {
+        setFocusedIndex(index);
+      }
+    },
+    [index, setFocusedIndex],
+  );
+
   return (
     <li
-      className="flex px-4 h-7 items-center gap-3 text-label-base whitespace-nowrap cursor-pointer"
+      className={`flex min-w-full w-max pl-16 pr-4 h-7 items-center gap-3 text-label-base whitespace-nowrap cursor-pointer ${
+        focusedIndex === index ? 'bg-bg-shade-hover' : ''
+      }`}
       onClick={onClick}
+      onMouseMove={handleMouseMove}
+      data-node-index={index}
     >
       <CodeIcon sizeClassName="w-3.5 h-3.5" />
       <p className={`code-mini prism-code language-${lang} ellipsis`}>

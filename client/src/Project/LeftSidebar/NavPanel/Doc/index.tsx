@@ -35,6 +35,7 @@ type Props = {
   favicon?: string;
   title?: string;
   url: string;
+  setFocusedIndex: (s: string) => void;
 };
 
 const reactRoot = document.getElementById('root')!;
@@ -49,6 +50,7 @@ const DocNav = ({
   docId,
   title,
   url,
+  setFocusedIndex,
 }: Props) => {
   const { t } = useTranslation();
   const [pages, setPages] = useState<DocPageType[]>([]);
@@ -58,7 +60,14 @@ const DocNav = ({
     noPropagate,
     isLeftSidebarFocused,
     isCommandBarVisible,
-  } = useNavPanel(index, setExpanded, isExpanded, focusedIndex);
+    handleMouseMove,
+  } = useNavPanel(
+    index,
+    setExpanded,
+    isExpanded,
+    focusedIndex,
+    setFocusedIndex,
+  );
   const { setChosenStep, setIsVisible } = useContext(
     CommandBarContext.Handlers,
   );
@@ -91,10 +100,13 @@ const DocNav = ({
         tabIndex={0}
         className={`h-10 flex items-center gap-3 px-4 ellipsis ${
           isExpanded ? 'sticky z-10 top-0 left-0' : ''
-        } ${focusedIndex === index ? 'bg-bg-sub-hover' : 'bg-bg-sub'}`}
+        } ${
+          focusedIndex === index ? 'bg-bg-sub-hover' : 'bg-bg-sub'
+        } outline-0 outline-none focus:outline-0 focus:outline-none`}
         onClick={toggleExpanded}
         data-node-index={index}
         ref={containerRef}
+        onMouseMove={handleMouseMove}
       >
         {favicon ? (
           <img src={favicon} alt={title || url} className={'w-3.5 h-3.5'} />
@@ -150,6 +162,7 @@ const DocNav = ({
               isLeftSidebarFocused={isLeftSidebarFocused}
               isCommandBarVisible={isCommandBarVisible}
               favicon={favicon}
+              setFocusedIndex={setFocusedIndex}
             />
           ))}
         </div>

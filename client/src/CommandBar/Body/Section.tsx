@@ -9,21 +9,19 @@ import Item from './Item';
 type Props = {
   title?: string;
   items: (CommandBarItemCustomType | CommandBarItemGeneralType)[];
-  focusedIndex: number;
-  setFocusedIndex: Dispatch<SetStateAction<number>>;
-  offset: number;
+  focusedIndex: string;
+  setFocusedIndex: Dispatch<SetStateAction<string>>;
   disableKeyNav?: boolean;
-  onlyOneClickable?: string;
+  index: string;
 };
 
 const CommandBarBodySection = ({
   title,
   items,
   setFocusedIndex,
-  offset,
   focusedIndex,
   disableKeyNav,
-  onlyOneClickable,
+  index,
 }: Props) => {
   return (
     <div className="flex flex-col select-none">
@@ -33,24 +31,22 @@ const CommandBarBodySection = ({
           <Rest.Component
             {...Rest.componentProps}
             key={key}
-            isFocused={focusedIndex === i + offset}
+            focusedIndex={focusedIndex}
             setFocusedIndex={setFocusedIndex}
             isFirst={i === 0}
-            i={i + offset}
+            index={`${index}-${key}`}
             disableKeyNav={disableKeyNav}
-            onlyOneClickable={onlyOneClickable}
           />
         ) : (
           <Item
             key={key}
             {...Rest}
-            i={i + offset}
-            isFocused={focusedIndex === i + offset}
+            index={`${index}-${key}`}
+            focusedIndex={focusedIndex}
             setFocusedIndex={setFocusedIndex}
             isFirst={i === 0}
             disableKeyNav={disableKeyNav}
             itemKey={key}
-            onlyOneClickable={onlyOneClickable}
           />
         ),
       )}

@@ -27,6 +27,7 @@ type Props = {
   focusedIndex: string;
   index: string;
   indexingStatus: IndexingStatusType;
+  setFocusedIndex: (s: string) => void;
 };
 
 const reactRoot = document.getElementById('root')!;
@@ -37,6 +38,7 @@ const StudiosNav = ({
   focusedIndex,
   index,
   indexingStatus,
+  setFocusedIndex,
 }: Props) => {
   const { t } = useTranslation();
   const [expandedIndex, setExpandedIndex] = useState('');
@@ -50,7 +52,14 @@ const StudiosNav = ({
     noPropagate,
     isLeftSidebarFocused,
     isCommandBarVisible,
-  } = useNavPanel(index, setExpanded, isExpanded, focusedIndex);
+    handleMouseMove,
+  } = useNavPanel(
+    index,
+    setExpanded,
+    isExpanded,
+    focusedIndex,
+    setFocusedIndex,
+  );
 
   const previewingSnapshot = useMemo(() => {
     const focusedTab = focusedPanel === 'left' ? tabLeft : tabRight;
@@ -73,6 +82,7 @@ const StudiosNav = ({
           focusedIndex === index ? 'bg-bg-sub-hover' : 'bg-bg-sub'
         } outline-0 outline-none focus:outline-0 focus:outline-none`}
         onClick={toggleExpanded}
+        onMouseMove={handleMouseMove}
         ref={containerRef}
         data-node-index={index}
       >
@@ -130,6 +140,7 @@ const StudiosNav = ({
                   ? previewingSnapshot.snapshot
                   : null
               }
+              setFocusedIndex={setFocusedIndex}
             />
           ))}
         </div>
