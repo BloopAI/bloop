@@ -1,4 +1,4 @@
-import {
+import React, {
   Dispatch,
   memo,
   ReactElement,
@@ -73,9 +73,14 @@ const CommandBarItem = ({
     }
   }, [isFocused, footerBtns, footerHint, focusedItemProps]);
 
-  const handleMouseOver = useCallback(() => {
-    setFocusedIndex(i);
-  }, [i, setFocusedIndex]);
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.movementX || e.movementY) {
+        setFocusedIndex(i);
+      }
+    },
+    [i, setFocusedIndex],
+  );
 
   const handleClick = useCallback(() => {
     if (onlyOneClickable && onlyOneClickable !== itemKey) {
@@ -130,7 +135,7 @@ const CommandBarItem = ({
           ? 'bg-bg-base-hover text-label-title'
           : 'text-label-base'
       } text-left ${isFirst ? 'scroll-mt-8' : ''}`}
-      onMouseOver={handleMouseOver}
+      onMouseMove={handleMouseMove}
       onClick={handleClick}
       ref={ref}
       disabled={!!onlyOneClickable && onlyOneClickable !== itemKey}
