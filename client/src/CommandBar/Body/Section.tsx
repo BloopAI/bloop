@@ -9,8 +9,6 @@ import Item from './Item';
 type Props = {
   title?: string;
   items: (CommandBarItemCustomType | CommandBarItemGeneralType)[];
-  focusedIndex: string;
-  setFocusedIndex: Dispatch<SetStateAction<string>>;
   disableKeyNav?: boolean;
   index: string;
 };
@@ -18,8 +16,6 @@ type Props = {
 const CommandBarBodySection = ({
   title,
   items,
-  setFocusedIndex,
-  focusedIndex,
   disableKeyNav,
   index,
 }: Props) => {
@@ -31,8 +27,6 @@ const CommandBarBodySection = ({
           <Rest.Component
             {...Rest.componentProps}
             key={key}
-            focusedIndex={focusedIndex}
-            setFocusedIndex={setFocusedIndex}
             isFirst={i === 0}
             index={`${index}-${key}`}
             disableKeyNav={disableKeyNav}
@@ -42,8 +36,6 @@ const CommandBarBodySection = ({
             key={key}
             {...Rest}
             index={`${index}-${key}`}
-            focusedIndex={focusedIndex}
-            setFocusedIndex={setFocusedIndex}
             isFirst={i === 0}
             disableKeyNav={disableKeyNav}
             itemKey={key}

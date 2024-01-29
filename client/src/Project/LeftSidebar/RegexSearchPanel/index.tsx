@@ -24,6 +24,7 @@ import { ProjectContext } from '../../../context/projectContext';
 import { CommandBarContext } from '../../../context/commandBarContext';
 import { regexToggleShortcut } from '../../../consts/shortcuts';
 import { UIContext } from '../../../context/uiContext';
+import { ArrowNavigationContext } from '../../../context/arrowNavigationContext';
 import CodeResult from './Results/CodeResult';
 import RepoResult from './Results/RepoResult';
 import FileResult from './Results/FileResult';
@@ -31,8 +32,6 @@ import FileResult from './Results/FileResult';
 type Props = {
   projectId?: string;
   isRegexEnabled?: boolean;
-  focusedIndex: string;
-  setFocusedIndex: (i: string) => void;
 };
 
 // const getAutocompleteThrottled = throttle(
@@ -49,12 +48,7 @@ type Props = {
 
 type ResultType = CodeItem | RepoItem | FileResItem | DirectoryItem | FileItem;
 
-const RegexSearchPanel = ({
-  projectId,
-  isRegexEnabled,
-  focusedIndex,
-  setFocusedIndex,
-}: Props) => {
+const RegexSearchPanel = ({ projectId, isRegexEnabled }: Props) => {
   const { t } = useTranslation();
   // const { openNewTab } = useContext(TabsContext.Handlers);
   const [inputValue, setInputValue] = useState('');
@@ -70,6 +64,7 @@ const RegexSearchPanel = ({
   const { isVisible: isCommandBarVisible } = useContext(
     CommandBarContext.General,
   );
+  const { setFocusedIndex, focusedIndex } = useContext(ArrowNavigationContext);
 
   const onChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
@@ -255,9 +250,7 @@ const RegexSearchPanel = ({
               <RepoResult
                 repoRef={repoRef}
                 index={repoIndex.toString()}
-                focusedIndex={focusedIndex}
                 isExpandable={results[repoRef][0].kind === 'repository_result'}
-                setFocusedIndex={setFocusedIndex}
               />
               <ul className="flex flex-col">
                 {results[repoRef].map((r, i) => (
@@ -267,16 +260,12 @@ const RegexSearchPanel = ({
                         {...r.data}
                         isFirst={i === 0}
                         index={`${repoIndex}-code-${i}`}
-                        focusedIndex={focusedIndex}
-                        setFocusedIndex={setFocusedIndex}
                       />
                     ) : r.kind === 'file_result' ? (
                       <FileResult
                         {...r.data}
                         isFirst={i === 0}
                         index={`${repoIndex}-file-${i}`}
-                        focusedIndex={focusedIndex}
-                        setFocusedIndex={setFocusedIndex}
                       />
                     ) : null}
                   </li>

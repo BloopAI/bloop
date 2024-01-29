@@ -1,30 +1,18 @@
-import React, {
+import {
   Dispatch,
   MouseEvent,
   SetStateAction,
   useCallback,
-  useContext,
   useEffect,
-  useRef,
 } from 'react';
-import { UIContext } from '../context/uiContext';
-import { CommandBarContext } from '../context/commandBarContext';
-import { useEnterKey } from './useEnterKey';
+import { useArrowNavigationItemProps } from './useArrowNavigationItemProps';
 
 export const useNavPanel = (
   index: string,
   setExpanded: Dispatch<SetStateAction<string>>,
   isExpanded: boolean,
-  focusedIndex: string,
-  setFocusedIndex: (s: string) => void,
 ) => {
-  const { isLeftSidebarFocused } = useContext(UIContext.Focus);
-  const { isVisible: isCommandBarVisible } = useContext(
-    CommandBarContext.General,
-  );
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const toggleExpanded = useCallback(() => {
+  const onClick = useCallback(() => {
     setExpanded((prev) => (prev === index ? '' : index));
   }, [index]);
 
@@ -38,32 +26,20 @@ export const useNavPanel = (
     e?.stopPropagation();
   }, []);
 
-  useEffect(() => {
-    if (focusedIndex === index && containerRef.current) {
-      containerRef.current.scrollIntoView({ block: 'nearest' });
-    }
-  }, [focusedIndex, index]);
-
-  useEnterKey(
-    toggleExpanded,
-    focusedIndex !== index || !isLeftSidebarFocused || isCommandBarVisible,
-  );
-
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
-      if (e.movementX || e.movementY) {
-        setFocusedIndex(index);
-      }
-    },
-    [index, setFocusedIndex],
-  );
+  const { isFocused, isLeftSidebarFocused, props } =
+    useArrowNavigationItemProps<HTMLAnchorElement>(index, onClick);
 
   return {
-    toggleExpanded,
     noPropagate,
-    containerRef,
-    isLeftSidebarFocused,
-    isCommandBarVisible,
-    handleMouseMove,
+    itemProps: {
+      ...props,
+      className: `h-10 flex items-center gap-3 px-4 ellipsis ${
+        isExpanded ? 'sticky z-10 top-0 left-0' : ''
+      } ${
+        isFocused ? 'bg-bg-sub-hover' : 'bg-bg-sub'
+      } outline-0 outline-none focus:outline-0 focus:outline-none`,
+      tabIndex: 0,
+      role: 'button',
+    },
   };
 };

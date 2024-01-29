@@ -1,7 +1,5 @@
 import {
-  Dispatch,
   memo,
-  SetStateAction,
   useCallback,
   useContext,
   useEffect,
@@ -35,8 +33,6 @@ import { ProjectContext } from '../../../context/projectContext';
 type Props = {
   doc: DocShortType;
   index: string;
-  focusedIndex: string;
-  setFocusedIndex: Dispatch<SetStateAction<string>>;
   isFirst: boolean;
   isIndexed: boolean;
   disableKeyNav?: boolean;
@@ -46,8 +42,6 @@ type Props = {
 const DocItem = ({
   doc,
   isFirst,
-  setFocusedIndex,
-  focusedIndex,
   index,
   isIndexed,
   disableKeyNav,
@@ -245,8 +239,6 @@ const DocItem = ({
     <Item
       key={docToShow.id || doc.url}
       itemKey={`doc-${docToShow.id || doc.url}`}
-      setFocusedIndex={setFocusedIndex}
-      focusedIndex={focusedIndex}
       index={index}
       isFirst={isFirst}
       isWithCheckmark={!!isInProject}

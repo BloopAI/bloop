@@ -3,23 +3,22 @@ import { ProjectContext } from '../../../context/projectContext';
 import { TabTypesEnum } from '../../../types/general';
 import { TabsContext } from '../../../context/tabsContext';
 import { RepositoriesContext } from '../../../context/repositoriesContext';
+import { ArrowNavigationContext } from '../../../context/arrowNavigationContext';
 import RepoNav from './Repo';
 import ConversationsNav from './Conversations';
 import StudiosNav from './Studios';
 import DocNav from './Doc';
 
-type Props = {
-  focusedIndex: string;
-  setFocusedIndex: (i: string) => void;
-};
+type Props = {};
 
-const NavPanel = ({ focusedIndex, setFocusedIndex }: Props) => {
+const NavPanel = ({}: Props) => {
   const [expanded, setExpanded] = useState('');
   const { project } = useContext(ProjectContext.Current);
   const { focusedPanel } = useContext(TabsContext.FocusedPanel);
   const { tab: leftTab } = useContext(TabsContext.CurrentLeft);
   const { tab: rightTab } = useContext(TabsContext.CurrentRight);
   const { indexingStatus } = useContext(RepositoriesContext);
+  const { setFocusedIndex } = useContext(ArrowNavigationContext);
 
   const currentlyFocusedTab = useMemo(() => {
     return focusedPanel === 'left' ? leftTab : rightTab;
@@ -75,22 +74,18 @@ const NavPanel = ({ focusedIndex, setFocusedIndex }: Props) => {
         <StudiosNav
           setExpanded={setExpanded}
           isExpanded={expanded === 'studios'}
-          focusedIndex={focusedIndex}
           index={`studios`}
           indexingStatus={indexingStatus}
-          setFocusedIndex={setFocusedIndex}
         />
       )}
       {!!project?.conversations.length && (
         <ConversationsNav
           setExpanded={setExpanded}
           isExpanded={expanded === 'conversations'}
-          focusedIndex={focusedIndex}
           index={`conversations`}
-          setFocusedIndex={setFocusedIndex}
         />
       )}
-      {project?.repos.map((r, i) => (
+      {project?.repos.map((r) => (
         <RepoNav
           projectId={project?.id}
           key={r.repo.ref}
@@ -108,9 +103,7 @@ const NavPanel = ({ focusedIndex, setFocusedIndex }: Props) => {
               ? currentlyFocusedTab?.path
               : undefined
           }
-          focusedIndex={focusedIndex}
           index={`repo-${r.repo.ref}`}
-          setFocusedIndex={setFocusedIndex}
         />
       ))}
       {project?.docs.map((d) => (
@@ -119,13 +112,11 @@ const NavPanel = ({ focusedIndex, setFocusedIndex }: Props) => {
           key={d.id}
           setExpanded={setExpanded}
           isExpanded={expanded === `doc-${d.id}`}
-          focusedIndex={focusedIndex}
           index={`doc-${d.id}`}
           docId={d.id}
           title={d.name}
           favicon={d.favicon}
           url={d.url}
-          setFocusedIndex={setFocusedIndex}
         />
       ))}
     </div>

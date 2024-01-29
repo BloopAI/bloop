@@ -1,8 +1,6 @@
 import React, {
-  Dispatch,
   memo,
   ReactElement,
-  SetStateAction,
   useCallback,
   useContext,
   useEffect,
@@ -21,13 +19,12 @@ import {
   RECENT_COMMANDS_KEY,
   updateArrayInStorage,
 } from '../../services/storage';
+import { ArrowNavigationContext } from '../../context/arrowNavigationContext';
 
 type Props = CommandBarItemGeneralType & {
   index: string;
-  focusedIndex: string;
   isFirst?: boolean;
   isWithCheckmark?: boolean;
-  setFocusedIndex: Dispatch<SetStateAction<string>>;
   customRightElement?: ReactElement;
   focusedItemProps?: Record<string, any>;
   disableKeyNav?: boolean;
@@ -35,12 +32,10 @@ type Props = CommandBarItemGeneralType & {
 };
 
 const CommandBarItem = ({
-  focusedIndex,
   Icon,
   label,
   shortcut,
   index,
-  setFocusedIndex,
   id,
   footerBtns,
   isFirst,
@@ -59,6 +54,7 @@ const CommandBarItem = ({
   const { setFocusedItem, setChosenStep, setIsVisible } = useContext(
     CommandBarContext.Handlers,
   );
+  const { setFocusedIndex, focusedIndex } = useContext(ArrowNavigationContext);
 
   useEffect(() => {
     if (focusedIndex === index) {

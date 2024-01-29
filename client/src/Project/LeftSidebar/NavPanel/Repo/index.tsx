@@ -38,9 +38,7 @@ type Props = {
   allBranches: { name: string; last_commit_unix_secs: number }[];
   indexedBranches: string[];
   indexingData?: RepoIndexingStatusType;
-  focusedIndex: string;
   index: string;
-  setFocusedIndex: (s: string) => void;
 };
 
 const reactRoot = document.getElementById('root')!;
@@ -56,25 +54,14 @@ const RepoNav = ({
   lastIndex,
   currentPath,
   indexingData,
-  focusedIndex,
   index,
-  setFocusedIndex,
 }: Props) => {
   const { t } = useTranslation();
   const [files, setFiles] = useState<DirectoryEntry[]>([]);
-  const {
-    containerRef,
-    toggleExpanded,
-    noPropagate,
-    isLeftSidebarFocused,
-    isCommandBarVisible,
-    handleMouseMove,
-  } = useNavPanel(
+  const { noPropagate, itemProps } = useNavPanel(
     index,
     setExpanded,
     isExpanded,
-    focusedIndex,
-    setFocusedIndex,
   );
 
   const fetchFiles = useCallback(
@@ -126,19 +113,7 @@ const RepoNav = ({
 
   return (
     <div className="select-none flex-shrink-0">
-      <span
-        role="button"
-        tabIndex={0}
-        className={`h-10 flex items-center gap-3 px-4 ellipsis ${
-          isExpanded ? 'sticky z-10 top-0 left-0' : ''
-        } ${
-          focusedIndex === index ? 'bg-bg-sub-hover' : 'bg-bg-sub'
-        } outline-0 outline-none focus:outline-0 focus:outline-none`}
-        onClick={toggleExpanded}
-        data-node-index={index}
-        ref={containerRef}
-        onMouseMove={handleMouseMove}
-      >
+      <span {...itemProps}>
         {isIndexing && indexingData ? (
           <Tooltip
             text={`${t(repoStatusMap[indexingData.status].text)}${
@@ -206,11 +181,7 @@ const RepoNav = ({
               lastIndex={lastIndex}
               branch={branch}
               indexingData={indexingData}
-              focusedIndex={focusedIndex}
               index={`${index}-${fi}`}
-              isLeftSidebarFocused={isLeftSidebarFocused}
-              isCommandBarVisible={isCommandBarVisible}
-              setFocusedIndex={setFocusedIndex}
             />
           ))}
         </div>

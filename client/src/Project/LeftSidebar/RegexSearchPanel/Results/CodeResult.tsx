@@ -1,19 +1,8 @@
-import React, {
-  memo,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import React, { memo, useCallback, useState } from 'react';
 import { SnippetItem } from '../../../../types/api';
 import { ChevronRightIcon } from '../../../../icons';
 import FileIcon from '../../../../components/FileIcon';
-import { TabsContext } from '../../../../context/tabsContext';
-import { TabTypesEnum } from '../../../../types/general';
-import { UIContext } from '../../../../context/uiContext';
-import { useEnterKey } from '../../../../hooks/useEnterKey';
-import { CommandBarContext } from '../../../../context/commandBarContext';
+import { useArrowNavigationItemProps } from '../../../../hooks/useArrowNavigationItemProps';
 import CodeLine from './CodeLine';
 
 type Props = {
@@ -22,9 +11,7 @@ type Props = {
   lang: string;
   snippets: SnippetItem[];
   index: string;
-  focusedIndex: string;
   isFirst: boolean;
-  setFocusedIndex: (s: string) => void;
 };
 
 const CodeResult = ({
@@ -33,47 +20,17 @@ const CodeResult = ({
   lang,
   snippets,
   index,
-  focusedIndex,
   isFirst,
-  setFocusedIndex,
 }: Props) => {
-  const { openNewTab } = useContext(TabsContext.Handlers);
-  const { isLeftSidebarFocused } = useContext(UIContext.Focus);
-  const { isVisible: isCommandBarVisible } = useContext(
-    CommandBarContext.General,
-  );
-  const ref = useRef<HTMLDivElement>(null);
   const [isExpanded, setIsExpanded] = useState(true);
-  const toggleExpanded = useCallback(() => {
+
+  const onClick = useCallback(() => {
     setIsExpanded((prev) => !prev);
   }, []);
 
-  useEffect(() => {
-    if (focusedIndex === index) {
-      ref.current?.scrollIntoView({ block: 'nearest' });
-    }
-  }, [focusedIndex, index]);
-
-  useEnterKey(
-    toggleExpanded,
-    focusedIndex !== index || !isLeftSidebarFocused || isCommandBarVisible,
-  );
-
-  const handleClick = useCallback(() => {
-    openNewTab({
-      type: TabTypesEnum.FILE,
-      path: relative_path,
-      repoRef: repo_ref,
-    });
-  }, [repo_ref, relative_path, openNewTab]);
-
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
-      if (e.movementX || e.movementY) {
-        setFocusedIndex(index);
-      }
-    },
-    [index, setFocusedIndex],
+  const { isFocused, props } = useArrowNavigationItemProps<HTMLDivElement>(
+    index,
+    onClick,
   );
 
   return (
@@ -82,13 +39,8 @@ const CodeResult = ({
       <div
         className={`flex w-max min-w-full items-center gap-3 whitespace-nowrap body-mini text-label-title h-7 flex-shrink-0 ${
           isFirst ? 'scroll-mt-10' : ''
-        } ${
-          focusedIndex === index ? 'bg-bg-shade-hover' : ''
-        } pl-10 pr-4 cursor-pointer`}
-        onClick={toggleExpanded}
-        onMouseMove={handleMouseMove}
-        ref={ref}
-        data-node-index={index}
+        } ${isFocused ? 'bg-bg-shade-hover' : ''} pl-10 pr-4 cursor-pointer`}
+        {...props}
       >
         <ChevronRightIcon
           sizeClassName="w-3.5 h-3.5"
@@ -102,7 +54,7 @@ const CodeResult = ({
         {/*  onClick={handleClick}*/}
         {/*  repo={repo_ref}*/}
         {/*/>*/}
-        <div onClick={handleClick}>{relative_path}</div>
+        <div>{relative_path}</div>
       </div>
       <ul className="">
         {isExpanded
@@ -117,10 +69,6 @@ const CodeResult = ({
                 lineEnd={s.line_range.end}
                 highlights={s.highlights}
                 index={`${index}-${i}`}
-                focusedIndex={focusedIndex}
-                setFocusedIndex={setFocusedIndex}
-                isLeftSidebarFocused={isLeftSidebarFocused}
-                isCommandBarVisible={isCommandBarVisible}
               />
             ))
           : null}

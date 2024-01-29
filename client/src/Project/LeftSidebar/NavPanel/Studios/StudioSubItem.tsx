@@ -1,20 +1,17 @@
 import React, { memo, PropsWithChildren, useCallback, useContext } from 'react';
 import { TabsContext } from '../../../../context/tabsContext';
 import { TabTypesEnum } from '../../../../types/general';
-import { useEnterKey } from '../../../../hooks/useEnterKey';
 import { Range } from '../../../../types/results';
 import { HistoryConversationTurn } from '../../../../types/api';
+import { useArrowNavigationItemProps } from '../../../../hooks/useArrowNavigationItemProps';
 
 type Props = {
   index: string;
-  focusedIndex: string;
   studioId: string;
   studioName: string;
   path?: string;
   repoRef?: string;
   branch?: string | null;
-  isLeftSidebarFocused: boolean;
-  isCommandBarVisible: boolean;
   ranges?: Range[];
   docId?: string;
   relativeUrl?: string;
@@ -23,20 +20,16 @@ type Props = {
   sections?: string[];
   morePadding?: boolean;
   snapshot?: HistoryConversationTurn | null;
-  setFocusedIndex: (s: string) => void;
 };
 
 const StudioSubItem = ({
   index,
-  focusedIndex,
   children,
   studioId,
   studioName,
   path,
   repoRef,
   branch,
-  isLeftSidebarFocused,
-  isCommandBarVisible,
   ranges,
   relativeUrl,
   docId,
@@ -45,11 +38,10 @@ const StudioSubItem = ({
   sections,
   morePadding,
   snapshot,
-  setFocusedIndex,
 }: PropsWithChildren<Props>) => {
   const { openNewTab } = useContext(TabsContext.Handlers);
 
-  const handleClick = useCallback(() => {
+  const onClick = useCallback(() => {
     if (path && repoRef) {
       openNewTab({
         type: TabTypesEnum.FILE,
@@ -97,19 +89,8 @@ const StudioSubItem = ({
     snapshot,
   ]);
 
-  useEnterKey(
-    handleClick,
-    focusedIndex !== index || !isLeftSidebarFocused || isCommandBarVisible,
-  );
-
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
-      if (e.movementX || e.movementY) {
-        setFocusedIndex(index);
-      }
-    },
-    [index, setFocusedIndex],
-  );
+  const { isFocused, focusedIndex, props } =
+    useArrowNavigationItemProps<HTMLAnchorElement>(index, onClick);
 
   return (
     <a
@@ -117,13 +98,9 @@ const StudioSubItem = ({
       className={`w-full h-7 flex items-center gap-3 ${
         morePadding ? 'pl-[4.25rem]' : 'pl-10.5'
       } pr-4 ${
-        focusedIndex.startsWith(index)
-          ? 'bg-bg-sub-hover text-label-title'
-          : 'text-label-base'
+        isFocused ? 'bg-bg-sub-hover text-label-title' : 'text-label-base'
       }`}
-      onClick={handleClick}
-      onMouseMove={handleMouseMove}
-      data-node-index={index}
+      {...props}
     >
       {children}
     </a>

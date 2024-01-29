@@ -511,5 +511,6 @@
 	"Manage your general project settings": "一般的なプロジェクトの設定を管理します",
 	"Write your prompt...": "あなたのプロンプトを書く...",
 	"Usage resets at": "使用法がリセットされます",
-	"Upgrade to Personal plan": "個人計画にアップグレードします"
+	"Upgrade to Personal plan": "個人計画にアップグレードします",
+	"Restore session": "セッションを復元します"
 }

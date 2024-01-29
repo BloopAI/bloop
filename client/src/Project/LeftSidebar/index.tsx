@@ -1,4 +1,10 @@
-import React, { memo, useCallback, useContext, MouseEvent } from 'react';
+import React, {
+  memo,
+  useCallback,
+  useContext,
+  MouseEvent,
+  useMemo,
+} from 'react';
 import useResizeableWidth from '../../hooks/useResizeableWidth';
 import { LEFT_SIDEBAR_WIDTH_KEY } from '../../services/storage';
 import ProjectsDropdown from '../../components/Header/ProjectsDropdown';
@@ -12,6 +18,7 @@ import useKeyboardNavigation from '../../hooks/useKeyboardNavigation';
 import { CommandBarContext } from '../../context/commandBarContext';
 import UsagePopover from '../../components/UsagePopover';
 import { useArrowNavigation } from '../../hooks/useArrowNavigation';
+import { ArrowNavigationContext } from '../../context/arrowNavigationContext';
 import RegexSearchPanel from './RegexSearchPanel';
 import NavPanel from './NavPanel';
 
@@ -57,6 +64,14 @@ const LeftSidebar = ({}: Props) => {
     setIsLeftSidebarFocused(true);
   }, []);
 
+  const contextValue = useMemo(
+    () => ({
+      focusedIndex,
+      setFocusedIndex,
+    }),
+    [focusedIndex],
+  );
+
   return (
     <div
       className="h-full relative z-10 min-w-[204px] flex-shrink-0 overflow-hidden flex flex-col"
@@ -83,18 +98,13 @@ const LeftSidebar = ({}: Props) => {
         className="flex-1 overflow-auto"
         ref={navContainerRef}
       >
-        <RegexSearchPanel
-          projectId={project?.id}
-          isRegexEnabled={isRegexSearchEnabled}
-          focusedIndex={focusedIndex}
-          setFocusedIndex={setFocusedIndex}
-        />
-        {!isRegexSearchEnabled && (
-          <NavPanel
-            focusedIndex={focusedIndex}
-            setFocusedIndex={setFocusedIndex}
+        <ArrowNavigationContext.Provider value={contextValue}>
+          <RegexSearchPanel
+            projectId={project?.id}
+            isRegexEnabled={isRegexSearchEnabled}
           />
-        )}
+          {!isRegexSearchEnabled && <NavPanel />}
+        </ArrowNavigationContext.Provider>
       </div>
       <UsagePopover />
       <div

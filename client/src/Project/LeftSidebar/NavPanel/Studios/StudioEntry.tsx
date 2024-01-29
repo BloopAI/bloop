@@ -16,11 +16,11 @@ import {
 import ChevronRight from '../../../../icons/ChevronRight';
 import TokenUsage from '../../../../components/TokenUsage';
 import { TOKEN_LIMIT } from '../../../../consts/codeStudio';
-import { useEnterKey } from '../../../../hooks/useEnterKey';
 import { humanNumber } from '../../../../utils';
 import Tooltip from '../../../../components/Tooltip';
 import Badge from '../../../../components/Badge';
 import { IndexingStatusType } from '../../../../types/general';
+import { useArrowNavigationItemProps } from '../../../../hooks/useArrowNavigationItemProps';
 import StudioSubItem from './StudioSubItem';
 import AddContextFile from './AddContextFile';
 import StudioFile from './StudioFile';
@@ -28,35 +28,34 @@ import StudioHistory from './StudioHistory';
 
 type Props = CodeStudioType & {
   index: string;
-  focusedIndex: string;
   expandedIndex: string;
   setExpandedIndex: Dispatch<SetStateAction<string>>;
-  isLeftSidebarFocused: boolean;
-  isCommandBarVisible: boolean;
   indexingStatus: IndexingStatusType;
   projectId: string;
   previewingSnapshot: HistoryConversationTurn | null;
-  setFocusedIndex: (s: string) => void;
 };
 
 const StudioEntry = ({
   id,
   index,
-  focusedIndex,
   name,
   expandedIndex,
   setExpandedIndex,
   context,
   token_counts,
   doc_context,
-  isLeftSidebarFocused,
-  isCommandBarVisible,
   indexingStatus,
   projectId,
   previewingSnapshot,
-  setFocusedIndex,
 }: Props) => {
   const { t } = useTranslation();
+
+  const onClick = useCallback(() => {
+    setExpandedIndex((prev) => (prev === index ? '' : index));
+  }, [index]);
+
+  const { isFocused, focusedIndex, props } =
+    useArrowNavigationItemProps<HTMLAnchorElement>(index, onClick);
 
   useEffect(() => {
     if (focusedIndex.startsWith(index) && focusedIndex !== index) {
@@ -64,39 +63,17 @@ const StudioEntry = ({
     }
   }, [index, focusedIndex]);
 
-  const handleExpand = useCallback(() => {
-    setExpandedIndex((prev) => (prev === index ? '' : index));
-  }, [index]);
-
-  useEnterKey(
-    handleExpand,
-    focusedIndex !== index || !isLeftSidebarFocused || isCommandBarVisible,
-  );
-
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
-      if (e.movementX || e.movementY) {
-        setFocusedIndex(index);
-      }
-    },
-    [index, setFocusedIndex],
-  );
-
   return (
     <div className="body-mini">
       <a
         href="#"
         className={`w-full text-left h-7 flex-shrink-0 flex items-center gap-3 justify-between pr-2 cursor-pointer
-          ellipsis body-mini group ${
-            focusedIndex === index ? 'bg-bg-sub-hover' : ''
-          } ${
+          ellipsis body-mini group ${isFocused ? 'bg-bg-sub-hover' : ''} ${
             expandedIndex === index || focusedIndex.startsWith(index)
               ? 'text-label-title'
               : 'text-label-base'
           } pl-4`}
-        onClick={handleExpand}
-        data-node-index={index}
-        onMouseMove={handleMouseMove}
+        {...props}
       >
         <span className="flex items-center gap-3">
           <ChevronRight
@@ -120,20 +97,12 @@ const StudioEntry = ({
             studioId={id}
             projectId={projectId}
             shouldRefresh={token_counts}
-            focusedIndex={focusedIndex}
             index={`${index}-history`}
-            isLeftSidebarFocused={isLeftSidebarFocused}
-            isCommandBarVisible={isCommandBarVisible}
-            setFocusedIndex={setFocusedIndex}
           />
           <StudioSubItem
             studioId={id}
-            focusedIndex={focusedIndex}
             index={`${index}-prompts`}
             studioName={name}
-            isLeftSidebarFocused={isLeftSidebarFocused}
-            isCommandBarVisible={isCommandBarVisible}
-            setFocusedIndex={setFocusedIndex}
           >
             <PromptIcon sizeClassName="w-3.5 h-3.5" />
             <span className="flex-1 ellipsis">
@@ -145,26 +114,16 @@ const StudioEntry = ({
             <Trans>Context files</Trans>
           </div>
           {!context.length && !previewingSnapshot && (
-            <AddContextFile
-              studioId={id}
-              focusedIndex={focusedIndex}
-              index={`${index}-add-file`}
-              isLeftSidebarFocused={isLeftSidebarFocused}
-              isCommandBarVisible={isCommandBarVisible}
-            />
+            <AddContextFile studioId={id} index={`${index}-add-file`} />
           )}
           {(previewingSnapshot?.context || context).map((f, i) => (
             <StudioFile
               key={`${f.path}-${f.repo}-${f.branch}`}
               studioId={id}
-              focusedIndex={focusedIndex}
               index={`${index}-${f.path}-${f.repo}-${f.branch}`}
               studioName={name}
-              isLeftSidebarFocused={isLeftSidebarFocused}
-              isCommandBarVisible={isCommandBarVisible}
               tokens={token_counts.per_file[i]}
               indexingData={indexingStatus[f.repo]}
-              setFocusedIndex={setFocusedIndex}
               {...f}
             />
           ))}
@@ -177,17 +136,13 @@ const StudioEntry = ({
             <StudioSubItem
               key={`${d.doc_id}-${d.doc_id}-${d.relative_url}`}
               studioId={id}
-              focusedIndex={focusedIndex}
               index={`${index}-${d.doc_id}-${d.relative_url}`}
               studioName={name}
-              isLeftSidebarFocused={isLeftSidebarFocused}
-              isCommandBarVisible={isCommandBarVisible}
               docId={d.doc_id}
               relativeUrl={d.relative_url}
               docTitle={d.doc_title || ''}
               docFavicon={d.doc_icon || ''}
               sections={d.ranges}
-              setFocusedIndex={setFocusedIndex}
             >
               {d.doc_icon ? (
                 <img

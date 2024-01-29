@@ -10,8 +10,6 @@ type Props = {
   repoRef?: string;
 };
 
-const noOp = () => {};
-
 const FolderChip = ({ onClick, path, repoRef }: Props) => {
   const fetchFiles = useCallback(
     async (path?: string) => {
@@ -65,11 +63,7 @@ const FolderChip = ({ onClick, path, repoRef }: Props) => {
             indexed
             repoRef={repoRef || ''}
             lastIndex={''}
-            focusedIndex={''}
             index={'0'}
-            isLeftSidebarFocused={false}
-            isCommandBarVisible
-            setFocusedIndex={noOp}
           />
         </OverflowTracker>
       </div>

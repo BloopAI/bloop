@@ -15,52 +15,23 @@ import ConversationEntry from './CoversationEntry';
 type Props = {
   setExpanded: Dispatch<SetStateAction<string>>;
   isExpanded: boolean;
-  focusedIndex: string;
   index: string;
-  setFocusedIndex: (s: string) => void;
 };
 
 const reactRoot = document.getElementById('root')!;
 
-const ConversationsNav = ({
-  isExpanded,
-  setExpanded,
-  focusedIndex,
-  index,
-  setFocusedIndex,
-}: Props) => {
+const ConversationsNav = ({ isExpanded, setExpanded, index }: Props) => {
   const { t } = useTranslation();
   const { project } = useContext(ProjectContext.Current);
-  const {
-    containerRef,
-    toggleExpanded,
-    noPropagate,
-    isLeftSidebarFocused,
-    isCommandBarVisible,
-    handleMouseMove,
-  } = useNavPanel(
+  const { noPropagate, itemProps } = useNavPanel(
     index,
     setExpanded,
     isExpanded,
-    focusedIndex,
-    setFocusedIndex,
   );
 
   return (
     <div className="select-none overflow-hidden w-full flex-shrink-0">
-      <span
-        role="button"
-        tabIndex={0}
-        className={`h-10 flex items-center gap-3 px-4 ellipsis ${
-          isExpanded ? 'sticky z-10 top-0 left-0' : ''
-        } ${
-          focusedIndex === index ? 'bg-bg-sub-hover' : 'bg-bg-sub'
-        } outline-0 outline-none focus:outline-0 focus:outline-none`}
-        onClick={toggleExpanded}
-        onMouseMove={handleMouseMove}
-        ref={containerRef}
-        data-node-index={index}
-      >
+      <span {...itemProps}>
         <ChatBubblesIcon
           sizeClassName="w-3.5 h-3.5"
           className="text-brand-default"
@@ -99,15 +70,7 @@ const ConversationsNav = ({
       {isExpanded && (
         <div className={'overflow-hidden'}>
           {project?.conversations.map((c) => (
-            <ConversationEntry
-              key={c.id}
-              {...c}
-              index={`${index}-${c.id}`}
-              focusedIndex={focusedIndex}
-              isLeftSidebarFocused={isLeftSidebarFocused}
-              isCommandBarVisible={isCommandBarVisible}
-              setFocusedIndex={setFocusedIndex}
-            />
+            <ConversationEntry key={c.id} {...c} index={`${index}-${c.id}`} />
           ))}
         </div>
       )}

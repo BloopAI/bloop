@@ -1,7 +1,5 @@
 import React, {
-  Dispatch,
   memo,
-  SetStateAction,
   useCallback,
   useContext,
   useEffect,
@@ -40,8 +38,6 @@ import { RepositoriesContext } from '../../../context/repositoriesContext';
 type Props = {
   repo: RepoUi;
   index: string;
-  focusedIndex: string;
-  setFocusedIndex: Dispatch<SetStateAction<string>>;
   isFirst: boolean;
   refetchRepos: () => void;
   disableKeyNav?: boolean;
@@ -55,8 +51,6 @@ type Props = {
 const RepoItem = ({
   repo,
   isFirst,
-  setFocusedIndex,
-  focusedIndex,
   index,
   refetchRepos,
   disableKeyNav,
@@ -243,8 +237,6 @@ const RepoItem = ({
   return (
     <Item
       key={repo.ref}
-      setFocusedIndex={setFocusedIndex}
-      focusedIndex={focusedIndex}
       index={index}
       isFirst={isFirst}
       itemKey={`repo-${repo.ref}`}

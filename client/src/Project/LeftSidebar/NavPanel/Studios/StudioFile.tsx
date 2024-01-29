@@ -15,14 +15,10 @@ import StudioSubItem from './StudioSubItem';
 
 type Props = StudioContextFile & {
   studioId: string;
-  focusedIndex: string;
   index: string;
   studioName: string;
-  isLeftSidebarFocused: boolean;
-  isCommandBarVisible: boolean;
   tokens?: number | null;
   indexingData?: RepoIndexingStatusType;
-  setFocusedIndex: (s: string) => void;
 };
 
 const StudioFile = ({
@@ -31,14 +27,10 @@ const StudioFile = ({
   repo,
   branch,
   studioId,
-  focusedIndex,
   index,
   studioName,
-  isLeftSidebarFocused,
-  isCommandBarVisible,
   tokens,
   indexingData,
-  setFocusedIndex,
 }: Props) => {
   const { t } = useTranslation();
 
@@ -57,16 +49,12 @@ const StudioFile = ({
     <StudioSubItem
       key={`${path}-${repo}-${branch}`}
       studioId={studioId}
-      focusedIndex={focusedIndex}
       index={index}
       studioName={studioName}
-      isLeftSidebarFocused={isLeftSidebarFocused}
-      isCommandBarVisible={isCommandBarVisible}
       path={path}
       repoRef={repo}
       branch={branch}
       ranges={ranges}
-      setFocusedIndex={setFocusedIndex}
     >
       {isIndexing && indexingData ? (
         <Tooltip

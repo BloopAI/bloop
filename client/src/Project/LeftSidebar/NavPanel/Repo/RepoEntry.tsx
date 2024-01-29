@@ -3,7 +3,6 @@ import React, {
   useCallback,
   useContext,
   useEffect,
-  useRef,
   useState,
 } from 'react';
 import { ChevronRightIcon, EyeCutIcon, FolderIcon } from '../../../../icons';
@@ -16,7 +15,7 @@ import {
   TabTypesEnum,
 } from '../../../../types/general';
 import SpinLoaderContainer from '../../../../components/Loaders/SpinnerLoader';
-import { useEnterKey } from '../../../../hooks/useEnterKey';
+import { useArrowNavigationItemProps } from '../../../../hooks/useArrowNavigationItemProps';
 
 type Props = {
   name: string;
@@ -31,11 +30,7 @@ type Props = {
   currentPath?: string;
   branch?: string | null;
   indexingData?: RepoIndexingStatusType;
-  focusedIndex: string;
   index: string;
-  isLeftSidebarFocused: boolean;
-  isCommandBarVisible: boolean;
-  setFocusedIndex: (s: string) => void;
 };
 
 const RepoEntry = ({
@@ -51,18 +46,14 @@ const RepoEntry = ({
   lastIndex,
   branch,
   indexingData,
-  focusedIndex,
   index,
-  isLeftSidebarFocused,
-  isCommandBarVisible,
-  setFocusedIndex,
 }: Props) => {
   const { openNewTab } = useContext(TabsContext.Handlers);
+
   const [isOpen, setOpen] = useState(
     defaultOpen || (currentPath && currentPath.startsWith(fullPath)),
   );
   const [subItems, setSubItems] = useState<DirectoryEntry[] | null>(null);
-  const ref = useRef<HTMLAnchorElement>(null);
   const [isMounted, setIsMounted] = useState(false);
 
   const refetchFolderFiles = useCallback(() => {
@@ -101,7 +92,7 @@ const RepoEntry = ({
     }
   }, [isOpen, isDirectory, refetchFolderFiles]);
 
-  const handleClick = useCallback(() => {
+  const onClick = useCallback(() => {
     if (isDirectory) {
       setOpen((prev) => !prev);
     } else {
@@ -114,25 +105,8 @@ const RepoEntry = ({
     }
   }, [isDirectory, fullPath, openNewTab, repoRef, branch]);
 
-  useEnterKey(
-    handleClick,
-    focusedIndex !== index || !isLeftSidebarFocused || isCommandBarVisible,
-  );
-
-  useEffect(() => {
-    if (focusedIndex === index && ref.current) {
-      ref.current.scrollIntoView({ block: 'nearest' });
-    }
-  }, [focusedIndex, index]);
-
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
-      if (e.movementX || e.movementY) {
-        setFocusedIndex(index);
-      }
-    },
-    [index, setFocusedIndex],
-  );
+  const { isFocused, isLeftSidebarFocused, props } =
+    useArrowNavigationItemProps<HTMLAnchorElement>(index, onClick);
 
   return (
     <div
@@ -148,7 +122,7 @@ const RepoEntry = ({
           ? isLeftSidebarFocused
             ? 'bg-bg-shade-hover text-label-title'
             : 'bg-bg-shade text-label-title'
-          : isLeftSidebarFocused && focusedIndex === index
+          : isFocused
           ? 'bg-bg-sub-hover text-label-title'
           : ''
       } ${
@@ -159,10 +133,7 @@ const RepoEntry = ({
           : 'text-label-muted'
       }`}
         style={{ paddingLeft: level * 27 }}
-        onClick={handleClick}
-        onMouseMove={handleMouseMove}
-        ref={ref}
-        data-node-index={index}
+        {...props}
       >
         {isDirectory ? (
           <div className="w-4 h-4 flex items-center justify-center">
@@ -227,11 +198,7 @@ const RepoEntry = ({
               lastIndex={lastIndex}
               currentPath={currentPath}
               branch={branch}
-              focusedIndex={focusedIndex}
               index={`${index}-${sii}`}
-              isLeftSidebarFocused={isLeftSidebarFocused}
-              isCommandBarVisible={isCommandBarVisible}
-              setFocusedIndex={setFocusedIndex}
             />
           ))}
         </div>

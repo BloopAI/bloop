@@ -29,13 +29,11 @@ type Props = {
   setExpanded: Dispatch<SetStateAction<string>>;
   isExpanded: boolean;
   projectId: string;
-  focusedIndex: string;
   index: string;
   docId: string;
   favicon?: string;
   title?: string;
   url: string;
-  setFocusedIndex: (s: string) => void;
 };
 
 const reactRoot = document.getElementById('root')!;
@@ -44,29 +42,18 @@ const DocNav = ({
   isExpanded,
   setExpanded,
   projectId,
-  focusedIndex,
   index,
   favicon,
   docId,
   title,
   url,
-  setFocusedIndex,
 }: Props) => {
   const { t } = useTranslation();
   const [pages, setPages] = useState<DocPageType[]>([]);
-  const {
-    containerRef,
-    toggleExpanded,
-    noPropagate,
-    isLeftSidebarFocused,
-    isCommandBarVisible,
-    handleMouseMove,
-  } = useNavPanel(
+  const { noPropagate, itemProps } = useNavPanel(
     index,
     setExpanded,
     isExpanded,
-    focusedIndex,
-    setFocusedIndex,
   );
   const { setChosenStep, setIsVisible } = useContext(
     CommandBarContext.Handlers,
@@ -95,19 +82,7 @@ const DocNav = ({
 
   return (
     <div className="select-none flex-shrink-0">
-      <span
-        role="button"
-        tabIndex={0}
-        className={`h-10 flex items-center gap-3 px-4 ellipsis ${
-          isExpanded ? 'sticky z-10 top-0 left-0' : ''
-        } ${
-          focusedIndex === index ? 'bg-bg-sub-hover' : 'bg-bg-sub'
-        } outline-0 outline-none focus:outline-0 focus:outline-none`}
-        onClick={toggleExpanded}
-        data-node-index={index}
-        ref={containerRef}
-        onMouseMove={handleMouseMove}
-      >
+      <span {...itemProps}>
         {favicon ? (
           <img src={favicon} alt={title || url} className={'w-3.5 h-3.5'} />
         ) : (
@@ -157,12 +132,8 @@ const DocNav = ({
             <DocEntry
               key={p.absolute_url}
               {...p}
-              focusedIndex={focusedIndex}
               index={`${index}-${p.relative_url}`}
-              isLeftSidebarFocused={isLeftSidebarFocused}
-              isCommandBarVisible={isCommandBarVisible}
               favicon={favicon}
-              setFocusedIndex={setFocusedIndex}
             />
           ))}
         </div>

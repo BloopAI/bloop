@@ -525,5 +525,6 @@
 	"Hide search steps": "Ocultar pasos de búsqueda",
 	"Close currently focused tab": "Cerrar pestaña actualmente enfocada",
 	"Add documentation": "Agregar documentación",
-	"Usage resets at": "Restablecimiento de uso en"
+	"Usage resets at": "Restablecimiento de uso en",
+	"Restore session": "Restaurar sesion"
 }
