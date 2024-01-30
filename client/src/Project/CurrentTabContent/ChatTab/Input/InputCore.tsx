@@ -11,6 +11,7 @@ import {
   useNodeViews,
 } from '@nytimes/react-prosemirror';
 import { schema as basicSchema } from 'prosemirror-schema-basic';
+// @ts-ignore
 import * as icons from 'file-icons-js';
 import { useTranslation } from 'react-i18next';
 import { InputEditorContent, ParsedQueryType } from '../../../../types/general';
