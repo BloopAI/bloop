@@ -1,3 +1,4 @@
+// @ts-ignore
 import * as icons from 'file-icons-js';
 import { type AttributeSpec, type NodeSpec } from 'prosemirror-model';
 import { getFileExtensionForLang, splitPath } from '../../../../utils';
