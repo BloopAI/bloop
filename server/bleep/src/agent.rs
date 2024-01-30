@@ -1,4 +1,4 @@
-use std::{ops::Deref, sync::Arc, time::Duration};
+use std::{ops::Deref, str::FromStr, sync::Arc, time::Duration};
 
 use anyhow::{anyhow, Context, Result};
 use futures::{Future, TryStreamExt};
@@ -6,16 +6,14 @@ use tokio::sync::mpsc::Sender;
 use tracing::{debug, error, info, instrument};
 
 use crate::{
+    agent::exchange::RepoPath,
     analytics::{EventData, QueryEvent},
     indexes::reader::{ContentDocument, FileDocument},
     llm_gateway::{self, api::FunctionCall},
     query::{parser, stopwords::remove_stopwords},
     repo::RepoRef,
-    semantic,
-    webserver::{
-        answer::conversations::{self, ConversationId},
-        middleware::User,
-    },
+    semantic::{self, SemanticSearchParams},
+    webserver::{conversation::Conversation, middleware::User},
     Application,
 };
 
@@ -49,14 +47,13 @@ pub enum Error {
 
 pub struct Agent {
     pub app: Application,
-    pub repo_ref: RepoRef,
-    pub exchanges: Vec<Exchange>,
+    pub conversation: Conversation,
     pub exchange_tx: Sender<Exchange>,
 
     pub llm_gateway: llm_gateway::Client,
     pub user: User,
-    pub thread_id: uuid::Uuid,
     pub query_id: uuid::Uuid,
+    pub repo_refs: Vec<RepoRef>,
 
     pub answer_model: model::LLMModel,
     pub agent_model: model::LLMModel,
@@ -71,6 +68,13 @@ pub enum ExchangeState {
     Pending,
     Complete,
     Failed,
+}
+
+pub struct AgentSemanticSearchParams<'a> {
+    pub query: parser::Literal<'a>,
+    pub paths: Vec<RepoPath>,
+    pub repos: Vec<RepoRef>,
+    pub semantic_params: SemanticSearchParams,
 }
 
 /// We use a `Drop` implementation to track agent query cancellation.
@@ -138,51 +142,69 @@ impl Agent {
     pub fn track_query(&self, data: EventData) {
         let event = QueryEvent {
             query_id: self.query_id,
-            thread_id: self.thread_id,
-            repo_ref: Some(self.repo_ref.clone()),
+            thread_id: self.conversation.thread_id,
             data,
         };
         self.app.track_query(&self.user, &event);
     }
 
     fn last_exchange(&self) -> &Exchange {
-        self.exchanges.last().expect("exchange list was empty")
+        self.conversation
+            .exchanges
+            .last()
+            .expect("exchange list was empty")
     }
 
     fn last_exchange_mut(&mut self) -> &mut Exchange {
-        self.exchanges.last_mut().expect("exchange list was empty")
+        self.conversation
+            .exchanges
+            .last_mut()
+            .expect("exchange list was empty")
     }
 
-    fn paths(&self) -> impl Iterator<Item = &str> {
-        self.exchanges
+    fn paths(&self) -> impl Iterator<Item = &RepoPath> {
+        self.conversation
+            .exchanges
             .iter()
             .flat_map(|e| e.paths.iter())
-            .map(String::as_str)
     }
 
-    fn get_path_alias(&mut self, path: &str) -> usize {
+    fn get_path_alias(&mut self, repo_path: &RepoPath) -> usize {
         // This has to be stored a variable due to a Rust NLL bug:
         // https://github.com/rust-lang/rust/issues/51826
-        let pos = self.paths().position(|p| p == path);
+        let pos = self.paths().position(|p| p == repo_path);
         if let Some(i) = pos {
             i
         } else {
             let i = self.paths().count();
-            self.last_exchange_mut().paths.push(path.to_owned());
+            self.last_exchange_mut().paths.push(repo_path.clone());
             i
         }
     }
 
-    #[instrument(skip(self))]
+    fn relevant_repos(&self) -> Vec<RepoRef> {
+        let query_repos = self.last_exchange().query.repos().collect::<Vec<_>>();
+
+        if query_repos.is_empty() {
+            self.repo_refs.clone()
+        } else {
+            self.repo_refs
+                .iter()
+                .filter(|r| query_repos.contains(&r.indexed_name().into()))
+                .cloned()
+                .collect()
+        }
+    }
+
     pub async fn step(&mut self, action: Action) -> Result<Option<Action>> {
-        info!(?action, %self.thread_id, "executing next action");
+        info!(?action, %self.conversation.thread_id, "executing next action");
 
         match &action {
             Action::Query(s) => {
                 self.track_query(EventData::input_stage("query").with_payload("q", s));
 
                 // Always make a code search for the user query on the first exchange
-                if self.exchanges.len() == 1 {
+                if self.conversation.exchanges.len() == 1 {
                     let keywords = {
                         let keys = remove_stopwords(s);
                         if keys.is_empty() {
@@ -270,6 +292,7 @@ impl Agent {
         const FUNCTION_CALL_INSTRUCTION: &str = "Call a function. Do not answer";
 
         let history = self
+            .conversation
             .exchanges
             .iter()
             .rev()
@@ -341,15 +364,19 @@ impl Agent {
         Ok(history)
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn semantic_search(
         &self,
-        query: parser::Literal<'_>,
-        paths: Vec<String>,
-        params: semantic::SemanticSearchParams,
+        AgentSemanticSearchParams {
+            query,
+            paths,
+            repos,
+            semantic_params,
+        }: AgentSemanticSearchParams<'_>,
     ) -> Result<Vec<semantic::Payload>> {
         let paths_set = paths
             .into_iter()
-            .map(|p| parser::Literal::Plain(p.into()))
+            .map(|p| parser::Literal::Plain(p.path.into()))
             .collect::<Vec<_>>();
 
         let paths = if paths_set.is_empty() {
@@ -384,47 +411,30 @@ impl Agent {
 
         let query = parser::SemanticQuery {
             target: Some(query),
-            repos: [parser::Literal::Plain(self.repo_ref.display_name().into())].into(),
+            repos: repos
+                .iter()
+                .map(RepoRef::indexed_name)
+                .map(|r| parser::Literal::Plain(r.into()))
+                .collect(),
             paths,
             ..self.last_exchange().query.clone()
         };
 
-        debug!(?query, %self.thread_id, "executing semantic query");
-        self.app.semantic.search(&query, params).await
+        debug!(?query, %self.conversation.thread_id, "executing semantic query");
+        self.app.semantic.search(&query, semantic_params).await
     }
 
-    #[allow(dead_code)]
-    async fn batch_semantic_search(
+    async fn get_file_content(
         &self,
-        queries: Vec<parser::Literal<'_>>,
-        params: semantic::SemanticSearchParams,
-    ) -> Result<Vec<semantic::Payload>> {
-        let queries = queries
-            .iter()
-            .map(|q| parser::SemanticQuery {
-                target: Some(q.clone()),
-                repos: [parser::Literal::Plain(self.repo_ref.display_name().into())].into(),
-                ..self.last_exchange().query.clone()
-            })
-            .collect::<Vec<_>>();
-
-        let queries = queries.iter().collect::<Vec<_>>();
-
-        debug!(?queries, %self.thread_id, "executing semantic query");
-        self.app
-            .semantic
-            .batch_search(queries.as_slice(), params)
-            .await
-    }
-
-    async fn get_file_content(&self, path: &str) -> Result<Option<ContentDocument>> {
+        RepoPath { repo, path }: &RepoPath,
+    ) -> Result<Option<ContentDocument>> {
         let branch = self.last_exchange().query.first_branch();
 
-        debug!(%self.repo_ref, path, ?branch, %self.thread_id, "executing file search");
+        debug!(%repo, path, ?branch, %self.conversation.thread_id, "executing file search");
         self.app
             .indexes
             .file
-            .by_path(&self.repo_ref, path, branch.as_deref())
+            .by_path(repo, path, branch.as_deref())
             .await
             .with_context(|| format!("failed to read path: {}", path))
     }
@@ -433,14 +443,33 @@ impl Agent {
         &'a self,
         query: &str,
     ) -> impl Iterator<Item = FileDocument> + 'a {
-        let branch = self.last_exchange().query.first_branch();
         let langs = self.last_exchange().query.langs.iter().map(Deref::deref);
+        let user_id = self.user.username().expect("didn't have user ID");
 
-        debug!(%self.repo_ref, query, ?branch, %self.thread_id, "executing fuzzy search");
+        let (repos, branches): (Vec<_>, Vec<_>) = sqlx::query! {
+            "SELECT pr.repo_ref, pr.branch
+            FROM project_repos pr
+            INNER JOIN projects p ON p.id = pr.project_id AND p.user_id = ?",
+            user_id,
+        }
+        .fetch_all(&*self.app.sql)
+        .await
+        .expect("failed to fetch repo associations")
+        .into_iter()
+        .filter_map(|row| {
+            let repo_ref = RepoRef::from_str(&row.repo_ref).ok()?;
+            Some((repo_ref, row.branch))
+        })
+        .filter(|(repo_ref, _)| self.repo_refs.contains(repo_ref))
+        .unzip();
+
+        let branch = branches.first().cloned().flatten();
+
+        debug!(?query, ?branch, %self.conversation.thread_id, "executing fuzzy search");
         self.app
             .indexes
             .file
-            .fuzzy_path_match(&self.repo_ref, query, branch.as_deref(), langs, 50)
+            .skim_fuzzy_path_match(repos.into_iter(), query, branch.as_deref(), langs, 50)
             .await
     }
 
@@ -450,21 +479,18 @@ impl Agent {
     // NB: This isn't an `async fn` so as to not capture a lifetime.
     fn store(&mut self) -> impl Future<Output = ()> {
         let sql = Arc::clone(&self.app.sql);
-        let conversation = (self.repo_ref.clone(), self.exchanges.clone());
-        let conversation_id = self
+
+        let user_id = self
             .user
             .username()
             .context("didn't have user ID")
-            .map(|user_id| ConversationId {
-                thread_id: self.thread_id,
-                user_id: user_id.to_owned(),
-            });
+            .map(str::to_owned);
+
+        let conversation = self.conversation.clone();
 
         async move {
-            let result = match conversation_id {
-                Ok(conversation_id) => {
-                    conversations::store(&sql, conversation_id, conversation).await
-                }
+            let result = match user_id {
+                Ok(user_id) => conversation.store(&sql, &user_id).await,
                 Err(e) => Err(e),
             };
 
@@ -519,7 +545,7 @@ fn trim_history(
     Ok(history)
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Action {
     /// A user-provided query.

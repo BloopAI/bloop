@@ -1,3 +1,7 @@
+use std::collections::HashSet;
+
+use crate::agent::exchange::RepoPath;
+
 pub fn functions(add_proc: bool) -> serde_json::Value {
     let mut funcs = serde_json::json!(
         [
@@ -79,15 +83,27 @@ pub fn functions(add_proc: bool) -> serde_json::Value {
     funcs
 }
 
-pub fn system<'a>(paths: impl IntoIterator<Item = &'a str>) -> String {
+pub fn system<'a>(paths: impl IntoIterator<Item = &'a RepoPath>) -> String {
+    let paths = paths.into_iter().collect::<Vec<_>>();
+
     let mut s = "".to_string();
 
-    let mut paths = paths.into_iter().peekable();
+    let repos = paths.iter().map(|rp| &rp.repo).collect::<HashSet<_>>();
 
-    if paths.peek().is_some() {
-        s.push_str("## PATHS ##\nindex, path\n");
-        for (i, path) in paths.enumerate() {
-            s.push_str(&format!("{}, {}\n", i, path));
+    s.push_str("## REPOS ##\n");
+    for repo in repos {
+        s.push_str(&format!("{repo}\n"));
+    }
+
+    let mut iter = paths.into_iter().peekable();
+
+    if iter.peek().is_some() {
+        s.push_str("\n## PATHS ##\nindex, repo, path\n");
+        for (i, path) in iter.enumerate() {
+            let repo = &path.repo;
+            let repo = &format!("{repo}");
+            let path = &path.path;
+            s.push_str(&format!("{}, {}, {}\n", i, repo, path));
         }
         s.push('\n');
     }
@@ -97,7 +113,7 @@ pub fn system<'a>(paths: impl IntoIterator<Item = &'a str>) -> String {
 
 - ALWAYS call a function, DO NOT answer the question directly, even if the query is not in English
 - DO NOT call a function that you've used before with the same arguments
-- DO NOT assume the structure of the codebase, or the existence of files or folders
+- DO NOT assume the structure of the indexed repos (listed above), or the existence of files or folders
 - Your queries to functions.code or functions.path should be significantly different to previous queries
 - Call functions.none with paths that you are confident will help answer the user's query, include paths containing the information needed for a complete answer including definitions and references
 - If the user query is general (e.g. 'What does this do?', 'What is this repo?') look for READMEs, documentation and entry points in the code (main files, index files, api files etc.)
@@ -117,27 +133,27 @@ pub fn answer_article_prompt(context: &str) -> String {
     format!(
         r#"{context}####
 
-You are an expert programmer called 'bloop' and you are helping a junior colleague answer questions about a codebase using the information above. If their query refers to 'this' or 'it' and there is no other context, assume that it refers to the information above.
+You are an expert programmer called 'bloop' and you are helping a junior colleague answer questions about some repos using the information above. If their query refers to 'this' or 'it' and there is no other context, assume that it refers to the information above.
 
 Provide only as much information and code as is necessary to answer the query, but be concise. Keep number of quoted lines to a minimum when possible. If you do not have enough information needed to answer the query, do not make up an answer. Infer as much as possible from the information above.
 When referring to code, you must provide an example in a code block.
 
 Respect these rules at all times:
 - Link ALL paths AND code symbols (functions, methods, fields, classes, structs, types, variables, values, definitions, directories, etc) by embedding them in a markdown link, with the URL corresponding to the full path, and the anchor following the form `LX` or `LX-LY`, where X represents the starting line number, and Y represents the ending line number, if the reference is more than one line.
-  - For example, to refer to lines 50 to 78 in a sentence, respond with something like: The compiler is initialized in [`src/foo.rs`](src/foo.rs#L50-L78)
-  - For example, to refer to the `new` function on a struct, respond with something like: The [`new`](src/bar.rs#L26-53) function initializes the struct
-  - For example, to refer to the `foo` field on a struct and link a single line, respond with something like: The [`foo`](src/foo.rs#L138) field contains foos. Do not respond with something like [`foo`](src/foo.rs#L138-L138)
-  - For example, to refer to a folder `foo`, respond with something like: The files can be found in [`foo`](path/to/foo/) folder
+  - For example, to refer to lines 50 to 78 in a sentence, respond with something like: The compiler is initialized in [`src/foo.rs`](//local/path/to/repo:src/foo.rs#L50-L78)
+  - For example, to refer to the `new` function on a struct, respond with something like: The [`new`](github.com/org/repo:src/bar.rs#L26-53) function initializes the struct
+  - For example, to refer to the `foo` field on a struct and link a single line, respond with something like: The [`foo`](github.com/org/repo:src/foo.rs#L138) field contains foos. Do not respond with something like [`foo`](src/foo.rs#L138-L138)
+  - For example, to refer to a folder `foo`, respond with something like: The files can be found in [`foo`](//local/path/to/repo:path/to/foo/) folder
 - Do not print out line numbers directly, only in a link
 - Do not refer to more lines than necessary when creating a line range, be precise
 - Do NOT output bare symbols. ALL symbols must include a link
-  - E.g. Do not simply write `Bar`, write [`Bar`](src/bar.rs#L100-L105).
-  - E.g. Do not simply write "Foos are functions that create `Foo` values out of thin air." Instead, write: "Foos are functions that create [`Foo`](src/foo.rs#L80-L120) values out of thin air."
+  - E.g. Do not simply write `Bar`, write [`Bar`](github.com/org/repo:src/bar.rs#L100-L105).
+  - E.g. Do not simply write "Foos are functions that create `Foo` values out of thin air." Instead, write: "Foos are functions that create [`Foo`](github.com/org/repo:src/foo.rs#L80-L120) values out of thin air."
 - Link all fields
-  - E.g. Do not simply write: "It has one main field: `foo`." Instead, write: "It has one main field: [`foo`](src/foo.rs#L193)."
+  - E.g. Do not simply write: "It has one main field: `foo`." Instead, write: "It has one main field: [`foo`](//local/path/to/repo:src/foo.rs#L193)."
 - Do NOT link external urls not present in the context, do NOT link urls from the internet
 - Link all symbols, even when there are multiple in one sentence
-  - E.g. Do not simply write: "Bars are [`Foo`]( that return a list filled with `Bar` variants." Instead, write: "Bars are functions that return a list filled with [`Bar`](src/bar.rs#L38-L57) variants."
+  - E.g. Do not simply write: "Bars are [`Foo`]( that return a list filled with `Bar` variants." Instead, write: "Bars are functions that return a list filled with [`Bar`](//local/path/to/repo:src/bar.rs#L38-L57) variants."
   - If you do not have enough information needed to answer the query, do not make up an answer. Instead respond only with a footnote that asks the user for more information, e.g. `assistant: I'm sorry, I couldn't find what you were looking for, could you provide more information?`
 - Code blocks MUST be displayed to the user using XML in the following formats:
   - Do NOT output plain markdown blocks, the user CANNOT see them
@@ -160,7 +176,7 @@ println!("hello world!");
 println!("hello world!");
 </Code>
 <Language>Rust</Language>
-<Path>src/main.rs</Path>
+<Path>//local/path/to/repo:src/main.rs</Path>
 <StartLine>4</StartLine>
 <EndLine>5</EndLine>
 </QuotedCode>
@@ -255,14 +271,14 @@ You must use the following formatting rules at all times:
     }}
     ````
 - When quoting code in a code block, use the following info string format: language:LANG,path:PATH
-  - For example, to quote `src/main.c`:
-    ````language:c,path:src/main.c
+  - For example, to quote `github.com/org/repo:src/main.c`:
+    ````language:c,path:github.com/org/repo:src/main.c
     int main() {{
       printf("hello world!");
     }}
     ````
-  - For example, to quote `index.js`:
-  ````language:javascript,path:index.js
+  - For example, to quote `local//path/to/repo:index.js`:
+  ````language:javascript,path:local//path/to/repo:index.js
   console.log("hello world!")
   ````
 - Basic markdown is otherwise allowed"#
@@ -303,6 +319,7 @@ pub fn studio_diff_prompt(context_formatted: &str) -> String {
         r#"Below are files from a codebase. Your job is to write a Unified Format patch to complete a provided task. To write a unified format patch, surround it in a code block: ```diff
 
 Follow these rules strictly:
+- Diff paths follow the format `github.com/org/repo:path/to/file.js` for remote repositories, or `local//path/to/repo:path/to/file.js` for local repositories. Make sure to include these in your diff.
 - You MUST only return a single diff block, no additional commentary.
 - Keep hunks concise only include a short context for each hunk. 
 - ALWAYS respect input whitespace, to ensure diffs can be applied cleanly!
@@ -313,8 +330,8 @@ Follow these rules strictly:
 # Example outputs
 
 ```diff
---- src/index.js
-+++ src/index.js
+--- github.com/BloopAI/tutorial:src/index.js
++++ github.com/BloopAI/tutorial:src/index.js
 @@ -10,5 +10,5 @@
  const maybeHello = () => {{
      if (Math.random() > 0.5) {{
@@ -325,8 +342,8 @@ Follow these rules strictly:
 ```
 
 ```diff
---- README.md
-+++ README.md
+--- local//Users/blooper/dev/bloop:README.md
++++ local//Users/blooper/dev/bloop:README.md
 @@ -1,3 +1,3 @@
  # Bloop AI
  
@@ -335,8 +352,8 @@ Follow these rules strictly:
 ```
 
 ```diff
---- client/src/locales/en.json
-+++ client/src/locales/en.json
+--- github.com/BloopAI/bloop:client/src/locales/en.json
++++ github.com/BloopAI/bloop:client/src/locales/en.json
 @@ -21,5 +21,5 @@
  	"Report a bug": "Report a bug",
  	"Sign In": "Sign In",
@@ -350,7 +367,7 @@ Adding a new file:
 
 ```diff
 --- /dev/null
-+++ src/sum.rs
++++ local//tmp/test-project:src/sum.rs
 @@ -0,0 +1,3 @@
 +fn sum(a: f32, b: f32) -> f32 {{
 +    a + b
@@ -360,7 +377,7 @@ Adding a new file:
 Removing an existing file:
 
 ```diff
---- src/div.rs
+--- local//tmp/another-project:src/div.rs
 +++ /dev/null
 @@ -1,3 +0,0 @@
 -fn div(a: f32, b: f32) -> f32 {{
@@ -392,7 +409,7 @@ pub fn symbol_classification_prompt(snippets: &str) -> String {
 
 Above are code chunks and non-local symbols that have been extracted from the chunks. Each chunk is followed by an enumerated list of symbols that it contains. Given a user query, select the symbol which is most relevant to it, e.g. the references or definition of this symbol would help somebody answer the query. Symbols which are language builtins or which come from third party libraries are unlikely to be helpful.
 
-Do not answer with the symbol name, use the symbol index.
+Do not answer with the symbol name, use the symbol index. If none of the symbols are relevant, answer with 0.
 
 ### Examples ###
 Q: how does ranking work?

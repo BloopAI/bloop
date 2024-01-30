@@ -19,7 +19,7 @@ use std::convert::Infallible;
 
 // schema
 #[derive(serde::Deserialize)]
-pub struct Sync {
+pub struct Enqueue {
     url: url::Url,
 }
 
@@ -60,37 +60,26 @@ pub async fn delete(State(app): State<Application>, Path(id): Path<i64>) -> Resu
     Ok(Json(app.indexes.doc.delete(id).await?))
 }
 
-pub async fn sync(
+pub async fn enqueue(
     State(app): State<Application>,
+    Query(params): Query<Enqueue>,
     Extension(user): Extension<User>,
-    Query(params): Query<Sync>,
-) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+) -> Result<Json<i64>> {
     app.with_analytics(|hub| {
         hub.track_doc(
             &user,
             DocEvent::new("sync").with_payload("url", &params.url),
         )
     });
-    Sse::new(Box::pin(
-        app.indexes
-            .doc
-            .clone()
-            .sync(params.url)
-            .await
-            .map(|result| {
-                Ok(Event::default()
-                    .json_data(result.as_ref().map_err(ToString::to_string))
-                    .unwrap())
-            }),
-    ))
-    .keep_alive(KeepAlive::default())
+
+    Ok(Json(app.indexes.doc.clone().enqueue(params.url).await?))
 }
 
-pub async fn resync(
+pub async fn status(
     State(app): State<Application>,
     Path(id): Path<i64>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
-    Sse::new(Box::pin(app.indexes.doc.clone().resync(id).await.map(
+    Sse::new(Box::pin(app.indexes.doc.clone().status(id).await.map(
         |result| {
             Ok(Event::default()
                 .json_data(result.as_ref().map_err(ToString::to_string))
@@ -98,6 +87,14 @@ pub async fn resync(
         },
     )))
     .keep_alive(KeepAlive::default())
+}
+
+pub async fn cancel(State(app): State<Application>, Path(id): Path<i64>) -> Result<Json<i64>> {
+    Ok(Json(app.indexes.doc.clone().cancel(id).await?))
+}
+
+pub async fn resync(State(app): State<Application>, Path(id): Path<i64>) -> Result<Json<i64>> {
+    Ok(Json(app.indexes.doc.clone().resync(id).await?))
 }
 
 pub async fn search(

@@ -334,6 +334,7 @@ pub async fn get_token_info(
 
     let ctx: CodeNavigationContext<'_, '_> = CodeNavigationContext {
         token: Token {
+            repo: repo_ref.clone(),
             relative_path: params.relative_path.as_str(),
             start_byte: params.start,
             end_byte: params.end,
@@ -512,6 +513,7 @@ async fn search_nav(
 
             data.is_empty().not().then(|| FileSymbols {
                 file: file.clone(),
+                repo: repo_ref.clone(),
                 data,
             })
         })
@@ -531,6 +533,7 @@ mod tests {
             "data": [
                 {
                     "file": "server/bleep/src/symbol.rs",
+                    "repo": "github.com/BloopAI/bloop",
                     "data": [{
                         "kind": "definition",
                         "range": {
@@ -548,6 +551,7 @@ mod tests {
                 },
                 {
                     "file": "server/bleep/src/intelligence/scope_resolution.rs",
+                    "repo": "github.com/BloopAI/bloop",
                     "data": [{
                         "kind": "reference",
                         "range": {
@@ -569,6 +573,7 @@ mod tests {
             data: vec![
                 FileSymbols {
                     file: "server/bleep/src/symbol.rs".into(),
+                    repo: "github.com/BloopAI/bloop".parse().unwrap(),
                     data: vec![Occurrence {
                     kind: OccurrenceKind::Definition,
                     range: TextRange {
@@ -594,6 +599,7 @@ mod tests {
                 },
                 FileSymbols {
                     file: "server/bleep/src/intelligence/scope_resolution.rs".into(),
+                    repo: "github.com/BloopAI/bloop".parse().unwrap(),
                     data: vec![Occurrence {
                         kind: OccurrenceKind::Reference,
                         range: TextRange {

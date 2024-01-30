@@ -255,7 +255,7 @@ pub fn case_permutations(s: &str) -> impl Iterator<Item = CompactString> {
 
     // Make sure not to overflow. The end condition is a mask with the highest bit set, and we use
     // `u32` masks.
-    debug_assert!(chars.len() <= 31);
+    debug_assert!(chars.len() <= 5);
 
     let num_chars = chars.len();
 

@@ -14,6 +14,8 @@ pub struct UserProfile {
     prompt_guide: PromptGuideState,
     #[serde(default = "default_allow_session_recordings")]
     allow_session_recordings: bool,
+    #[serde(default = "default_is_tutorial_finished")]
+    is_tutorial_finished: bool,
 }
 
 impl Default for UserProfile {
@@ -22,10 +24,14 @@ impl Default for UserProfile {
             username: None,
             prompt_guide: PromptGuideState::Active,
             allow_session_recordings: default_allow_session_recordings(),
+            is_tutorial_finished: default_is_tutorial_finished(),
         }
     }
 }
 
 fn default_allow_session_recordings() -> bool {
     true
+}
+fn default_is_tutorial_finished() -> bool {
+    false
 }

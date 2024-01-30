@@ -7,6 +7,7 @@ use std::{collections::HashSet, ops::Not};
 use super::NodeKind;
 use crate::{
     indexes::reader::ContentDocument,
+    repo::RepoRef,
     snippet::{Snipper, Snippet},
     text_range::TextRange,
 };
@@ -18,6 +19,8 @@ use serde::Serialize;
 pub struct FileSymbols {
     /// The file to which the following occurrences belong
     pub file: String,
+
+    pub repo: RepoRef,
 
     /// A collection of symbol locations with context in this file
     pub data: Vec<Occurrence>,
@@ -75,6 +78,7 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
             .flat_map_iter(|idx| {
                 let range = source_sg.graph[idx].range();
                 let token = Token {
+                    repo: source_doc.repo_ref.parse().unwrap(),
                     relative_path: &source_doc.relative_path,
                     start_byte: range.start.byte,
                     end_byte: range.end.byte,
@@ -131,6 +135,7 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
                     all_docs,
                     source_document_idx,
                     token: Token {
+                        repo: source_doc.repo_ref.parse().unwrap(),
                         relative_path: &source_doc.relative_path,
                         start_byte: source_sg.graph[idx].range().start.byte,
                         end_byte: source_sg.graph[idx].range().end.byte,
@@ -143,6 +148,7 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
             .flat_map_iter(|idx| {
                 let range = source_sg.graph[idx].range();
                 let token = Token {
+                    repo: source_doc.repo_ref.parse().unwrap(),
                     relative_path: &source_doc.relative_path,
                     start_byte: range.start.byte,
                     end_byte: range.end.byte,
@@ -318,6 +324,7 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
 
         data.is_empty().not().then(|| FileSymbols {
             file: self.token.relative_path.to_owned(),
+            repo: self.token.repo.clone(),
             data,
         })
     }
@@ -350,6 +357,7 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
 
                 data.is_empty().not().then(|| FileSymbols {
                     file: doc.relative_path.to_owned(),
+                    repo: doc.repo_ref.parse().unwrap(),
                     data,
                 })
             })
@@ -382,6 +390,7 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
 
         data.is_empty().not().then(|| FileSymbols {
             file: self.token.relative_path.to_owned(),
+            repo: self.token.repo.clone(),
             data,
         })
     }
@@ -415,6 +424,7 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
 
                 data.is_empty().not().then(|| FileSymbols {
                     file: doc.relative_path.to_owned(),
+                    repo: doc.repo_ref.parse().unwrap(),
                     data,
                 })
             })
@@ -441,12 +451,14 @@ impl<'a, 'b> CodeNavigationContext<'a, 'b> {
 
         data.is_empty().not().then(|| FileSymbols {
             file: self.token.relative_path.to_owned(),
+            repo: self.token.repo.clone(),
             data,
         })
     }
 }
 
 pub struct Token<'a> {
+    pub repo: RepoRef,
     pub relative_path: &'a str,
     pub start_byte: usize,
     pub end_byte: usize,
@@ -485,6 +497,7 @@ pub fn imported_ranges(
         .filter(|idx| source_sg.is_reference(*idx) || source_sg.is_import(*idx))
         .filter(|&idx| {
             let token = Token {
+                repo: source_document.repo_ref.parse().unwrap(),
                 relative_path: &source_document.relative_path,
                 start_byte: source_sg.graph[idx].range().start.byte,
                 end_byte: source_sg.graph[idx].range().end.byte,
@@ -496,6 +509,7 @@ pub fn imported_ranges(
         .flat_map(|idx| {
             let range = source_sg.graph[idx].range();
             let token = Token {
+                repo: source_document.repo_ref.parse().unwrap(),
                 relative_path: &source_document.relative_path,
                 start_byte: range.start.byte,
                 end_byte: range.end.byte,

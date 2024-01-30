@@ -24,7 +24,7 @@ pub(crate) struct Branch {
 }
 
 #[derive(Serialize, Debug, Eq)]
-pub(crate) struct Repo {
+pub struct Repo {
     pub(super) provider: Backend,
     pub(super) name: String,
     #[serde(rename = "ref")]
@@ -128,7 +128,7 @@ impl From<(&RepoRef, &Repository)> for Repo {
 
         Repo {
             provider: key.backend(),
-            name: key.display_name(),
+            name: key.indexed_name(),
             repo_ref: key.clone(),
             sync_status: repo.pub_sync_status.clone(),
             local_duplicates: vec![],

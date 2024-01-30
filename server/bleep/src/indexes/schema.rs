@@ -80,7 +80,7 @@ impl File {
 
         let repo_disk_path = builder.add_text_field("repo_disk_path", STRING);
         let repo_ref = builder.add_text_field("repo_ref", STRING | STORED);
-        let repo_name = builder.add_text_field("repo_name", trigram.clone());
+        let repo_name = builder.add_text_field("repo_name", STRING | STORED);
         let relative_path = builder.add_text_field("relative_path", trigram.clone());
 
         let content = builder.add_text_field("content", trigram.clone());

@@ -18,6 +18,7 @@ pub mod answer;
 mod autocomplete;
 mod commits;
 mod config;
+pub mod conversation;
 mod docs;
 mod file;
 mod github;
@@ -25,6 +26,7 @@ pub mod hoverable;
 mod index;
 pub mod intelligence;
 pub mod middleware;
+mod project;
 mod query;
 mod quota;
 pub mod repos;
@@ -48,10 +50,6 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
 
     let mut api = Router::new()
         .route("/config", get(config::get).put(config::put))
-        // querying
-        .route("/q", get(query::handle))
-        // autocomplete
-        .route("/autocomplete", get(autocomplete::handle))
         // indexing
         .route("/index", get(index::handle))
         // repo management
@@ -62,11 +60,13 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
             Router::new()
                 .route("/", get(docs::list)) // list all doc providers
                 .route("/search", get(docs::search)) // text search over doc providers
-                .route("/sync", get(docs::sync)) // index a new doc provider
+                .route("/enqueue", get(docs::enqueue)) // enqueue a new url to begin syncing
                 .route("/verify", get(docs::verify)) // verify if a doc url is valid
                 .route("/:id", get(docs::list_one)) // list a doc provider by id
                 .route("/:id", delete(docs::delete)) // delete a doc provider by id
                 .route("/:id/resync", get(docs::resync)) // resync a doc provider by id
+                .route("/:id/status", get(docs::status)) // query sync status of an existing doc source
+                .route("/:id/cancel", get(docs::cancel)) // cancel an index job
                 .route("/:id/search", get(docs::search_with_id)) // search/list sections of a doc provider
                 .route("/:id/list", get(docs::list_with_id)) // list pages of a doc provider
                 .route("/:id/fetch", get(docs::fetch)), // fetch all sections of a page of a doc provider
@@ -83,40 +83,81 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         .route("/token-value", get(intelligence::token_value))
         // misc
         .route("/search/code", get(search::semantic_code))
-        .route("/search/path", get(search::fuzzy_path))
         .route("/file", get(file::handle))
-        .route("/answer", get(answer::answer))
-        .route("/answer/explain", get(answer::explain))
+        .route("/folder", get(file::folder))
+        .route("/projects", get(project::list).post(project::create))
         .route(
-            "/answer/conversations",
-            get(answer::conversations::list).delete(answer::conversations::delete),
+            "/projects/:project_id",
+            get(project::get)
+                .put(project::update)
+                .delete(project::delete),
         )
         .route(
-            "/answer/conversations/:thread_id",
-            get(answer::conversations::thread),
+            "/projects/:project_id/repos",
+            get(project::repo::list).post(project::repo::add),
         )
-        .route("/answer/vote", post(answer::vote))
-        .route("/studio", post(studio::create))
-        .route("/studio", get(studio::list))
         .route(
-            "/studio/:studio_id",
+            "/projects/:project_id/repos/",
+            delete(project::repo::delete).put(project::repo::put),
+        )
+        .route(
+            "/projects/:project_id/docs",
+            get(project::doc::list).post(project::doc::add),
+        )
+        .route(
+            "/projects/:project_id/docs/:doc_id",
+            delete(project::doc::delete),
+        )
+        .route(
+            "/projects/:project_id/conversations",
+            get(conversation::list),
+        )
+        .route(
+            "/projects/:project_id/conversations/:conversation_id",
+            get(conversation::get).delete(conversation::delete),
+        )
+        .route("/projects/:project_id/q", get(query::handle))
+        .route(
+            "/projects/:project_id/autocomplete",
+            get(autocomplete::handle),
+        )
+        .route("/projects/:project_id/search/path", get(search::fuzzy_path))
+        .route("/projects/:project_id/answer/vote", post(answer::vote))
+        .route("/projects/:project_id/answer", get(answer::answer))
+        .route("/projects/:project_id/answer/explain", get(answer::explain))
+        .route("/projects/:project_id/studios", post(studio::create))
+        .route("/projects/:project_id/studios", get(studio::list))
+        .route(
+            "/projects/:project_id/studios/:studio_id",
             get(studio::get).patch(studio::patch).delete(studio::delete),
         )
-        .route("/studio/import", post(studio::import))
-        .route("/studio/:studio_id/generate", get(studio::generate))
-        .route("/studio/:studio_id/diff", get(studio::diff))
-        .route("/studio/:studio_id/diff/apply", post(studio::diff_apply))
-        .route("/studio/:studio_id/snapshots", get(studio::list_snapshots))
+        .route("/projects/:project_id/studios/import", post(studio::import))
         .route(
-            "/studio/:studio_id/snapshots/:snapshot_id",
+            "/projects/:project_id/studios/:studio_id/generate",
+            get(studio::generate),
+        )
+        .route(
+            "/projects/:project_id/studios/:studio_id/diff",
+            get(studio::diff),
+        )
+        .route(
+            "/projects/:project_id/studios/:studio_id/diff/apply",
+            post(studio::diff_apply),
+        )
+        .route(
+            "/projects/:project_id/studios/:studio_id/snapshots",
+            get(studio::list_snapshots),
+        )
+        .route(
+            "/projects/:project_id/studios/:studio_id/snapshots/:snapshot_id",
             delete(studio::delete_snapshot),
         )
         .route(
-            "/studio/file-token-count",
+            "/projects/:project_id/studios/file-token-count",
             post(studio::get_file_token_count),
         )
         .route(
-            "/studio/doc-file-token-count",
+            "/projects/:project_id/studios/doc-file-token-count",
             post(studio::get_doc_file_token_count),
         )
         .route("/template", post(template::create))
@@ -354,4 +395,8 @@ async fn health(State(app): State<Application>) {
     // panic is fine here, we don't need exact reporting of
     // subsystem checks at this stage
     app.semantic.health_check().await.unwrap()
+}
+
+fn no_user_id() -> Error {
+    Error::user("didn't have user ID")
 }

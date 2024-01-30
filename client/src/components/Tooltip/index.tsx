@@ -1,110 +1,61 @@
-import React, { PropsWithChildren, useEffect, useRef, useState } from 'react';
+import React, { PropsWithChildren, useRef } from 'react';
 import Tippy, { TippyProps } from '@tippyjs/react/headless';
-import {
-  TooltipTailTop,
-  TooltipTailBottom,
-  TooltipTailLeft,
-  TooltipTailRight,
-} from '../../icons';
+import useShortcuts from '../../hooks/useShortcuts';
 
 type Props = {
   text: string | React.ReactNode;
+  shortcut?: string[];
   placement: TippyProps['placement'];
   delay?: TippyProps['delay'];
+  wrapperClassName?: string;
+  variant?: 'contrast' | 'standard';
+  appendTo?: TippyProps['appendTo'];
 };
-
-const positionsMap = {
-  auto: 'flex-col-reverse items-start',
-  'auto-start': 'flex-col-reverse items-start',
-  'auto-end': 'flex-col-reverse items-end',
-  'top-start': 'flex-col-reverse items-start',
-  top: ' flex-col-reverse items-center',
-  'top-end': 'flex-col-reverse items-end',
-  'bottom-start': 'flex-col items-start',
-  bottom: 'flex-col items-center',
-  'bottom-end': 'flex-col items-end',
-  left: 'flex-row-reverse items-center',
-  'left-start': 'flex-row-reverse items-center',
-  'left-end': 'flex-row-reverse items-center',
-  right: 'items-center',
-  'right-start': 'items-center',
-  'right-end': 'items-center',
-};
-
-const getTail = (orientation: Props['placement']) => {
-  let tooltip;
-  switch (orientation) {
-    case 'left':
-    case 'left-start':
-      tooltip = <TooltipTailRight raw />;
-      break;
-    case 'bottom':
-    case 'bottom-start':
-    case 'bottom-end':
-      tooltip = <TooltipTailTop raw />;
-      break;
-    case 'right':
-    case 'right-start':
-      tooltip = <TooltipTailLeft raw />;
-      break;
-    case 'top':
-    case 'top-start':
-    case 'top-end':
-      tooltip = <TooltipTailBottom raw />;
-      break;
-  }
-
-  return tooltip;
-};
-
-const tailWidth = 12;
 
 const Tooltip = ({
   text,
   placement,
   children,
   delay,
+  shortcut,
+  wrapperClassName,
+  variant = 'contrast',
+  appendTo,
 }: PropsWithChildren<Props>) => {
   const ref = useRef<HTMLDivElement>(null);
-  const [childCenter, setChildCenter] = useState(10);
-  useEffect(() => {
-    setChildCenter((ref.current?.clientWidth || 20) / 2);
-  }, [children]);
+  const shortcutSymbols = useShortcuts(shortcut);
+
   return (
     <Tippy
       placement={placement}
       delay={delay}
+      appendTo={appendTo}
       render={(attrs) => (
         <span
           {...attrs}
-          className={`flex w-fit group-custom-hover:visible z-50 ${
-            positionsMap[attrs['data-placement']]
-          }`}
+          className={`inline-flex items-center gap-1.5 flex-shrink-0 rounded ${
+            variant === 'contrast'
+              ? `w-fit h-6 bg-bg-contrast text-label-contrast pl-1.5 ${
+                  shortcutSymbols ? 'pr-0.5' : 'pr-1.5'
+                }`
+              : 'bg-bg-shade text-label-base border border-bg-border p-3'
+          } shadow-medium body-mini z-50`}
         >
-          <span
-            className={`text-bg-shade z-40`}
-            style={
-              attrs['data-placement']?.startsWith('top') ||
-              attrs['data-placement']?.startsWith('bottom')
-                ? attrs['data-placement']?.endsWith('start')
-                  ? { marginLeft: childCenter - tailWidth / 2 }
-                  : attrs['data-placement']?.endsWith('end')
-                  ? { marginRight: childCenter - tailWidth / 2 }
-                  : {}
-                : {}
-            }
-          >
-            {getTail(attrs['data-placement'])}
-          </span>
-          <span
-            className={`inline-block w-max px-3 py-2 bg-bg-shade rounded text-center text-label-title text-xs shadow-high`}
-          >
-            {text}
-          </span>
+          {text}
+          {!!shortcutSymbols && (
+            <span
+              className={`inline-flex h-5 px-1 flex-shrink-0 items-center justify-center gap-1 
+              rounded border border-bg-border bg-bg-base shadow-low text-label-base body-mini`}
+            >
+              {shortcutSymbols.join(' ')}
+            </span>
+          )}
         </span>
       )}
     >
-      <div ref={ref}>{children}</div>
+      <div ref={ref} className={wrapperClassName}>
+        {children}
+      </div>
     </Tippy>
   );
 };

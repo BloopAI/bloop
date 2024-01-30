@@ -1,19 +1,21 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 use super::prelude::*;
 use crate::{
-    indexes::{
-        reader::{ContentReader, FileReader, RepoReader},
-        Indexes,
-    },
+    indexes::reader::{ContentReader, FileReader, RepoReader},
     query::{
         execute::{ApiQuery, ExecuteQuery, QueryResult},
         languages, parser,
         parser::{Literal, Target},
     },
+    Application,
 };
 
-use axum::{extract::Query, response::IntoResponse as IntoAxumResponse, Extension};
+use axum::{
+    extract::{Path, Query},
+    response::IntoResponse as IntoAxumResponse,
+    Extension,
+};
 use futures::{stream, StreamExt, TryStreamExt};
 use serde::Serialize;
 
@@ -36,11 +38,13 @@ pub struct AutocompleteParams {
 pub(super) async fn handle(
     Query(mut api_params): Query<ApiQuery>,
     Query(ac_params): Query<AutocompleteParams>,
-    Extension(indexes): Extension<Arc<Indexes>>,
+    Path(project_id): Path<i64>,
+    Extension(app): Extension<Application>,
 ) -> Result<impl IntoAxumResponse> {
     // Override page_size and set to low value
     api_params.page = 0;
-    api_params.page_size = 8;
+
+    api_params.project_id = project_id;
 
     let mut partial_lang = None;
     let mut has_target = false;
@@ -48,6 +52,10 @@ pub(super) async fn handle(
     let queries = parser::parse(&api_params.q)
         .map_err(Error::user)?
         .into_iter()
+        .map(|q| parser::Query {
+            case_sensitive: Some(true),
+            ..q
+        })
         .map(|mut q| {
             let keywords = &["lang:", "path:", "repo:"];
 
@@ -114,17 +122,25 @@ pub(super) async fn handle(
         );
     }
 
+    // NB: This restricts queries in a repo-specific way. This might need to be generalized if
+    // we still use the other autocomplete fields.
+    let repo_queries = api_params
+        .restrict_repo_queries(queries.clone(), &app)
+        .await?;
+
+    let restricted_queries = api_params.restrict_queries(queries.clone(), &app).await?;
+
     let mut engines = vec![];
     if ac_params.content {
-        engines.push(ContentReader.execute(&indexes.file, &queries, &api_params));
+        engines.push(ContentReader.execute(&app.indexes.file, &restricted_queries, &api_params));
     }
 
     if ac_params.repo {
-        engines.push(RepoReader.execute(&indexes.repo, &queries, &api_params));
+        engines.push(RepoReader.execute(&app.indexes.repo, &repo_queries, &api_params));
     }
 
     if ac_params.file {
-        engines.push(FileReader.execute(&indexes.file, &queries, &api_params));
+        engines.push(FileReader.execute(&app.indexes.file, &restricted_queries, &api_params));
     }
 
     let (langs, list) = stream::iter(engines)

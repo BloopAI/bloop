@@ -5,6 +5,7 @@ use crate::webserver::intelligence::{get_token_info, TokenInfoRequest};
 use anyhow::{Context, Result};
 use tracing::log::{debug, info, warn};
 
+use super::exchange::RepoPath;
 use super::prompts::symbol_classification_prompt;
 
 pub struct ChunkWithHoverableSymbols {
@@ -30,14 +31,14 @@ impl Agent {
             .app
             .indexes
             .file
-            .by_path(&self.repo_ref, &chunk.path, None)
+            .by_path(&chunk.repo_path.repo, &chunk.repo_path.path, None)
             .await?
-            .with_context(|| format!("failed to read path: {}", &chunk.path))?;
+            .with_context(|| format!("failed to read path: {}", &chunk.repo_path))?;
 
         let graph = document
             .symbol_locations
             .scope_graph()
-            .with_context(|| format!("no scope graph for file: {}", &chunk.path))?;
+            .with_context(|| format!("no scope graph for file: {}", &chunk.repo_path))?;
 
         let hoverable_ranges = document
             .hoverable_ranges()
@@ -63,13 +64,13 @@ impl Agent {
                     ..(range.end.byte - chunk.start_byte.unwrap_or_default())]
                     .to_string(),
                 token_info_request: TokenInfoRequest {
-                    relative_path: chunk.path.clone(),
-                    repo_ref: self.repo_ref.display_name(),
+                    relative_path: chunk.repo_path.path.clone(),
+                    repo_ref: chunk.repo_path.repo.indexed_name(),
                     branch: None,
                     start: range.start.byte,
                     end: range.end.byte,
                 },
-                path: chunk.path.clone(),
+                repo_path: chunk.repo_path.clone(),
             })
             .collect::<Vec<_>>();
 
@@ -100,7 +101,10 @@ impl Agent {
                     .data
                     .iter()
                     .map(|occurrence| CodeChunk {
-                        path: filename.clone(),
+                        repo_path: RepoPath {
+                            repo: file_symbols.repo.clone(),
+                            path: filename.clone(),
+                        },
                         alias: 0,
                         snippet: occurrence.snippet.data.clone(),
                         start_line: occurrence.snippet.line_range.start,
@@ -159,7 +163,7 @@ impl Agent {
 
                 format!(
                     "```{}\n{}```\n\n{}",
-                    c.path.clone(),
+                    c.repo_path,
                     c.snippet.clone(),
                     symbols_string
                 )
@@ -178,6 +182,7 @@ impl Agent {
             .clone()
             .model("gpt-4-0613")
             .temperature(0.0)
+            .max_tokens(5)
             .chat(&messages, None)
             .await
         {
@@ -212,7 +217,11 @@ impl Agent {
                         .app
                         .indexes
                         .file
-                        .by_path(&self.repo_ref, &symbol_metadata.path, None)
+                        .by_path(
+                            &symbol_metadata.repo_path.repo,
+                            &symbol_metadata.repo_path.path,
+                            None,
+                        )
                         .await
                         .unwrap()
                         .unwrap();
@@ -226,13 +235,17 @@ impl Agent {
                         self.app
                             .indexes
                             .file
-                            .by_repo(&self.repo_ref, associated_langs.iter(), None)
+                            .by_repo(
+                                &symbol_metadata.repo_path.repo,
+                                associated_langs.iter(),
+                                None,
+                            )
                             .await
                     };
 
                     get_token_info(
                         symbol_metadata.token_info_request,
-                        &self.repo_ref,
+                        &symbol_metadata.repo_path.repo,
                         self.app.indexes.clone(),
                         &document,
                         &all_docs,
@@ -242,7 +255,10 @@ impl Agent {
                     .await
                     .unwrap()
                     .into_iter()
-                    .filter(|file_symbol| file_symbol.file != symbol_metadata.path)
+                    .filter(|file_symbol| {
+                        file_symbol.file != symbol_metadata.repo_path.path
+                            || file_symbol.repo != symbol_metadata.repo_path.repo
+                    })
                     .collect::<Vec<_>>()
                 },
             }),
@@ -288,10 +304,11 @@ impl Agent {
             .take(MAX_CHUNKS)
             .map(|c| {
                 let chunk = CodeChunk {
-                    alias: self.get_path_alias(c.path.as_str()),
+                    alias: self.get_path_alias(&c.repo_path),
                     ..c.clone()
                 };
-                self.exchanges
+                self.conversation
+                    .exchanges
                     .last_mut()
                     .unwrap()
                     .code_chunks
@@ -307,7 +324,7 @@ impl Agent {
 pub struct HoverableSymbol {
     pub name: String,
     pub token_info_request: TokenInfoRequest,
-    pub path: String,
+    pub repo_path: RepoPath,
 }
 pub struct Symbol {
     pub name: String,

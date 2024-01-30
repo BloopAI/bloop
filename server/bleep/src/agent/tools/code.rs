@@ -1,39 +1,42 @@
 use anyhow::Result;
-use tracing::{debug, info, instrument, trace};
+use tracing::{debug, info, trace};
 
 use crate::{
     agent::{
-        exchange::{CodeChunk, SearchStep, Update},
-        prompts, Agent,
+        exchange::{CodeChunk, RepoPath, SearchStep, Update},
+        prompts, Agent, AgentSemanticSearchParams,
     },
     analytics::EventData,
     llm_gateway,
+    query::parser::Literal,
     semantic::SemanticSearchParams,
 };
 
 impl Agent {
-    #[instrument(skip(self))]
-    pub async fn code_search(&mut self, query: &String) -> Result<String> {
+    pub async fn code_search(&mut self, query: &str) -> Result<String> {
         const CODE_SEARCH_LIMIT: u64 = 10;
         const MINIMUM_RESULTS: usize = CODE_SEARCH_LIMIT as usize / 2;
 
         self.update(Update::StartStep(SearchStep::Code {
-            query: query.clone(),
+            query: query.to_owned(),
             response: String::new(),
         }))
         .await?;
 
+        let relevant_repos = self.relevant_repos();
+
         let mut results = self
-            .semantic_search(
-                query.into(),
-                vec![],
-                SemanticSearchParams {
+            .semantic_search(AgentSemanticSearchParams {
+                query: Literal::from(&query.to_string()),
+                paths: vec![],
+                repos: relevant_repos.clone(),
+                semantic_params: SemanticSearchParams {
                     limit: CODE_SEARCH_LIMIT,
                     offset: 0,
                     threshold: 0.3,
                     exact_match: false,
                 },
-            )
+            })
             .await?;
 
         debug!("returned {} results", results.len());
@@ -45,16 +48,17 @@ impl Agent {
             if !hyde_docs.is_empty() {
                 let hyde_doc = hyde_docs.first().unwrap().into();
                 let hyde_results = self
-                    .semantic_search(
-                        hyde_doc,
-                        vec![],
-                        SemanticSearchParams {
+                    .semantic_search(AgentSemanticSearchParams {
+                        query: hyde_doc,
+                        paths: vec![],
+                        repos: relevant_repos,
+                        semantic_params: SemanticSearchParams {
                             limit: CODE_SEARCH_LIMIT,
                             offset: 0,
                             threshold: 0.3,
                             exact_match: false,
                         },
-                    )
+                    })
                     .await?;
 
                 debug!("returned {} HyDE results", results.len());
@@ -68,16 +72,22 @@ impl Agent {
         let mut chunks = results
             .into_iter()
             .map(|chunk| {
-                let relative_path = chunk.relative_path;
+                let repo = chunk.repo_ref;
+                let path = chunk.relative_path;
+
+                let repo_path = RepoPath {
+                    repo,
+                    path: path.clone(),
+                };
 
                 CodeChunk {
-                    path: relative_path.clone(),
-                    alias: self.get_path_alias(&relative_path),
+                    alias: self.get_path_alias(&repo_path),
                     snippet: chunk.text,
                     start_line: chunk.start_line as usize,
                     end_line: chunk.end_line as usize,
                     start_byte: Some(chunk.start_byte as usize),
                     end_byte: Some(chunk.end_byte as usize),
+                    repo_path,
                 }
             })
             .collect::<Vec<_>>();
@@ -85,7 +95,8 @@ impl Agent {
         chunks.sort_by(|a, b| a.alias.cmp(&b.alias).then(a.start_line.cmp(&b.start_line)));
 
         for chunk in chunks.iter().filter(|c| !c.is_empty()) {
-            self.exchanges
+            self.conversation
+                .exchanges
                 .last_mut()
                 .unwrap()
                 .code_chunks
@@ -105,7 +116,7 @@ impl Agent {
             .join("\n\n");
 
         self.update(Update::ReplaceStep(SearchStep::Code {
-            query: query.clone(),
+            query: query.to_string(),
             response: response.clone(),
         }))
         .await?;

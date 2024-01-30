@@ -1,15 +1,6 @@
 import IconWrapper from './Wrapper';
 
 const RawIcon = (
-  <svg viewBox="0 0 15 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path
-      d="M13.8758 7.25412C15.2416 8.01736 15.2416 9.98264 13.8758 10.7459L2.97564 16.8371C1.6425 17.5821 -7.4827e-07 16.6184 -6.81515e-07 15.0913L-5.24537e-07 11.5L4.9215 9.46196C5.33309 9.29151 5.33309 8.70849 4.9215 8.53804L-3.0598e-07 6.5L-1.49001e-07 2.90875C-8.22461e-08 1.38157 1.6425 0.41787 2.97564 1.16286L13.8758 7.25412Z"
-      fill="currentColor"
-    />
-  </svg>
-);
-
-const BoxedIcon = (
   <svg
     width="20"
     height="20"
@@ -24,4 +15,4 @@ const BoxedIcon = (
   </svg>
 );
 
-export default IconWrapper(RawIcon, BoxedIcon);
+export default IconWrapper(RawIcon);

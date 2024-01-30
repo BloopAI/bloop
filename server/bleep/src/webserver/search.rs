@@ -7,7 +7,9 @@ use crate::{
         parser::{self},
     },
     semantic::{self, Semantic},
+    Application,
 };
+use axum::extract::Path;
 use tracing::error;
 
 pub(super) async fn semantic_code(
@@ -26,8 +28,11 @@ pub(super) async fn semantic_code(
     }
 }
 
+#[axum::debug_handler]
 pub(super) async fn fuzzy_path(
+    Path(project_id): Path<i64>,
     Query(args): Query<ApiQuery>,
+    Extension(app): Extension<Application>,
     Extension(indexes): Extension<Arc<Indexes>>,
 ) -> Result<impl IntoResponse> {
     let q = parser::parse_nl(&args.q).map_err(|err| {
@@ -41,17 +46,25 @@ pub(super) async fn fuzzy_path(
         Error::new(ErrorKind::UpstreamService, "Query has no target")
     })?;
 
-    let repo_ref = args.repo_ref.as_ref().ok_or_else(|| {
-        error!("No repo_ref provided");
-        Error::new(ErrorKind::UpstreamService, "No repo_ref provided")
-    })?;
+    let repo_refs = sqlx::query! {
+        "SELECT repo_ref
+        FROM project_repos
+        WHERE project_id = ?",
+        project_id,
+    }
+    .fetch_all(&*app.sql)
+    .await?
+    .into_iter()
+    .map(|row| row.repo_ref)
+    .filter_map(|rr| rr.parse().ok());
 
     let data = indexes
         .file
         .skim_fuzzy_path_match(
-            repo_ref,
+            repo_refs,
             target,
             q.first_branch().as_deref(),
+            std::iter::empty(),
             args.page_size,
         )
         .await

@@ -168,6 +168,24 @@ impl<'a> Query<'a> {
     }
 }
 
+impl<'a> Query<'a> {
+    /// Get the `repo` value for this query as a plain string.
+    pub fn repo_str(&self) -> Option<String> {
+        self.repo
+            .as_ref()
+            .and_then(Literal::as_plain)
+            .map(Cow::into_owned)
+    }
+
+    /// Get the `branch` value for this query as a plain string.
+    pub fn branch_str(&self) -> Option<String> {
+        self.branch
+            .as_ref()
+            .and_then(Literal::as_plain)
+            .map(Cow::into_owned)
+    }
+}
+
 impl<'a> Target<'a> {
     /// Get the inner literal for this target, regardless of the variant.
     pub fn literal_mut(&'a mut self) -> &mut Literal<'a> {
@@ -312,14 +330,6 @@ impl<'a> Literal<'a> {
         let lhs = self.regex_str();
         let rhs = rhs.regex_str();
         Literal::Regex(format!("{lhs}\\s+{rhs}").into())
-    }
-
-    /// This drops position information, as it's not intelligible after the merge
-    #[allow(dead_code)]
-    fn join_as_plain(self, rhs: Self) -> Option<Literal<'static>> {
-        let lhs = self.as_plain()?;
-        let rhs = rhs.as_plain()?;
-        Some(Literal::Plain(format!("{lhs} {rhs}").into()))
     }
 
     /// Convert this literal into a regex string.

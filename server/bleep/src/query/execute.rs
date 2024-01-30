@@ -12,6 +12,7 @@ use crate::{
     },
     repo::RepoRef,
     snippet::{HighlightedString, SnippedFile, Snipper},
+    Application,
 };
 
 use anyhow::{bail, Result};
@@ -45,9 +46,14 @@ pub struct ApiQuery {
     /// A query written in the bloop query language
     pub q: String,
 
-    /// Optional RepoRef to constrain the search. If not provided, search all repos
-    #[serde(default)]
-    pub repo_ref: Option<RepoRef>,
+    /// Project ID.
+    // NB: We implement methods directly on this struct, which need access to the project ID
+    // associated with this request. This doesn't fit our API; we obtain the project ID via the
+    // router and not via URL query parameters. The abstraction here likely needs to be reworked a
+    // bit, as this can be improved. For now, we just add a skipped field, and manually set it
+    // after deserialization. TODO: Fix this.
+    #[serde(skip)]
+    pub project_id: i64,
 
     #[serde(default)]
     pub page: usize,
@@ -68,11 +74,11 @@ pub struct ApiQuery {
 
     /// The number of lines of context in the snippet before the search result
     #[serde(alias = "cb", default = "default_context")]
-    context_before: usize,
+    pub context_before: usize,
 
     /// The number of lines of context in the snippet after the search result
     #[serde(alias = "ca", default = "default_context")]
-    context_after: usize,
+    pub context_after: usize,
 }
 
 #[derive(Serialize)]
@@ -150,7 +156,7 @@ pub struct RepositoryResultData {
 pub struct FileResultData {
     repo_name: String,
     relative_path: HighlightedString,
-    repo_ref: String,
+    repo_ref: RepoRef,
     lang: Option<String>,
     branches: String,
     indexed: bool,
@@ -161,7 +167,7 @@ impl FileResultData {
     pub fn new(
         repo_name: String,
         relative_path: String,
-        repo_ref: String,
+        repo_ref: RepoRef,
         lang: Option<String>,
         branches: String,
         indexed: bool,
@@ -226,11 +232,113 @@ pub trait ExecuteQuery {
 }
 
 impl ApiQuery {
-    pub async fn query(self: Arc<Self>, indexes: Arc<Indexes>) -> Result<QueryResponse> {
-        let query = self.q.clone();
-        let compiled = parser::parse(&query)?;
-        tracing::debug!("compiled query as {compiled:?}");
-        self.query_with(indexes, compiled).await
+    pub async fn query(self: Arc<Self>, app: &Application) -> Result<QueryResponse> {
+        let raw_query = self.q.clone();
+        let queries = self
+            .restrict_queries(parser::parse(&raw_query)?, app)
+            .await?;
+        tracing::debug!("compiled query as {queries:?}");
+        self.query_with(Arc::clone(&app.indexes), queries).await
+    }
+
+    /// This restricts a set of input parser queries.
+    ///
+    /// We trim down the input by:
+    ///
+    /// 1. Discarding all queries that reference repos not in the queried project
+    /// 2. Regenerating more specific queries for those without repo restrictions, such that there
+    ///    is a new query generated per repo that exists in the project.
+    ///
+    /// The idea here is to allow us to restrict the possible input space of queried documents to
+    /// be more specific as required by the project state.
+    ///
+    /// The `subset` flag indicates whether repo name matching is whole-string, or whether the
+    /// string must only be a substring of an existing repo. This is useful in autocomplete
+    /// scenarios, where we want to restrict queries such that they are not fully typed out.
+    pub async fn restrict_queries<'a>(
+        &self,
+        queries: impl IntoIterator<Item = parser::Query<'a>>,
+        app: &Application,
+    ) -> Result<Vec<parser::Query<'a>>> {
+        let repo_branches = sqlx::query! {
+            "SELECT repo_ref, branch
+            FROM project_repos
+            WHERE project_id = ?",
+            self.project_id,
+        }
+        .fetch_all(&*app.sql)
+        .await?
+        .into_iter()
+        .map(|row| {
+            (
+                row.repo_ref.parse::<RepoRef>().unwrap().indexed_name(),
+                row.branch,
+            )
+        })
+        .collect::<HashMap<_, _>>();
+
+        let mut out = Vec::new();
+
+        for q in queries {
+            if let Some(r) = q.repo_str() {
+                // The branch that this project has loaded this repo with.
+                let project_branch = repo_branches.get(&r).and_then(Option::as_ref);
+
+                // If the branch doesn't match what we expect, drop the query.
+                if q.branch_str().as_ref() == project_branch {
+                    out.push(q);
+                }
+            } else {
+                for (r, b) in &repo_branches {
+                    out.push(parser::Query {
+                        repo: Some(parser::Literal::from(r)),
+                        branch: b.as_ref().map(parser::Literal::from),
+                        ..q.clone()
+                    });
+                }
+            }
+        }
+
+        Ok(out)
+    }
+
+    /// This restricts a set of input repo-only queries.
+    ///
+    /// This is useful for autocomplete queries, which are effectively just `repo:foo`, where the
+    /// repo name may be partially written.
+    pub async fn restrict_repo_queries<'a>(
+        &self,
+        queries: impl IntoIterator<Item = parser::Query<'a>>,
+        app: &Application,
+    ) -> Result<Vec<parser::Query<'a>>> {
+        let repo_refs = sqlx::query! {
+            "SELECT repo_ref
+            FROM project_repos
+            WHERE project_id = ?",
+            self.project_id,
+        }
+        .fetch_all(&*app.sql)
+        .await?
+        .into_iter()
+        .map(|row| row.repo_ref.parse::<RepoRef>().unwrap().indexed_name())
+        .collect::<Vec<_>>();
+
+        let mut out = Vec::new();
+
+        for q in queries {
+            if let Some(r) = q.repo_str() {
+                for m in repo_refs.iter().filter(|r2| r2.contains(&r)) {
+                    out.push(parser::Query {
+                        repo: Some(parser::Literal::from(m)),
+                        ..Default::default()
+                    });
+                }
+            }
+        }
+
+        out.dedup();
+
+        Ok(out)
     }
 
     pub async fn query_with(
@@ -543,7 +651,7 @@ impl ExecuteQuery for RepoReader {
             .iter()
             .filter(|q| self.query_matches(q))
             .filter_map(|q| {
-                let regex_str = q.path.as_ref()?.regex_str();
+                let regex_str = q.repo.as_ref()?.regex_str();
                 let case_insensitive = !q.is_case_sensitive();
                 let regex = RegexBuilder::new(&regex_str)
                     .case_insensitive(case_insensitive)

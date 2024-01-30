@@ -1,6 +1,5 @@
-import React, { ReactElement } from 'react';
-import { DocShortType, SearchStepType } from './api';
-import { RepoSource } from './index';
+import React, { MemoExoticComponent, ReactElement } from 'react';
+import { DocShortType, HistoryConversationTurn, SearchStepType } from './api';
 
 export enum MenuItemType {
   DEFAULT = 'default',
@@ -78,6 +77,7 @@ export type RepoUi = RepoType & {
   shortName: string;
   folderName: string;
   alreadySynced?: boolean;
+  isSyncing?: boolean;
 };
 
 export type CodeStudioShortType = {
@@ -88,62 +88,68 @@ export type CodeStudioShortType = {
   most_common_ext: string;
 };
 
-export enum FullResultModeEnum {
-  PAGE,
-  SIDEBAR,
-  MODAL,
-}
-
-export enum SearchType {
-  REGEX,
-  NL,
-}
-
-export enum TabType {
-  REPO = 'repo',
+export enum TabTypesEnum {
+  FILE = 'file',
+  CHAT = 'chat',
   STUDIO = 'studio',
-  HOME = 'home',
+  DOC = 'doc',
 }
 
-export type RepoTabType = {
+export type FileTabType = {
+  type: TabTypesEnum.FILE;
   key: string;
-  name: string;
-  repoName: string;
+  isTemp?: boolean;
+  path: string;
   repoRef: string;
-  source: RepoSource;
   branch?: string | null;
-  navigationHistory: NavigationItem[];
-  type: TabType.REPO;
+  scrollToLine?: string;
+  tokenRange?: string;
+  studioId?: string;
+  initialRanges?: [number, number][];
+  isFileInContext?: boolean;
 };
 
-export type HomeTabType = {
+export type ChatTabType = {
+  type: TabTypesEnum.CHAT;
   key: string;
-  name: string;
-  type: TabType.HOME;
+  conversationId?: string;
+  title?: string;
+  initialQuery?: {
+    path: string;
+    lines: [number, number];
+    repoRef: string;
+    branch?: string | null;
+  };
 };
 
 export type StudioTabType = {
+  type: TabTypesEnum.STUDIO;
   key: string;
-  name: string;
-  type: TabType.STUDIO;
+  studioId: string;
+  title?: string;
+  snapshot?: HistoryConversationTurn;
 };
 
-export type UITabType = RepoTabType | HomeTabType | StudioTabType;
-
-export type TabHistoryType = {
-  tabKey: string;
-  history: SearchHistoryItem[];
+export type DocTabType = {
+  type: TabTypesEnum.DOC;
+  key: string;
+  docId: string;
+  title?: string;
+  favicon?: string;
+  relativeUrl: string;
+  studioId?: string;
+  initialSections?: string[];
+  isDocInContext?: boolean;
 };
 
-export enum ReposFilter {
-  ALL,
-  LOCAL,
-  GITHUB,
-}
+export type TabType = FileTabType | ChatTabType | StudioTabType | DocTabType;
 
-export type SearchHistoryItem =
-  | string
-  | { query: string; searchType: SearchType; timestamp?: string };
+export type DraggableTabItem = {
+  id: string;
+  index: number;
+  t: TabType;
+  side: 'left' | 'right';
+};
 
 export type ConversationMessage = {
   author: 'user' | 'server';
@@ -171,6 +177,7 @@ export enum ChatMessageAuthor {
 
 export enum ParsedQueryTypeEnum {
   TEXT = 'text',
+  REPO = 'repo',
   PATH = 'path',
   LANG = 'lang',
   BRANCH = 'branch',
@@ -262,26 +269,6 @@ export type OpenChatHistoryItem = {
   threadId: string;
 };
 
-export interface NavigationItem {
-  type:
-    | 'search'
-    | 'repo'
-    | 'full-result'
-    | 'home'
-    | 'conversation-result'
-    | 'article-response';
-  query?: string;
-  repo?: string;
-  path?: string;
-  page?: number;
-  loaded?: boolean;
-  isInitial?: boolean;
-  searchType?: SearchType;
-  pathParams?: Record<string, string>;
-  threadId?: string;
-  recordId?: number;
-}
-
 export type EnvConfig = {
   analytics_data_plane?: string;
   analytics_key_fe?: string;
@@ -297,6 +284,7 @@ export type EnvConfig = {
   bloop_user_profile?: {
     prompt_guide?: string;
     allow_session_recordings?: boolean;
+    is_tutorial_finished?: boolean;
   };
   credentials_upgrade?: boolean;
 };
@@ -364,6 +352,7 @@ export enum StudioConversationMessageAuthor {
 export type StudioConversationMessage = {
   author: StudioConversationMessageAuthor;
   message: string;
+  isLoading?: boolean;
   error?: string;
 };
 
@@ -458,4 +447,182 @@ export type StudioContextDoc = {
   absolute_url: string;
   ranges: string[];
   hidden: boolean;
+};
+
+export type CommandBarItemCustomType = {
+  key: string;
+  Component: MemoExoticComponent<any>;
+  componentProps: Record<string, any>;
+  focusedItemProps?: Record<string, any>;
+};
+
+export type CommandBarItemGeneralType = {
+  Icon: (props: {
+    raw?: boolean | undefined;
+    sizeClassName?: string | undefined;
+    className?: string | undefined;
+  }) => JSX.Element;
+  label: string;
+  shortcut?: string[];
+  id: string;
+  key: string;
+  parent?: CommandBarStepType;
+  footerHint: string | ReactElement;
+  closeOnClick?: boolean;
+  footerBtns: {
+    label: string;
+    shortcut?: string[];
+    action?: () => void | Promise<void>;
+  }[];
+  iconContainerClassName?: string;
+  onClick?: () => void;
+};
+
+export type CommandBarItemInvisibleType = {
+  footerHint: string | ReactElement;
+  footerBtns: {
+    label: string;
+    shortcut?: string[];
+    action?: () => void | Promise<void>;
+  }[];
+  focusedItemProps?: Record<string, any>;
+};
+
+export type CommandBarItemType =
+  | CommandBarItemCustomType
+  | CommandBarItemGeneralType
+  | CommandBarItemInvisibleType;
+
+export type CommandBarSectionType = {
+  label?: string;
+  key: string;
+  items: (CommandBarItemGeneralType | CommandBarItemCustomType)[];
+};
+
+export type CommandBarStepType = {
+  id: string;
+  label: string;
+  parent?: CommandBarStepType;
+};
+
+export type CommandBarActiveStepType =
+  | AddToStudioStepType
+  | SearchFilesStepType
+  | SearchDocsStepType
+  | {
+      id: Exclude<
+        CommandBarStepEnum,
+        | CommandBarStepEnum.ADD_TO_STUDIO
+        | CommandBarStepEnum.SEARCH_FILES
+        | CommandBarStepEnum.SEARCH_DOCS
+      >;
+      data?: Record<string, any>;
+    };
+
+export type AddFileToStudioDataType = {
+  path: string;
+  repoRef: string;
+  branch?: string | null;
+};
+
+export type AddDocToStudioDataType = {
+  docId: string;
+  relativeUrl: string;
+  title?: string;
+  favicon?: string;
+};
+
+export type AddToStudioStepType = {
+  id: CommandBarStepEnum.ADD_TO_STUDIO;
+  data: AddFileToStudioDataType | AddDocToStudioDataType;
+};
+
+export type SearchFilesStepType = {
+  id: CommandBarStepEnum.SEARCH_FILES;
+  data?: { studioId: string };
+};
+
+export type SearchDocsStepType = {
+  id: CommandBarStepEnum.SEARCH_DOCS;
+  data: { studioId?: string; docId: string };
+};
+
+export enum CommandBarStepEnum {
+  INITIAL = 'initial',
+  MANAGE_REPOS = 'manage_repos',
+  ADD_NEW_REPO = 'add_new_repo',
+  PRIVATE_REPOS = 'private_repos',
+  PUBLIC_REPOS = 'public_repos',
+  LOCAL_REPOS = 'local_repos',
+  DOCS = 'docs',
+  REPO_SETTINGS = 'repo_settings',
+  CREATE_PROJECT = 'create_project',
+  TOGGLE_THEME = 'toggle_theme',
+  SEARCH_FILES = 'search_files',
+  SEARCH_DOCS = 'search_docs',
+  ADD_TO_STUDIO = 'add_to_studio',
+}
+
+export enum SettingSections {
+  GENERAL,
+  PREFERENCES,
+  SUBSCRIPTION,
+}
+
+export enum ProjectSettingSections {
+  GENERAL,
+  TEMPLATES,
+}
+
+export type SettingsTypesSections = SettingSections | ProjectSettingSections;
+
+type InputEditorTextContent = {
+  type: 'text';
+  text: string;
+};
+
+type InputEditorMentionContent = {
+  type: 'mention';
+  attrs: {
+    type: 'lang' | 'dir' | 'file' | 'repo';
+    id: string;
+    display: string;
+  };
+};
+
+export type InputEditorContent =
+  | InputEditorTextContent
+  | InputEditorMentionContent;
+
+export type InputValueType = {
+  parsed: ParsedQueryType[];
+  plain: string;
+};
+
+export type ToastType = {
+  id: string;
+  type: 'default' | 'error';
+  title: string;
+  text: string | ReactElement;
+  Icon?: (props: {
+    raw?: boolean | undefined;
+    sizeClassName?: string | undefined;
+    className?: string | undefined;
+  }) => JSX.Element;
+};
+
+export type RepoIndexingStatusType = {
+  status: SyncStatus;
+  percentage?: string;
+  branch?: string;
+};
+
+export type IndexingStatusType = Record<string, RepoIndexingStatusType>;
+
+export type OnboardingStateType = {
+  isCommandBarTutorialFinished?: boolean;
+  isChatOpened?: boolean;
+  isFileExplained?: boolean;
+  isCodeExplained?: boolean;
+  isCodeNavigated?: boolean;
 };
