@@ -47,6 +47,8 @@ type Props = TabType & {
   studioId?: string;
   initialRanges?: [number, number][];
   isFileInContext?: boolean;
+  isDocInContext?: boolean;
+  initialSections?: string[];
   conversationId?: string;
   initialQuery?: {
     path: string;
@@ -77,7 +79,9 @@ const TabButton = ({
   isTemp,
   studioId,
   initialRanges,
+  initialSections,
   isFileInContext,
+  isDocInContext,
   conversationId,
   initialQuery,
   relativeUrl,
@@ -167,7 +171,9 @@ const TabButton = ({
           tokenRange,
           studioId,
           initialRanges,
+          initialSections,
           isFileInContext,
+          isDocInContext,
           conversationId,
           initialQuery,
           favicon,
@@ -205,7 +211,9 @@ const TabButton = ({
       tokenRange,
       studioId,
       initialRanges,
+      initialSections,
       isFileInContext,
+      isDocInContext,
       conversationId,
       initialQuery,
       docId,
@@ -224,7 +232,9 @@ const TabButton = ({
     title,
     studioId,
     initialRanges,
+    initialSections,
     isFileInContext,
+    isDocInContext,
     conversationId,
     initialQuery,
   ]);

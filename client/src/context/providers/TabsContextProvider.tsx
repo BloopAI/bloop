@@ -127,7 +127,7 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
             : {
                 ...data,
                 type: TabTypesEnum.DOC,
-                key: data.docId + data.relativeUrl,
+                key: 'doc-' + data.docId + data.relativeUrl,
               };
         if (newTab.type === TabTypesEnum.FILE) {
           updateArrayInStorage(
@@ -139,7 +139,7 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
           newTab.type === TabTypesEnum.CHAT && newTab.conversationId
             ? t.type === TabTypesEnum.CHAT &&
               t.conversationId === newTab.conversationId
-            : t.key === newTab.key ||
+            : (t.key === newTab.key && t.type === newTab.type) ||
               (t.type === TabTypesEnum.FILE && t.isTemp),
         );
         if (!previousTab) {

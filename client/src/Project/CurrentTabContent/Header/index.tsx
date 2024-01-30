@@ -88,7 +88,7 @@ const ProjectHeader = ({ side }: Props) => {
       >
         {tabs.map(({ key, ...t }, i) => (
           <TabButton
-            key={key}
+            key={`${t.type}-${key}`}
             {...t}
             tabKey={key}
             isActive={tab?.key === key}

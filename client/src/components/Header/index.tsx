@@ -75,8 +75,8 @@ const Header = ({ type = 'default' }: Props) => {
             DropdownComponent={ProjectsDropdown}
             dropdownPlacement="bottom-start"
           >
-            <div className="flex px-4 items-center text-left h-10 gap-4 border-r border-bg-border hover:bg-bg-base-hover">
-              <p className="flex-1 body-s-b">
+            <div className="flex px-4 items-center text-left h-10 gap-4 border-r border-bg-border hover:bg-bg-base-hover ellipsis">
+              <p className="flex-1 body-s-b ellipsis">
                 {project?.name || 'Default project'}
               </p>
               <ChevronDownIcon raw sizeClassName="w-3.5 h-3.5" />
