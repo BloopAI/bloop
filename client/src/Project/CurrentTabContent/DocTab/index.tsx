@@ -396,9 +396,13 @@ const DocTab = ({
     <div
       className={`flex flex-col flex-1 h-full overflow-auto ${
         noBorder ? '' : 'border-l border-bg-border'
-      }`}
+      } inline-container`}
     >
-      <div className="w-full h-10 px-4 flex justify-between gap-1 items-center flex-shrink-0 border-b border-bg-border bg-bg-sub">
+      <div
+        className={`w-full px-4 flex gap-1 items-center flex-shrink-0 border-b border-bg-border bg-bg-sub ${
+          !!studio && studioId ? 'wrap-in-md-container' : 'h-10'
+        }`}
+      >
         <div className="flex items-center gap-3 body-s text-label-title ellipsis">
           {favicon ? (
             <img src={favicon} alt={relativeUrl} className="w-4 h-4" />
@@ -406,35 +410,36 @@ const DocTab = ({
             <MagazineIcon sizeClassName="w-4 h-4" />
           )}
           <span className="ellipsis">{title || relativeUrl}</span>
-          {!!studio && studioId && (
-            <>
-              <div className="w-px h-4 bg-bg-border flex-shrink-0" />
-              <Badge
-                text={
-                  selectedSections.length
-                    ? t('# selected section', {
-                        count: selectedSections.length,
-                      })
-                    : t('Whole page')
-                }
-                type="blue-subtle"
-                size="small"
-              />
-              <p
-                className={`select-none ${
-                  tokenCount < 18000 && tokenCount > 1500
-                    ? 'text-yellow'
-                    : tokenCount <= 1500
-                    ? 'text-green'
-                    : 'text-red'
-                } code-mini`}
-              >
-                {humanNumber(tokenCount)}{' '}
-                <Trans count={tokenCount}># tokens</Trans>
-              </p>
-            </>
-          )}
         </div>
+        {!!studio && studioId && (
+          <div className="flex items-center gap-3 body-s">
+            <div className="w-px h-4 bg-bg-border flex-shrink-1 ml-3" />
+            <Badge
+              text={
+                selectedSections.length
+                  ? t('# selected section', {
+                      count: selectedSections.length,
+                    })
+                  : t('Whole page')
+              }
+              type="blue-subtle"
+              size="small"
+            />
+            <p
+              className={`select-none ${
+                tokenCount < 18000 && tokenCount > 1500
+                  ? 'text-yellow'
+                  : tokenCount <= 1500
+                  ? 'text-green'
+                  : 'text-red'
+              } code-mini`}
+            >
+              {humanNumber(tokenCount)}{' '}
+              <Trans count={tokenCount}># tokens</Trans>
+            </p>
+          </div>
+        )}
+        <div className="flex-1" />
         {focusedPanel === side &&
           (studioId && (hasChanges || isEditingSelection) ? (
             <div className="flex items-center gap-3">
@@ -446,6 +451,7 @@ const DocTab = ({
                     onClick={handleEditRanges}
                     shortcut={selectLinesShortcut}
                     title={t('Select sections')}
+                    tooltipClassName="flex-shrink-0"
                   >
                     <Trans>Select sections</Trans>
                   </Button>
@@ -458,6 +464,7 @@ const DocTab = ({
                 onClick={handleCancelStudio}
                 title={t('Cancel')}
                 shortcut={escapeShortcut}
+                tooltipClassName="flex-shrink-0"
               >
                 <Trans>Cancel</Trans>
               </Button>
@@ -467,6 +474,7 @@ const DocTab = ({
                 onClick={handleSubmitToStudio}
                 title={t(isDocInContext ? 'Save changes' : 'Submit')}
                 shortcut={saveShortcut}
+                tooltipClassName="flex-shrink-0"
               >
                 <Trans>{isDocInContext ? 'Save changes' : 'Submit'}</Trans>
               </Button>
@@ -480,6 +488,7 @@ const DocTab = ({
                   onClick={handleEditRanges}
                   shortcut={selectLinesShortcut}
                   title={t('Edit selected sections')}
+                  tooltipClassName="flex-shrink-0"
                 >
                   <Trans>Edit sections</Trans>
                 </Button>

@@ -521,51 +521,54 @@ const FileTab = ({
     <div
       className={`flex flex-col flex-1 h-full overflow-auto ${
         noBorder ? '' : 'border-l border-bg-border'
-      }`}
+      } inline-container`}
       onClick={handleClick}
     >
-      <div className="w-full h-10 px-4 flex justify-between gap-1 items-center flex-shrink-0 border-b border-bg-border bg-bg-sub">
-        <div className="flex items-center gap-3 body-s text-label-title ellipsis">
+      <div
+        className={`w-full px-4 flex gap-1 items-center flex-shrink-0 border-b border-bg-border bg-bg-sub ${
+          !!studio && studioId ? 'wrap-in-sm-container' : 'h-10'
+        }`}
+      >
+        <div className="flex items-center gap-3 body-s text-label-title ellipsis flex-shrink">
           <FileIcon filename={path} noMargin />
           <BreadcrumbsPathContainer
             path={path}
             repoRef={repoRef}
             nonInteractive
           />
-          {!!studio && studioId && (
-            <>
-              <div className="w-px h-4 bg-bg-border flex-shrink-0" />
-              <Badge
-                text={
-                  selectedLines.length
-                    ? selectedLines.length === 1
-                      ? t('Lines # - #', {
-                          start: selectedLines[0][0] + 1,
-                          end: selectedLines[0][1]
-                            ? selectedLines[0][1] + 1
-                            : '',
-                        })
-                      : t('# ranges', { count: selectedLines.length })
-                    : t('Whole file')
-                }
-                type="blue-subtle"
-                size="small"
-              />
-              <p
-                className={`select-none ${
-                  tokenCount < 18000 && tokenCount > 1500
-                    ? 'text-yellow'
-                    : tokenCount <= 1500
-                    ? 'text-green'
-                    : 'text-red'
-                } code-mini`}
-              >
-                {humanNumber(tokenCount)}{' '}
-                <Trans count={tokenCount}># tokens</Trans>
-              </p>
-            </>
-          )}
         </div>
+        {!!studio && studioId && (
+          <div className="flex items-center gap-3 body-s flex-shrink-0">
+            <div className="w-px h-4 bg-bg-border flex-shrink-0 ml-3" />
+            <Badge
+              text={
+                selectedLines.length
+                  ? selectedLines.length === 1
+                    ? t('Lines # - #', {
+                        start: selectedLines[0][0] + 1,
+                        end: selectedLines[0][1] ? selectedLines[0][1] + 1 : '',
+                      })
+                    : t('# ranges', { count: selectedLines.length })
+                  : t('Whole file')
+              }
+              type="blue-subtle"
+              size="small"
+            />
+            <p
+              className={`select-none ${
+                tokenCount < 18000 && tokenCount > 1500
+                  ? 'text-yellow'
+                  : tokenCount <= 1500
+                  ? 'text-green'
+                  : 'text-red'
+              } code-mini flex-shrink-0`}
+            >
+              {humanNumber(tokenCount)}{' '}
+              <Trans count={tokenCount}># tokens</Trans>
+            </p>
+          </div>
+        )}
+        <div className="flex-1" />
         <div className="flex items-center gap-3">
           {focusedPanel === side &&
             (studioId && (hasChanges || isEditingRanges) ? (

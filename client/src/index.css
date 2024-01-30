@@ -587,6 +587,34 @@
       --bloop-head-img: var(--default-light-bloop-head-img);
     }
   }
+
+  .inline-container {
+    container-type: inline-size;
+  }
+
+  @container (max-width: 519px) {
+    .wrap-in-sm-container {
+      @apply flex-wrap py-2 h-auto;
+    }
+  }
+
+  @container (min-width: 520px) {
+    .wrap-in-sm-container {
+      @apply h-10;
+    }
+  }
+
+  @container (max-width: 749px) {
+    .wrap-in-md-container {
+      @apply flex-wrap py-2 h-auto;
+    }
+  }
+
+  @container (min-width: 750px) {
+    .wrap-in-md-container {
+      @apply h-10;
+    }
+  }
 }
 
 body {
