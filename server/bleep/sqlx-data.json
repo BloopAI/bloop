@@ -224,6 +224,36 @@
     },
     "query": "SELECT pr.repo_ref, pr.branch\n            FROM project_repos pr\n            INNER JOIN projects p ON p.id = pr.project_id AND p.user_id = ?"
   },
+  "17d2e9685f222726da591a004925941a8ef1a2d280a7e8e132005c879db20cee": {
+    "describe": {
+      "columns": [
+        {
+          "name": "context",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "doc_context",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "project_id",
+          "ordinal": 2,
+          "type_info": "Int64"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 0
+      }
+    },
+    "query": "SELECT\n            context,\n            doc_context,\n            (SELECT project_id FROM studios WHERE studios.id = studio_snapshots.studio_id) AS project_id\n        FROM studio_snapshots"
+  },
   "26065ed9dd0dfa42b8b943726d85425d0b45b2cafcceb9887ea626040bef9264": {
     "describe": {
       "columns": [
@@ -542,6 +572,16 @@
     },
     "query": "UPDATE studios SET name = ? WHERE id = ?"
   },
+  "4b9781f9d09ff9468d533a162da45c4a0e13d7a58ae0c2afdc590fe6b8fc431e": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "INSERT INTO project_docs (project_id, doc_id)\n                SELECT $1, $2\n                WHERE NOT EXISTS (\n                    SELECT 1 FROM project_docs WHERE project_id = $1 AND doc_id = $2\n                )"
+  },
   "4bf8d04acb2c99669237578467e50ac6822cb46053bced5d7d7a9dc374353e0d": {
     "describe": {
       "columns": [],
@@ -579,30 +619,6 @@
       }
     },
     "query": "INSERT INTO conversations (\n                    thread_id, title, exchanges, project_id, created_at\n                )\n                VALUES (?, ?, ?, ?, strftime('%s', 'now'))\n                RETURNING id"
-  },
-  "4fc7072141dbc26c66bacc951f0d352ece1c8dda0289bd5c06d23fac709064b1": {
-    "describe": {
-      "columns": [
-        {
-          "name": "context",
-          "ordinal": 0,
-          "type_info": "Text"
-        },
-        {
-          "name": "project_id",
-          "ordinal": 1,
-          "type_info": "Int64"
-        }
-      ],
-      "nullable": [
-        false,
-        false
-      ],
-      "parameters": {
-        "Right": 0
-      }
-    },
-    "query": "SELECT\n            context,\n            (SELECT project_id FROM studios WHERE studios.id = studio_snapshots.studio_id) AS project_id\n        FROM studio_snapshots"
   },
   "5128142bf657cfde043a1b53834d40980caa3e9ae5fd6f4d7f30d89be512f105": {
     "describe": {
