@@ -79,16 +79,16 @@ const LeftSidebar = ({}: Props) => {
       className="h-full relative z-10 min-w-[204px] flex-shrink-0 overflow-hidden flex flex-col"
       ref={panelRef}
     >
-      <div className="w-ful flex gap-4 hover:bg-bg-base-hover border-b border-bg-border h-10">
+      <div className="w-ful flex gap-4 hover:bg-bg-base-hover border-b border-bg-border h-10 overflow-hidden">
         {os.type === 'Darwin' ? <span className="w-16 flex-shrink-0" /> : ''}
         <Dropdown
           DropdownComponent={ProjectsDropdown}
           dropdownPlacement="bottom-start"
-          containerClassName="flex-1"
+          containerClassName="flex-1 overflow-hidden"
           appendTo={document.body}
         >
-          <div className="flex-1 flex px-4 items-center text-left h-10 gap-4 border-r border-bg-border">
-            <p className="flex-1 body-s-b">
+          <div className="flex-1 flex px-4 items-center text-left h-10 gap-4 border-r border-bg-border overflow-hidden">
+            <p className="flex-1 body-s-b ellipsis">
               {project?.name || 'Default project'}
             </p>
             <ChevronDownIcon raw sizeClassName="w-3.5 h-3.5" />

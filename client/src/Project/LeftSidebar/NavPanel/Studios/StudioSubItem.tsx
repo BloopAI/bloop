@@ -52,12 +52,12 @@ const StudioSubItem = ({
         isFileInContext: true,
         initialRanges: ranges?.map((r) => [r.start, r.end]),
       });
-    } else if (docId && relativeUrl) {
+    } else if (docId) {
       openNewTab({
         type: TabTypesEnum.DOC,
         studioId,
         title: docTitle,
-        relativeUrl,
+        relativeUrl: relativeUrl || '',
         docId,
         favicon: docFavicon,
         isDocInContext: true,
