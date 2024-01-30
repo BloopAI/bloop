@@ -171,17 +171,20 @@ fn fixup_exchange(exchanges: &mut serde_json::Value, repo_ref: &str) -> Option<(
         }
 
         // Similarly, update `focused_chunk`, if it exists.
-        if let Some(fc) = exchange.get_mut("focused_chunk") {
-            let fc = fc.as_object_mut()?;
-            let file_path = fc.remove("file_path");
+        match exchange.get_mut("focused_chunk") {
+            Some(serde_json::Value::Null) | None => {}
+            Some(serde_json::Value::Object(fc)) => {
+                let file_path = fc.remove("file_path");
 
-            fc.insert(
-                "repo_path".to_owned(),
-                serde_json::json!({
-                    "repo": repo_ref,
-                    "path": file_path,
-                }),
-            );
+                fc.insert(
+                    "repo_path".to_owned(),
+                    serde_json::json!({
+                        "repo": repo_ref,
+                        "path": file_path,
+                    }),
+                );
+            }
+            Some(_) => return None,
         }
 
         // Finally, we can update the search steps.
