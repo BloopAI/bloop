@@ -104,6 +104,10 @@ const DocTab = ({
   }, [refreshStudio]);
 
   useEffect(() => {
+    setSelectedSections(initialSections || []);
+  }, [initialSections]);
+
+  useEffect(() => {
     getIndexedPages(docId).then((resp) => {
       const doc = resp.find((p) => p.relative_url === relativeUrl);
       if (doc) {

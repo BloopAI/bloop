@@ -174,7 +174,8 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
           } else if (
             previousTab.type === TabTypesEnum.DOC &&
             newTab.type === TabTypesEnum.DOC &&
-            previousTab.studioId !== newTab.studioId
+            (previousTab.studioId !== newTab.studioId ||
+              previousTab.initialSections != newTab.initialSections)
           ) {
             const previousTabIndex = prev.findIndex(
               (t) => t.key === newTab.key,
@@ -183,6 +184,7 @@ const TabsContextProvider = ({ children }: PropsWithChildren<Props>) => {
             const t = {
               ...previousTab,
               studioId: newTab.studioId,
+              initialSections: newTab.initialSections,
             };
             newTabs[previousTabIndex] = t;
             setActiveTabAction(t);
