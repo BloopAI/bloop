@@ -112,6 +112,7 @@ async fn project_migration(db: &SqlitePool) -> Result<()> {
     let studio_snapshots = sqlx::query! {
         "SELECT
             context,
+            doc_context,
             (SELECT project_id FROM studios WHERE studios.id = studio_snapshots.studio_id) AS project_id
         FROM studio_snapshots"
     }
@@ -122,6 +123,9 @@ async fn project_migration(db: &SqlitePool) -> Result<()> {
         let context =
             serde_json::from_str(&ss.context).context("did not find valid JSON in `context`")?;
 
+        let doc_context = serde_json::from_str(&ss.doc_context)
+            .context("did not find valid JSON in `doc_context`")?;
+
         for repo_ref in studio_context_repos(&context).context("invalid studio `context` JSON")? {
             sqlx::query! {
                 "INSERT INTO project_repos (project_id, repo_ref)
@@ -131,6 +135,22 @@ async fn project_migration(db: &SqlitePool) -> Result<()> {
                 )",
                 ss.project_id,
                 repo_ref,
+            }
+            .execute(db)
+            .await?;
+        }
+
+        for doc_id in
+            studio_doc_context_doc_ids(&doc_context).context("invalid studio `doc_context` JSON")?
+        {
+            sqlx::query! {
+                "INSERT INTO project_docs (project_id, doc_id)
+                SELECT $1, $2
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM project_docs WHERE project_id = $1 AND doc_id = $2
+                )",
+                ss.project_id,
+                doc_id,
             }
             .execute(db)
             .await?;
@@ -214,4 +234,12 @@ fn studio_context_repos(context: &serde_json::Value) -> Option<Vec<&str>> {
         repos.push(context_file.as_object()?.get("repo")?.as_str()?);
     }
     Some(repos)
+}
+
+fn studio_doc_context_doc_ids(doc_context: &serde_json::Value) -> Option<Vec<i64>> {
+    let mut ids = Vec::new();
+    for file in doc_context.as_array()? {
+        ids.push(file.as_object()?.get("doc_id")?.as_i64()?);
+    }
+    Some(ids)
 }
