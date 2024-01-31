@@ -246,9 +246,9 @@ const ChatPersistentState = ({
         options ? `/explain` : ``
       }`;
       const queryParams: Record<string, string> = {
-        model:
+        answer_model:
           preferredAnswerSpeed === 'normal'
-            ? 'gpt-4'
+            ? 'gpt-4-turbo-24k'
             : 'gpt-3.5-turbo-finetuned',
       };
       if (conversationId) {
