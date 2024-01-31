@@ -300,7 +300,7 @@ const RepoItem = ({
             {t(repoStatusMap[status].text)}
             {indexingStatus?.percentage !== null &&
               indexingStatus?.percentage !== undefined &&
-              `· ${indexingStatus?.percentage}%`}
+              ` · ${indexingStatus?.percentage}%`}
           </p>
         ) : undefined
       }

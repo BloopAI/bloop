@@ -141,7 +141,7 @@ const CommandBarItem = ({
           />
         )}
       </div>
-      <p className="flex-1 body-s-b">{label}</p>
+      <p className="flex-1 body-s-b ellipsis">{label}</p>
       {!!shortcutKeys && (
         <div className="flex items-center gap-1">
           {shortcutKeys.map((k) => (

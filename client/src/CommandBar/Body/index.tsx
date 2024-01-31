@@ -21,6 +21,12 @@ const CommandBarBody = ({
     useArrowNavigation();
 
   useEffect(() => {
+    if (sections?.[0]?.items?.[0]) {
+      setFocusedIndex(`${sections[0].key}-${sections[0].items[0].key}`);
+    }
+  }, [sections]);
+
+  useEffect(() => {
     if (onFocusedIndexChange) {
       onFocusedIndexChange(focusedIndex);
     }

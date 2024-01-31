@@ -16,8 +16,13 @@ import {
 import Button from '../../../../components/Button';
 import { ProjectContext } from '../../../../context/projectContext';
 import { useNavPanel } from '../../../../hooks/useNavPanel';
-import { IndexingStatusType, TabTypesEnum } from '../../../../types/general';
-import { TabsContext } from '../../../../context/tabsContext';
+import {
+  DocTabType,
+  FileTabType,
+  IndexingStatusType,
+  StudioTabType,
+  TabTypesEnum,
+} from '../../../../types/general';
 import StudioEntry from './StudioEntry';
 import StudiosDropdown from './StudiosDropdown';
 
@@ -26,6 +31,7 @@ type Props = {
   isExpanded: boolean;
   index: string;
   indexingStatus: IndexingStatusType;
+  currentlyFocusedTab?: StudioTabType | FileTabType | DocTabType;
 };
 
 const reactRoot = document.getElementById('root')!;
@@ -35,13 +41,11 @@ const StudiosNav = ({
   setExpanded,
   index,
   indexingStatus,
+  currentlyFocusedTab,
 }: Props) => {
   const { t } = useTranslation();
   const [expandedIndex, setExpandedIndex] = useState('');
   const { project } = useContext(ProjectContext.Current);
-  const { tab: tabLeft } = useContext(TabsContext.CurrentLeft);
-  const { tab: tabRight } = useContext(TabsContext.CurrentRight);
-  const { focusedPanel } = useContext(TabsContext.FocusedPanel);
   const { noPropagate, itemProps } = useNavPanel(
     index,
     setExpanded,
@@ -49,14 +53,36 @@ const StudiosNav = ({
   );
 
   const previewingSnapshot = useMemo(() => {
-    const focusedTab = focusedPanel === 'left' ? tabLeft : tabRight;
-    return focusedTab?.type === TabTypesEnum.STUDIO && focusedTab?.snapshot
+    return currentlyFocusedTab?.type === TabTypesEnum.STUDIO &&
+      currentlyFocusedTab?.snapshot
       ? {
-          studioId: focusedTab.studioId,
-          snapshot: focusedTab.snapshot,
+          studioId: currentlyFocusedTab.studioId,
+          snapshot: currentlyFocusedTab.snapshot,
         }
       : null;
-  }, [focusedPanel, tabLeft, tabRight]);
+  }, [currentlyFocusedTab]);
+
+  const currentPath = useMemo(() => {
+    return currentlyFocusedTab?.type === TabTypesEnum.FILE &&
+      currentlyFocusedTab.studioId
+      ? {
+          studioId: currentlyFocusedTab.studioId,
+          path: currentlyFocusedTab.path,
+          repoRef: currentlyFocusedTab.repoRef,
+        }
+      : undefined;
+  }, [currentlyFocusedTab]);
+
+  const currentDoc = useMemo(() => {
+    return currentlyFocusedTab?.type === TabTypesEnum.DOC &&
+      currentlyFocusedTab.studioId
+      ? {
+          studioId: currentlyFocusedTab.studioId,
+          docId: currentlyFocusedTab.docId,
+          relativeUrl: currentlyFocusedTab.relativeUrl,
+        }
+      : undefined;
+  }, [currentlyFocusedTab]);
 
   return (
     <div className="select-none overflow-hidden w-full flex-shrink-0">
@@ -111,6 +137,21 @@ const StudiosNav = ({
                 previewingSnapshot?.studioId.toString() === c.id.toString()
                   ? previewingSnapshot.snapshot
                   : null
+              }
+              currentPath={
+                currentPath?.studioId.toString() === c.id.toString()
+                  ? currentPath
+                  : undefined
+              }
+              currentDoc={
+                currentDoc?.studioId.toString() === c.id.toString()
+                  ? currentDoc
+                  : undefined
+              }
+              isViewingPrompts={
+                currentlyFocusedTab?.type === TabTypesEnum.STUDIO &&
+                currentlyFocusedTab.studioId.toString() === c.id.toString() &&
+                !currentlyFocusedTab.snapshot
               }
             />
           ))}

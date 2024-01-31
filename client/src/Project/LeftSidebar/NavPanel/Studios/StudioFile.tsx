@@ -19,6 +19,7 @@ type Props = StudioContextFile & {
   studioName: string;
   tokens?: number | null;
   indexingData?: RepoIndexingStatusType;
+  currentPath?: { path: string; repoRef: string };
 };
 
 const StudioFile = ({
@@ -31,6 +32,7 @@ const StudioFile = ({
   studioName,
   tokens,
   indexingData,
+  currentPath,
 }: Props) => {
   const { t } = useTranslation();
 
@@ -55,6 +57,9 @@ const StudioFile = ({
       repoRef={repo}
       branch={branch}
       ranges={ranges}
+      isCurrentPath={
+        currentPath?.path === path && currentPath?.repoRef === repo
+      }
     >
       {isIndexing && indexingData ? (
         <Tooltip

@@ -93,7 +93,7 @@ const CodeContainerSelectable = ({
       setTimeout(
         () => {
           const line = findElementInCurrentTab(
-            `[data-active="true"] [data-line-number="${scrollToItem}"]`,
+            `[data-path="${relativePath}"] [data-line-number="${scrollToItem}"]`,
           );
           line?.scrollIntoView({
             behavior: 'smooth',

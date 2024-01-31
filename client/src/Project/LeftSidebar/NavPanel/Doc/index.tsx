@@ -34,6 +34,7 @@ type Props = {
   favicon?: string;
   title?: string;
   url: string;
+  currentPath?: string;
 };
 
 const reactRoot = document.getElementById('root')!;
@@ -47,6 +48,7 @@ const DocNav = ({
   docId,
   title,
   url,
+  currentPath,
 }: Props) => {
   const { t } = useTranslation();
   const [pages, setPages] = useState<DocPageType[]>([]);
@@ -134,6 +136,7 @@ const DocNav = ({
               {...p}
               index={`${index}-${p.relative_url}`}
               favicon={favicon}
+              isCurrentPath={currentPath === p.relative_url}
             />
           ))}
         </div>

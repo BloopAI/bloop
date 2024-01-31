@@ -523,5 +523,8 @@
 	"Usage resets at": "用法重置",
 	"Upgrade to Personal plan": "升级到个人计划",
 	"In this project": "在这个项目中",
-	"Existing studio conversations": "现有的工作室对话"
+	"Existing studio conversations": "现有的工作室对话",
+	"<0>{{repoName}}</0> has finished indexing and can be added to your projects. Click the button to below to add it to the current project.": "<0>{{repoName}}</0>已完成索引，可以添加到您的项目中。 单击下面的按钮将其添加到当前项目中。",
+	"Start by selecting again and pressing Enter (↵) on your keyboard.": "首先选择再次选择键盘上的Enter（↵）。",
+	"{{repoName}} is currently indexing as soon as it is finished you will be able to add it to your project.": "{{repoName}}当前，一旦完成后，您就可以将其添加到项目中。"
 }

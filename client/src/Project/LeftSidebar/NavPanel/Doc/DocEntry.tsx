@@ -8,6 +8,7 @@ import { useArrowNavigationItemProps } from '../../../../hooks/useArrowNavigatio
 type Props = DocPageType & {
   index: string;
   favicon?: string;
+  isCurrentPath?: boolean;
 };
 
 const DocEntry = ({
@@ -16,6 +17,7 @@ const DocEntry = ({
   doc_title,
   relative_url,
   favicon,
+  isCurrentPath,
 }: Props) => {
   const { openNewTab } = useContext(TabsContext.Handlers);
 
@@ -29,17 +31,21 @@ const DocEntry = ({
     });
   }, [openNewTab, doc_id, doc_title, favicon, relative_url]);
 
-  const { isFocused, props } = useArrowNavigationItemProps<HTMLAnchorElement>(
-    index,
-    onClick,
-  );
+  const { isFocused, isLeftSidebarFocused, props } =
+    useArrowNavigationItemProps<HTMLAnchorElement>(index, onClick);
 
   return (
     <a
       href="#"
       className={`w-full text-left h-7 flex-shrink-0 flex items-center gap-3 pr-2 cursor-pointer
-        ellipsis body-mini group pl-10.5 ${
-          isFocused ? 'bg-bg-sub-hover text-label-title' : 'text-label-base'
+        ellipsis body-mini group pl-10.5  ${
+          isCurrentPath
+            ? isLeftSidebarFocused
+              ? 'bg-bg-shade-hover text-label-title'
+              : 'bg-bg-shade text-label-title'
+            : isFocused
+            ? 'bg-bg-sub-hover text-label-title'
+            : 'text-label-base'
         }`}
       {...props}
     >
