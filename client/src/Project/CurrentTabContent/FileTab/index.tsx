@@ -643,6 +643,7 @@ const FileTab = ({
         <div
           className="flex-1 h-full max-w-full pl-4 py-4 overflow-auto"
           data-active={(focusedPanel === side).toString()}
+          data-path={path}
         >
           {file?.lang === 'jupyter notebook' ? (
             <IpynbRenderer data={file.contents} />

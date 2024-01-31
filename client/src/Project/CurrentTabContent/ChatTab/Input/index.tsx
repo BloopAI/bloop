@@ -27,6 +27,7 @@ import { MentionOptionType } from '../../../../types/results';
 import { splitPath } from '../../../../utils';
 import { openTabsCache } from '../../../../services/cache';
 import { CommandBarContext } from '../../../../context/commandBarContext';
+import { UIContext } from '../../../../context/uiContext';
 import InputCore from './InputCore';
 import { mapEditorContentToInputValue } from './utils';
 
@@ -76,6 +77,7 @@ const ConversationInput = ({
   const { t } = useTranslation();
   const { envConfig } = useContext(EnvContext);
   const { isVisible } = useContext(CommandBarContext.General);
+  const { setIsLeftSidebarFocused } = useContext(UIContext.Focus);
   const [initialValue, setInitialValue] = useState<
     Record<string, any> | null | undefined
   >({
@@ -135,6 +137,7 @@ const ConversationInput = ({
 
   const onChangeInput = useCallback((inputState: InputEditorContent[]) => {
     setInputValue(mapEditorContentToInputValue(inputState));
+    setIsLeftSidebarFocused(false);
   }, []);
 
   const onSubmitButtonClicked = useCallback(() => {
