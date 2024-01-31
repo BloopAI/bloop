@@ -33,6 +33,9 @@ type Props = CodeStudioType & {
   indexingStatus: IndexingStatusType;
   projectId: string;
   previewingSnapshot: HistoryConversationTurn | null;
+  currentPath?: { path: string; repoRef: string };
+  currentDoc?: { docId: string; relativeUrl: string };
+  isViewingPrompts?: boolean;
 };
 
 const StudioEntry = ({
@@ -47,6 +50,9 @@ const StudioEntry = ({
   indexingStatus,
   projectId,
   previewingSnapshot,
+  currentPath,
+  currentDoc,
+  isViewingPrompts,
 }: Props) => {
   const { t } = useTranslation();
 
@@ -98,11 +104,13 @@ const StudioEntry = ({
             projectId={projectId}
             shouldRefresh={token_counts}
             index={`${index}-history`}
+            previewingSnapshot={previewingSnapshot?.id}
           />
           <StudioSubItem
             studioId={id}
             index={`${index}-prompts`}
             studioName={name}
+            isCurrentPath={isViewingPrompts}
           >
             <PromptIcon sizeClassName="w-3.5 h-3.5" />
             <span className="flex-1 ellipsis">
@@ -124,6 +132,7 @@ const StudioEntry = ({
               studioName={name}
               tokens={token_counts.per_file[i]}
               indexingData={indexingStatus[f.repo]}
+              currentPath={currentPath}
               {...f}
             />
           ))}
@@ -143,6 +152,10 @@ const StudioEntry = ({
               docTitle={d.doc_title || ''}
               docFavicon={d.doc_icon || ''}
               sections={d.ranges}
+              isCurrentPath={
+                currentDoc?.docId === d.doc_id &&
+                currentDoc?.relativeUrl === d.relative_url
+              }
             >
               {d.doc_icon ? (
                 <img

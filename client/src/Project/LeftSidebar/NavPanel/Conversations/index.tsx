@@ -16,11 +16,17 @@ type Props = {
   setExpanded: Dispatch<SetStateAction<string>>;
   isExpanded: boolean;
   index: string;
+  currentPath?: string;
 };
 
 const reactRoot = document.getElementById('root')!;
 
-const ConversationsNav = ({ isExpanded, setExpanded, index }: Props) => {
+const ConversationsNav = ({
+  isExpanded,
+  setExpanded,
+  index,
+  currentPath,
+}: Props) => {
   const { t } = useTranslation();
   const { project } = useContext(ProjectContext.Current);
   const { noPropagate, itemProps } = useNavPanel(
@@ -70,7 +76,12 @@ const ConversationsNav = ({ isExpanded, setExpanded, index }: Props) => {
       {isExpanded && (
         <div className={'overflow-hidden'}>
           {project?.conversations.map((c) => (
-            <ConversationEntry key={c.id} {...c} index={`${index}-${c.id}`} />
+            <ConversationEntry
+              key={c.id}
+              {...c}
+              index={`${index}-${c.id}`}
+              isCurrentPath={currentPath === c.id}
+            />
           ))}
         </div>
       )}

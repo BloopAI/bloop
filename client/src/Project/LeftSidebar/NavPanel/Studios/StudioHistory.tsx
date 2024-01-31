@@ -23,6 +23,7 @@ type Props = {
   shouldRefresh: any;
   index: string;
   studioName: string;
+  previewingSnapshot?: string;
 };
 
 const StudioHistory = ({
@@ -31,6 +32,7 @@ const StudioHistory = ({
   shouldRefresh,
   index,
   studioName,
+  previewingSnapshot,
 }: Props) => {
   const { t } = useTranslation();
   const { locale } = useContext(LocaleContext);
@@ -87,6 +89,7 @@ const StudioHistory = ({
               index={`${index}-${s.id}`}
               studioName={studioName}
               snapshot={i === 0 ? null : s}
+              isCurrentPath={previewingSnapshot === s.id}
             >
               <DateTimeCalendarIcon sizeClassName="w-3.5 h-3.5" />
               <span className="flex-1 ellipsis">

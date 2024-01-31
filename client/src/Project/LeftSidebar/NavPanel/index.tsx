@@ -18,7 +18,7 @@ const NavPanel = ({}: Props) => {
   const { tab: leftTab } = useContext(TabsContext.CurrentLeft);
   const { tab: rightTab } = useContext(TabsContext.CurrentRight);
   const { indexingStatus } = useContext(RepositoriesContext);
-  const { setFocusedIndex } = useContext(ArrowNavigationContext);
+  const { setFocusedIndex, focusedIndex } = useContext(ArrowNavigationContext);
 
   const currentlyFocusedTab = useMemo(() => {
     return focusedPanel === 'left' ? leftTab : rightTab;
@@ -76,6 +76,15 @@ const NavPanel = ({}: Props) => {
           isExpanded={expanded === 'studios'}
           index={`studios`}
           indexingStatus={indexingStatus}
+          currentlyFocusedTab={
+            currentlyFocusedTab?.type === TabTypesEnum.STUDIO ||
+            (currentlyFocusedTab?.type === TabTypesEnum.FILE &&
+              currentlyFocusedTab?.studioId) ||
+            (currentlyFocusedTab?.type === TabTypesEnum.DOC &&
+              currentlyFocusedTab?.studioId)
+              ? currentlyFocusedTab
+              : undefined
+          }
         />
       )}
       {!!project?.conversations.length && (
@@ -83,6 +92,11 @@ const NavPanel = ({}: Props) => {
           setExpanded={setExpanded}
           isExpanded={expanded === 'conversations'}
           index={`conversations`}
+          currentPath={
+            currentlyFocusedTab?.type === TabTypesEnum.CHAT
+              ? currentlyFocusedTab?.conversationId
+              : undefined
+          }
         />
       )}
       {project?.repos.map((r) => (
@@ -117,6 +131,12 @@ const NavPanel = ({}: Props) => {
           title={d.name}
           favicon={d.favicon}
           url={d.url}
+          currentPath={
+            currentlyFocusedTab?.type === TabTypesEnum.DOC &&
+            currentlyFocusedTab?.docId === d.id
+              ? currentlyFocusedTab?.relativeUrl
+              : undefined
+          }
         />
       ))}
     </div>

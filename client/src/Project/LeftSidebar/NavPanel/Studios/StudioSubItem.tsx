@@ -20,6 +20,7 @@ type Props = {
   sections?: string[];
   morePadding?: boolean;
   snapshot?: HistoryConversationTurn | null;
+  isCurrentPath?: boolean;
 };
 
 const StudioSubItem = ({
@@ -38,6 +39,7 @@ const StudioSubItem = ({
   sections,
   morePadding,
   snapshot,
+  isCurrentPath,
 }: PropsWithChildren<Props>) => {
   const { openNewTab } = useContext(TabsContext.Handlers);
 
@@ -89,7 +91,7 @@ const StudioSubItem = ({
     snapshot,
   ]);
 
-  const { isFocused, focusedIndex, props } =
+  const { isFocused, isLeftSidebarFocused, props } =
     useArrowNavigationItemProps<HTMLAnchorElement>(index, onClick);
 
   return (
@@ -98,7 +100,13 @@ const StudioSubItem = ({
       className={`w-full h-7 flex items-center gap-3 ${
         morePadding ? 'pl-[4.25rem]' : 'pl-10.5'
       } pr-4 ${
-        isFocused ? 'bg-bg-sub-hover text-label-title' : 'text-label-base'
+        isCurrentPath
+          ? isLeftSidebarFocused
+            ? 'bg-bg-shade-hover text-label-title'
+            : 'bg-bg-shade text-label-title'
+          : isFocused
+          ? 'bg-bg-sub-hover text-label-title'
+          : 'text-label-base'
       }`}
       {...props}
     >
