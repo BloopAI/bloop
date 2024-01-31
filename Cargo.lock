@@ -7067,7 +7067,7 @@ checksum = "343e3ada4c1c480953f6960f8a21ce9c76611480ffdd4f4e230fdddce0fc5331"
 dependencies = [
  "combine",
  "once_cell",
- "regex 1.10.2",
+ "regex",
 ]
 
 [[package]]
