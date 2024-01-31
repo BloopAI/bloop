@@ -527,5 +527,8 @@
 	"{{repoName}} has finished indexing and you can use it in your projects now.": "{{repoName}} has finished indexing and you can use it in your projects now.",
 	"{{repoName}} is currently indexing as soon as it is finished it will be added to your project.": "{{repoName}} is currently indexing as soon as it is finished it will be added to your project.",
 	"Hide search steps": "Hide search steps",
-	"Add documentation": "Add documentation"
+	"Add documentation": "Add documentation",
+	"<0>{{repoName}}</0> has finished indexing and can be added to your projects. Click the button to below to add it to the current project.": "<0>{{repoName}}</0> has finished indexing and can be added to your projects. Click the button to below to add it to the current project.",
+	"Start by selecting again and pressing Enter (↵) on your keyboard.": "Start by selecting again and pressing Enter (↵) on your keyboard.",
+	"{{repoName}} is currently indexing as soon as it is finished you will be able to add it to your project.": "{{repoName}} is currently indexing as soon as it is finished you will be able to add it to your project."
 }

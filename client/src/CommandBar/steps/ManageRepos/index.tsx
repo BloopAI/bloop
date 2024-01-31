@@ -105,10 +105,6 @@ const ManageRepos = ({ shouldShowTutorial }: Props) => {
               setTutorialStep(3);
             },
             onDone: () => {
-              setOnBoardingState((prev) => ({
-                ...prev,
-                isCommandBarTutorialFinished: true,
-              }));
               setTutorialStep(4);
             },
             onAddToProject: () => {
@@ -116,7 +112,7 @@ const ManageRepos = ({ shouldShowTutorial }: Props) => {
                 ...prev,
                 isCommandBarTutorialFinished: true,
               }));
-              setTutorialStep(4);
+              setTutorialStep(5);
             },
           },
           key: r.ref,
@@ -234,7 +230,7 @@ const ManageRepos = ({ shouldShowTutorial }: Props) => {
         placeholder={t('')}
         disableKeyNav={isDropdownVisible}
       />
-      {shouldShowTutorial && tutorialStep < 4 ? (
+      {shouldShowTutorial && tutorialStep < 5 ? (
         <TutorialTooltip
           content={
             <TutorialBody

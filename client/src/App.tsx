@@ -24,12 +24,12 @@ const toastOptions = {
   unStyled: true,
   classNames: {
     toast:
-      'w-[20.75rem] p-4 pl-5 flex items-start gap-3 rounded-md border border-bg-border bg-bg-base shadow-high',
+      'w-[20.75rem] p-4 pl-5 grid grid-cols-[1rem_1fr] items-start gap-3 rounded-md border border-bg-border bg-bg-base shadow-high',
     error: 'text-red',
     info: 'text-label-title',
     title: 'body-s-b',
     description: '!text-label-muted body-s mt-1.5',
-    actionButton: 'bg-zinc-400',
+    actionButton: 'col-span-full',
     cancelButton: 'bg-orange-400',
     closeButton:
       '!bg-bg-base !text-label-muted !border-none !left-[unset] !right-2 !top-6 !w-6 !h-6',

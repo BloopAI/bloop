@@ -21,7 +21,13 @@ export const tutorialSteps = [
   {
     title: 'Indexing in progress',
     description:
-      '{{repoName}} is currently indexing as soon as it is finished it will be added to your project.',
+      '{{repoName}} is currently indexing as soon as it is finished you will be able to add it to your project.',
     hint: [],
+  },
+  {
+    title: 'Add to project',
+    description:
+      '{{repoName}} has finished indexing and you can use it in your projects now.',
+    hint: ['Start by selecting again and pressing Enter (↵) on your keyboard.'],
   },
 ];

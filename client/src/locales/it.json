@@ -508,5 +508,8 @@
 	"Existing studio conversations": "Conversazioni in studio esistenti",
 	"Select section": "Seleziona la sezione",
 	"Clear section": "Pulisci sezione",
-	"Let’s get you started with bloop!": "Ti cominciamo con Bloop!"
+	"Let’s get you started with bloop!": "Ti cominciamo con Bloop!",
+	"<0>{{repoName}}</0> has finished indexing and can be added to your projects. Click the button to below to add it to the current project.": "<0>{{repoName}}</0> ha terminato l'indicizzazione e può essere aggiunto ai tuoi progetti. Fai clic sul pulsante sotto per aggiungerlo al progetto corrente.",
+	"Start by selecting again and pressing Enter (↵) on your keyboard.": "Inizia selezionando di nuovo e premendo Invio (↵) sulla tastiera.",
+	"{{repoName}} is currently indexing as soon as it is finished you will be able to add it to your project.": "{{repoName}} sta attualmente indicizzando non appena sarà finito, sarai in grado di aggiungerlo al tuo progetto."
 }

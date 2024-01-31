@@ -41,11 +41,13 @@ const RepositoriesContextProvider = ({
       const data = JSON.parse(ev.data);
       if (data.ev?.status_change === SyncStatus.Done) {
         if (!data.rsync) {
-          if (project?.id) {
-            addRepoToProject(project.id, data.ref).finally(() => {
-              refreshCurrentProjectRepos();
-            });
-          }
+          const onClick = () => {
+            if (project?.id) {
+              return addRepoToProject(project.id, data.ref).finally(() => {
+                refreshCurrentProjectRepos();
+              });
+            }
+          };
           toast(t('Repository indexed'), {
             id: `${data.ref}-indexed`,
             description: (
@@ -56,13 +58,19 @@ const RepositoriesContextProvider = ({
                     .join('/'),
                 }}
               >
-                <span className="text-label-base body-s-b">repoName</span> has
-                finished indexing and was added to the context of the current
-                project. You can also use it in your other projects now.
+                <span className="text-label-base body-s-b">
+                  {'{{repoName}}'}
+                </span>{' '}
+                has finished indexing and can be added to your projects. Click
+                the button to below to add it to the current project.
               </Trans>
             ),
             icon: <RepositoryIcon sizeClassName="w-4 h-4" />,
             unstyled: true,
+            action: {
+              label: 'Add to project',
+              onClick,
+            },
           });
         }
         if (project?.repos.find((r) => r.repo.ref === data.ref)) {
