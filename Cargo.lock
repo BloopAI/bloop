@@ -562,7 +562,6 @@ dependencies = [
  "tracing-appender",
  "tracing-subscriber",
  "tree-sitter",
- "tree-sitter-COBOL",
  "tree-sitter-c",
  "tree-sitter-c-sharp",
  "tree-sitter-cpp",
@@ -7918,15 +7917,6 @@ checksum = "e747b1f9b7b931ed39a548c1fae149101497de3c1fc8d9e18c62c1a66c683d3d"
 dependencies = [
  "cc",
  "regex",
-]
-
-[[package]]
-name = "tree-sitter-COBOL"
-version = "0.0.1"
-source = "git+https://github.com/nerdypepper/tree-sitter-cobol#8ba6692cc3c2bded0693d198936c6e26e6501230"
-dependencies = [
- "cc",
- "tree-sitter",
 ]
 
 [[package]]
