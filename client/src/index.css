@@ -1270,3 +1270,9 @@ img.ProseMirror-separator {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+
+/* react-mentions editor start */
+.w-full__suggestions {
+  background-color: transparent !important;
+}
+/* react-mentions editor end */

@@ -3,7 +3,7 @@ import { type NodeSpec } from 'prosemirror-model';
 import {
   InputEditorContent,
   ParsedQueryTypeEnum,
-} from '../../../../types/general';
+} from '../../../../../types/general';
 import { mentionNode } from './nodes';
 
 export function addMentionNodes(nodes: OrderedMap<NodeSpec>) {

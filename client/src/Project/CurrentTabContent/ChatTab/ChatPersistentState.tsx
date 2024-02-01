@@ -26,6 +26,10 @@ import { focusInput } from '../../../utils/domUtils';
 import { ChatsContext } from '../../../context/chatsContext';
 import { TabsContext } from '../../../context/tabsContext';
 import { getConversation } from '../../../services/api';
+import {
+  concatenateParsedQuery,
+  splitUserInputAfterAutocomplete,
+} from '../../../utils';
 
 type Options = {
   path: string;
@@ -190,6 +194,11 @@ const ChatPersistentState = ({
 
   const setInputValueImperatively = useCallback(
     (value: ParsedQueryType[] | string) => {
+      setInputValue(
+        typeof value === 'string'
+          ? { plain: value, parsed: splitUserInputAfterAutocomplete(value) }
+          : { parsed: value, plain: concatenateParsedQuery(value) },
+      );
       setInputImperativeValue({
         type: 'paragraph',
         content:

@@ -24,12 +24,14 @@ import useKeyboardNavigation from '../../../../hooks/useKeyboardNavigation';
 import KeyboardHint from '../../../../components/KeyboardHint';
 import { focusInput } from '../../../../utils/domUtils';
 import { MentionOptionType } from '../../../../types/results';
-import { splitPath } from '../../../../utils';
+import { splitPath, splitUserInputAfterAutocomplete } from '../../../../utils';
 import { openTabsCache } from '../../../../services/cache';
 import { CommandBarContext } from '../../../../context/commandBarContext';
 import { UIContext } from '../../../../context/uiContext';
-import InputCore from './InputCore';
-import { mapEditorContentToInputValue } from './utils';
+import { LocaleContext } from '../../../../context/localeContext';
+import InputCore from './ProseMirror';
+import { mapEditorContentToInputValue } from './ProseMirror/utils';
+import ReactMentionsInput from './ReactMentions';
 
 type Props = {
   value?: { parsed: ParsedQueryType[]; plain: string };
@@ -77,6 +79,7 @@ const ConversationInput = ({
   const { t } = useTranslation();
   const { envConfig } = useContext(EnvContext);
   const { isVisible } = useContext(CommandBarContext.General);
+  const { locale } = useContext(LocaleContext);
   const { setIsLeftSidebarFocused } = useContext(UIContext.Focus);
   const [initialValue, setInitialValue] = useState<
     Record<string, any> | null | undefined
@@ -135,8 +138,19 @@ const ConversationInput = ({
     [conversation, submittedQuery, hideMessagesFrom],
   );
 
-  const onChangeInput = useCallback((inputState: InputEditorContent[]) => {
-    setInputValue(mapEditorContentToInputValue(inputState));
+  const onChangeProseMirrorInput = useCallback(
+    (inputState: InputEditorContent[]) => {
+      setInputValue(mapEditorContentToInputValue(inputState));
+      setIsLeftSidebarFocused(false);
+    },
+    [],
+  );
+
+  const onChangeReactMentionsInput = useCallback((newVal: string) => {
+    setInputValue({
+      plain: newVal,
+      parsed: splitUserInputAfterAutocomplete(newVal),
+    });
     setIsLeftSidebarFocused(false);
   }, []);
 
@@ -147,7 +161,7 @@ const ConversationInput = ({
   }, [value, onSubmit]);
 
   const getDataPath = useCallback(
-    async (search: string) => {
+    async (search: string, callback?: (v: MentionOptionType[]) => void) => {
       const respPath = await getAutocomplete(
         projectId,
         `path:${search}&content=false&page_size=8`,
@@ -187,7 +201,7 @@ const ConversationInput = ({
       const results: MentionOptionType[] = [];
       filesResults.forEach((fr, i) => {
         results.push({
-          id: fr.path,
+          id: `${fr.repo}-${fr.path}`,
           display: fr.path,
           type: 'file',
           isFirst: i === 0,
@@ -196,23 +210,21 @@ const ConversationInput = ({
       });
       dirResults.forEach((fr, i) => {
         results.push({
-          id: fr.path,
+          id: `${fr.repo}-${fr.path}`,
           display: fr.path,
           type: 'dir',
           isFirst: i === 0,
           hint: splitPath(fr.repo).pop(),
         });
       });
+      callback?.(results);
       return results;
     },
     [projectId],
   );
 
   const getDataLang = useCallback(
-    async (
-      search: string,
-      // callback: (a: { id: string; display: string }[]) => void,
-    ) => {
+    async (search: string, callback?: (v: MentionOptionType[]) => void) => {
       const respLang = await getAutocomplete(
         projectId,
         `lang:${search}&content=false&page_size=8`,
@@ -224,16 +236,14 @@ const ConversationInput = ({
       langResults.forEach((fr, i) => {
         results.push({ id: fr, display: fr, type: 'lang', isFirst: i === 0 });
       });
+      callback?.(results);
       return results;
     },
     [projectId],
   );
 
   const getDataRepo = useCallback(
-    async (
-      search: string,
-      // callback: (a: { id: string; display: string }[]) => void,
-    ) => {
+    async (search: string, callback?: (v: MentionOptionType[]) => void) => {
       const respRepo = await getAutocomplete(
         projectId,
         `repo:${search}&content=false&path=false&file=false&page_size=8`,
@@ -250,6 +260,7 @@ const ConversationInput = ({
           isFirst: i === 0,
         });
       });
+      callback?.(results);
       return results;
     },
     [projectId],
@@ -290,7 +301,22 @@ const ConversationInput = ({
         <p className="body-base-b text-label-title select-none">
           <Trans>You</Trans>
         </p>
-        {generationInProgress ? (
+        {locale === 'zhCN' ? (
+          <ReactMentionsInput
+            value={value}
+            onChange={onChangeReactMentionsInput}
+            onSubmit={onSubmit}
+            placeholder={
+              isStoppable && generationInProgress
+                ? t('Generating answer...')
+                : t('Write a message, @ to mention files, folders or docs...')
+            }
+            isDisabled={isStoppable && generationInProgress}
+            getDataLang={getDataLang}
+            getDataPath={getDataPath}
+            getDataRepo={getDataRepo}
+          />
+        ) : generationInProgress ? (
           <div className="select-none text-label-muted body-base cursor-default">
             <Trans>Generating answer...</Trans>
           </div>
@@ -300,7 +326,7 @@ const ConversationInput = ({
             getDataPath={getDataPath}
             getDataRepo={getDataRepo}
             initialValue={initialValue}
-            onChange={onChangeInput}
+            onChange={onChangeProseMirrorInput}
             onSubmit={onSubmit}
             placeholder={t(
               'Write a message, @ to mention files, folders or docs...',

@@ -1,7 +1,7 @@
 import { Plugin, PluginKey } from 'prosemirror-state';
 import { Decoration, DecorationSet, EditorView } from 'prosemirror-view';
 import { ResolvedPos } from 'prosemirror-model';
-import { MentionOptionType } from '../../../../types/results';
+import { MentionOptionType } from '../../../../../types/results';
 
 export function getRegexp(mentionTrigger: string, allowSpace?: boolean) {
   return allowSpace
