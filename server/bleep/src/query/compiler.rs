@@ -19,6 +19,8 @@ use crate::query::{
     planner,
 };
 
+const MAX_CASE_PERMUTATION_LEN: usize = 5;
+
 type DynQuery = Box<dyn tantivy::query::Query>;
 
 enum Extraction<'a> {
@@ -106,12 +108,20 @@ impl Compiler {
                         let mut token_stream = tokenizer.token_stream(&text);
                         let tokens = std::iter::from_fn(move || {
                             token_stream.next().map(|tok| CompactString::new(&tok.text))
-                        });
+                        })
+                        .collect::<Vec<_>>();
 
-                        let terms = if query.is_case_sensitive() {
-                            tokens.map(|s| str_to_query(*field, &s)).collect::<Vec<_>>()
+                        // We skip case insensitive matching if a token
+                        let terms = if query.is_case_sensitive()
+                            || tokens.iter().any(|t| t.len() > MAX_CASE_PERMUTATION_LEN)
+                        {
+                            tokens
+                                .into_iter()
+                                .map(|s| str_to_query(*field, &s))
+                                .collect::<Vec<_>>()
                         } else {
                             tokens
+                                .into_iter()
                                 .map(|s| {
                                     let terms = case_permutations(&s)
                                         .map(|s| str_to_query(*field, &s))
@@ -253,9 +263,8 @@ pub fn case_permutations(s: &str) -> impl Iterator<Item = CompactString> {
         .map(|c| c.to_ascii_lowercase())
         .collect::<SmallVec<[char; 3]>>();
 
-    // Make sure not to overflow. The end condition is a mask with the highest bit set, and we use
-    // `u32` masks.
-    debug_assert!(chars.len() <= 5);
+    // A string that is too long leads to an exponential explosion here, growing with 2^n.
+    debug_assert!(chars.len() <= MAX_CASE_PERMUTATION_LEN);
 
     let num_chars = chars.len();
 
