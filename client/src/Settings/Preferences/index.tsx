@@ -14,6 +14,7 @@ import { localesMap, themesMap } from '../../consts/general';
 import { LocaleContext } from '../../context/localeContext';
 import ThemeDropdown from './ThemeDropdown';
 import LanguageDropdown from './LanguageDropdown';
+import ChatInputTypeDropdown from './ChatInputTypeDropdown';
 
 type Props = {};
 
@@ -27,6 +28,7 @@ const Preferences = ({}: Props) => {
   useTranslation();
   const { theme } = useContext(UIContext.Theme);
   const { locale } = useContext(LocaleContext);
+  const { chatInputType } = useContext(UIContext.ChatInputType);
 
   return (
     <div className="w-[36.25rem] flex flex-col flex-2">
@@ -78,6 +80,31 @@ const Preferences = ({}: Props) => {
           <Button variant="secondary">
             <span>{localesMap[locale].icon}</span>
             {localesMap[locale].name}
+            <ChevronDownIcon sizeClassName="w-4 h-4" />
+          </Button>
+        </Dropdown>
+      </div>
+      <hr className="border-bg-divider my-8" />
+      <div className="flex items-start gap-8 w-full justify-between">
+        <div className="flex flex-col gap-2">
+          <p className="body-base-b text-label-title">
+            <Trans>Conversation input</Trans>
+          </p>
+          <p className="body-s-b text-label-muted">
+            <Trans>Select the input type to use in conversations</Trans>
+          </p>
+        </div>
+        <Dropdown
+          DropdownComponent={ChatInputTypeDropdown}
+          size="auto"
+          dropdownPlacement="bottom-end"
+        >
+          <Button variant="secondary">
+            {chatInputType === 'default' ? (
+              <Trans>Default</Trans>
+            ) : (
+              <Trans>Simplified</Trans>
+            )}
             <ChevronDownIcon sizeClassName="w-4 h-4" />
           </Button>
         </Dropdown>

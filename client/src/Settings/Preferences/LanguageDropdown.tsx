@@ -4,12 +4,14 @@ import SectionItem from '../../components/Dropdown/Section/SectionItem';
 import { LocaleContext } from '../../context/localeContext';
 import { localesMap } from '../../consts/general';
 import { LocaleType } from '../../types/general';
+import { UIContext } from '../../context/uiContext';
 
 type Props = {};
 
 const LanguageDropdown = ({}: Props) => {
   useTranslation();
   const { locale, setLocale } = useContext(LocaleContext);
+  const { setChatInputType } = useContext(UIContext.ChatInputType);
 
   return (
     <div>
@@ -19,7 +21,12 @@ const LanguageDropdown = ({}: Props) => {
             key={k}
             index={`lang-${k}`}
             isSelected={locale === k}
-            onClick={() => setLocale(k)}
+            onClick={() => {
+              if (k === 'zhCN') {
+                setChatInputType('simplified');
+              }
+              setLocale(k);
+            }}
             label={localesMap[k].name}
             icon={<span>{localesMap[k].icon}</span>}
           />

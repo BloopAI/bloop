@@ -1,6 +1,7 @@
 import { createContext, Dispatch, SetStateAction } from 'react';
 import { Theme } from '../types';
 import {
+  ChatInputType,
   OnboardingStateType,
   ProjectSettingSections,
   SettingSections,
@@ -51,5 +52,9 @@ export const UIContext = {
   UpgradeRequiredPopup: createContext({
     isUpgradeRequiredPopupOpen: false,
     setIsUpgradeRequiredPopupOpen: (b: boolean) => {},
+  }),
+  ChatInputType: createContext({
+    chatInputType: 'default' as ChatInputType,
+    setChatInputType: (t: ChatInputType) => {},
   }),
 };

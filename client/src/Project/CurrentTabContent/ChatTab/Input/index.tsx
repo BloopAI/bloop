@@ -28,7 +28,6 @@ import { splitPath, splitUserInputAfterAutocomplete } from '../../../../utils';
 import { openTabsCache } from '../../../../services/cache';
 import { CommandBarContext } from '../../../../context/commandBarContext';
 import { UIContext } from '../../../../context/uiContext';
-import { LocaleContext } from '../../../../context/localeContext';
 import InputCore from './ProseMirror';
 import { mapEditorContentToInputValue } from './ProseMirror/utils';
 import ReactMentionsInput from './ReactMentions';
@@ -79,7 +78,7 @@ const ConversationInput = ({
   const { t } = useTranslation();
   const { envConfig } = useContext(EnvContext);
   const { isVisible } = useContext(CommandBarContext.General);
-  const { locale } = useContext(LocaleContext);
+  const { chatInputType } = useContext(UIContext.ChatInputType);
   const { setIsLeftSidebarFocused } = useContext(UIContext.Focus);
   const [initialValue, setInitialValue] = useState<
     Record<string, any> | null | undefined
@@ -301,7 +300,7 @@ const ConversationInput = ({
         <p className="body-base-b text-label-title select-none">
           <Trans>You</Trans>
         </p>
-        {locale === 'zhCN' ? (
+        {chatInputType === 'simplified' ? (
           <ReactMentionsInput
             value={value}
             onChange={onChangeReactMentionsInput}

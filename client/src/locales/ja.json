@@ -516,5 +516,11 @@
 	"In this project": "このプロジェクトで",
 	"<0>{{repoName}}</0> has finished indexing and can be added to your projects. Click the button to below to add it to the current project.": "<0>{{repoName}}</0>はインデックス作成が終了し、プロジェクトに追加できます。 以下のボタンをクリックして、現在のプロジェクトに追加します。",
 	"Start by selecting again and pressing Enter (↵) on your keyboard.": "もう一度選択して、キーボードのEnter（‡）を押すことから始めます。",
-	"{{repoName}} is currently indexing as soon as it is finished you will be able to add it to your project.": "{{repoName}}は現在、終了したらすぐにインデックスを作成しています。プロジェクトに追加できるようになります。"
+	"{{repoName}} is currently indexing as soon as it is finished you will be able to add it to your project.": "{{repoName}}は現在、終了したらすぐにインデックスを作成しています。プロジェクトに追加できるようになります。",
+	"Select the input type to use in conversations": "会話で使用する入力タイプを選択します",
+	"Fallback: Use if experiencing problems with the default one": "フォールバック：デフォルトの問題で問題が発生している場合に使用します",
+	"Simplified": "簡素化",
+	"Default": "デフォルト",
+	"Recommended: The classic input": "推奨：クラシック入力",
+	"Conversation input": "会話の入力"
 }
