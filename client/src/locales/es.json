@@ -529,5 +529,11 @@
 	"Restore session": "Restaurar sesion",
 	"<0>{{repoName}}</0> has finished indexing and can be added to your projects. Click the button to below to add it to the current project.": "<0>{{repoName}}</0> ha terminado de indexación y se puede agregar a sus proyectos. Haga clic en el botón a continuación para agregarlo al proyecto actual.",
 	"Start by selecting again and pressing Enter (↵) on your keyboard.": "Comience seleccionando nuevamente y presionando Enter (↵) en su teclado.",
-	"{{repoName}} is currently indexing as soon as it is finished you will be able to add it to your project.": "{{repoName}} actualmente está indexando tan pronto como esté terminado, podrá agregarlo a su proyecto."
+	"{{repoName}} is currently indexing as soon as it is finished you will be able to add it to your project.": "{{repoName}} actualmente está indexando tan pronto como esté terminado, podrá agregarlo a su proyecto.",
+	"Conversation input": "Aportación de conversación",
+	"Simplified: Choose if the default one fails": "Simplificado: elija si el predeterminado falla",
+	"Fallback: Use if experiencing problems with the default one": "Fallback: use si experimenta problemas con el predeterminado",
+	"Select the input type to use in conversations": "Seleccione el tipo de entrada a usar en conversaciones",
+	"Default": "Por defecto",
+	"Recommended: The classic input": "Recomendado: la entrada clásica"
 }

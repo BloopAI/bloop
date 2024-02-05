@@ -23,8 +23,10 @@ export const isFocusInInput = (ignoreCommandInput?: boolean) => {
 
 export const focusInput = () => {
   findElementInCurrentTab('.ProseMirror')?.focus();
+  findElementInCurrentTab('.ReactMention textarea')?.focus();
 };
 
 export const blurInput = () => {
   findElementInCurrentTab('.ProseMirror')?.blur();
+  findElementInCurrentTab('.ReactMention textarea')?.blur();
 };

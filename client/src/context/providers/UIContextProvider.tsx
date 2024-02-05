@@ -13,6 +13,7 @@ import { DeviceContext } from '../deviceContext';
 import { getConfig, refreshToken as refreshTokenApi } from '../../services/api';
 import {
   ACCESS_TOKEN_KEY,
+  CHAT_INPUT_TYPE_KEY,
   getPlainFromStorage,
   ONBOARDING_DONE_KEY,
   REFRESH_TOKEN_KEY,
@@ -21,7 +22,12 @@ import {
 } from '../../services/storage';
 import { Theme } from '../../types';
 import { EnvContext } from '../envContext';
-import { ProjectSettingSections, SettingSections } from '../../types/general';
+import {
+  ChatInputType,
+  ProjectSettingSections,
+  SettingSections,
+} from '../../types/general';
+import { LocaleContext } from '../localeContext';
 
 type Props = {};
 
@@ -41,6 +47,7 @@ export const UIContextProvider = memo(
       'onBoardingState',
     );
     const { isSelfServe } = useContext(DeviceContext);
+    const { locale } = useContext(LocaleContext);
     const { setEnvConfig, envConfig } = useContext(EnvContext);
     const [isGithubConnected, setGithubConnected] = useState(
       isSelfServe ? !!getPlainFromStorage(REFRESH_TOKEN_KEY) : false,
@@ -52,6 +59,12 @@ export const UIContextProvider = memo(
     const [tokenExpiresAt, setTokenExpiresAt] = useState(0);
     const [theme, setTheme] = useState<Theme>(
       (getPlainFromStorage(THEME) as 'system' | null) || 'system',
+    );
+    const [chatInputType, setChatInputType] = useState<ChatInputType>(
+      (getPlainFromStorage(CHAT_INPUT_TYPE_KEY) as 'default' | null) ||
+        locale === 'zhCN'
+        ? 'simplified'
+        : 'default',
     );
     const [isLeftSidebarFocused, setIsLeftSidebarFocused] = useState(false);
     const [isUpgradeRequiredPopupOpen, setIsUpgradeRequiredPopupOpen] =
@@ -109,6 +122,10 @@ export const UIContextProvider = memo(
         document.body.dataset.theme = theme;
       }
     }, [theme]);
+
+    useEffect(() => {
+      savePlainToStorage(CHAT_INPUT_TYPE_KEY, chatInputType);
+    }, [chatInputType]);
 
     const settingsContextValue = useMemo(
       () => ({
@@ -182,6 +199,14 @@ export const UIContextProvider = memo(
       [isUpgradeRequiredPopupOpen],
     );
 
+    const chatInputTypeContextValue = useMemo(
+      () => ({
+        chatInputType,
+        setChatInputType,
+      }),
+      [chatInputType],
+    );
+
     return (
       <UIContext.Settings.Provider value={settingsContextValue}>
         <UIContext.ProjectSettings.Provider value={projectSettingsContextValue}>
@@ -189,13 +214,17 @@ export const UIContextProvider = memo(
             <UIContext.BugReport.Provider value={bugReportContextValue}>
               <UIContext.GitHubConnected.Provider value={githubContextValue}>
                 <UIContext.Theme.Provider value={themeContextValue}>
-                  <UIContext.UpgradeRequiredPopup.Provider
-                    value={upgradePopupContextValue}
+                  <UIContext.ChatInputType.Provider
+                    value={chatInputTypeContextValue}
                   >
-                    <UIContext.Focus.Provider value={focusContextValue}>
-                      {children}
-                    </UIContext.Focus.Provider>
-                  </UIContext.UpgradeRequiredPopup.Provider>
+                    <UIContext.UpgradeRequiredPopup.Provider
+                      value={upgradePopupContextValue}
+                    >
+                      <UIContext.Focus.Provider value={focusContextValue}>
+                        {children}
+                      </UIContext.Focus.Provider>
+                    </UIContext.UpgradeRequiredPopup.Provider>
+                  </UIContext.ChatInputType.Provider>
                 </UIContext.Theme.Provider>
               </UIContext.GitHubConnected.Provider>
             </UIContext.BugReport.Provider>

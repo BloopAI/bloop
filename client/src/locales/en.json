@@ -530,5 +530,11 @@
 	"Add documentation": "Add documentation",
 	"<0>{{repoName}}</0> has finished indexing and can be added to your projects. Click the button to below to add it to the current project.": "<0>{{repoName}}</0> has finished indexing and can be added to your projects. Click the button to below to add it to the current project.",
 	"Start by selecting again and pressing Enter (↵) on your keyboard.": "Start by selecting again and pressing Enter (↵) on your keyboard.",
-	"{{repoName}} is currently indexing as soon as it is finished you will be able to add it to your project.": "{{repoName}} is currently indexing as soon as it is finished you will be able to add it to your project."
+	"{{repoName}} is currently indexing as soon as it is finished you will be able to add it to your project.": "{{repoName}} is currently indexing as soon as it is finished you will be able to add it to your project.",
+	"Select the input type to use in conversations": "Select the input type to use in conversations",
+	"Conversation input": "Conversation input",
+	"Default": "Default",
+	"Simplified": "Simplified",
+	"Recommended: The classic input": "Recommended: The classic input",
+	"Fallback: Use if experiencing problems with the default one": "Fallback: Use if experiencing problems with the default one"
 }

@@ -626,3 +626,5 @@ export type OnboardingStateType = {
   isCodeExplained?: boolean;
   isCodeNavigated?: boolean;
 };
+
+export type ChatInputType = 'default' | 'simplified';

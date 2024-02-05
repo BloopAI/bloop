@@ -423,7 +423,7 @@ export function splitUserInputAfterAutocomplete(
 ): ParsedQueryType[] {
   const pathRegex = /\|path:(.*?)\|/g;
   const langRegex = /\|lang:(.*?)\|/g;
-  const combinedRegex = /\|(path|lang):(.*?)\|/g;
+  const combinedRegex = /\|(path|lang|repo):(.*?)\|/g;
   const result: ParsedQueryType[] = [];
 
   let lastIndex = 0;
@@ -438,7 +438,11 @@ export function splitUserInputAfterAutocomplete(
     addTextContent(input.substring(lastIndex, index));
     result.push({
       type:
-        type === 'lang' ? ParsedQueryTypeEnum.LANG : ParsedQueryTypeEnum.PATH,
+        type === 'lang'
+          ? ParsedQueryTypeEnum.LANG
+          : type === 'repo'
+          ? ParsedQueryTypeEnum.REPO
+          : ParsedQueryTypeEnum.PATH,
       text,
     });
     lastIndex = index + text.length + type.length + 3; // 3 is the length of "(type:"
@@ -459,6 +463,8 @@ export function concatenateParsedQuery(query: ParsedQueryType[]) {
       result += `|path:${q.text}|`;
     } else if (q.type === ParsedQueryTypeEnum.LANG) {
       result += `|lang:${q.text}|`;
+    } else if (q.type === ParsedQueryTypeEnum.REPO) {
+      result += `|repo:${q.text}|`;
     }
   });
   return result;
@@ -472,7 +478,7 @@ type InputEditorTextContent = {
 type InputEditorMentionContent = {
   type: 'mention';
   attrs: {
-    type: 'lang' | 'path';
+    type: 'lang' | 'path' | 'repo';
     id: string;
     display: string;
   };

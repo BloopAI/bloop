@@ -526,5 +526,11 @@
 	"Existing studio conversations": "现有的工作室对话",
 	"<0>{{repoName}}</0> has finished indexing and can be added to your projects. Click the button to below to add it to the current project.": "<0>{{repoName}}</0>已完成索引，可以添加到您的项目中。 单击下面的按钮将其添加到当前项目中。",
 	"Start by selecting again and pressing Enter (↵) on your keyboard.": "首先选择再次选择键盘上的Enter（↵）。",
-	"{{repoName}} is currently indexing as soon as it is finished you will be able to add it to your project.": "{{repoName}}当前，一旦完成后，您就可以将其添加到项目中。"
+	"{{repoName}} is currently indexing as soon as it is finished you will be able to add it to your project.": "{{repoName}}当前，一旦完成后，您就可以将其添加到项目中。",
+	"Conversation input": "对话输入",
+	"Fallback: Use if experiencing problems with the default one": "后备：如果遇到默认一个问题，请使用",
+	"Simplified": "简化",
+	"Select the input type to use in conversations": "选择要在对话中使用的输入类型",
+	"Default": "默认",
+	"Recommended: The classic input": "推荐：经典输入"
 }

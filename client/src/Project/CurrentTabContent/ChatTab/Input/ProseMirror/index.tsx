@@ -14,10 +14,13 @@ import { schema as basicSchema } from 'prosemirror-schema-basic';
 // @ts-ignore
 import * as icons from 'file-icons-js';
 import { useTranslation } from 'react-i18next';
-import { InputEditorContent, ParsedQueryType } from '../../../../types/general';
-import { getFileExtensionForLang } from '../../../../utils';
-import { blurInput } from '../../../../utils/domUtils';
-import { MentionOptionType } from '../../../../types/results';
+import {
+  InputEditorContent,
+  ParsedQueryType,
+} from '../../../../../types/general';
+import { getFileExtensionForLang } from '../../../../../utils';
+import { blurInput } from '../../../../../utils/domUtils';
+import { MentionOptionType } from '../../../../../types/results';
 import { getMentionsPlugin } from './mentionPlugin';
 import { addMentionNodes, mapEditorContentToInputValue } from './utils';
 import { placeholderPlugin } from './placeholderPlugin';

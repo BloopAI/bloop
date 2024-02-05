@@ -43,3 +43,4 @@ export const USER_FONT_SIZE_KEY = 'user_font_size';
 export const PROJECT_KEY = 'project';
 export const RECENT_COMMANDS_KEY = 'recent_commands';
 export const RECENT_FILES_KEY = 'recent_files';
+export const CHAT_INPUT_TYPE_KEY = 'chat_input_type';
