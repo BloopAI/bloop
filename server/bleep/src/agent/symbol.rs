@@ -222,9 +222,8 @@ impl Agent {
                             &symbol_metadata.repo_path.path,
                             None,
                         )
-                        .await
-                        .unwrap()
-                        .unwrap();
+                        .await?
+                        .context("Document is None")?;
 
                     let all_docs = {
                         let associated_langs =
@@ -252,8 +251,7 @@ impl Agent {
                         Some(0),
                         Some(NUMBER_CHUNK_LINES),
                     )
-                    .await
-                    .unwrap()
+                    .await?
                     .into_iter()
                     .filter(|file_symbol| {
                         file_symbol.file != symbol_metadata.repo_path.path
@@ -266,7 +264,7 @@ impl Agent {
         }
     }
 
-    pub async fn get_related_chunks(&mut self, chunks: Vec<CodeChunk>) -> Vec<CodeChunk> {
+    pub async fn get_related_chunks(&mut self, chunks: Vec<CodeChunk>) -> Result<Vec<CodeChunk>> {
         const MAX_CHUNKS: usize = 3;
 
         // get symbols with ref/defs for each chunk
@@ -282,7 +280,11 @@ impl Agent {
         .collect();
 
         // get original user query
-        let user_query = self.last_exchange().query.target().unwrap();
+        let user_query = self
+            .last_exchange()
+            .query
+            .target()
+            .context("Query has no target")?;
 
         // select one symbol
         let selected_symbol = match self.filter_symbols(&user_query, chunks_with_symbols).await {
@@ -292,7 +294,7 @@ impl Agent {
             }
             Err(e) => {
                 info!("Returning no extra chunks: {}", e);
-                return Vec::new();
+                return Ok(Vec::new());
             }
         };
 
@@ -310,14 +312,14 @@ impl Agent {
                 self.conversation
                     .exchanges
                     .last_mut()
-                    .unwrap()
+                    .context("No last exchange")?
                     .code_chunks
                     .push(chunk.clone());
                 chunk
             })
             .collect::<Vec<_>>();
 
-        extra_chunks
+        Ok(extra_chunks)
     }
 }
 
@@ -337,4 +339,6 @@ pub enum SymbolError {
     ListEmpty,
     #[error("Selected symbol out of bounds")]
     OutOfBounds,
+    #[error("anyhow: {0:?}")]
+    Anyhow(#[from] anyhow::Error),
 }
