@@ -88,7 +88,11 @@ const LinkRenderer = ({
   return (
     <>
       {filePath.endsWith('/') ? (
-        <FolderChip onClick={handleClickFolder} path={path} repoRef={repo} />
+        <FolderChip
+          onClick={handleClickFolder}
+          path={path || filePath || ''}
+          repoRef={repo}
+        />
       ) : (
         <FileChip
           fileName={fileName || path || ''}
