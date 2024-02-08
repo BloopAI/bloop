@@ -37,6 +37,7 @@ import 'prismjs/components/prism-scala.min';
 import 'prismjs/components/prism-julia.min';
 import 'prismjs/components/prism-docker.min';
 import 'prismjs/components/prism-diff.min';
+import 'prismjs/components/prism-cobol.min';
 import type { Token } from '../types/prism';
 
 const newlineRe = /\r\n|\r|\n/;
