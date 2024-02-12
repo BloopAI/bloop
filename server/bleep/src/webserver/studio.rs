@@ -845,7 +845,6 @@ async fn generate_llm_context(
             .map(|(i, s)| format!("{} {s}\n", i + 1))
             .collect::<Vec<_>>();
 
-        #[allow(clippy::single_range_in_vec_init)]
         let ranges = if file.ranges.is_empty() {
             vec![0..lines.len()]
         } else {
@@ -1485,7 +1484,6 @@ pub async fn import(
     };
 
     let imported_context = canonicalize_context(exchanges.iter().flat_map(|e| {
-        #[allow(clippy::single_range_in_vec_init)]
         e.code_chunks.iter().map(|c| ContextFile {
             repo: c.repo_path.repo.clone(),
             path: c.repo_path.path.clone(),

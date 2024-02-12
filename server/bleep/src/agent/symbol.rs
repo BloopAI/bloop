@@ -312,7 +312,7 @@ impl Agent {
                 self.conversation
                     .exchanges
                     .last_mut()
-                    .context("No last exchange")?
+                    .unwrap()
                     .code_chunks
                     .push(chunk.clone());
                 chunk
