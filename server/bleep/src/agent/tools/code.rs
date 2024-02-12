@@ -103,7 +103,13 @@ impl Agent {
                 .push(chunk.clone())
         }
 
-        let extra_chunks = self.get_related_chunks(chunks.clone()).await;
+        let extra_chunks = match self.get_related_chunks(chunks.clone()).await {
+            Ok(chunks) => chunks,
+            Err(e) => {
+                info!(?e, "failed to get related chunks");
+                vec![]
+            }
+        };
 
         chunks.extend(extra_chunks);
 
