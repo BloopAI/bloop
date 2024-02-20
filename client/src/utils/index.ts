@@ -79,7 +79,7 @@ export const getFileExtensionForLang = (lang: string, lowercased?: boolean) => {
   // @ts-ignore
   let ext = langs[lang]?.[0];
   if (lowercased) {
-    const key = Object.keys(langs).find((key) => key.toLowerCase() === lang);
+    const key = Object.keys(langs).find((key) => key?.toLowerCase() === lang);
     if (key) {
       // @ts-ignore
       ext = langs[key]?.[0];
@@ -97,7 +97,7 @@ export const getPrettyLangName = (lang: string) => {
     case 'tsx':
       return 'TypeScript';
     default:
-      return Object.keys(langs).find((key) => key.toLowerCase() === lang);
+      return Object.keys(langs).find((key) => key?.toLowerCase() === lang);
   }
 };
 

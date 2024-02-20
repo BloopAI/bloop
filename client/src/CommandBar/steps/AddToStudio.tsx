@@ -156,7 +156,7 @@ const AddToStudio = (props: Props) => {
     const newSectionsToShow: CommandBarSectionType[] = [];
     initialSections.forEach((s) => {
       const items = (s.items as CommandBarItemGeneralType[]).filter((item) => {
-        return item.label.toLowerCase().includes(inputValue.toLowerCase());
+        return item.label?.toLowerCase().includes(inputValue?.toLowerCase());
       });
 
       if (items.length) {

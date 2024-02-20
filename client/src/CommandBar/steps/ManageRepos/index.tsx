@@ -172,9 +172,9 @@ const ManageRepos = ({ shouldShowTutorial }: Props) => {
     ) => {
       return 'componentProps' in item
         ? item.componentProps.repo.shortName
-            .toLowerCase()
-            .includes(inputValue.toLowerCase())
-        : item.label.toLowerCase().includes(inputValue.toLowerCase());
+            ?.toLowerCase()
+            .includes(inputValue?.toLowerCase())
+        : item.label?.toLowerCase().includes(inputValue?.toLowerCase());
     };
 
     sections.forEach((s) => {

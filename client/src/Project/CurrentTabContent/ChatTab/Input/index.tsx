@@ -178,7 +178,7 @@ const ConversationInput = ({
         .filter(
           (t): t is FileTabType =>
             t.type === TabTypesEnum.FILE &&
-            (!search || t.path.toLowerCase().includes(search.toLowerCase())),
+            (!search || t.path?.toLowerCase().includes(search?.toLowerCase())),
         )
         .map((t) => ({ path: t.path, repo: t.repoRef }));
       filesResults.push(

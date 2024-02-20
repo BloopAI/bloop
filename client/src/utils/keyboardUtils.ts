@@ -21,7 +21,7 @@ export const checkEventKeys = (e: KeyboardEvent, shortcut?: string[]) => {
   if (!shortcut) {
     return false;
   }
-  const keys = shortcut.map((k) => k.toLowerCase());
+  const keys = shortcut.map((k) => k?.toLowerCase());
   if (
     (keys.includes('cmd') && !(e.metaKey || e.ctrlKey)) ||
     (!keys.includes('cmd') && (e.metaKey || e.ctrlKey))
@@ -53,9 +53,9 @@ export const checkEventKeys = (e: KeyboardEvent, shortcut?: string[]) => {
     if (
       (e.altKey &&
         keys.includes(
-          e.code.replace('Key', '').replace('Digit', '').toLowerCase(),
+          e.code.replace('Key', '').replace('Digit', '')?.toLowerCase(),
         )) ||
-      (e.shiftKey && keys.includes(e.code.replace('Digit', '').toLowerCase()))
+      (e.shiftKey && keys.includes(e.code.replace('Digit', '')?.toLowerCase()))
     ) {
       return true;
     }
