@@ -44,7 +44,7 @@ export const mapReposBySections = (githubRepos: RepoType[]) => {
         ? 1
         : b === 'Local'
         ? -1
-        : a.toLowerCase() < b.toLowerCase()
+        : a?.toLowerCase() < b?.toLowerCase()
         ? -1
         : 1,
     )
@@ -52,11 +52,11 @@ export const mapReposBySections = (githubRepos: RepoType[]) => {
       result.push({
         org: k,
         items: byOrg[k].sort((a, b) =>
-          a.folderName.toLowerCase() < b.folderName.toLowerCase()
+          a.folderName?.toLowerCase() < b.folderName?.toLowerCase()
             ? -1
-            : a.folderName.toLowerCase() > b.folderName.toLowerCase()
+            : a.folderName?.toLowerCase() > b.folderName?.toLowerCase()
             ? 1
-            : a.shortName.toLowerCase() < b.shortName.toLowerCase()
+            : a.shortName?.toLowerCase() < b.shortName?.toLowerCase()
             ? -1
             : 1,
         ),

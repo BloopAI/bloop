@@ -39,8 +39,8 @@ const TemplatesDropdown = ({ templates, onTemplateSelected }: Props) => {
       setTemplatesToShow(templates);
     } else {
       setTemplatesToShow(
-        templates.filter((t) =>
-          t.name.toLowerCase().includes(inputValue.toLowerCase()),
+        templates.filter(
+          (t) => t.name?.toLowerCase().includes(inputValue?.toLowerCase()),
         ),
       );
     }

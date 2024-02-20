@@ -113,11 +113,12 @@ const RepoDropdown = ({
     if (!search) {
       return indexedBranches;
     }
-    return indexedBranches.filter((b) =>
-      b
-        .replace(/^origin\//, '')
-        .toLowerCase()
-        .includes(search.toLowerCase()),
+    return indexedBranches.filter(
+      (b) =>
+        b
+          .replace(/^origin\//, '')
+          ?.toLowerCase()
+          .includes(search?.toLowerCase()),
     );
   }, [indexedBranches, search]);
 
@@ -125,11 +126,12 @@ const RepoDropdown = ({
     if (!search) {
       return branchesToSync;
     }
-    return branchesToSync.filter((b) =>
-      b
-        .replace(/^origin\//, '')
-        .toLowerCase()
-        .includes(search.toLowerCase()),
+    return branchesToSync.filter(
+      (b) =>
+        b
+          .replace(/^origin\//, '')
+          ?.toLowerCase()
+          .includes(search?.toLowerCase()),
     );
   }, [branchesToSync, search]);
 
@@ -137,11 +139,12 @@ const RepoDropdown = ({
     if (!search) {
       return notSyncedBranches;
     }
-    return notSyncedBranches.filter((b) =>
-      b
-        .replace(/^origin\//, '')
-        .toLowerCase()
-        .includes(search.toLowerCase()),
+    return notSyncedBranches.filter(
+      (b) =>
+        b
+          .replace(/^origin\//, '')
+          ?.toLowerCase()
+          .includes(search?.toLowerCase()),
     );
   }, [notSyncedBranches, search]);
 

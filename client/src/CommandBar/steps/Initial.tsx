@@ -434,8 +434,8 @@ const InitialCommandBar = ({ shouldShowTutorial }: Props) => {
     }
     const newSections: CommandBarSectionType[] = [];
     initialSections.forEach((s) => {
-      const newItems = (s.items as CommandBarItemGeneralType[]).filter((i) =>
-        i.label.toLowerCase().includes(inputValue.toLowerCase()),
+      const newItems = (s.items as CommandBarItemGeneralType[]).filter(
+        (i) => i.label?.toLowerCase().includes(inputValue?.toLowerCase()),
       );
       if (newItems.length) {
         newSections.push({

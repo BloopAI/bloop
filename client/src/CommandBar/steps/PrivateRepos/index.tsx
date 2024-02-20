@@ -91,8 +91,8 @@ const PrivateReposStep = ({ shouldShowTutorial }: Props) => {
     sections.forEach((s) => {
       const items = (s.items as CommandBarItemCustomType[]).filter((item) => {
         return item.componentProps.repo.shortName
-          .toLowerCase()
-          .includes(inputValue.toLowerCase());
+          ?.toLowerCase()
+          .includes(inputValue?.toLowerCase());
       });
 
       if (items.length) {

@@ -140,10 +140,11 @@ const LocalRepos = ({}: Props) => {
     }
     const newSections: CommandBarSectionType[] = [];
     sections.forEach((s) => {
-      const newItems = s.items.filter((i) =>
-        ('label' in i ? i.label : i.componentProps.repo.shortName)
-          .toLowerCase()
-          .includes(inputValue.toLowerCase()),
+      const newItems = s.items.filter(
+        (i) =>
+          ('label' in i ? i.label : i.componentProps.repo.shortName)
+            ?.toLowerCase()
+            .includes(inputValue?.toLowerCase()),
       );
       if (newItems.length) {
         newSections.push({ ...s, items: newItems });

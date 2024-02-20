@@ -41,7 +41,7 @@ const FileResult = ({
       }
       return resp?.entries.sort((a, b) => {
         if ((a.entry_data === 'Directory') === (b.entry_data === 'Directory')) {
-          return a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1;
+          return a.name?.toLowerCase() < b.name?.toLowerCase() ? -1 : 1;
         } else {
           return a.entry_data === 'Directory' ? -1 : 1;
         }

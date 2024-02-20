@@ -177,10 +177,11 @@ const Documentation = ({}: Props) => {
     }
     const newSections: CommandBarSectionType[] = [];
     sections.forEach((s) => {
-      const newItems = s.items.filter((i) =>
-        ('label' in i ? i.label : i.componentProps.doc.name)
-          .toLowerCase()
-          .includes(inputValue.toLowerCase()),
+      const newItems = s.items.filter(
+        (i) =>
+          ('label' in i ? i.label : i.componentProps.doc.name)
+            ?.toLowerCase()
+            .includes(inputValue?.toLowerCase()),
       );
       if (newItems.length) {
         newSections.push({ ...s, items: newItems });

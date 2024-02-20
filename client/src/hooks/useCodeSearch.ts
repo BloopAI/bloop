@@ -61,7 +61,7 @@ export const useCodeSearch = ({
     }
     const lines = code.split('\n');
     const results = lines.reduce(function (prev: number[], cur, i) {
-      if (cur.toLowerCase().includes(deferredSearchTerm.toLowerCase())) {
+      if (cur?.toLowerCase().includes(deferredSearchTerm?.toLowerCase())) {
         prev.push(i);
       }
       return prev;
