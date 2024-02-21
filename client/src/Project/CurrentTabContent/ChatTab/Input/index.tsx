@@ -15,6 +15,7 @@ import {
   ChatMessageServer,
   FileTabType,
   InputEditorContent,
+  InputValueType,
   ParsedQueryType,
   TabTypesEnum,
 } from '../../../../types/general';
@@ -33,14 +34,12 @@ import { mapEditorContentToInputValue } from './ProseMirror/utils';
 import ReactMentionsInput from './ReactMentions';
 
 type Props = {
-  value?: { parsed: ParsedQueryType[]; plain: string };
-  valueToEdit?: Record<string, any> | null;
+  value?: InputValueType;
+  valueToEdit?: InputValueType;
   generationInProgress?: boolean;
   isStoppable?: boolean;
   onStop?: () => void;
-  setInputValue: Dispatch<
-    SetStateAction<{ parsed: ParsedQueryType[]; plain: string }>
-  >;
+  setInputValue: Dispatch<SetStateAction<InputValueType>>;
   selectedLines?: [number, number] | null;
   setSelectedLines?: (l: [number, number] | null) => void;
   queryIdToEdit?: string;
@@ -48,10 +47,8 @@ type Props = {
   conversation: ChatMessage[];
   hideMessagesFrom: number | null;
   setConversation: Dispatch<SetStateAction<ChatMessage[]>>;
-  setSubmittedQuery: Dispatch<
-    SetStateAction<{ parsed: ParsedQueryType[]; plain: string }>
-  >;
-  submittedQuery: { parsed: ParsedQueryType[]; plain: string };
+  setSubmittedQuery: Dispatch<SetStateAction<InputValueType>>;
+  submittedQuery: InputValueType;
   isInputAtBottom?: boolean;
   projectId: string;
 };
@@ -80,7 +77,7 @@ const ConversationInput = ({
   const { isVisible } = useContext(CommandBarContext.General);
   const { chatInputType } = useContext(UIContext.ChatInputType);
   const { setIsLeftSidebarFocused } = useContext(UIContext.Focus);
-  const [initialValue, setInitialValue] = useState<
+  const [initialProseValue, setInitialProseValue] = useState<
     Record<string, any> | null | undefined
   >({
     type: 'paragraph',
@@ -100,6 +97,7 @@ const ConversationInput = ({
             },
       ),
   });
+  const [initialMentionsValue, setInitialMentionsValue] = useState(value);
   const [hasRendered, setHasRendered] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -109,8 +107,26 @@ const ConversationInput = ({
   }, []);
 
   useEffect(() => {
-    if (hasRendered) {
-      setInitialValue(valueToEdit);
+    if (hasRendered && valueToEdit) {
+      setInitialProseValue({
+        type: 'paragraph',
+        content: valueToEdit?.parsed
+          .filter((pq) => ['path', 'lang', 'text', 'repo'].includes(pq.type))
+          .map((pq) =>
+            pq.type === 'text'
+              ? { type: 'text', text: pq.text }
+              : {
+                  type: 'mention',
+                  attrs: {
+                    id: pq.text,
+                    display: pq.text,
+                    type: pq.type,
+                    isFirst: false,
+                  },
+                },
+          ),
+      });
+      setInitialMentionsValue(valueToEdit);
     }
   }, [valueToEdit]);
 
@@ -314,6 +330,7 @@ const ConversationInput = ({
             getDataLang={getDataLang}
             getDataPath={getDataPath}
             getDataRepo={getDataRepo}
+            initialValue={initialMentionsValue}
           />
         ) : generationInProgress ? (
           <div className="select-none text-label-muted body-base cursor-default">
@@ -324,7 +341,7 @@ const ConversationInput = ({
             getDataLang={getDataLang}
             getDataPath={getDataPath}
             getDataRepo={getDataRepo}
-            initialValue={initialValue}
+            initialValue={initialProseValue}
             onChange={onChangeProseMirrorInput}
             onSubmit={onSubmit}
             placeholder={t(

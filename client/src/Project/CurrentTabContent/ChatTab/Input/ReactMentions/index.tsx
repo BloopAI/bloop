@@ -16,7 +16,7 @@ import { Trans, useTranslation } from 'react-i18next';
 import { getFileExtensionForLang, splitPath } from '../../../../../utils';
 import FileIcon from '../../../../../components/FileIcon';
 import { FolderIcon, RepositoryIcon } from '../../../../../icons';
-import { ParsedQueryType } from '../../../../../types/general';
+import { InputValueType } from '../../../../../types/general';
 import { blurInput } from '../../../../../utils/domUtils';
 import { MentionOptionType } from '../../../../../types/results';
 
@@ -25,10 +25,11 @@ type Props = {
   getDataLang: (s: string) => Promise<MentionOptionType[]>;
   getDataPath: (s: string) => Promise<MentionOptionType[]>;
   getDataRepo: (s: string) => Promise<MentionOptionType[]>;
-  value?: { parsed: ParsedQueryType[]; plain: string };
+  value?: InputValueType;
   onChange: (v: string) => void;
-  onSubmit: (v: { parsed: ParsedQueryType[]; plain: string }) => void;
+  onSubmit: (v: InputValueType) => void;
   isDisabled?: boolean;
+  initialValue?: InputValueType;
 };
 
 const inputStyle = {
@@ -67,10 +68,18 @@ const ReactMentionsInput = ({
   getDataLang,
   value,
   isDisabled,
+  initialValue,
 }: Props) => {
   const { t } = useTranslation();
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [isComposing, setComposition] = useState(false);
+  const [inputValue, setInputValue] = useState('');
+
+  useEffect(() => {
+    if (initialValue) {
+      setInputValue(initialValue.plain);
+    }
+  }, [initialValue]);
 
   useEffect(() => {
     if (inputRef.current) {
@@ -126,12 +135,12 @@ const ReactMentionsInput = ({
     setTimeout(() => setComposition(false), 10);
   }, []);
 
-  const handleChange = useCallback<OnChangeHandlerFunc>(
-    (e) => {
-      onChange(e.target.value);
-    },
-    [onChange],
-  );
+  const handleChange = useCallback<OnChangeHandlerFunc>((e) => {
+    setInputValue(e.target.value);
+  }, []);
+  useEffect(() => {
+    onChange(inputValue);
+  }, [inputValue]);
 
   const renderRepoSuggestion = useCallback(
     (
@@ -245,7 +254,7 @@ const ReactMentionsInput = ({
   return (
     <div className="w-full body-base pb-4 !leading-[24px] bg-transparent outline-none focus:outline-0 resize-none flex-grow-0 flex flex-col justify-center">
       <MentionsInput
-        value={value?.plain || ''}
+        value={inputValue}
         // id={id}
         onChange={handleChange}
         className={`ReactMention w-full bg-transparent rounded-lg outline-none focus:outline-0 resize-none
