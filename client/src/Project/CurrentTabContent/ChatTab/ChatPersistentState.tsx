@@ -147,10 +147,8 @@ const ChatPersistentState = ({
     });
   }, [queryIdToEdit]);
 
-  const [inputImperativeValue, setInputImperativeValue] = useState<Record<
-    string,
-    any
-  > | null>(null);
+  const [inputImperativeValue, setInputImperativeValue] =
+    useState<InputValueType>({ plain: '', parsed: [] });
   useEffect(() => {
     setChats((prev) => {
       return { ...prev, [tabKey]: { ...prev[tabKey], inputImperativeValue } };
@@ -199,34 +197,11 @@ const ChatPersistentState = ({
           ? { plain: value, parsed: splitUserInputAfterAutocomplete(value) }
           : { parsed: value, plain: concatenateParsedQuery(value) },
       );
-      setInputImperativeValue({
-        type: 'paragraph',
-        content:
-          typeof value === 'string'
-            ? [
-                {
-                  type: 'text',
-                  text: value,
-                },
-              ]
-            : value
-                .filter((pq) =>
-                  ['path', 'lang', 'text', 'repo'].includes(pq.type),
-                )
-                .map((pq) =>
-                  pq.type === 'text'
-                    ? { type: 'text', text: pq.text }
-                    : {
-                        type: 'mention',
-                        attrs: {
-                          id: pq.text,
-                          display: pq.text,
-                          type: pq.type,
-                          isFirst: false,
-                        },
-                      },
-                ),
-      });
+      setInputImperativeValue(
+        typeof value === 'string'
+          ? { plain: value, parsed: splitUserInputAfterAutocomplete(value) }
+          : { parsed: value, plain: concatenateParsedQuery(value) },
+      );
       focusInput();
     },
     [],
@@ -247,7 +222,7 @@ const ChatPersistentState = ({
       }
       eventSource.current?.close();
       setInputValue({ plain: '', parsed: [] });
-      setInputImperativeValue(null);
+      setInputImperativeValue({ plain: '', parsed: [] });
       setLoading(true);
       setQueryIdToEdit('');
       setHideMessagesFrom(null);
@@ -584,7 +559,7 @@ const ChatPersistentState = ({
   const onMessageEditCancel = useCallback(() => {
     setQueryIdToEdit('');
     setInputValue({ plain: '', parsed: [] });
-    setInputImperativeValue(null);
+    setInputImperativeValue({ plain: '', parsed: [] });
     setHideMessagesFrom(null);
   }, []);
   useEffect(() => {
