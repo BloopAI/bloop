@@ -13,7 +13,7 @@ export type ChatContext = {
   isLoading: boolean;
   hideMessagesFrom: null | number;
   queryIdToEdit: string;
-  inputImperativeValue: Record<string, any> | null;
+  inputImperativeValue: InputValueType;
   threadId: string;
   setThreadId: Dispatch<SetStateAction<string>>;
   stopGenerating: () => void;
