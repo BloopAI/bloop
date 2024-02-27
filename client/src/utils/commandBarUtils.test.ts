@@ -156,7 +156,7 @@ describe('commandBarUtils', () => {
       const key1 = items1[2].key;
       const key2 = items2[1].key;
       const key3 = items3[0].key;
-      const recentKeysArr = [key1, key2, key3];
+      const recentKeysArr = [key3, key2, key1];
       const result = bubbleUpRecentItems(sections, recentKeysArr, recentLabel);
       expect(result.length).toEqual(3);
       expect(result[0].items.length).toEqual(recentKeysArr.length);
@@ -174,7 +174,7 @@ describe('commandBarUtils', () => {
         ...items1.map((i) => i.key),
         ...items2.map((i) => i.key),
         ...items3.map((i) => i.key),
-      ];
+      ].reverse();
       const result = bubbleUpRecentItems(sections, recentKeysArr, recentLabel);
       expect(result.length).toEqual(1);
       expect(result[0].items.length).toEqual(recentKeysArr.length);
