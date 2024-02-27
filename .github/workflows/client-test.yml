@@ -44,3 +44,6 @@ jobs:
 
       - name: Run type-check
         run: npm run client-type-check
+
+      - name: Run tests
+        run: npm --prefix client run test

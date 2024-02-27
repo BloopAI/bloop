@@ -470,22 +470,4 @@ export function concatenateParsedQuery(query: ParsedQueryType[]) {
   return result;
 }
 
-type InputEditorTextContent = {
-  type: 'text';
-  text: string;
-};
-
-type InputEditorMentionContent = {
-  type: 'mention';
-  attrs: {
-    type: 'lang' | 'path' | 'repo';
-    id: string;
-    display: string;
-  };
-};
-
-export type InputEditorContent =
-  | InputEditorTextContent
-  | InputEditorMentionContent;
-
 export const noOp = () => {};
