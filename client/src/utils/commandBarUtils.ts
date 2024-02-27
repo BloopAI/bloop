@@ -21,7 +21,7 @@ export const bubbleUpRecentItems = (
     newSections.push({
       label: recentLabel,
       items: recentItems.sort(
-        (a, b) => recentKeys.indexOf(b.key) - recentKeys.indexOf(a.key),
+        (a, b) => recentKeys.indexOf(a.key) - recentKeys.indexOf(b.key),
       ),
       key: 'recent-items',
     });
