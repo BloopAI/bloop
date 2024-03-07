@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         target:
-          [x86_64-unknown-linux-gnu, x86_64-apple-darwin, aarch64-apple-darwin, x86_64-pc-windows-msvc]
+          [x86_64-unknown-linux-gnu, x86_64-apple-darwin, aarch64-apple-darwin, windows-latest]
 
         include:
           - target: x86_64-unknown-linux-gnu
@@ -29,10 +29,6 @@ jobs:
 
           - target: aarch64-apple-darwin
             name: macos-11
-
-          - target: x86_64-pc-windows-msvc
-            name: [ self-hosted, Windows, X64 ]
-
 
     runs-on: ${{ matrix.name }}
     env:
