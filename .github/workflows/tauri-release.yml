@@ -31,7 +31,7 @@ jobs:
             name: macos-11
 
           - target: x86_64-pc-windows-msvc
-            name: x86_64-pc-windows-msvc
+            name: windows-latest
 
 
     runs-on: ${{ matrix.name }}
