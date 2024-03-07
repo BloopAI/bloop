@@ -30,6 +30,10 @@ jobs:
           - target: aarch64-apple-darwin
             name: macos-11
 
+          - target: windows-latest
+            name: windows-latest
+
+
     runs-on: ${{ matrix.name }}
     env:
       ORT_LIB_LOCATION: ${{ github.workspace }}/lib/${{ matrix.target }}/onnxruntime
