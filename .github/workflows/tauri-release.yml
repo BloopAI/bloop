@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         target:
-          [x86_64-unknown-linux-gnu, x86_64-apple-darwin, aarch64-apple-darwin, windows-latest]
+          [x86_64-unknown-linux-gnu, x86_64-apple-darwin, aarch64-apple-darwin, x86_64-pc-windows-msvc]
 
         include:
           - target: x86_64-unknown-linux-gnu
@@ -30,8 +30,8 @@ jobs:
           - target: aarch64-apple-darwin
             name: macos-11
 
-          - target: windows-latest
-            name: windows-latest
+          - target: x86_64-pc-windows-msvc
+            name: x86_64-pc-windows-msvc
 
 
     runs-on: ${{ matrix.name }}
@@ -109,7 +109,7 @@ jobs:
           value: ${{ secrets.MAC_PROVIDER_SHORT_NAME }}
 
       - name: Set identifier to bloop on Windows, in tauri.conf.json
-        if: matrix.target == 'windows-latest'
+        if: matrix.target == 'x86_64-pc-windows-msvc'
         uses: jossef/action-set-json-field@v2.1
         with:
           file: apps/desktop/src-tauri/tauri.conf.json
