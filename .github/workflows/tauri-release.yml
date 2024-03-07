@@ -109,7 +109,7 @@ jobs:
           value: ${{ secrets.MAC_PROVIDER_SHORT_NAME }}
 
       - name: Set identifier to bloop on Windows, in tauri.conf.json
-        if: matrix.target == 'x86_64-pc-windows-msvc'
+        if: matrix.target == 'windows-latest'
         uses: jossef/action-set-json-field@v2.1
         with:
           file: apps/desktop/src-tauri/tauri.conf.json
