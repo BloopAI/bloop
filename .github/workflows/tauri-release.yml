@@ -22,7 +22,7 @@ jobs:
 
         include:
           - target: x86_64-pc-windows-msvc
-            name: windows-latest
+            name: windows-2019
 
 
     runs-on: ${{ matrix.name }}
