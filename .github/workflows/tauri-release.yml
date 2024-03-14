@@ -79,7 +79,7 @@ jobs:
         run: exit 1
 
       - name: Set environment
-        run: echo "{\"analytics_key\":\"${{ secrets.ANALYTICS_BE_WRITE_KEY_PROD }}\",\"analytics_data_plane\":\"${{ secrets.ANALYTICS_DATA_PLANE_URL }}\",\"sentry_dsn_fe\":\"${{ secrets.SENTRY_DSN_FE }}\",\"sentry_dsn\":\"${{ secrets.SENTRY_DSN_BE }}\",\"analytics_key_fe\":\"${{ secrets.ANALYTICS_FE_WRITE_KEY_PROD }}\",\"answer_api_url\":\"${{ secrets.ANSWER_API_URL }}\",\"cognito_userpool_id\":\"${{ secrets.COGNITO_USERPOOL_ID }}\",\"cognito_client_id\":\"${{ secrets.COGNITO_CLIENT_ID }}\",\"cognito_auth_url\":\"${{ secrets.COGNITO_AUTH_URL }}\",\"cognito_mgmt_url\":\"${{ secrets.COGNITO_MGMT_URL }}\",\"cognito_config_url\":\"${{ secrets.COGNITO_CONFIG_URL }}\"}" > apps/desktop/src-tauri/config/config.json
+        run: echo "{""analytics_key"":""${{ secrets.ANALYTICS_BE_WRITE_KEY_PROD }}"",""analytics_data_plane"":""${{ secrets.ANALYTICS_DATA_PLANE_URL }}"",""sentry_dsn_fe"":""${{ secrets.SENTRY_DSN_FE }}"",""sentry_dsn"":""${{ secrets.SENTRY_DSN_BE }}"",""analytics_key_fe"":""${{ secrets.ANALYTICS_FE_WRITE_KEY_PROD }}"",""answer_api_url"":""${{ secrets.ANSWER_API_URL }}"",""cognito_userpool_id"":""${{ secrets.COGNITO_USERPOOL_ID }}"",""cognito_client_id"":""${{ secrets.COGNITO_CLIENT_ID }}"",""cognito_auth_url"":""${{ secrets.COGNITO_AUTH_URL }}"",""cognito_mgmt_url"":""${{ secrets.COGNITO_MGMT_URL }}"",""cognito_config_url"":""${{ secrets.COGNITO_CONFIG_URL }}""}" > apps/desktop/src-tauri/config/config.json
 
       - name: Check environment is set
         run: du -h apps/desktop/src-tauri/config/config.json
