@@ -1,6 +1,7 @@
 // a version of tantivy::collector::FilterCollector that works on byte fast fields
 
 use tantivy::collector::{Collector, SegmentCollector};
+use tantivy::fastfield::BytesFastFieldReader;
 use tantivy::schema::Field;
 use tantivy::{Score, SegmentReader, TantivyError};
 
@@ -57,8 +58,7 @@ where
             )));
         }
 
-        let field_name = schema.get_field_name(self.field);
-        let fast_field_reader = segment_reader.fast_fields().bytes(field_name)?.unwrap();
+        let fast_field_reader = segment_reader.fast_fields().bytes(self.field)?;
 
         let segment_collector = self
             .collector
@@ -87,7 +87,7 @@ pub struct BytesFilterSegmentCollector<TSegmentCollector, TPredicate>
 where
     TPredicate: 'static,
 {
-    fast_field_reader: tantivy_columnar::BytesColumn,
+    fast_field_reader: BytesFastFieldReader,
     segment_collector: TSegmentCollector,
     predicate: TPredicate,
 }
@@ -101,16 +101,8 @@ where
     type Fruit = TSegmentCollector::Fruit;
 
     fn collect(&mut self, doc: u32, score: Score) {
-        let mut value = Vec::new();
-        self.fast_field_reader
-            .ords()
-            .values_for_doc(doc)
-            .for_each(|ord| {
-                self.fast_field_reader
-                    .ord_to_bytes(ord, &mut value)
-                    .unwrap();
-            });
-        if (self.predicate)(&value) {
+        let value = self.fast_field_reader.get_bytes(doc);
+        if (self.predicate)(value) {
             self.segment_collector.collect(doc, score)
         }
     }

@@ -66,8 +66,7 @@ impl Collector for GroupCollector {
         segment_local_id: u32,
         segment_reader: &SegmentReader,
     ) -> tantivy::Result<GroupSegmentCollector> {
-        let field_name = segment_reader.schema().get_field_name(self.field);
-        let fast_field_reader = segment_reader.fast_fields().bytes(field_name)?.unwrap();
+        let fast_field_reader = segment_reader.fast_fields().bytes(self.field)?;
         Ok(GroupSegmentCollector {
             fast_field_reader,
             segment_local_id,
@@ -107,7 +106,7 @@ impl Collector for GroupCollector {
 }
 
 pub struct GroupSegmentCollector {
-    fast_field_reader: tantivy_columnar::BytesColumn,
+    fast_field_reader: tantivy::fastfield::BytesFastFieldReader,
     segment_local_id: u32,
     groups: Groups,
     group_size: usize,
@@ -117,15 +116,7 @@ impl SegmentCollector for GroupSegmentCollector {
     type Fruit = Option<Groups>;
 
     fn collect(&mut self, doc: u32, _score: Score) {
-        let mut value = Vec::new();
-        self.fast_field_reader
-            .ords()
-            .values_for_doc(doc)
-            .for_each(|ord| {
-                self.fast_field_reader
-                    .ord_to_bytes(ord, &mut value)
-                    .unwrap();
-            });
+        let value = self.fast_field_reader.get_bytes(doc);
         let hash = blake3::hash(&value);
         let entry = self.groups.items.entry(hash).or_default();
         if entry.items.len() < self.group_size {
