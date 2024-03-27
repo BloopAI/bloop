@@ -9,7 +9,6 @@ use crate::{
         exchange::{CodeChunk, FocusedChunk, Update},
         model, transcoder, Agent,
     },
-    analytics::EventData,
     llm_gateway,
 };
 
@@ -85,15 +84,6 @@ impl Agent {
         }
 
         self.update(Update::SetTimestamp).await?;
-
-        self.track_query(
-            EventData::output_stage("answer_article")
-                .with_payload("query", self.last_exchange().query())
-                .with_payload("query_history", &history)
-                .with_payload("response", &response)
-                .with_payload("raw_prompt", &system_prompt)
-                .with_payload("model", self.answer_model.model_name),
-        );
 
         Ok(())
     }

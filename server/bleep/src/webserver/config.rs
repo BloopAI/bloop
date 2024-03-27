@@ -11,8 +11,6 @@ pub(super) struct ConfigResponse {
     user_login: Option<String>,
     org_name: Option<String>,
     schema_version: String,
-    tracking_id: String,
-    device_id: String,
     github_user: Option<octocrab::models::Author>,
     bloop_user_profile: UserProfile,
     bloop_version: String,
@@ -33,18 +31,6 @@ pub(super) async fn get(
         .unwrap_or_default();
 
     let user_login = user.username().map(str::to_owned);
-
-    let tracking_id = app
-        .analytics
-        .as_ref()
-        .map(|a| a.tracking_id(user_login.as_deref()))
-        .unwrap_or_default();
-
-    let device_id = app
-        .analytics
-        .as_ref()
-        .map(|a| a.device_id())
-        .unwrap_or_default();
 
     let org_name = app.credentials.github().and_then(|cred| match cred.auth {
         remotes::github::Auth::App { org, .. } => Some(org),
@@ -71,9 +57,7 @@ pub(super) async fn get(
         paid: user.paid_features(&app).await,
         user_login,
         github_user,
-        device_id,
         org_name,
-        tracking_id,
     })
 }
 

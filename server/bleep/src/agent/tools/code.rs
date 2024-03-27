@@ -6,7 +6,6 @@ use crate::{
         exchange::{CodeChunk, RepoPath, SearchStep, Update},
         prompts, Agent, AgentSemanticSearchParams,
     },
-    analytics::EventData,
     llm_gateway,
     query::parser::Literal,
     semantic::SemanticSearchParams,
@@ -41,7 +40,7 @@ impl Agent {
 
         debug!("returned {} results", results.len());
 
-        let hyde_docs = if results.len() < MINIMUM_RESULTS {
+        if results.len() < MINIMUM_RESULTS {
             info!("too few results returned, running HyDE");
 
             let hyde_docs = self.hyde(query).await?;
@@ -64,10 +63,7 @@ impl Agent {
                 debug!("returned {} HyDE results", results.len());
                 results.extend(hyde_results);
             }
-            hyde_docs
-        } else {
-            vec![]
-        };
+        }
 
         let mut chunks = results
             .into_iter()
@@ -126,14 +122,6 @@ impl Agent {
             response: response.clone(),
         }))
         .await?;
-
-        self.track_query(
-            EventData::input_stage("semantic code search")
-                .with_payload("query", query)
-                .with_payload("hyde_queries", &hyde_docs)
-                .with_payload("chunks", &chunks)
-                .with_payload("raw_prompt", &response),
-        );
 
         Ok(response)
     }

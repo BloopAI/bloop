@@ -40,14 +40,6 @@ impl User {
         }
     }
 
-    pub(crate) fn org_name(&self) -> Option<&str> {
-        let User::Cloud { org_name, .. } = self else {
-            return None;
-        };
-
-        Some(org_name.as_ref())
-    }
-
     pub(crate) fn github_client(&self) -> Option<octocrab::Octocrab> {
         let crab = match self {
             User::Unknown => return None,

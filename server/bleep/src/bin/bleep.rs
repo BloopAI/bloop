@@ -15,7 +15,7 @@ async fn main() -> Result<()> {
     _ = color_eyre::install();
 
     Application::install_logging(&config);
-    let app = Application::initialize(Environment::server(), config, None, None).await?;
+    let app = Application::initialize(Environment::server(), config).await?;
 
     app.initialize_sentry();
     app.run().await

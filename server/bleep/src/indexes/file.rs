@@ -112,7 +112,7 @@ impl Indexable for File {
         let cache = file_cache.retrieve(reporef).await;
         let repo_name = reporef.indexed_name();
         let processed = &AtomicU64::new(0);
-        let mut stats_gatherer = StatsGatherer::for_repo(reporef.clone());
+        let mut stats_gatherer = StatsGatherer::for_repo();
         stats_gatherer.is_first_index = cache.is_empty();
         stats_gatherer.was_index_reset = app.indexes.was_index_reset;
 
@@ -177,7 +177,6 @@ impl Indexable for File {
                 repo.branch_filter.as_ref().map(Into::into),
             )?;
             let count = walker.len();
-            stats_gatherer.event.add_payload("file_count", &count);
             walker.for_each(pipes, file_worker(count));
         } else {
             let branch = gix::open::Options::isolated()
@@ -198,7 +197,6 @@ impl Indexable for File {
 
             let walker = FileWalker::index_directory(&repo.disk_path, branch);
             let count = walker.len();
-            stats_gatherer.event.add_payload("file_count", &count);
             walker.for_each(pipes, file_worker(count));
         };
 
@@ -209,11 +207,6 @@ impl Indexable for File {
         info!(?repo.disk_path, "repo file indexing finished, took {:?}", start.elapsed());
 
         stats_gatherer.finish().await;
-        if stats_gatherer.repo_stats.reindex_count > 0 {
-            let user = app.user().await;
-            let event = stats_gatherer.event();
-            app.with_analytics(|hub| hub.track_repo(event, &user));
-        }
 
         file_cache
             .synchronize(cache, |key| {

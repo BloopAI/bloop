@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Extension, Json, Path, Query, State},
+    extract::{Json, Path, Query, State},
     response::{
         sse::{Event, KeepAlive},
         Sse,
@@ -9,9 +9,8 @@ use futures::stream::{Stream, StreamExt};
 use tracing::error;
 
 use crate::{
-    analytics::DocEvent,
     indexes::doc,
-    webserver::{middleware::User, Error, Result},
+    webserver::{Error, Result},
     Application,
 };
 
@@ -63,15 +62,7 @@ pub async fn delete(State(app): State<Application>, Path(id): Path<i64>) -> Resu
 pub async fn enqueue(
     State(app): State<Application>,
     Query(params): Query<Enqueue>,
-    Extension(user): Extension<User>,
 ) -> Result<Json<i64>> {
-    app.with_analytics(|hub| {
-        hub.track_doc(
-            &user,
-            DocEvent::new("sync").with_payload("url", &params.url),
-        )
-    });
-
     Ok(Json(app.indexes.doc.clone().enqueue(params.url).await?))
 }
 
