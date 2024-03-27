@@ -8,7 +8,6 @@ use crate::{
         exchange::{RepoPath, SearchStep, Update},
         Agent, AgentSemanticSearchParams,
     },
-    analytics::EventData,
     semantic::SemanticSearchParams,
 };
 
@@ -32,8 +31,6 @@ impl Agent {
             .collect::<HashSet<_>>() // TODO: This shouldn't be necessary. Path search should return unique results.
             .into_iter()
             .collect::<Vec<_>>();
-
-        let is_semantic = paths.is_empty();
 
         // If there are no lexical results, perform a semantic search.
         if paths.is_empty() {
@@ -79,14 +76,6 @@ impl Agent {
             response: response.clone(),
         }))
         .await?;
-
-        self.track_query(
-            EventData::input_stage("path search")
-                .with_payload("query", query)
-                .with_payload("is_semantic", is_semantic)
-                .with_payload("results", &paths)
-                .with_payload("raw_prompt", &response),
-        );
 
         Ok(response)
     }

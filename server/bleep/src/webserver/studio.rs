@@ -24,7 +24,6 @@ use self::diff::{DiffChunk, DiffHunk};
 use super::{middleware::User, Error};
 use crate::{
     agent::{exchange::Exchange, prompts},
-    analytics::StudioEvent,
     llm_gateway,
     repo::RepoRef,
     webserver, Application,
@@ -738,14 +737,6 @@ pub async fn generate(
     let doc_context =
         serde_json::from_str::<Vec<DocContextFile>>(&doc_context_json).map_err(Error::internal)?;
 
-    app.track_studio(
-        &user,
-        StudioEvent::new(studio_id, "generate")
-            .with_payload("context", &context)
-            .with_payload("doc_context", &doc_context)
-            .with_payload("messages", &messages),
-    );
-
     let llm_context = generate_llm_context((*app).clone(), &context, &doc_context).await?;
     let system_prompt = prompts::studio_article_prompt(&llm_context);
     let llm_messages = iter::once(llm_gateway::api::Message::system(&system_prompt))
@@ -764,12 +755,6 @@ pub async fn generate(
             response += &fragment;
             yield response.clone();
         }
-
-        app.track_studio(
-            &user,
-            StudioEvent::new(studio_id, "generate_complete")
-                .with_payload("response", &response)
-        );
 
         messages.push(Message::Assistant(response));
         let messages_json = serde_json::to_string(&messages).unwrap();
@@ -994,14 +979,6 @@ pub async fn diff(
             Message::Assistant(m) => Some(m),
         })
         .context("studio did not contain an assistant message")?;
-
-    app.track_studio(
-        &user,
-        StudioEvent::new(studio_id, "diff")
-            .with_payload("context", &context)
-            .with_payload("user_message", &user_message)
-            .with_payload("assistant_message", &assistant_message),
-    );
 
     let llm_context = generate_llm_context((*app).clone(), &context, &[]).await?;
 
@@ -1362,7 +1339,6 @@ pub async fn diff_apply(
                 shallow: false,
             }),
             app.clone(),
-            user.clone(),
         )
         .await?;
     }
@@ -1534,14 +1510,6 @@ pub async fn import(
     }
     .execute(&mut transaction)
     .await?;
-
-    app.track_studio(
-        &user,
-        StudioEvent::new(studio_id, "import")
-            .with_payload("thread_id", &params.thread_id)
-            .with_payload("old_context", &old_context)
-            .with_payload("new_context", &new_context),
-    );
 
     transaction.commit().await?;
 

@@ -6,7 +6,6 @@ use crate::{
         exchange::{CodeChunk, RepoPath, SearchStep, Update},
         Agent, AgentSemanticSearchParams,
     },
-    analytics::EventData,
     query::parser::Literal,
     semantic::SemanticSearchParams,
 };
@@ -92,12 +91,6 @@ impl Agent {
             response: response.clone(),
         }))
         .await?;
-
-        self.track_query(
-            EventData::input_stage("process file")
-                .with_payload("question", query)
-                .with_payload("chunks", &response),
-        );
 
         Ok(response)
     }

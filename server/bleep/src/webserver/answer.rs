@@ -7,7 +7,7 @@ use axum::{
         sse::{self, Sse},
         IntoResponse,
     },
-    Extension, Json,
+    Extension,
 };
 use futures::{future::Either, stream, StreamExt};
 use reqwest::StatusCode;
@@ -20,7 +20,6 @@ use crate::{
         exchange::{CodeChunk, Exchange, FocusedChunk, RepoPath},
         Action, Agent, ExchangeState,
     },
-    analytics::{EventData, QueryEvent},
     db::QueryLog,
     query::parser::{self, Literal},
     repo::RepoRef,
@@ -43,21 +42,6 @@ pub struct Vote {
 pub enum VoteFeedback {
     Positive,
     Negative { feedback: String },
-}
-
-pub(super) async fn vote(
-    Extension(app): Extension<Application>,
-    Extension(user): Extension<User>,
-    Json(params): Json<Vote>,
-) {
-    app.track_query(
-        &user,
-        &QueryEvent {
-            query_id: params.query_id,
-            thread_id: params.thread_id,
-            data: EventData::output_stage("vote").with_payload("feedback", params.feedback),
-        },
-    );
 }
 
 #[derive(Clone, Debug, serde::Deserialize)]
@@ -182,17 +166,6 @@ impl AgentExecutor {
 
         if let Err(err) = response.as_ref() {
             error!(?err, "failed to handle /answer query");
-
-            self.app.track_query(
-                &self.user,
-                &QueryEvent {
-                    query_id: self.query_id,
-                    thread_id: self.conversation.thread_id,
-                    data: EventData::output_stage("error")
-                        .with_payload("status", err.status.as_u16())
-                        .with_payload("message", err.message()),
-                },
-            );
         }
 
         response
@@ -349,17 +322,9 @@ impl AgentExecutor {
                 }
                 Err(agent::Error::Timeout(duration)) => {
                     warn!("Timeout reached.");
-                    agent.track_query(
-                        EventData::output_stage("error")
-                            .with_payload("timeout", duration.as_secs()),
-                    );
                     Err(anyhow!("reached timeout of {duration:?}"))?;
                 }
                 Err(agent::Error::Processing(e)) => {
-                    agent.track_query(
-                        EventData::output_stage("error")
-                            .with_payload("message", e.to_string()),
-                    );
                     Err(e)?;
                 }
             };

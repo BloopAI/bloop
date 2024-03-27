@@ -122,7 +122,6 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
             get(autocomplete::handle),
         )
         .route("/projects/:project_id/search/path", get(search::fuzzy_path))
-        .route("/projects/:project_id/answer/vote", post(answer::vote))
         .route("/projects/:project_id/answer", get(answer::answer))
         .route("/projects/:project_id/answer/explain", get(answer::explain))
         .route("/projects/:project_id/studios", post(studio::create))
@@ -314,10 +313,6 @@ impl Error {
                 message: message.to_string().into(),
             },
         }
-    }
-
-    fn message(&self) -> &str {
-        self.body.message.as_ref()
     }
 }
 

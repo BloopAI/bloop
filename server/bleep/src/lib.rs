@@ -35,7 +35,7 @@ use crate::{
     background::SyncQueue, indexes::Indexes, remotes::CognitoGithubTokenBundle, semantic::Semantic,
     state::RepositoryPool, webserver::middleware::User,
 };
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result};
 use axum::extract::FromRef;
 
 use once_cell::sync::OnceCell;
@@ -66,7 +66,6 @@ mod webserver;
 
 mod ee;
 
-pub mod analytics;
 pub mod indexes;
 pub mod intelligence;
 pub mod periodic;
@@ -119,18 +118,10 @@ pub struct Application {
 
     /// SQL database for persistent storage
     pub sql: SqlDb,
-
-    /// Analytics backend -- may be unintialized
-    pub analytics: Option<Arc<analytics::RudderHub>>,
 }
 
 impl Application {
-    pub async fn initialize(
-        env: Environment,
-        mut config: Configuration,
-        tracking_seed: impl Into<Option<String>>,
-        analytics_options: impl Into<Option<analytics::HubOptions>>,
-    ) -> Result<Application> {
+    pub async fn initialize(env: Environment, mut config: Configuration) -> Result<Application> {
         config.max_threads = config.max_threads.max(minimum_parallelism());
         let threads = config.max_threads;
 
@@ -187,15 +178,6 @@ impl Application {
             env
         };
 
-        // Analytics backend
-        let analytics = match initialize_analytics(&config, tracking_seed, analytics_options) {
-            Ok(analytics) => Some(analytics),
-            Err(err) => {
-                warn!(?err, "failed to initialize analytics");
-                None
-            }
-        };
-
         Ok(Self {
             sync_queue: SyncQueue::start(config.clone()),
             cookie_key: config.source.initialize_cookie_key()?,
@@ -206,7 +188,6 @@ impl Application {
             sql,
             indexes,
             repo_pool,
-            analytics,
             semantic,
             config,
             env,
@@ -303,23 +284,6 @@ impl Application {
         }
 
         false
-    }
-
-    fn track_query(&self, user: &User, event: &analytics::QueryEvent) {
-        if let Some(analytics) = self.analytics.as_ref() {
-            analytics.track_query(user, event.clone());
-        }
-    }
-
-    fn track_studio(&self, user: &User, event: analytics::StudioEvent) {
-        if let Some(analytics) = self.analytics.as_ref() {
-            analytics.track_studio(user, event);
-        }
-    }
-
-    /// Run a closure over the current `analytics` instance, if it exists.
-    fn with_analytics<R>(&self, f: impl FnOnce(&Arc<analytics::RudderHub>) -> R) -> Option<R> {
-        self.analytics.as_ref().map(f)
     }
 
     pub fn username(&self) -> Option<String> {
@@ -463,39 +427,4 @@ where
             Level::DEBUG | Level::INFO | Level::WARN => EventFilter::Breadcrumb,
             Level::TRACE => EventFilter::Ignore,
         })
-}
-
-#[tracing::instrument(skip_all)]
-fn initialize_analytics(
-    config: &Configuration,
-    tracking_seed: impl Into<Option<String>>,
-    options: impl Into<Option<analytics::HubOptions>>,
-) -> Result<Arc<analytics::RudderHub>> {
-    debug!("creating configuration");
-
-    let Some(key) = &config.analytics_key else {
-        bail!("analytics key missing; skipping initialization");
-    };
-
-    let Some(data_plane) = &config.analytics_data_plane else {
-        bail!("analytics data plane url missing; skipping initialization");
-    };
-
-    let options = options.into().unwrap_or_else(|| analytics::HubOptions {
-        package_metadata: Some(analytics::PackageMetadata {
-            name: env!("CARGO_CRATE_NAME"),
-            version: env!("CARGO_PKG_VERSION"),
-            git_rev: git_version::git_version!(fallback = "unknown"),
-        }),
-    });
-
-    tokio::task::block_in_place(|| {
-        analytics::RudderHub::new_with_options(
-            &config.source,
-            tracking_seed,
-            key.clone(),
-            data_plane.clone(),
-            options,
-        )
-    })
 }

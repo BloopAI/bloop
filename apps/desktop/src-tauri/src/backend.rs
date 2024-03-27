@@ -1,7 +1,7 @@
-use bleep::{analytics, Application, Configuration, Environment};
+use bleep::{Application, Configuration, Environment};
 use tracing::error;
 
-use super::{config::get_device_id, Manager, Payload, Runtime};
+use super::{Manager, Payload, Runtime};
 use std::thread;
 use std::time::Duration;
 
@@ -93,19 +93,7 @@ async fn start_backend<R: Runtime>(configuration: Configuration, app: tauri::App
 
     app.manage(configuration.clone());
 
-    let initialized = Application::initialize(
-        Environment::insecure_local(),
-        configuration,
-        get_device_id(),
-        analytics::HubOptions {
-            package_metadata: Some(analytics::PackageMetadata {
-                name: env!("CARGO_CRATE_NAME"),
-                version: env!("CARGO_PKG_VERSION"),
-                git_rev: git_version::git_version!(fallback = "unknown"),
-            }),
-        },
-    )
-    .await;
+    let initialized = Application::initialize(Environment::insecure_local(), configuration).await;
 
     match initialized {
         Ok(backend) => {
@@ -114,16 +102,6 @@ async fn start_backend<R: Runtime>(configuration: Configuration, app: tauri::App
                 scope.add_event_processor(move |mut event| {
                     event.user = Some(crate::config::sentry_user()).map(|mut user| {
                         let username = backend.username();
-
-                        user.id = Some(
-                            if let (Some(analytics), Some(username)) =
-                                (&backend.analytics, &username)
-                            {
-                                analytics.tracking_id(Some(username))
-                            } else {
-                                get_device_id()
-                            },
-                        );
                         user.username = username;
                         user
                     });

@@ -7,7 +7,6 @@ use tracing::{debug, error, info, instrument};
 
 use crate::{
     agent::exchange::RepoPath,
-    analytics::{EventData, QueryEvent},
     indexes::reader::{ContentDocument, FileDocument},
     llm_gateway::{self, api::FunctionCall},
     query::{parser, stopwords::remove_stopwords},
@@ -91,18 +90,8 @@ impl Drop for Agent {
             ExchangeState::Failed => {}
             ExchangeState::Pending => {
                 if std::thread::panicking() {
-                    self.track_query(
-                        EventData::output_stage("cancelled")
-                            .with_payload("message", "request panicked"),
-                    );
                 } else {
                     self.last_exchange_mut().apply_update(Update::SetTimestamp);
-
-                    self.track_query(
-                        EventData::output_stage("cancelled")
-                            .with_payload("message", "request was cancelled"),
-                    );
-
                     tokio::spawn(self.store());
                 }
             }
@@ -137,15 +126,6 @@ impl Agent {
             .send(self.last_exchange().clone())
             .await
             .map_err(|_| anyhow!("exchange_tx was closed"))
-    }
-
-    pub fn track_query(&self, data: EventData) {
-        let event = QueryEvent {
-            query_id: self.query_id,
-            thread_id: self.conversation.thread_id,
-            data,
-        };
-        self.app.track_query(&self.user, &event);
     }
 
     fn last_exchange(&self) -> &Exchange {
@@ -201,8 +181,6 @@ impl Agent {
 
         match &action {
             Action::Query(s) => {
-                self.track_query(EventData::input_stage("query").with_payload("q", s));
-
                 // Always make a code search for the user query on the first exchange
                 if self.conversation.exchanges.len() == 1 {
                     let keywords = {
@@ -269,16 +247,6 @@ impl Agent {
             )
             .await
             .context("failed to fold LLM function call output")?;
-
-        self.track_query(
-            EventData::output_stage("llm_reply")
-                .with_payload("full_history", &history)
-                .with_payload("trimmed_history", &trimmed_history)
-                .with_payload("last_message", history.last())
-                .with_payload("functions", &functions)
-                .with_payload("raw_response", &raw_response)
-                .with_payload("model", &self.llm_gateway.model),
-        );
 
         let action =
             Action::deserialize_gpt(&raw_response).context("failed to deserialize LLM output")?;
