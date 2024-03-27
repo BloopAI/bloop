@@ -529,8 +529,6 @@ dependencies = [
  "secrecy",
  "select",
  "semver",
- "sentry",
- "sentry-tracing",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -6118,7 +6116,6 @@ dependencies = [
  "httpdate",
  "native-tls",
  "reqwest",
- "rustls 0.21.8",
  "sentry-backtrace",
  "sentry-contexts",
  "sentry-core",
@@ -6127,7 +6124,6 @@ dependencies = [
  "sentry-tracing",
  "tokio",
  "ureq",
- "webpki-roots 0.25.2",
 ]
 
 [[package]]

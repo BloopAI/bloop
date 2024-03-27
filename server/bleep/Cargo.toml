@@ -127,10 +127,6 @@ comrak = { default-features = false, git = "https://github.com/rsdy/comrak" }
 lazy-regex = "3.0.2"
 quick-xml = { version = "0.29.0", features = ["serialize"] }
 
-# telemetry
-sentry = { version = "0.31.7", default-features = false, features = ["tracing", "contexts", "debug-images", "panic", "rustls", "reqwest"] }
-sentry-tracing = "0.31.7"
-
 # auth
 jsonwebtoken = { version = "8.3.0", features = ["use_pem"] }
 jwt-authorizer = { version = "0.11.0", default-features = false, features = ["rustls-tls-webpki-roots", "chrono"] }

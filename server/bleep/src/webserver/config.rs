@@ -5,9 +5,6 @@ use crate::{remotes, user::UserProfile, Application};
 
 #[derive(Serialize, Debug)]
 pub(super) struct ConfigResponse {
-    analytics_data_plane: Option<String>,
-    analytics_key_fe: Option<String>,
-    sentry_dsn_fe: Option<String>,
     user_login: Option<String>,
     org_name: Option<String>,
     schema_version: String,
@@ -46,9 +43,6 @@ pub(super) async fn get(
     };
 
     json(ConfigResponse {
-        analytics_data_plane: app.config.analytics_data_plane.clone(),
-        analytics_key_fe: app.config.analytics_key_fe.clone(),
-        sentry_dsn_fe: app.config.sentry_dsn_fe.clone(),
         schema_version: crate::state::SCHEMA_VERSION.into(),
         bloop_version: env!("CARGO_PKG_VERSION").into(),
         bloop_commit: git_version::git_version!(fallback = "unknown").into(),

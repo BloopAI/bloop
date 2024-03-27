@@ -73,7 +73,6 @@ async fn start_backend<R: Runtime>(configuration: Configuration, app: tauri::App
 
     if let Err(err) = wait_for_qdrant().await {
         error!(?err, "qdrant failed to come up");
-        sentry_anyhow::capture_anyhow(&err);
         thread::sleep(Duration::from_secs(4));
         app.emit_all(
             "server-crashed",
@@ -97,22 +96,8 @@ async fn start_backend<R: Runtime>(configuration: Configuration, app: tauri::App
 
     match initialized {
         Ok(backend) => {
-            sentry::Hub::main().configure_scope(|scope| {
-                let backend = backend.clone();
-                scope.add_event_processor(move |mut event| {
-                    event.user = Some(crate::config::sentry_user()).map(|mut user| {
-                        let username = backend.username();
-                        user.username = username;
-                        user
-                    });
-
-                    Some(event)
-                });
-            });
-
             if let Err(err) = backend.run().await {
                 error!(?err, "server crashed error");
-                sentry_anyhow::capture_anyhow(&err);
                 app.emit_all(
                     "server-crashed",
                     Payload {
@@ -124,7 +109,6 @@ async fn start_backend<R: Runtime>(configuration: Configuration, app: tauri::App
         }
         Err(err) => {
             error!(?err, "server failed to start");
-            sentry_anyhow::capture_anyhow(&err);
             app.emit_all(
                 "server-crashed",
                 Payload {
