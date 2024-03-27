@@ -148,7 +148,7 @@ impl From<doc::Error> for Error {
             | doc::Error::Initialize(_) => {
                 error!(%value, "internal docs error");
                 Self::internal(value)
-            } // TODO: log these to sentry
+            }
             doc::Error::InvalidUrl(..)
             | doc::Error::DuplicateUrl(..)
             | doc::Error::EmptyDocs(..) => Self::user(value),

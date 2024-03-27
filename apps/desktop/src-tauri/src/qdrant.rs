@@ -4,7 +4,6 @@ use std::{
     process::{Child, Command},
 };
 
-use sentry::Level;
 use tauri::{plugin::Plugin, Runtime};
 use tracing::{error, info, warn};
 
@@ -30,8 +29,7 @@ where
         app: &tauri::AppHandle<R>,
         _config: serde_json::Value,
     ) -> tauri::plugin::Result<()> {
-        // initialize the system configuration, including sentry &
-        // other possible dependencies
+        // initialize the system configuration
         let _initialize_config = crate::config::init(app);
 
         let data_dir = app.path_resolver().app_data_dir().unwrap();
@@ -83,25 +81,10 @@ where
         } else if let Some(ref mut child) = self.child {
             match child.try_wait() {
                 Ok(Some(status)) if status.success() => {
-                    // do nothing? not sure if this gets called at all _after_ killing is done
-                    sentry::capture_message(
-                        &format!("qdrant finished running; status={status:?}"),
-                        Level::Info,
-                    );
                     // don't fire again
                     _ = self.child.take();
                 }
                 Ok(Some(status)) => {
-                    // log error in sentry also by reading the log file
-                    sentry::capture_message(
-                        &format!(
-                            "qdrant crashed; status={status:?}\n\nstdout:{}\n\nstderr:{}",
-                            std::fs::read_to_string(self.stdout_file.as_ref().unwrap()).unwrap(),
-                            std::fs::read_to_string(self.stderr_file.as_ref().unwrap()).unwrap(),
-                        ),
-                        Level::Error,
-                    );
-
                     // don't fire again
                     _ = self.child.take();
                 }

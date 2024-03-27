@@ -40,9 +40,8 @@ use axum::extract::FromRef;
 
 use once_cell::sync::OnceCell;
 
-use sentry_tracing::{EventFilter, SentryLayer};
 use std::{path::Path, sync::Arc};
-use tracing::{debug, error, info, warn, Level};
+use tracing::{debug, error, info, warn};
 use tracing_subscriber::{
     filter::{LevelFilter, Targets},
     fmt,
@@ -82,7 +81,6 @@ pub use env::Environment;
 
 const LOG_ENV_VAR: &str = "BLOOP_LOG";
 static LOGGER_INSTALLED: OnceCell<bool> = OnceCell::new();
-static SENTRY_GUARD: OnceCell<sentry::ClientInitGuard> = OnceCell::new();
 static LOGGER_GUARD: OnceCell<tracing_appender::non_blocking::WorkerGuard> = OnceCell::new();
 
 /// The global state
@@ -192,42 +190,6 @@ impl Application {
             config,
             env,
         })
-    }
-
-    pub fn initialize_sentry(&self) {
-        let Some(ref dsn) = self.config.sentry_dsn else {
-            info!("Sentry DSN missing, skipping initialization");
-            return;
-        };
-
-        if sentry::Hub::current().client().is_some() {
-            warn!("Sentry has already been initialized");
-            return;
-        }
-
-        info!("Initializing sentry ...");
-        let guard = sentry::init((
-            dsn.to_string(),
-            sentry::ClientOptions {
-                release: sentry::release_name!(),
-                ..Default::default()
-            },
-        ));
-
-        sentry::configure_scope(|scope| {
-            scope.add_event_processor(|event| {
-                let Some(ref logger) = event.logger else {
-                    return Some(event);
-                };
-
-                match logger.as_ref() {
-                    "tower_http::catch_panic" => None,
-                    _ => Some(event),
-                }
-            });
-        });
-
-        _ = SENTRY_GUARD.set(guard);
     }
 
     pub fn install_logging(config: &Configuration) {
@@ -377,7 +339,6 @@ impl FromRef<Application> for axum_extra::extract::cookie::Key {
 
 fn tracing_subscribe(config: &Configuration) -> bool {
     let env_filter_layer = fmt::layer().with_filter(EnvFilter::from_env(LOG_ENV_VAR));
-    let sentry_layer = sentry_layer();
     let log_writer_layer = (!config.disable_log_write).then(|| {
         let file_appender = tracing_appender::rolling::daily(config.log_dir(), "bloop.log");
         let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
@@ -403,28 +364,7 @@ fn tracing_subscribe(config: &Configuration) -> bool {
     tracing_subscriber::registry()
         .with(log_writer_layer)
         .with(env_filter_layer)
-        .with(sentry_layer)
         .with(console_subscriber_layer)
         .try_init()
         .is_ok()
-}
-
-/// Create a new sentry layer that captures `debug!`, `info!`, `warn!`, and `error!` messages.
-fn sentry_layer<S>() -> SentryLayer<S>
-where
-    S: tracing::Subscriber,
-    S: for<'a> tracing_subscriber::registry::LookupSpan<'a>,
-{
-    SentryLayer::default()
-        .span_filter(|meta| {
-            matches!(
-                *meta.level(),
-                Level::DEBUG | Level::INFO | Level::WARN | Level::ERROR
-            )
-        })
-        .event_filter(|meta| match *meta.level() {
-            Level::ERROR => EventFilter::Exception,
-            Level::DEBUG | Level::INFO | Level::WARN => EventFilter::Breadcrumb,
-            Level::TRACE => EventFilter::Ignore,
-        })
 }

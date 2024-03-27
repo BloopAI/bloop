@@ -5,12 +5,11 @@ use anyhow::{bail, Context};
 use axum::{
     extract::State,
     http::Request,
-    middleware::{from_fn, from_fn_with_state, Next},
+    middleware::{from_fn_with_state, Next},
     response::Response,
 };
 use axum_extra::extract::CookieJar;
 use jwt_authorizer::JwtClaims;
-use sentry::{Hub, SentryFutureExt};
 use tracing::error;
 
 #[derive(Serialize, Clone)]
@@ -112,28 +111,6 @@ impl User {
             false
         }
     }
-}
-
-pub fn sentry_layer(router: Router) -> Router {
-    router.layer(from_fn(sentry_layer_mw))
-}
-
-async fn sentry_layer_mw<B>(
-    Extension(user): Extension<User>,
-    request: Request<B>,
-    next: Next<B>,
-) -> Response {
-    let hub = Hub::with(|hub| Hub::new_from_top(hub));
-    let username = user.username().map(str::to_owned);
-
-    hub.configure_scope(move |scope| {
-        scope.add_event_processor(move |mut event| {
-            event.user.get_or_insert_with(Default::default).username = username.clone();
-            Some(event)
-        })
-    });
-
-    next.run(request).bind_hub(hub).await
 }
 
 pub fn local_user(router: Router, app: Application) -> Router {

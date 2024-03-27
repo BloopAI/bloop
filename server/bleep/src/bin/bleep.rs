@@ -17,6 +17,5 @@ async fn main() -> Result<()> {
     Application::install_logging(&config);
     let app = Application::initialize(Environment::server(), config).await?;
 
-    app.initialize_sentry();
     app.run().await
 }

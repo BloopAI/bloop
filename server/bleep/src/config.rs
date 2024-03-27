@@ -86,26 +86,6 @@ pub struct Configuration {
     pub answer_api_url: String,
 
     #[clap(long)]
-    /// Key for analytics backend
-    pub analytics_key: Option<String>,
-
-    #[clap(long)]
-    /// Key for analytics backend for frontend
-    pub analytics_key_fe: Option<String>,
-
-    #[clap(long)]
-    /// Analytics data plane identifier
-    pub analytics_data_plane: Option<String>,
-
-    #[clap(long)]
-    /// Sentry Data Source Name
-    pub sentry_dsn: Option<String>,
-
-    #[clap(long)]
-    /// Sentry Data Source Name for frontend
-    pub sentry_dsn_fe: Option<String>,
-
-    #[clap(long)]
     /// Path to dynamic libraries used in the app.
     pub dylib_dir: Option<PathBuf>,
 
@@ -340,15 +320,6 @@ impl Configuration {
             instance_domain: b.instance_domain.or(a.instance_domain),
 
             bot_secret: b.bot_secret.or(a.bot_secret),
-
-            analytics_key: b.analytics_key.or(a.analytics_key),
-            analytics_key_fe: b.analytics_key_fe.or(a.analytics_key_fe),
-
-            analytics_data_plane: b.analytics_data_plane.or(a.analytics_data_plane),
-
-            sentry_dsn: b.sentry_dsn.or(a.sentry_dsn),
-
-            sentry_dsn_fe: b.sentry_dsn_fe.or(a.sentry_dsn_fe),
 
             dylib_dir: b.dylib_dir.or(a.dylib_dir),
         }
