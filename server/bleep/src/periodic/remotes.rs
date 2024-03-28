@@ -4,8 +4,6 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
-use anyhow::Context;
-use chrono::{DateTime, Utc};
 use notify_debouncer_mini::{
     new_debouncer_opt,
     notify::{Config, RecommendedWatcher, RecursiveMode},
@@ -16,12 +14,6 @@ use tokio::task::JoinHandle;
 use tracing::{debug, error, info, warn};
 
 use crate::{
-    env::Feature,
-    remotes::{
-        self,
-        github::{self, Auth},
-        CognitoGithubTokenBundle,
-    },
     repo::{Backend, RepoRef, SyncStatus},
     Application,
 };
@@ -76,7 +68,6 @@ pub(crate) async fn sync_github_status(app: Application) {
 }
 
 pub async fn sync_github_status_once(app: &Application) {
-    update_credentials(app).await;
     update_repo_list(app).await;
 }
 
@@ -101,141 +92,6 @@ pub(crate) async fn update_repo_list(app: &Application) {
 #[derive(serde::Serialize, serde::Deserialize)]
 struct RefreshedAccessToken {
     access_token: String,
-}
-
-pub(crate) async fn update_credentials(app: &Application) {
-    if app.env.allow(Feature::CloudUserAuth) {
-        match app.credentials.github().and_then(|c| c.expiry()) {
-            // If we have a valid token, do nothing.
-            Some(expiry) if expiry > Utc::now() + chrono::Duration::minutes(10) => {}
-
-            _ => {
-                if let Err(e) = remotes::github::refresh_github_installation_token(app).await {
-                    error!(?e, "failed to get GitHub token");
-                }
-                if app.credentials.github().is_none() {
-                    error!("Error in the matrix");
-                }
-                info!("Github installation token refreshed!")
-            }
-        }
-    }
-
-    if app.env.allow(Feature::DesktopUserAuth) {
-        let Some(github::State {
-            auth: github::Auth::OAuth(ref creds),
-            repositories,
-        }) = app.credentials.github()
-        else {
-            return;
-        };
-
-        let verifier = crate::webserver::aaa::get_authorizer(app).await;
-        let rotate_access_key = match verifier.check_auth(&creds.access_token).await {
-            Ok(jsonwebtoken::TokenData { claims, .. }) => {
-                DateTime::<Utc>::from(claims.exp) - Duration::from_secs(600) < Utc::now()
-            }
-            Err(err) => {
-                warn!(?err, "failed to validate access token; rotating");
-                true
-            }
-        };
-
-        if !rotate_access_key {
-            return;
-        }
-
-        let query_url = format!(
-            "{url_base}/refresh_token?refresh_token={token}",
-            url_base = app
-                .config
-                .cognito_mgmt_url
-                .as_ref()
-                .expect("auth not configured"),
-            token = creds.refresh_token
-        );
-
-        let response = match reqwest::get(&query_url).await {
-            Ok(res) => res.text().await,
-            Err(err) => {
-                warn!(?err, "refreshing bloop token failed");
-                return;
-            }
-        }
-        .context("body");
-
-        let tokens: RefreshedAccessToken =
-            match response.and_then(|r| serde_json::from_str(&r).context(format!("json: {r}"))) {
-                Ok(tokens) => tokens,
-                Err(err) => {
-                    // This is sort-of a wild assumption here, BUT hear me out.
-                    //
-                    // Refresh tokens are encrypted by Cognito, so
-                    // this process can't check expiry.
-                    //
-                    // Assuming there's a successful HTTP response
-                    // (`reqwest::get` above),
-                    //
-                    // AND the received body can't be decoded,
-                    // THEN the server sent a payload that is either:
-                    //
-                    //  a) unintelligible (eg. "Internal Server Error")
-                    //  b) there's some weird network issue at play
-                    //     that means we can only partially decode the payload
-                    //
-                    // IF we ignore b) as something unlikely,
-                    // AND we consider all a) events to correspond to
-                    // refresh token expiration.
-                    //
-                    // THEN we log the user out.
-                    //
-                    error!(?err, "failed to refresh access token. forcing re-login");
-
-                    if app.credentials.remove(&Backend::Github).is_some() {
-                        app.credentials.store().unwrap();
-                    }
-
-                    return;
-                }
-            };
-
-        app.credentials.set_github(github::State {
-            repositories,
-            auth: Auth::OAuth(CognitoGithubTokenBundle {
-                access_token: tokens.access_token,
-                refresh_token: creds.refresh_token.clone(),
-                github_access_token: creds.github_access_token.clone(),
-            }),
-        });
-
-        app.credentials.store().unwrap();
-        info!("new bloop access keys saved");
-
-        validate_github_credentials(app).await;
-    }
-}
-
-pub(crate) async fn validate_github_credentials(app: &Application) {
-    let github_expired = if let Some(github) = app.credentials.github() {
-        let username = github.validate().await;
-        if let Ok(Some(ref user)) = username {
-            debug!(?user, "updated user");
-            app.credentials.set_user(user.into()).await;
-            if let Err(err) = app.credentials.store() {
-                error!(?err, "failed to save user credentials");
-            }
-        }
-
-        username.is_err()
-    } else {
-        error!("failed to create github client?");
-        true
-    };
-
-    if github_expired && app.credentials.remove(&Backend::Github).is_some() {
-        app.credentials.store().unwrap();
-        debug!("github oauth is invalid; credentials removed");
-    }
 }
 
 pub(crate) async fn check_repo_updates(app: Application) {

@@ -124,10 +124,6 @@ impl StateSource {
         self.root_dir.join(path.as_ref()).exists()
     }
 
-    pub(crate) fn ensure_deleted(&self, path: &(impl AsRef<Path> + ?Sized)) {
-        _ = std::fs::remove_file(self.root_dir.join(path.as_ref()));
-    }
-
     pub(crate) fn load_or_default<T: Serialize + DeserializeOwned + Default + Send + Sync>(
         &self,
         name: &'static str,
