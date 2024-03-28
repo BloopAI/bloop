@@ -10,7 +10,6 @@ use axum::{
 };
 use axum_extra::extract::CookieJar;
 use jwt_authorizer::JwtClaims;
-use tracing::error;
 
 #[derive(Serialize, Clone)]
 pub enum User {
@@ -58,49 +57,6 @@ impl User {
         }
 
         Ok(llm::client::Client::new(app.clone()))
-    }
-
-    pub(crate) async fn paid_features(&self, app: &Application) -> bool {
-        let access_token = match self {
-            User::Desktop { access_token, .. } => access_token,
-            User::Cloud { .. } => return true,
-            _ => return false,
-        };
-
-        let Ok(response) = reqwest::Client::new()
-            .get(format!("{}/v2/get-usage-quota", app.config.answer_api_url))
-            .bearer_auth(access_token)
-            .send()
-            .await
-        else {
-            error!("failed to get quota for user");
-            return false;
-        };
-
-        if response.status().is_success() {
-            let response: serde_json::Value =
-                response.json().await.expect("answer_api proto bad or down");
-
-            response
-                .get("upgraded")
-                .and_then(serde_json::Value::as_bool)
-                .unwrap_or_default()
-        } else {
-            let status = response.status();
-            match response.text().await {
-                Ok(body) if !body.is_empty() => {
-                    error!(?status, ?body, "request failed with status code")
-                }
-                Ok(_) => error!(?status, "request failed; response had no body"),
-                Err(err) => error!(
-                    ?status,
-                    ?err,
-                    "request failed; failed to retrieve response body",
-                ),
-            }
-
-            false
-        }
     }
 }
 

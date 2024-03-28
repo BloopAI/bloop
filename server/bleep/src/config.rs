@@ -85,11 +85,6 @@ pub struct Configuration {
     //
     // External dependencies
     //
-    #[clap(long, default_value_t = default_answer_api_url())]
-    #[serde(default = "default_answer_api_url")]
-    /// URL for the answer-api
-    pub answer_api_url: String,
-
     #[clap(long)]
     /// Path to dynamic libraries used in the app.
     pub dylib_dir: Option<PathBuf>,
@@ -155,11 +150,6 @@ pub struct Configuration {
     /// Instance organization name
     #[clap(long)]
     pub bloop_instance_org: Option<String>,
-
-    #[clap(long)]
-    #[serde(serialize_with = "serialize_secret_opt_str", default)]
-    /// Bot secret token
-    pub bot_secret: Option<SecretString>,
 
     //
     // Cloud deployment values
@@ -304,12 +294,6 @@ impl Configuration {
 
             qdrant_url: right_if_default!(b.qdrant_url, a.qdrant_url, String::new()),
 
-            answer_api_url: right_if_default!(
-                b.answer_api_url,
-                a.answer_api_url,
-                default_answer_api_url()
-            ),
-
             cognito_userpool_id: b.cognito_userpool_id.or(a.cognito_userpool_id),
 
             cognito_client_id: b.cognito_client_id.or(a.cognito_client_id),
@@ -325,8 +309,6 @@ impl Configuration {
             bloop_instance_org: b.bloop_instance_org.or(a.bloop_instance_org),
 
             instance_domain: b.instance_domain.or(a.instance_domain),
-
-            bot_secret: b.bot_secret.or(a.bot_secret),
 
             dylib_dir: b.dylib_dir.or(a.dylib_dir),
         }
@@ -402,10 +384,6 @@ fn default_host() -> String {
 
 fn default_qdrant_url() -> String {
     String::from("http://127.0.0.1:6334")
-}
-
-fn default_answer_api_url() -> String {
-    String::from("http://127.0.0.1:7879")
 }
 
 fn default_max_chunk_tokens() -> usize {
