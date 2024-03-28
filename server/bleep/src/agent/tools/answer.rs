@@ -9,7 +9,7 @@ use crate::{
         exchange::{CodeChunk, FocusedChunk, Update},
         model, transcoder, Agent,
     },
-    llm_gateway,
+    llm,
 };
 
 const CHUNK_MERGE_DISTANCE: usize = 20;
@@ -40,7 +40,7 @@ impl Agent {
 
         let context = self.answer_context(aliases).await?;
         let system_prompt = (self.answer_model.system_prompt)(&context);
-        let system_message = llm_gateway::api::Message::system(&system_prompt);
+        let system_message = llm::client::api::Message::system(&system_prompt);
         let history = {
             let h = self.utter_history().collect::<Vec<_>>();
             let system_headroom = tiktoken_rs::num_tokens_from_messages(
@@ -186,7 +186,7 @@ impl Agent {
     }
 
     /// History of `user`, `assistant` messages. These are the messages that are shown to the user.
-    fn utter_history(&self) -> impl Iterator<Item = llm_gateway::api::Message> + '_ {
+    fn utter_history(&self) -> impl Iterator<Item = llm::client::api::Message> + '_ {
         const ANSWER_MAX_HISTORY_SIZE: usize = 5;
 
         self.conversation
@@ -196,7 +196,7 @@ impl Agent {
             .take(ANSWER_MAX_HISTORY_SIZE)
             .rev()
             .flat_map(|e| {
-                let query = e.query().map(|q| llm_gateway::api::Message::PlainText {
+                let query = e.query().map(|q| llm::client::api::Message::PlainText {
                     role: "user".to_owned(),
                     content: q,
                 });
@@ -204,7 +204,7 @@ impl Agent {
                 let conclusion = e.answer().map(|answer| {
                     let encoded = transcoder::encode_summarized(answer, "gpt-4-0613").unwrap();
 
-                    llm_gateway::api::Message::PlainText {
+                    llm::client::api::Message::PlainText {
                         role: "assistant".to_owned(),
                         content: encoded,
                     }
@@ -392,10 +392,10 @@ impl Agent {
 
 // headroom refers to the amount of space reserved for the rest of the prompt
 fn trim_utter_history(
-    mut history: Vec<llm_gateway::api::Message>,
+    mut history: Vec<llm::client::api::Message>,
     headroom: usize,
     model: model::LLMModel,
-) -> Result<Vec<llm_gateway::api::Message>> {
+) -> Result<Vec<llm::client::api::Message>> {
     let mut tiktoken_msgs: Vec<tiktoken_rs::ChatCompletionRequestMessage> =
         history.iter().map(|m| m.into()).collect::<Vec<_>>();
 
@@ -437,20 +437,20 @@ mod tests {
     fn test_trimming_utter_history() {
         let long_string = "long string ".repeat(2000);
         let history = vec![
-            llm_gateway::api::Message::user("bar"),
-            llm_gateway::api::Message::assistant("baz"),
-            llm_gateway::api::Message::user(&long_string),
-            llm_gateway::api::Message::assistant("quux"),
-            llm_gateway::api::Message::user("fred"),
-            llm_gateway::api::Message::assistant("thud"),
-            llm_gateway::api::Message::user(&long_string),
-            llm_gateway::api::Message::user("corge"),
+            llm::client::api::Message::user("bar"),
+            llm::client::api::Message::assistant("baz"),
+            llm::client::api::Message::user(&long_string),
+            llm::client::api::Message::assistant("quux"),
+            llm::client::api::Message::user("fred"),
+            llm::client::api::Message::assistant("thud"),
+            llm::client::api::Message::user(&long_string),
+            llm::client::api::Message::user("corge"),
         ];
 
         // the answer needs 8100 tokens of 8192, the utter history can admit just one message
         assert_eq!(
             trim_utter_history(history.clone(), 8100, model::GPT_4).unwrap(),
-            vec![llm_gateway::api::Message::user("corge"),]
+            vec![llm::client::api::Message::user("corge"),]
         );
 
         // the answer needs just 4000 tokens of 8192, the utter history can accomodate
@@ -458,11 +458,11 @@ mod tests {
         assert_eq!(
             trim_utter_history(history, 4000, model::GPT_4).unwrap(),
             vec![
-                llm_gateway::api::Message::assistant("quux"),
-                llm_gateway::api::Message::user("fred"),
-                llm_gateway::api::Message::assistant("thud"),
-                llm_gateway::api::Message::user(&long_string),
-                llm_gateway::api::Message::user("corge"),
+                llm::client::api::Message::assistant("quux"),
+                llm::client::api::Message::user("fred"),
+                llm::client::api::Message::assistant("thud"),
+                llm::client::api::Message::user(&long_string),
+                llm::client::api::Message::user("corge"),
             ]
         );
     }

@@ -1,6 +1,6 @@
 use crate::agent::{exchange::CodeChunk, Agent};
 use crate::intelligence::{code_navigation::FileSymbols, Language, TSLanguage};
-use crate::llm_gateway;
+use crate::llm;
 use crate::webserver::intelligence::{get_token_info, TokenInfoRequest};
 use anyhow::{Context, Result};
 use tracing::log::{debug, info, warn};
@@ -173,8 +173,8 @@ impl Agent {
 
         // instruction
         let messages = vec![
-            llm_gateway::api::Message::system(&symbol_classification_prompt(&chunks_string)),
-            llm_gateway::api::Message::user(query),
+            llm::client::api::Message::system(&symbol_classification_prompt(&chunks_string)),
+            llm::client::api::Message::user(query),
         ];
 
         let response = match self

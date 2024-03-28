@@ -1,16 +1,12 @@
-//! A Rust-friendly interface to Bloop's LLM Gateway service.
-
 use std::time::Duration;
 
 use anyhow::{anyhow, bail};
-use axum::http::StatusCode;
 use futures::{Stream, StreamExt};
-use reqwest_eventsource::EventSource;
+use secrecy::ExposeSecret;
 use tracing::{debug, error, warn};
 
+use super::call::llm_call;
 use crate::{periodic::sync_github_status_once, Application};
-
-use self::api::FunctionCall;
 
 pub mod api {
     use std::collections::HashMap;
@@ -78,10 +74,10 @@ pub mod api {
     }
 
     #[derive(Debug, serde::Serialize, serde::Deserialize)]
-    pub struct Request {
+    pub struct LLMRequest {
+        pub openai_key: String,
         pub messages: Messages,
         pub functions: Option<Functions>,
-        pub provider: Provider,
         pub max_tokens: Option<u32>,
         pub temperature: Option<f32>,
         pub presence_penalty: Option<f32>,
@@ -89,15 +85,6 @@ pub mod api {
         pub model: Option<String>,
         #[serde(default)]
         pub extra_stop_sequences: Vec<String>,
-        pub session_reference_id: Option<String>,
-        pub quota_gated: bool,
-    }
-
-    #[derive(Debug, Copy, Clone, serde::Serialize, serde::Deserialize)]
-    #[serde(rename_all = "lowercase")]
-    pub enum Provider {
-        OpenAi,
-        Anthropic,
     }
 
     #[derive(Debug, Copy, Clone, serde::Serialize, serde::Deserialize)]
@@ -115,23 +102,9 @@ pub mod api {
         #[error("incorrect configuration")]
         BadConfiguration,
 
-        #[error("failed to call quota API")]
-        QuotaCallFailed,
-
-        #[error("exceeded quota")]
-        ExceededQuota,
-
-        #[error("quota API was not set")]
-        QuotaApiNotSet,
-
-        #[error("called quota API with no authorization")]
-        UnauthorizedQuotaCall,
-
         #[error("waiting for the next token took longer than allowed")]
         TokenDelayTooLarge,
     }
-
-    pub type Result = std::result::Result<String, Error>;
 }
 
 impl api::Message {
@@ -154,7 +127,7 @@ impl api::Message {
         Self::new_text("assistant", content)
     }
 
-    pub fn function_call(call: &FunctionCall) -> Self {
+    pub fn function_call(call: &api::FunctionCall) -> Self {
         Self::FunctionCall {
             role: "assistant".to_string(),
             function_call: call.clone(),
@@ -219,41 +192,33 @@ enum ChatError {
     Other(anyhow::Error),
 }
 
+impl From<anyhow::Error> for ChatError {
+    fn from(error: anyhow::Error) -> Self {
+        ChatError::BadRequest(error.to_string())
+    }
+}
+
 #[derive(Clone)]
 pub struct Client {
-    http: reqwest::Client,
     app: Application,
-
     pub max_retries: u32,
-
-    pub bearer_token: Option<String>,
     pub temperature: Option<f32>,
     pub max_tokens: Option<u32>,
     pub presence_penalty: Option<f32>,
     pub frequency_penalty: Option<f32>,
-    pub provider: api::Provider,
     pub model: Option<String>,
-    pub session_reference_id: Option<String>,
-    pub quota_gated: bool,
 }
 
 impl Client {
     pub fn new(app: Application) -> Self {
         Self {
             app,
-            http: reqwest::Client::new(),
-
             max_retries: 5,
-
-            bearer_token: None,
-            provider: api::Provider::OpenAi,
             temperature: None,
             max_tokens: None,
             presence_penalty: None,
             frequency_penalty: None,
             model: None,
-            session_reference_id: None,
-            quota_gated: false,
         }
     }
 
@@ -288,35 +253,6 @@ impl Client {
     pub fn max_tokens(mut self, max_tokens: impl Into<Option<u32>>) -> Self {
         self.max_tokens = max_tokens.into();
         self
-    }
-
-    pub fn bearer(mut self, bearer: impl Into<Option<String>>) -> Self {
-        self.bearer_token = bearer.into();
-        self
-    }
-
-    pub fn session_reference_id(mut self, session_reference_id: String) -> Self {
-        self.session_reference_id = Some(session_reference_id);
-        self
-    }
-
-    pub fn quota_gated(mut self, quota_gated: bool) -> Self {
-        self.quota_gated = quota_gated;
-        self
-    }
-
-    pub async fn is_compatible(
-        &self,
-        version: semver::Version,
-    ) -> Result<reqwest::Response, reqwest::Error> {
-        self.http
-            .get(format!(
-                "{}/v1/compatibility",
-                self.app.config.answer_api_url
-            ))
-            .query(&[("version", version)])
-            .send()
-            .await
     }
 
     pub async fn chat(
@@ -398,69 +334,36 @@ impl Client {
         functions: Option<&[api::Function]>,
     ) -> Result<impl Stream<Item = anyhow::Result<String>>, ChatError> {
         let mut event_source = Box::pin(
-            EventSource::new({
-                let mut builder = self
-                    .http
-                    .post(format!("{}/v2/q", self.app.config.answer_api_url));
-
-                if let Some(bearer) = &self.bearer_token {
-                    builder = builder.bearer_auth(bearer);
-                }
-
-                builder.json(&api::Request {
-                    messages: api::Messages {
-                        messages: messages.to_owned(),
-                    },
-                    functions: functions.map(|funcs| api::Functions {
-                        functions: funcs.to_owned(),
-                    }),
-                    max_tokens: self.max_tokens,
-                    temperature: self.temperature,
-                    presence_penalty: self.presence_penalty,
-                    frequency_penalty: self.frequency_penalty,
-                    provider: self.provider,
-                    model: self.model.clone(),
-                    extra_stop_sequences: vec![],
-                    session_reference_id: self.session_reference_id.clone(),
-                    quota_gated: self.quota_gated,
-                })
+            llm_call(api::LLMRequest {
+                openai_key: self
+                    .app
+                    .config
+                    .openai_api_key
+                    .as_ref()
+                    .expect("OpenAI API key not set")
+                    .expose_secret()
+                    .to_string(),
+                messages: api::Messages {
+                    messages: messages.to_owned(),
+                },
+                functions: functions.map(|funcs| api::Functions {
+                    functions: funcs.to_owned(),
+                }),
+                max_tokens: self.max_tokens,
+                temperature: self.temperature,
+                presence_penalty: self.presence_penalty,
+                frequency_penalty: self.frequency_penalty,
+                model: self.model.clone(),
+                extra_stop_sequences: vec![],
             })
-            // We don't have a `Stream` body so this can't fail.
-            .expect("couldn't clone requestbuilder")
-            // `reqwest_eventsource` returns an error to signify a stream end, instead of simply ending
-            // the stream. So we catch the error here and close the stream.
-            .take_while(|result| {
-                let is_end = matches!(result, Err(reqwest_eventsource::Error::StreamEnded));
-                async move { !is_end }
-            }),
+            .await?,
         );
 
         match event_source.next().await {
-            Some(Ok(reqwest_eventsource::Event::Open)) => {}
-            Some(Err(reqwest_eventsource::Error::InvalidStatusCode(status, response)))
-                if status == StatusCode::BAD_REQUEST =>
-            {
-                let body = response
-                    .text()
-                    .await
-                    .map_err(|e| ChatError::Other(anyhow!(e)))?;
-                warn!("bad request to LLM: {body}");
-                return Err(ChatError::BadRequest(body));
-            }
-            Some(Err(reqwest_eventsource::Error::InvalidStatusCode(status, _)))
-                if status == StatusCode::UNAUTHORIZED =>
-            {
-                return Err(ChatError::InvalidToken);
-            }
-            Some(Err(reqwest_eventsource::Error::InvalidStatusCode(status, response)))
-                if status == StatusCode::TOO_MANY_REQUESTS =>
-            {
-                let body = response
-                    .text()
-                    .await
-                    .map_err(|e| ChatError::Other(anyhow!(e)))?;
-                warn!("too many requests to LLM: {body}");
-                return Err(ChatError::TooManyRequests(body));
+            Some(Ok(_)) => {}
+            Some(Err(api::Error::BadOpenAiRequest)) => {
+                warn!("bad request to LLM");
+                return Err(ChatError::BadRequest("Bad request to LLM".into()));
             }
             Some(Err(e)) => {
                 return Err(ChatError::Other(anyhow!(
@@ -475,14 +378,12 @@ impl Client {
         Ok(event_source
             .filter_map(|result| async move {
                 match result {
-                    Ok(reqwest_eventsource::Event::Message(msg)) => Some(Ok(msg.data)),
-                    Ok(reqwest_eventsource::Event::Open) => None,
-                    Err(reqwest_eventsource::Error::StreamEnded) => None,
+                    Ok(d) => Some(Ok(d)),
                     Err(e) => Some(Err(e)),
                 }
             })
             .map(|result| match result {
-                Ok(s) => Ok(serde_json::from_str::<api::Result>(&s)??),
+                Ok(s) => Ok(s.to_string()),
                 Err(e) => bail!("event source error {e:?}"),
             }))
     }

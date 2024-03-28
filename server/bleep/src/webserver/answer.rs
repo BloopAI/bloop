@@ -10,7 +10,6 @@ use axum::{
     Extension,
 };
 use futures::{future::Either, stream, StreamExt};
-use reqwest::StatusCode;
 use tracing::{debug, error, info, warn};
 
 use super::middleware::User;
@@ -198,37 +197,7 @@ impl AgentExecutor {
             .llm_gateway(&self.app)
             .await?
             .temperature(0.0)
-            .session_reference_id(format!("{username}::{}", self.conversation.thread_id))
             .model(self.params.agent_model.model_name);
-
-        // confirm client compatibility with answer-api
-        match llm_gateway
-            .is_compatible(env!("CARGO_PKG_VERSION").parse().unwrap())
-            .await
-        {
-            Ok(res) if res.status() == StatusCode::OK => (),
-            Ok(res) if res.status() == StatusCode::NOT_ACCEPTABLE => {
-                let out_of_date = futures::stream::once(async {
-                    Ok(sse::Event::default()
-                        .json_data(serde_json::json!({"Err": "incompatible client"}))
-                        .unwrap())
-                });
-                return Ok(Sse::new(Box::pin(out_of_date)));
-            }
-            Ok(_) => unreachable!(),
-            Err(err) => {
-                warn!(
-                    ?err,
-                    "failed to check compatibility ... defaulting to `incompatible`"
-                );
-                let failed_to_check = futures::stream::once(async {
-                    Ok(sse::Event::default()
-                        .json_data(serde_json::json!({"Err": "failed to check compatibility"}))
-                        .unwrap())
-                });
-                return Ok(Sse::new(Box::pin(failed_to_check)));
-            }
-        };
 
         // let project: Project = serde_json::from_str(&self.params.project).unwrap();
         let Answer {

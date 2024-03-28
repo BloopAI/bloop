@@ -378,8 +378,7 @@ mod tests {
             .join("model")
             .join("tokenizer.json");
         println!("{tok_json:?}");
-        let tokenizer = tokenizers::Tokenizer::from_file(tok_json).unwrap();
-        tokenizer
+        tokenizers::Tokenizer::from_file(tok_json).unwrap()
     }
 
     #[test]

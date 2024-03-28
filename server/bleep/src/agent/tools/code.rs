@@ -6,7 +6,7 @@ use crate::{
         exchange::{CodeChunk, RepoPath, SearchStep, Update},
         prompts, Agent, AgentSemanticSearchParams,
     },
-    llm_gateway,
+    llm,
     query::parser::Literal,
     semantic::SemanticSearchParams,
 };
@@ -131,7 +131,7 @@ impl Agent {
     /// This method generates synthetic documents based on the query. These are then
     /// parsed and code is extracted. This has been shown to improve semantic search recall.
     async fn hyde(&self, query: &str) -> Result<Vec<String>> {
-        let prompt = vec![llm_gateway::api::Message::system(
+        let prompt = vec![llm::client::api::Message::system(
             &prompts::hypothetical_document_prompt(query),
         )];
 

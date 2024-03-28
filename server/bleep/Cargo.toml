@@ -47,6 +47,7 @@ async-trait = "0.1.73"
 async-stream = "0.3.5"
 flume = "0.10.14"
 futures = "0.3.28"
+futures-util = "0.3.30"
 rayon = "1.8.0"
 clap = { version = "4.4.4", features = ["derive"] }
 tracing = "0.1.37"
@@ -152,7 +153,6 @@ phf = "0.11.2"
 rand = "0.8.5"
 once_cell = "1.18.0"
 relative-path = "1.9.0"
-semver = { version = "1", features = ["serde"] }
 scc = { version= "1.9.1", features = ["serde"] }
 thread-priority = "0.13.1"
 diffy = "0.3.0"
