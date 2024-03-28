@@ -20,54 +20,13 @@ import {
   TokenInfoResponse,
   TutorialQuestionType,
 } from '../types/api';
-import { CodeStudioShortType, EnvConfig, RepoType } from '../types/general';
-import { getPlainFromStorage, REFRESH_TOKEN_KEY } from './storage';
+import { RepoType } from '../types/general';
 
 const DB_API = 'https://api.bloop.ai';
-let http: AxiosInstance;
-
-export const initApi = (serverUrl = '', isSelfServe?: boolean) => {
-  if (!http) {
-    http = axios.create({
-      baseURL: serverUrl,
-    });
-    if (isSelfServe) {
-      // http.interceptors.request.use(
-      //   function (config) {
-      //     const token = getPlainFromStorage(ACCESS_TOKEN_KEY);
-      //     config.headers.Authorization = `Bearer ${token}`;
-      //
-      //     return config;
-      //   },
-      //   null,
-      //   { synchronous: true },
-      // );
-      http.interceptors.response.use(
-        (response) => response,
-        (error) => {
-          const status = error.response ? error.response.status : null;
-
-          const refreshToken = getPlainFromStorage(REFRESH_TOKEN_KEY);
-          if (status === 401 && refreshToken) {
-            return axios
-              .get(`${serverUrl}/auth/refresh_token`, {
-                params: { refresh_token: refreshToken },
-              })
-              .then((resp) => {
-                // savePlainToStorage(ACCESS_TOKEN_KEY, resp.data.access_token);
-                // error.config.headers['Authorization'] =
-                //   'Bearer ' + resp.data.access_token;
-                error.config.baseURL = undefined;
-                return http.request(error.config);
-              });
-          }
-
-          return Promise.reject(error);
-        },
-      );
-    }
-  }
-};
+export const API_BASE_URL = 'http://localhost:7878/api';
+const http: AxiosInstance = axios.create({
+  baseURL: API_BASE_URL,
+});
 
 export const search = (
   projectId: string,
@@ -239,34 +198,6 @@ export const cancelSync = (repoRef: string) =>
 export const syncRepo = (repoRef: string) =>
   http.get(`/repos/sync`, { params: { repo: repoRef } }).then((r) => r.data);
 
-export const saveUserData = (userData: {
-  email: string;
-  first_name: string;
-  last_name: string;
-  unique_id: string;
-}) => axios.post(`${DB_API}/users`, userData).then((r) => r.data);
-
-export const saveBugReport = (report: {
-  email: string;
-  name: string;
-  text: string;
-  unique_id: string;
-  app_version: string;
-  metadata: string;
-  server_log: string;
-}) => axios.post(`${DB_API}/bug_reports`, report).then((r) => r.data);
-
-export const saveCrashReport = (report: {
-  text: string;
-  name?: string;
-  email?: string;
-  unique_id: string;
-  info: string;
-  metadata: string;
-  app_version: string;
-  server_log: string;
-}) => axios.post(`${DB_API}/crash_reports`, report).then((r) => r.data);
-
 export const saveUpvote = (upvote: {
   unique_id: string;
   snippet_id: string;
@@ -283,14 +214,6 @@ export const getUpvote = (params: {
 
 export const getDiscordLink = () =>
   axios.get(`${DB_API}/discord-url`).then((r) => r.data);
-
-export const githubLogout = () => http.get('/auth/logout').then((r) => r.data);
-export const githubLogin = (redirect_to?: string) =>
-  http.get('/auth/login', { params: { redirect_to } }).then((r) => r.data);
-
-export const getConfig = () => http.get('/config').then((r) => r.data);
-export const putConfig = (data: Partial<EnvConfig>) =>
-  http.put('/config', data).then((r) => r.data);
 
 export const getProjectConversations = (
   projectId: string,
@@ -448,9 +371,6 @@ export const deleteTemplate = (id: string): Promise<StudioTemplateType> =>
   http.delete(`/template/${id}`).then((r) => r.data);
 export const postTemplate = (name: string, content: string) =>
   http.post('/template', { name, content }).then((r) => r.data);
-export const getQuota = () => http('/quota').then((r) => r.data);
-export const getSubscriptionLink = () =>
-  http('/quota/create-checkout-session').then((r) => r.data);
 
 export const forceFileToBeIndexed = (repoRef: string, filePath: string) =>
   http.patch(
@@ -463,11 +383,6 @@ export const getTutorialQuestions = (
   repo_ref: string,
 ): Promise<{ questions: TutorialQuestionType[] }> =>
   http('/tutorial-questions', { params: { repo_ref } }).then((r) => r.data);
-
-export const refreshToken = (refresh_token: string) =>
-  http('/auth/refresh_token', { params: { refresh_token } }).then(
-    (r) => r.data,
-  );
 
 export const getProjectDocs = (projectId: string): Promise<DocShortType[]> =>
   http(`projects/${projectId}/docs`).then((r) => r.data);

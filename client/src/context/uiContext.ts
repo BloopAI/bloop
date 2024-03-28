@@ -21,25 +21,15 @@ export const UIContext = {
     setProjectSettingsSection: (s: ProjectSettingSections) => {},
   }),
   Onboarding: createContext<{
-    shouldShowWelcome: boolean;
-    setShouldShowWelcome: Dispatch<SetStateAction<boolean>>;
     onBoardingState: OnboardingStateType;
     setOnBoardingState: Dispatch<SetStateAction<OnboardingStateType>>;
   }>({
-    shouldShowWelcome: false,
-    setShouldShowWelcome: () => {},
     onBoardingState: {},
     setOnBoardingState: () => {},
   }),
   BugReport: createContext({
     isBugReportModalOpen: false,
     setBugReportModalOpen: (b: boolean) => {},
-  }),
-  GitHubConnected: createContext({
-    isGithubConnected: false,
-    setGithubConnected: (b: boolean) => {},
-    isGithubChecked: false,
-    refreshToken: (refreshT: string) => Promise.resolve(),
   }),
   Theme: createContext({
     theme: 'system' as Theme,
@@ -48,10 +38,6 @@ export const UIContext = {
   Focus: createContext({
     isLeftSidebarFocused: false,
     setIsLeftSidebarFocused: (b: boolean) => {},
-  }),
-  UpgradeRequiredPopup: createContext({
-    isUpgradeRequiredPopupOpen: false,
-    setIsUpgradeRequiredPopupOpen: (b: boolean) => {},
   }),
   ChatInputType: createContext({
     chatInputType: 'default' as ChatInputType,

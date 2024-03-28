@@ -37,7 +37,6 @@ type Props = {
   tabKey: string;
   studioData: StudioContext;
   isActiveTab: boolean;
-  requestsLeft: number;
   studioId: string;
   snapshot?: HistoryConversationTurn | null;
 };
@@ -50,7 +49,6 @@ const Conversation = ({
   side,
   studioData,
   isActiveTab,
-  requestsLeft,
   studioId,
   snapshot,
 }: Props) => {
@@ -102,7 +100,6 @@ const Conversation = ({
           studioData.inputValue &&
           !isTokenLimitExceeded &&
           !hasContextError &&
-          requestsLeft &&
           !snapshot
           // && !isChangeUnsaved
         ) {
@@ -124,7 +121,6 @@ const Conversation = ({
       studioData.onSubmit,
       studioData.isLoading,
       studioData.handleCancel,
-      requestsLeft,
       snapshot,
     ],
   );
@@ -315,7 +311,6 @@ const Conversation = ({
                       hasContextError ||
                       isTokenLimitExceeded ||
                       !studioData.inputValue ||
-                      !requestsLeft ||
                       !!snapshot
                     }
                   />

@@ -15,9 +15,12 @@ import { RepositoriesContext } from '../repositoriesContext';
 import { IndexingStatusType, SyncStatus } from '../../types/general';
 import { splitPath } from '../../utils';
 import { RepositoryIcon } from '../../icons';
-import { DeviceContext } from '../deviceContext';
 import { ProjectContext } from '../projectContext';
-import { addRepoToProject, getIndexedRepos } from '../../services/api';
+import {
+  addRepoToProject,
+  API_BASE_URL,
+  getIndexedRepos,
+} from '../../services/api';
 
 type Props = {};
 
@@ -25,7 +28,6 @@ const RepositoriesContextProvider = ({
   children,
 }: PropsWithChildren<Props>) => {
   const { t } = useTranslation();
-  const { apiUrl } = useContext(DeviceContext);
   const { project, refreshCurrentProjectRepos } = useContext(
     ProjectContext.Current,
   );
@@ -34,9 +36,7 @@ const RepositoriesContextProvider = ({
 
   const startEventSource = useCallback(() => {
     eventSourceRef.current?.close();
-    eventSourceRef.current = new EventSource(
-      `${apiUrl.replace('https:', '')}/repos/status`,
-    );
+    eventSourceRef.current = new EventSource(`${API_BASE_URL}/repos/status`);
     eventSourceRef.current.onmessage = (ev) => {
       const data = JSON.parse(ev.data);
       if (data.ev?.status_change === SyncStatus.Done) {

@@ -1,7 +1,6 @@
 import React, { memo, useCallback, useContext } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { getConfig, putConfig } from '../../services/api';
-import { EnvContext } from '../../context/envContext';
+import { UIContext } from '../../context/uiContext';
 
 type Props = {
   stepNumber: number;
@@ -12,16 +11,15 @@ type Props = {
 
 const TutorialBody = ({ stepNumber, title, hint, description }: Props) => {
   useTranslation();
-  const { setEnvConfig, envConfig } = useContext(EnvContext);
+  const { setOnBoardingState } = useContext(UIContext.Onboarding);
 
   const onSkip = useCallback(() => {
-    putConfig({
-      bloop_user_profile: {
-        ...(envConfig?.bloop_user_profile || {}),
-        is_tutorial_finished: true,
-      },
-    }).then(() => {
-      getConfig().then(setEnvConfig);
+    setOnBoardingState({
+      isCommandBarTutorialFinished: true,
+      isCodeNavigated: true,
+      isCodeExplained: true,
+      isChatOpened: true,
+      isFileExplained: true,
     });
   }, []);
 

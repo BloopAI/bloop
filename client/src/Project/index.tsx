@@ -1,6 +1,5 @@
 import React, { memo, useCallback, useContext, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import * as Sentry from '@sentry/react';
 import { useDragLayer } from 'react-dnd';
 import { ProjectContext } from '../context/projectContext';
 import { TabsContext } from '../context/tabsContext';
@@ -10,8 +9,6 @@ import { UIContext } from '../context/uiContext';
 import { checkEventKeys } from '../utils/keyboardUtils';
 import useKeyboardNavigation from '../hooks/useKeyboardNavigation';
 import StudiosContextProvider from '../context/providers/StudiosContextProvider';
-import { EnvContext } from '../context/envContext';
-import ErrorFallback from '../components/ErrorFallback';
 import LeftSidebar from './LeftSidebar';
 import CurrentTabContent from './CurrentTabContent';
 import EmptyProject from './EmptyProject';
@@ -28,9 +25,7 @@ const Project = ({}: Props) => {
   const { project } = useContext(ProjectContext.Current);
   const { rightTabs, leftTabs } = useContext(TabsContext.All);
   const { setIsLeftSidebarFocused } = useContext(UIContext.Focus);
-  const { setOnBoardingState, onBoardingState } = useContext(
-    UIContext.Onboarding,
-  );
+  const { onBoardingState } = useContext(UIContext.Onboarding);
   const {
     setActiveRightTab,
     setActiveLeftTab,
@@ -41,7 +36,6 @@ const Project = ({}: Props) => {
   const { isDragging } = useDragLayer((monitor) => ({
     isDragging: monitor.isDragging(),
   }));
-  const { setEnvConfig, envConfig } = useContext(EnvContext);
 
   const onDropToRight = useCallback((tab: TabType) => {
     setRightTabs((prev) =>
@@ -85,10 +79,13 @@ const Project = ({}: Props) => {
 
   const shouldShowTutorial = useMemo(() => {
     return (
-      !envConfig?.bloop_user_profile?.is_tutorial_finished &&
-      onBoardingState.isCommandBarTutorialFinished
+      onBoardingState.isCommandBarTutorialFinished &&
+      (!onBoardingState.isFileExplained ||
+        !onBoardingState.isCodeExplained ||
+        !onBoardingState.isCodeNavigated ||
+        !onBoardingState.isChatOpened)
     );
-  }, [envConfig?.bloop_user_profile, onBoardingState]);
+  }, [onBoardingState]);
 
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
@@ -157,8 +154,4 @@ const Project = ({}: Props) => {
   );
 };
 
-export default memo(
-  Sentry.withErrorBoundary(Project, {
-    fallback: (props) => <ErrorFallback {...props} />,
-  }),
-);
+export default memo(Project);

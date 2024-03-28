@@ -12,21 +12,11 @@ import {
 } from './services/storage';
 import { LocaleType } from './types/general';
 import { DeviceContextProvider } from './context/providers/DeviceContextProvider';
-import { EnvContext } from './context/envContext';
-import { getConfig, initApi } from './services/api';
-import { useComponentWillMount } from './hooks/useComponentWillMount';
 
 const CloudApp = () => {
-  useComponentWillMount(() => initApi(import.meta.env.API_URL || '/api', true));
-  const [envConfig, setEnvConfig] = useState({});
   const [locale, setLocale] = useState<LocaleType>(
     (getPlainFromStorage(LANGUAGE_KEY) as LocaleType | null) || 'en',
   );
-
-  useEffect(() => {
-    getConfig().then(setEnvConfig);
-    setTimeout(() => getConfig().then(setEnvConfig), 1000);
-  }, []);
 
   const deviceContextValue = useMemo(
     () => ({
@@ -52,13 +42,6 @@ const CloudApp = () => {
     }),
     [],
   );
-  const envContextValue = useMemo(
-    () => ({
-      envConfig,
-      setEnvConfig,
-    }),
-    [envConfig],
-  );
 
   useEffect(() => {
     i18n.changeLanguage(locale);
@@ -74,17 +57,12 @@ const CloudApp = () => {
   );
 
   return (
-    <DeviceContextProvider
-      deviceContextValue={deviceContextValue}
-      envConfig={envConfig}
-    >
-      <EnvContext.Provider value={envContextValue}>
-        <LocaleContext.Provider value={localeContextValue}>
-          <BrowserRouter>
-            <App />
-          </BrowserRouter>
-        </LocaleContext.Provider>
-      </EnvContext.Provider>
+    <DeviceContextProvider deviceContextValue={deviceContextValue}>
+      <LocaleContext.Provider value={localeContextValue}>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </LocaleContext.Provider>
     </DeviceContextProvider>
   );
 };

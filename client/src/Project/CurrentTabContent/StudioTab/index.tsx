@@ -11,7 +11,6 @@ import Button from '../../../components/Button';
 import {
   DateTimeCalendarIcon,
   FileWithSparksIcon,
-  InfoBadgeIcon,
   MoreHorizontalIcon,
   PromptIcon,
   SplitViewIcon,
@@ -20,25 +19,19 @@ import Dropdown from '../../../components/Dropdown';
 import { checkEventKeys } from '../../../utils/keyboardUtils';
 import useKeyboardNavigation from '../../../hooks/useKeyboardNavigation';
 import { TabsContext } from '../../../context/tabsContext';
-import {
-  CommandBarStepEnum,
-  SettingSections,
-  StudioTabType,
-} from '../../../types/general';
+import { CommandBarStepEnum, StudioTabType } from '../../../types/general';
 import { ProjectContext } from '../../../context/projectContext';
 import { CommandBarContext } from '../../../context/commandBarContext';
 import { UIContext } from '../../../context/uiContext';
 import TokenUsage from '../../../components/TokenUsage';
 import { StudioContext, StudiosContext } from '../../../context/studiosContext';
 import { TOKEN_LIMIT } from '../../../consts/codeStudio';
-import { PersonalQuotaContext } from '../../../context/personalQuotaContext';
 import {
   addToStudioShortcut,
   escapeShortcut,
   openInSplitViewShortcut,
   saveShortcut,
 } from '../../../consts/shortcuts';
-import Tooltip from '../../../components/Tooltip';
 import { getDateFnsLocale } from '../../../utils';
 import { LocaleContext } from '../../../context/localeContext';
 import { patchCodeStudio } from '../../../services/api';
@@ -65,12 +58,6 @@ const StudioTab = ({
   const { focusedPanel } = useContext(TabsContext.FocusedPanel);
   const { studios } = useContext(StudiosContext);
   const { closeTab, updateTabProperty } = useContext(TabsContext.Handlers);
-  const { requestsLeft, isSubscribed, hasCheckedQuota, resetAt } = useContext(
-    PersonalQuotaContext.Values,
-  );
-  const { setSettingsSection, setSettingsOpen } = useContext(
-    UIContext.Settings,
-  );
   const { isLeftSidebarFocused } = useContext(UIContext.Focus);
   const { setFocusedTabItems, setChosenStep, setIsVisible } = useContext(
     CommandBarContext.Handlers,
@@ -186,28 +173,12 @@ const StudioTab = ({
     }
   }, [focusedPanel, side, handleMoveToAnotherSide]);
 
-  const onUpgradeClick = useCallback(() => {
-    setSettingsSection(SettingSections.SUBSCRIPTION);
-    setSettingsOpen(true);
-  }, []);
-
   return (
     <div
       className={`flex flex-col flex-1 h-full overflow-auto ${
         noBorder ? '' : 'border-l border-bg-border'
       }`}
     >
-      {!requestsLeft && (
-        <div className="w-full h-10 px-4 flex items-center justify-center gap-2 flex-shrink-0 bg-red-subtle text-red body-s-b select-none">
-          <span>
-            <Trans>No uses left. Uses reset at</Trans>{' '}
-            {format(new Date(resetAt), 'dd/MM hh:mm')}.
-          </span>
-          <Button size="mini" onClick={onUpgradeClick}>
-            <Trans>Upgrade</Trans>
-          </Button>
-        </div>
-      )}
       <div className="w-full h-10 px-4 flex justify-between gap-2 items-center flex-shrink-0 border-b border-bg-border bg-bg-sub">
         <div className="flex items-center gap-3 body-s text-label-title ellipsis">
           {snapshot ? (
@@ -260,26 +231,6 @@ const StudioTab = ({
           </span>
         </div>
         <div className="flex gap-2 items-center flex-shrink-0 select-none">
-          {hasCheckedQuota && !isSubscribed && !snapshot && (
-            <div className="flex gap-2 items-center">
-              <div className="flex items-center gap-1 body-mini text-label-muted">
-                <span>
-                  {requestsLeft} <Trans count={requestsLeft}>uses left</Trans>
-                </span>
-                <Tooltip
-                  text={t(
-                    'The amount of times you can generate responses in Studio conversations per day.',
-                  )}
-                  placement={'bottom'}
-                >
-                  <InfoBadgeIcon sizeClassName="w-3.5 h-3.5" />
-                </Tooltip>
-              </div>
-              <Button size="mini" onClick={onUpgradeClick}>
-                <Trans>Upgrade</Trans>
-              </Button>
-            </div>
-          )}
           {focusedPanel === side && snapshot ? (
             <div className="flex items-center gap-2 flex-shrink-0">
               <Button
@@ -328,7 +279,6 @@ const StudioTab = ({
             side={side}
             tabKey={tabKey}
             studioData={studioData}
-            requestsLeft={requestsLeft}
             studioId={studioId}
             isActiveTab={focusedPanel === side && !isLeftSidebarFocused}
             snapshot={snapshot}

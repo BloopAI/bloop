@@ -13,10 +13,8 @@ import { CloseSignIcon } from '../../icons';
 import TextInput from '../TextInput';
 import Button from '../Button';
 import { UIContext } from '../../context/uiContext';
-import { saveBugReport, saveCrashReport } from '../../services/api';
 import { DeviceContext } from '../../context/deviceContext';
 import { getJsonFromStorage, USER_DATA_FORM } from '../../services/storage';
-import { EnvContext } from '../../context/envContext';
 
 type Props = {
   errorBoundaryMessage?: string;
@@ -35,27 +33,17 @@ const ReportBugModal = ({
     text: '',
     emailError: '',
   });
-  const [serverLog, setServerLog] = useState('');
   const [serverCrashedMessage, setServerCrashedMessage] = useState('');
   const { isBugReportModalOpen, setBugReportModalOpen } = useContext(
     UIContext.BugReport,
   );
-  const { listen, os, release, invokeTauriCommand } = useContext(DeviceContext);
-  const { envConfig } = useContext(EnvContext);
+  const { listen, os } = useContext(DeviceContext);
 
   const userForm = useMemo(
     (): { email: string; firstName: string; lastName: string } | null =>
       getJsonFromStorage(USER_DATA_FORM),
     [],
   );
-
-  useEffect(() => {
-    if (isBugReportModalOpen) {
-      invokeTauriCommand('get_last_log_file').then((log) => {
-        setServerLog(log);
-      });
-    }
-  }, [isBugReportModalOpen]);
 
   useEffect(() => {
     listen('server-crashed', (event) => {
@@ -90,41 +78,6 @@ const ReportBugModal = ({
     [],
   );
 
-  const onSubmit = useCallback(
-    (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
-      e.preventDefault();
-      if (serverCrashedMessage) {
-        const userData: {
-          email: string;
-          firstName: string;
-          lastName: string;
-        } | null = getJsonFromStorage(USER_DATA_FORM);
-        saveCrashReport({
-          text: form.text,
-          name: userData
-            ? `${userData.firstName} ${userData.lastName}`
-            : undefined,
-          email: userData?.email,
-          unique_id: envConfig.tracking_id || '',
-          info: serverCrashedMessage,
-          metadata: JSON.stringify(os),
-          app_version: release,
-          server_log: serverLog,
-        });
-      } else {
-        const { emailError, ...values } = form;
-        saveBugReport({
-          ...values,
-          unique_id: envConfig.tracking_id || '',
-          app_version: release,
-          metadata: JSON.stringify(os),
-          server_log: serverLog,
-        });
-      }
-      resetState();
-    },
-    [form, envConfig.tracking_id, release, serverLog],
-  );
   const resetState = useCallback(() => {
     if (serverCrashedMessage) {
       console.log('go to empty page');
@@ -205,15 +158,7 @@ const ReportBugModal = ({
         </div>
         <div className="flex items-center px-3 gap-3 justify-end border-t border-bg-border h-13">
           <Button variant="tertiary" size="small" onClick={resetState}>
-            <Trans>Cancel</Trans>
-          </Button>
-          <Button
-            variant="primary"
-            size="small"
-            onClick={onSubmit}
-            disabled={!form.text && !serverCrashedMessage}
-          >
-            <Trans>Submit bug report</Trans>
+            <Trans>Retry</Trans>
           </Button>
         </div>
       </div>

@@ -16,13 +16,11 @@ import {
   CogIcon,
   ColorSwitchIcon,
   DocumentsIcon,
-  DoorOutIcon,
   MagazineIcon,
   MagnifyToolIcon,
   PlusSignIcon,
   RegexIcon,
   RepositoryIcon,
-  WalletIcon,
 } from '../../icons';
 import { CommandBarContext } from '../../context/commandBarContext';
 import Header from '../Header';
@@ -220,21 +218,6 @@ const InitialCommandBar = ({ shouldShowTutorial }: Props) => {
         ],
       },
       {
-        label: t(`Subscription`),
-        Icon: WalletIcon,
-        id: `subscription-settings`,
-        key: `subscription-settings`,
-        onClick: globalShortcuts.openSubscriptionSettings.action,
-        shortcut: globalShortcuts.openSubscriptionSettings.shortcut,
-        footerHint: t(`Open subscription settings`),
-        footerBtns: [
-          {
-            label: t('Open'),
-            shortcut: ['entr'],
-          },
-        ],
-      },
-      {
         label: t(`Documentation`),
         Icon: DocumentsIcon,
         id: `app-docs`,
@@ -289,21 +272,6 @@ const InitialCommandBar = ({ shouldShowTutorial }: Props) => {
         footerBtns: [
           {
             label: t('Search'),
-            shortcut: ['entr'],
-          },
-        ],
-      },
-      {
-        label: t(`Sign out`),
-        Icon: DoorOutIcon,
-        id: `sign-out`,
-        key: `sign-out`,
-        onClick: globalShortcuts.signOut.action,
-        shortcut: globalShortcuts.signOut.shortcut,
-        footerHint: t(`Sign out`),
-        footerBtns: [
-          {
-            label: t('Sign out'),
             shortcut: ['entr'],
           },
         ],

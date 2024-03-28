@@ -19,6 +19,7 @@ import { DeviceContext } from '../../../context/deviceContext';
 import { DocShortType } from '../../../types/api';
 import {
   addDocToProject,
+  API_BASE_URL,
   cancelDocIndexing,
   deleteDocProvider,
   getDocById,
@@ -52,7 +53,7 @@ const DocItem = ({
   const [isIndexingFinished, setIsIndexingFinished] = useState(
     !!doc.id && doc.index_status === 'done',
   );
-  const { apiUrl, openLink } = useContext(DeviceContext);
+  const { openLink } = useContext(DeviceContext);
   const { project, refreshCurrentProjectDocs } = useContext(
     ProjectContext.Current,
   );
@@ -68,7 +69,7 @@ const DocItem = ({
     setIsIndexingFinished(false);
     eventSourceRef.current?.close();
     eventSourceRef.current = new EventSource(
-      `${apiUrl.replace('https:', '')}/docs/${doc.id}/status`,
+      `${API_BASE_URL}/docs/${doc.id}/status`,
     );
     eventSourceRef.current.onmessage = (ev) => {
       try {

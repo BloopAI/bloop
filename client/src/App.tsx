@@ -1,12 +1,8 @@
 import React, { memo } from 'react';
 import { DndProvider } from 'react-dnd';
-import * as Sentry from '@sentry/react';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { Toaster } from 'sonner';
-import { AnalyticsContextProvider } from './context/providers/AnalyticsContextProvider';
-import { PersonalQuotaContextProvider } from './context/providers/PersonalQuotaContextProvider';
 import ReportBugModal from './components/ReportBugModal';
-import Onboarding from './Onboarding';
 import Project from './Project';
 import CommandBar from './CommandBar';
 import ProjectContextProvider from './context/providers/ProjectContextProvider';
@@ -17,8 +13,6 @@ import ProjectSettings from './ProjectSettings';
 import TabsContextProvider from './context/providers/TabsContextProvider';
 import { FileHighlightsContextProvider } from './context/providers/FileHighlightsContextProvider';
 import RepositoriesContextProvider from './context/providers/RepositoriesContextProvider';
-import UpgradeRequiredPopup from './components/UpgradeRequiredPopup';
-import ErrorFallback from './components/ErrorFallback';
 
 const toastOptions = {
   unStyled: true,
@@ -39,36 +33,26 @@ const toastOptions = {
 const App = () => {
   return (
     <DndProvider backend={HTML5Backend}>
-      <AnalyticsContextProvider>
-        <PersonalQuotaContextProvider>
-          <UIContextProvider>
-            <ProjectContextProvider>
-              <Toaster closeButton toastOptions={toastOptions} />
-              <RepositoriesContextProvider>
-                <ReportBugModal />
-                <Onboarding />
-                <UpgradeRequiredPopup />
-                <CommandBarContextProvider>
-                  <Settings />
-                  <ProjectSettings />
-                  <FileHighlightsContextProvider>
-                    <TabsContextProvider>
-                      <CommandBar />
-                      <Project />
-                    </TabsContextProvider>
-                  </FileHighlightsContextProvider>
-                </CommandBarContextProvider>
-              </RepositoriesContextProvider>
-            </ProjectContextProvider>
-          </UIContextProvider>
-        </PersonalQuotaContextProvider>
-      </AnalyticsContextProvider>
+      <UIContextProvider>
+        <ProjectContextProvider>
+          <Toaster closeButton toastOptions={toastOptions} />
+          <RepositoriesContextProvider>
+            <ReportBugModal />
+            <CommandBarContextProvider>
+              <Settings />
+              <ProjectSettings />
+              <FileHighlightsContextProvider>
+                <TabsContextProvider>
+                  <CommandBar />
+                  <Project />
+                </TabsContextProvider>
+              </FileHighlightsContextProvider>
+            </CommandBarContextProvider>
+          </RepositoriesContextProvider>
+        </ProjectContextProvider>
+      </UIContextProvider>
     </DndProvider>
   );
 };
 
-export default memo(
-  Sentry.withErrorBoundary(App, {
-    fallback: (props) => <ErrorFallback {...props} />,
-  }),
-);
+export default memo(App);

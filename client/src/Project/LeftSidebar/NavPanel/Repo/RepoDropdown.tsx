@@ -23,15 +23,12 @@ import {
   removeRepoFromProject,
   syncRepo,
 } from '../../../../services/api';
-import { DeviceContext } from '../../../../context/deviceContext';
 import SpinLoaderContainer from '../../../../components/Loaders/SpinnerLoader';
 import SectionLabel from '../../../../components/Dropdown/Section/SectionLabel';
 import Button from '../../../../components/Button';
 import { ProjectContext } from '../../../../context/projectContext';
-import { PersonalQuotaContext } from '../../../../context/personalQuotaContext';
 import { RepoIndexingStatusType } from '../../../../types/general';
 import { RepositoriesContext } from '../../../../context/repositoriesContext';
-import { UIContext } from '../../../../context/uiContext';
 
 type Props = {
   repoRef: string;
@@ -50,19 +47,13 @@ const RepoDropdown = ({
   allBranches,
   projectId,
   indexingStatus,
-  handleClose,
 }: Props) => {
   const { t } = useTranslation();
   const [isBranchesOpen, setIsBranchesOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [search, setSearch] = useState('');
   const [branchesToSync, setBranchesToSync] = useState<string[]>([]);
-  const { isSelfServe } = useContext(DeviceContext);
   const { refreshCurrentProjectRepos } = useContext(ProjectContext.Current);
-  const { isSubscribed } = useContext(PersonalQuotaContext.Values);
-  const { setIsUpgradeRequiredPopupOpen } = useContext(
-    UIContext.UpgradeRequiredPopup,
-  );
 
   const onRepoSync = useCallback(
     async (e?: MouseEvent) => {
@@ -151,15 +142,10 @@ const RepoDropdown = ({
   const switchToBranch = useCallback(
     async (branch: string, e?: MouseEvent) => {
       e?.stopPropagation();
-      if (isSubscribed || isSelfServe) {
-        await changeRepoBranch(projectId, repoRef, branch);
-        refreshCurrentProjectRepos();
-      } else {
-        setIsUpgradeRequiredPopupOpen(true);
-        handleClose();
-      }
+      await changeRepoBranch(projectId, repoRef, branch);
+      refreshCurrentProjectRepos();
     },
-    [projectId, repoRef, isSubscribed, isSelfServe],
+    [projectId, repoRef],
   );
 
   return (
@@ -263,13 +249,8 @@ const RepoDropdown = ({
                     variant="secondary"
                     size="mini"
                     onClick={async () => {
-                      if (isSubscribed || isSelfServe) {
-                        setBranchesToSync((prev) => [...prev, b]);
-                        await indexRepoBranch(repoRef, b);
-                      } else {
-                        setIsUpgradeRequiredPopupOpen(true);
-                        handleClose();
-                      }
+                      setBranchesToSync((prev) => [...prev, b]);
+                      await indexRepoBranch(repoRef, b);
                     }}
                   >
                     {t('Sync')}
