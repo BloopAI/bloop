@@ -168,14 +168,6 @@ impl Application {
             .into();
         debug!("indexes initialized");
 
-        // Enforce capabilies and features depending on environment
-        let env = if config.bloop_instance_secret.is_some() {
-            info!("Starting bleep in private server mode");
-            Environment::private_server()
-        } else {
-            env
-        };
-
         Ok(Self {
             sync_queue: SyncQueue::start(config.clone()),
             cookie_key: config.source.initialize_cookie_key()?,
@@ -279,55 +271,6 @@ impl Application {
 
     fn write_index(&self) -> background::BoundSyncQueue {
         background::BoundSyncQueue(self.clone())
-    }
-
-    fn seal_auth_state(&self, payload: serde_json::Value) -> String {
-        use base64::Engine;
-        use rand::RngCore;
-
-        let privkey = {
-            let bytes = self
-                .config
-                .bloop_instance_secret
-                .as_ref()
-                .expect("no instance secret configured")
-                .as_bytes();
-
-            ring::aead::LessSafeKey::new(
-                ring::aead::UnboundKey::new(&ring::aead::AES_128_GCM, bytes)
-                    .expect("bad key initialization"),
-            )
-        };
-
-        let (nonce, nonce_str) = {
-            let mut buf = [0; 12];
-            rand::thread_rng().fill_bytes(&mut buf);
-
-            let nonce_str = hex::encode(buf);
-            (ring::aead::Nonce::assume_unique_for_key(buf), nonce_str)
-        };
-
-        let (enc, tag) = {
-            let mut serialized = serde_json::to_vec(&payload).unwrap();
-            let tag = privkey
-                .seal_in_place_separate_tag(nonce, ring::aead::Aad::empty(), &mut serialized)
-                .expect("encryption failed");
-
-            (
-                base64::engine::general_purpose::URL_SAFE.encode(serialized),
-                base64::engine::general_purpose::URL_SAFE.encode(tag),
-            )
-        };
-
-        base64::engine::general_purpose::URL_SAFE.encode(
-            serde_json::to_vec(&serde_json::json!({
-            "org": self.config.bloop_instance_org.as_ref().expect("bad config"),
-            "n": nonce_str,
-            "enc": enc,
-            "tag": tag
-            }))
-            .expect("bad encoding"),
-        )
     }
 }
 

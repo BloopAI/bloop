@@ -8,7 +8,6 @@ use std::{
     num::NonZeroUsize,
     path::{Path, PathBuf},
 };
-use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Parser, Debug, Clone)]
 #[clap(author, version, about, long_about = None)]
@@ -82,6 +81,11 @@ pub struct Configuration {
     /// OpenAI API key
     pub openai_api_key: Option<SecretString>,
 
+    #[clap(long)]
+    #[serde(serialize_with = "serialize_secret_opt_str", default)]
+    /// Github Access Token
+    pub github_access_token: Option<SecretString>,
+
     //
     // External dependencies
     //
@@ -116,55 +120,6 @@ pub struct Configuration {
     #[serde(default = "interactive_batch_size")]
     /// Batch size for batched embeddings
     pub embedding_batch_size: NonZeroUsize,
-
-    //
-    // Cognito setup
-    //
-    /// Cognito userpool_id
-    #[clap(long)]
-    pub cognito_userpool_id: Option<String>,
-
-    /// Cognito client_id
-    #[clap(long)]
-    pub cognito_client_id: Option<String>,
-
-    /// Entry point to the Cognito authentication flow
-    #[clap(long)]
-    pub cognito_auth_url: Option<reqwest::Url>,
-
-    /// Auth management base URL
-    #[clap(long)]
-    pub cognito_mgmt_url: Option<reqwest::Url>,
-
-    /// URL from which to initialize Cognito configuration
-    #[clap(long)]
-    pub cognito_config_url: Option<reqwest::Url>,
-
-    //
-    // Cloud-based Github App installation-specific values
-    //
-    /// Instance-specific shared secret between bloop c&c & instance
-    #[clap(long)]
-    pub bloop_instance_secret: Option<Uuid>,
-
-    /// Instance organization name
-    #[clap(long)]
-    pub bloop_instance_org: Option<String>,
-
-    //
-    // Cloud deployment values
-    //
-    #[clap(long)]
-    /// Full instance domain, e.g. `foo.bloop.ai`
-    pub instance_domain: Option<String>,
-
-    /// Path to built front-end folder
-    #[clap(long)]
-    pub frontend_dist: Option<PathBuf>,
-
-    #[clap(long)]
-    /// Address for the embedding server
-    pub embedding_server_url: Option<reqwest::Url>,
 }
 
 macro_rules! right_if_default {
@@ -175,14 +130,6 @@ macro_rules! right_if_default {
             $left
         }
     };
-}
-
-#[derive(Deserialize)]
-struct RemoteConfig {
-    auth_url: reqwest::Url,
-    mgmt_url: reqwest::Url,
-    client_id: String,
-    userpool_id: String,
 }
 
 impl Configuration {
@@ -211,22 +158,6 @@ impl Configuration {
         };
 
         Ok(Self::merge(file, cli))
-    }
-
-    pub async fn with_remote_cognito_config(mut self) -> Result<Self> {
-        let url = self
-            .cognito_config_url
-            .clone()
-            .context("Invalid config, cognito_config_url missing")?;
-
-        let config: RemoteConfig = reqwest::get(url).await?.json().await?;
-
-        self.cognito_auth_url = Some(config.auth_url);
-        self.cognito_mgmt_url = Some(config.mgmt_url);
-        self.cognito_client_id = Some(config.client_id);
-        self.cognito_userpool_id = Some(config.userpool_id);
-
-        Ok(self)
     }
 
     /// Merge 2 configurations with values from `b` taking precedence
@@ -268,6 +199,8 @@ impl Configuration {
 
             openai_api_key: b.openai_api_key.or(a.openai_api_key),
 
+            github_access_token: b.github_access_token.or(a.github_access_token),
+
             model_dir: right_if_default!(b.model_dir, a.model_dir, default_model_dir()),
 
             max_chunk_tokens: right_if_default!(
@@ -288,27 +221,7 @@ impl Configuration {
                 interactive_batch_size()
             ),
 
-            embedding_server_url: b.embedding_server_url.or(a.embedding_server_url),
-
-            frontend_dist: b.frontend_dist.or(a.frontend_dist),
-
             qdrant_url: right_if_default!(b.qdrant_url, a.qdrant_url, String::new()),
-
-            cognito_userpool_id: b.cognito_userpool_id.or(a.cognito_userpool_id),
-
-            cognito_client_id: b.cognito_client_id.or(a.cognito_client_id),
-
-            cognito_auth_url: b.cognito_auth_url.or(a.cognito_auth_url),
-
-            cognito_mgmt_url: b.cognito_mgmt_url.or(a.cognito_mgmt_url),
-
-            cognito_config_url: b.cognito_config_url.or(a.cognito_config_url),
-
-            bloop_instance_secret: b.bloop_instance_secret.or(a.bloop_instance_secret),
-
-            bloop_instance_org: b.bloop_instance_org.or(a.bloop_instance_org),
-
-            instance_domain: b.instance_domain.or(a.instance_domain),
 
             dylib_dir: b.dylib_dir.or(a.dylib_dir),
         }

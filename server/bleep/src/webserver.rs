@@ -8,12 +8,9 @@ use axum::{
     Extension, Json,
 };
 use std::{borrow::Cow, fmt, net::SocketAddr};
-use tower::Service;
-use tower_http::services::{ServeDir, ServeFile};
 use tower_http::{catch_panic::CatchPanicLayer, cors::CorsLayer};
 use tracing::info;
 
-pub mod aaa;
 pub mod answer;
 mod autocomplete;
 mod commits;
@@ -21,7 +18,6 @@ mod config;
 pub mod conversation;
 mod docs;
 mod file;
-mod github;
 pub mod hoverable;
 mod index;
 pub mod intelligence;
@@ -171,22 +167,9 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         api = api.route("/repos/scan", get(repos::scan_local));
     }
 
-    if app.env.allow(Feature::DesktopUserAuth) {
-        api = api
-            .route("/auth/login", get(github::login))
-            .route("/auth/logout", get(github::logout));
-    }
-
     api = api.route("/panic", get(|| async { panic!("dead") }));
 
-    // Note: all routes above this point must be authenticated.
-    // These middlewares MUST provide the `middleware::User` extension.
-    if app.env.allow(Feature::AuthorizationRequired) {
-        api = aaa::router(api, app.clone()).await;
-    } else {
-        api = middleware::local_user(api, app.clone());
-    }
-
+    api = middleware::local_user(api, app.clone());
     api = api.route("/health", get(health));
 
     let api = api
@@ -197,23 +180,7 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         .layer(CorsLayer::permissive())
         .layer(CatchPanicLayer::new());
 
-    let mut router = Router::new().nest("/api", api);
-
-    if let Some(frontend_dist) = app.config.frontend_dist.clone() {
-        router = router.nest_service(
-            "/",
-            tower::service_fn(move |req| {
-                let frontend_dist = frontend_dist.clone();
-                async move {
-                    Ok(ServeDir::new(&frontend_dist)
-                        .fallback(ServeFile::new(frontend_dist.join("index.html")))
-                        .call(req)
-                        .await
-                        .unwrap())
-                }
-            }),
-        );
-    }
+    let router = Router::new().nest("/api", api);
 
     info!(%bind, "starting webserver");
     axum::Server::bind(&bind)

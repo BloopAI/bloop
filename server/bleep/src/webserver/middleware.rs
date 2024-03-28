@@ -1,27 +1,18 @@
-use super::{aaa, prelude::*};
+use super::prelude::*;
 use crate::{llm, Application};
 
-use anyhow::{bail, Context};
+use anyhow::bail;
 use axum::{
     extract::State,
     http::Request,
     middleware::{from_fn_with_state, Next},
     response::Response,
 };
-use axum_extra::extract::CookieJar;
-use jwt_authorizer::JwtClaims;
 
 #[derive(Serialize, Clone)]
 pub enum User {
     Unknown,
     Desktop {
-        access_token: String,
-        login: String,
-        #[serde(skip)]
-        crab: Arc<dyn Fn() -> anyhow::Result<octocrab::Octocrab> + Send + Sync>,
-    },
-    Cloud {
-        org_name: String,
         access_token: String,
         login: String,
         #[serde(skip)]
@@ -33,7 +24,6 @@ impl User {
     pub fn username(&self) -> Option<&str> {
         match self {
             User::Desktop { login, .. } => Some(login),
-            User::Cloud { login, .. } => Some(login),
             _ => None,
         }
     }
@@ -42,7 +32,6 @@ impl User {
         let crab = match self {
             User::Unknown => return None,
             User::Desktop { crab, .. } => crab,
-            User::Cloud { crab, .. } => crab,
         };
 
         crab().ok()
@@ -70,43 +59,5 @@ async fn local_user_mw<B>(
     next: Next<B>,
 ) -> Response {
     request.extensions_mut().insert(app.user().await);
-    next.run(request).await
-}
-
-pub async fn cloud_user_layer_mw<B>(
-    JwtClaims(claims): JwtClaims<aaa::TokenClaims>,
-    State(app): State<Application>,
-    jar: CookieJar,
-    mut request: Request<B>,
-    next: Next<B>,
-) -> Response {
-    request.extensions_mut().insert({
-        let login = app
-            .user_profiles
-            .read(&claims.sub, |_, v| v.username.clone())
-            .flatten()
-            .unwrap_or_default();
-
-        let org_name = app
-            .credentials
-            .github()
-            .and_then(|state| match state.auth {
-                crate::remotes::github::Auth::App { org, .. } => Some(org),
-                _ => None,
-            })
-            .expect("misconfigured instance");
-
-        User::Cloud {
-            login,
-            org_name,
-            // not doing an `ok()` here to ensure this exists, or blow up
-            access_token: jar.get(super::aaa::COOKIE_NAME).unwrap().to_string(),
-            crab: Arc::new(move || {
-                let gh = app.credentials.github().context("no github")?;
-                Ok(gh.client()?)
-            }),
-        }
-    });
-
     next.run(request).await
 }

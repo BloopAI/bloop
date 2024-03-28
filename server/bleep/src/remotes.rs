@@ -17,7 +17,6 @@ use crate::{
     background::{SyncHandle, SyncPipes},
     remotes,
     repo::{Backend, RepoError, RepoRef, Repository, SyncStatus},
-    Application,
 };
 
 pub mod github;
@@ -321,10 +320,6 @@ impl Backends {
         self.backends.read(&repo.backend(), |_, v| v.inner.clone())
     }
 
-    pub(crate) fn remove(&self, backend: impl Borrow<Backend>) -> Option<BackendCredential> {
-        self.backends.remove(backend.borrow()).map(|(_, v)| v.inner)
-    }
-
     pub(crate) fn github(&self) -> Option<github::State> {
         self.backends.read(&Backend::Github, |_, v| {
             let BackendCredential::Github(ref github) = v.inner;
@@ -340,14 +335,6 @@ impl Backends {
                 existing.inner = BackendCredential::Github(gh.clone());
             })
             .or_insert_with(|| BackendCredential::Github(gh).into());
-    }
-
-    pub(crate) async fn remove_user(&self) {
-        *self.authenticated_user.write().unwrap() = None;
-    }
-
-    pub(crate) async fn set_user(&self, user: String) {
-        self.authenticated_user.write().unwrap().replace(user);
     }
 
     pub(crate) fn user(&self) -> Option<String> {

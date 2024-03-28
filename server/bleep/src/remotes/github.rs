@@ -2,7 +2,6 @@ use chrono::{DateTime, Utc};
 use octocrab::Octocrab;
 use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 
 use crate::repo::{GitRemote, RepoRemote, Repository};
 
@@ -25,35 +24,6 @@ impl State {
 
     pub fn client(&self) -> octocrab::Result<Octocrab> {
         self.auth.client()
-    }
-
-    pub(crate) async fn validate(&self) -> Result<Option<String>> {
-        let client = self.client()?;
-
-        let username = match client.current().user().await {
-            Ok(user) => Some(user.login),
-            Err(e @ octocrab::Error::GitHub { .. }) => {
-                warn!(?e, "failed to validate GitHub token");
-                return Err(e)?;
-            }
-            Err(e) => {
-                // Don't return an error here - we want to swallow failure and try again on the
-                // next poll.
-                error!(?e, "failed to make GitHub user request");
-                None
-            }
-        };
-
-        Ok(username)
-    }
-
-    pub(crate) fn expiry(&self) -> Option<DateTime<Utc>> {
-        match self.auth {
-            Auth::App {
-                expires_at: expiry, ..
-            } => Some(expiry),
-            _ => None,
-        }
     }
 
     /// Get a representative list of repositories currently accessible
@@ -202,42 +172,4 @@ impl Auth {
 
         Ok(results)
     }
-}
-
-pub(crate) async fn refresh_github_installation_token(app: &Application) -> Result<()> {
-    let timestamp = chrono::Utc::now();
-    let payload = json!({ "timestamp": timestamp.to_rfc2822()});
-    let state = app.seal_auth_state(payload);
-
-    let token_url = app
-        .config
-        .cognito_mgmt_url
-        .as_ref()
-        .expect("bad config")
-        .join("refresh_token")
-        .unwrap();
-
-    let response: RefreshTokenResponse = reqwest::Client::new()
-        .post(token_url)
-        .json(&json!({ "state": state }))
-        .send()
-        .await
-        .map_err(RemoteError::RefreshToken)?
-        .json()
-        .await
-        .map_err(RemoteError::RefreshToken)?;
-
-    app.credentials.set_github(State::with_auth(Auth::App {
-        org: app.config.bloop_instance_org.clone().unwrap(),
-        token: response.token,
-        expires_at: response.expires_at,
-    }));
-
-    Ok(())
-}
-
-#[derive(Deserialize)]
-struct RefreshTokenResponse {
-    token: SecretString,
-    expires_at: DateTime<Utc>,
 }

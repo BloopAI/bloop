@@ -83,13 +83,6 @@ async fn start_backend<R: Runtime>(configuration: Configuration, app: tauri::App
         .unwrap();
     };
 
-    let configuration = if let Ok(remote) = configuration.clone().with_remote_cognito_config().await
-    {
-        remote
-    } else {
-        configuration
-    };
-
     app.manage(configuration.clone());
 
     let initialized = Application::initialize(Environment::insecure_local(), configuration).await;
