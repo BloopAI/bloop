@@ -57,7 +57,7 @@ mod commits;
 mod config;
 mod db;
 mod env;
-mod llm_gateway;
+mod llm;
 mod remotes;
 mod repo;
 mod scraper;

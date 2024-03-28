@@ -14,7 +14,7 @@ use crate::state::get_relative_path;
 pub(crate) mod iterator;
 use iterator::language;
 
-pub use iterator::{BranchFilter, BranchFilterConfig, FileFilter, FileFilterConfig, FilterUpdate};
+pub use iterator::{BranchFilterConfig, FileFilterConfig, FilterUpdate};
 
 #[derive(thiserror::Error, Debug)]
 #[error("repository locked")]

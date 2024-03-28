@@ -77,6 +77,11 @@ pub struct Configuration {
     /// Bind the webserver to `<host>`
     pub port: u16,
 
+    #[clap(long)]
+    #[serde(serialize_with = "serialize_secret_opt_str", default)]
+    /// OpenAI API key
+    pub openai_api_key: Option<SecretString>,
+
     //
     // External dependencies
     //
@@ -270,6 +275,8 @@ impl Configuration {
             host: right_if_default!(b.host, a.host, default_host()),
 
             port: right_if_default!(b.port, a.port, default_port()),
+
+            openai_api_key: b.openai_api_key.or(a.openai_api_key),
 
             model_dir: right_if_default!(b.model_dir, a.model_dir, default_model_dir()),
 

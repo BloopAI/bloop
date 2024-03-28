@@ -12,7 +12,7 @@ use serde::Serialize;
 use tracing::{debug, error, trace};
 
 use crate::{
-    llm_gateway::{self, api::Message},
+    llm::{self, client::api::Message},
     repo::iterator::EXT_BLACKLIST,
     repo::RepoRef,
     state::RepositoryPool,
@@ -205,7 +205,7 @@ fn add_diff(
 
 pub async fn expand_commits_to_questions(
     src_commits: Vec<DiffStat>,
-    llm_gateway: &llm_gateway::Client,
+    llm_gateway: &llm::client::Client,
 ) -> Result<Vec<Question>> {
     const NUM_TUTORIAL_QUESTIONS: usize = 5;
     const COMMIT_EXCLUDE_KEYWORDS: [&str; 7] = [
@@ -308,7 +308,7 @@ pub fn latest_commits(
 }
 
 async fn generate_question(
-    llm_gateway: &llm_gateway::Client,
+    llm_gateway: &llm::client::Client,
     commit: DiffStat,
 ) -> Result<Option<Question>> {
     let classification = classify_commit(llm_gateway, &commit)
@@ -335,7 +335,7 @@ async fn generate_question(
     Ok(Some(Question { question, tag }))
 }
 
-async fn classify_commit(llm_gateway: &llm_gateway::Client, commit: &DiffStat) -> Result<bool> {
+async fn classify_commit(llm_gateway: &llm::client::Client, commit: &DiffStat) -> Result<bool> {
     let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo-0613").unwrap();
     let raw_commit = format!("{}\n\n{}", commit.commit_message, commit.diff);
     let commit_msg = crate::agent::transcoder::limit_tokens(&raw_commit, bpe, 3000);
@@ -365,7 +365,7 @@ Example output: 2",
     Ok(result == 1)
 }
 
-async fn get_question(llm_gateway: &llm_gateway::Client, commit: &DiffStat) -> Result<String> {
+async fn get_question(llm_gateway: &llm::client::Client, commit: &DiffStat) -> Result<String> {
     let bpe = tiktoken_rs::get_bpe_from_model("gpt-4-0613").unwrap();
     let raw_commit = format!("{}\n\n{}", commit.commit_message, commit.diff);
     let commit = crate::agent::transcoder::limit_tokens(&raw_commit, bpe, 7000);
@@ -401,7 +401,7 @@ If you cannot write a good question, simply reply: 0"#,
         .context("llm error")
 }
 
-async fn get_tag(llm_gateway: &llm_gateway::Client, question: &str) -> Result<String> {
+async fn get_tag(llm_gateway: &llm::client::Client, question: &str) -> Result<String> {
     let bpe = tiktoken_rs::get_bpe_from_model("gpt-3.5-turbo-0613").unwrap();
     let question = crate::agent::transcoder::limit_tokens(question, bpe, 7168);
     llm_gateway
@@ -437,7 +437,7 @@ Assistant: initialisation"#,
 
 pub async fn generate_tutorial_questions(
     db: crate::db::SqlDb,
-    llm_gateway: Result<crate::llm_gateway::Client>,
+    llm_gateway: Result<crate::llm::client::Client>,
     repo_pool: RepositoryPool,
     reporef: RepoRef,
 ) -> Result<()> {

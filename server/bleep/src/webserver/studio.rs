@@ -24,7 +24,7 @@ use self::diff::{DiffChunk, DiffHunk};
 use super::{middleware::User, Error};
 use crate::{
     agent::{exchange::Exchange, prompts},
-    llm_gateway,
+    llm,
     repo::RepoRef,
     webserver, Application,
 };
@@ -147,11 +147,11 @@ enum Message {
     Assistant(String),
 }
 
-impl From<&Message> for llm_gateway::api::Message {
+impl From<&Message> for llm::client::api::Message {
     fn from(value: &Message) -> Self {
         match value {
-            Message::User(s) => llm_gateway::api::Message::user(s),
-            Message::Assistant(s) => llm_gateway::api::Message::assistant(s),
+            Message::User(s) => llm::client::api::Message::user(s),
+            Message::Assistant(s) => llm::client::api::Message::assistant(s),
         }
     }
 }
@@ -715,7 +715,6 @@ pub async fn generate(
         .llm_gateway(&app)
         .await
         .map_err(|e| Error::user(e).with_status(StatusCode::UNAUTHORIZED))?
-        .quota_gated(!app.env.is_cloud_instance())
         .model(LLM_GATEWAY_MODEL)
         .temperature(0.0);
 
@@ -739,8 +738,8 @@ pub async fn generate(
 
     let llm_context = generate_llm_context((*app).clone(), &context, &doc_context).await?;
     let system_prompt = prompts::studio_article_prompt(&llm_context);
-    let llm_messages = iter::once(llm_gateway::api::Message::system(&system_prompt))
-        .chain(messages.iter().map(llm_gateway::api::Message::from))
+    let llm_messages = iter::once(llm::client::api::Message::system(&system_prompt))
+        .chain(messages.iter().map(llm::client::api::Message::from))
         .collect::<Vec<_>>();
 
     let tokens = llm_gateway.chat_stream(&llm_messages, None).await?;
@@ -944,7 +943,6 @@ pub async fn diff(
         .llm_gateway(&app)
         .await
         .map_err(|e| Error::user(e).with_status(StatusCode::UNAUTHORIZED))?
-        .quota_gated(!app.env.is_cloud_instance())
         .model(LLM_GATEWAY_MODEL)
         .temperature(0.0);
 
@@ -986,8 +984,8 @@ pub async fn diff(
     let user_message = format!("Create a patch for the task \"{user_message}\".\n\n\nHere is the solution:\n\n{assistant_message}");
 
     let messages = vec![
-        llm_gateway::api::Message::system(&system_prompt),
-        llm_gateway::api::Message::user(&user_message),
+        llm::client::api::Message::system(&system_prompt),
+        llm::client::api::Message::user(&user_message),
     ];
 
     let response = llm_gateway.chat(&messages, None).await?;
@@ -1128,7 +1126,7 @@ fn parse_diff_path(p: &str) -> Result<(RepoRef, &str)> {
 async fn rectify_hunks(
     app: &Application,
     llm_context: &str,
-    llm_gateway: &llm_gateway::Client,
+    llm_gateway: &llm::client::Client,
     hunks: impl Iterator<Item = &DiffHunk>,
     path: &str,
     repo: &RepoRef,
@@ -1174,8 +1172,8 @@ async fn rectify_hunks(
             {
                 let system_prompt = prompts::studio_diff_regen_hunk_prompt(llm_context);
                 let messages = vec![
-                    llm_gateway::api::Message::system(&system_prompt),
-                    llm_gateway::api::Message::user(&singular_chunk.to_string()),
+                    llm::client::api::Message::system(&system_prompt),
+                    llm::client::api::Message::user(&singular_chunk.to_string()),
                 ];
                 llm_gateway.chat(&messages, None).await?
             } else {
@@ -1384,7 +1382,7 @@ async fn populate_studio_name(
         .model("gpt-3.5-turbo-16k-0613")
         .temperature(0.0);
 
-    let messages = &[llm_gateway::api::Message::system(
+    let messages = &[llm::client::api::Message::system(
         &prompts::studio_name_prompt(&context_json, &messages_json),
     )];
 
@@ -1542,12 +1540,12 @@ async fn extract_relevant_chunks(
 
     // Construct LLM messages
     let llm_messages = [
-        llm_gateway::api::Message::system(
+        llm::client::api::Message::system(
             "Your job is to output which file paths are used in the answer. Output ONLY a JSON list of \
             paths. For example ['path/to/file1', 'path/to/file2']",
         ),
-        llm_gateway::api::Message::assistant(&last_message),
-        llm_gateway::api::Message::assistant(&context_json)
+        llm::client::api::Message::assistant(&last_message),
+        llm::client::api::Message::assistant(&context_json)
     ];
 
     // Call the LLM gateway

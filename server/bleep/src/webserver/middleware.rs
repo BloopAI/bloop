@@ -1,5 +1,5 @@
 use super::{aaa, prelude::*};
-use crate::{llm_gateway, Application};
+use crate::{llm, Application};
 
 use anyhow::{bail, Context};
 use axum::{
@@ -49,24 +49,15 @@ impl User {
         crab().ok()
     }
 
-    pub(crate) fn access_token(&self) -> Option<&str> {
-        match self {
-            User::Unknown => None,
-            User::Desktop { access_token, .. } => Some(access_token),
-            User::Cloud { access_token, .. } => Some(access_token),
-        }
-    }
-
     pub(crate) async fn llm_gateway(
         &self,
         app: &Application,
-    ) -> anyhow::Result<llm_gateway::Client> {
+    ) -> anyhow::Result<llm::client::Client> {
         if let User::Unknown = self {
             bail!("user unauthenticated");
         }
 
-        let access_token = self.access_token().map(str::to_owned);
-        Ok(llm_gateway::Client::new(app.clone()).bearer(access_token))
+        Ok(llm::client::Client::new(app.clone()))
     }
 
     pub(crate) async fn paid_features(&self, app: &Application) -> bool {

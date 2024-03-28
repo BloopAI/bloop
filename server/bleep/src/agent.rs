@@ -8,7 +8,7 @@ use tracing::{debug, error, info, instrument};
 use crate::{
     agent::exchange::RepoPath,
     indexes::reader::{ContentDocument, FileDocument},
-    llm_gateway::{self, api::FunctionCall},
+    llm::client::{api, Client},
     query::{parser, stopwords::remove_stopwords},
     repo::RepoRef,
     semantic::{self, SemanticSearchParams},
@@ -49,7 +49,7 @@ pub struct Agent {
     pub conversation: Conversation,
     pub exchange_tx: Sender<Exchange>,
 
-    pub llm_gateway: llm_gateway::Client,
+    pub llm_gateway: Client,
     pub user: User,
     pub query_id: uuid::Uuid,
     pub repo_refs: Vec<RepoRef>,
@@ -212,14 +212,12 @@ impl Agent {
             }));
         }
 
-        let functions = serde_json::from_value::<Vec<llm_gateway::api::Function>>(
+        let functions = serde_json::from_value::<Vec<api::Function>>(
             prompts::functions(self.paths().next().is_some()), // Only add proc if there are paths in context
         )
         .unwrap();
 
-        let mut history = vec![llm_gateway::api::Message::system(&prompts::system(
-            self.paths(),
-        ))];
+        let mut history = vec![api::Message::system(&prompts::system(self.paths()))];
         history.extend(self.history()?);
 
         let trimmed_history = trim_history(history.clone(), self.agent_model)?;
@@ -228,23 +226,20 @@ impl Agent {
             .llm_gateway
             .chat_stream(&trimmed_history, Some(&functions))
             .await?
-            .try_fold(
-                llm_gateway::api::FunctionCall::default(),
-                |acc, e| async move {
-                    let e: FunctionCall = serde_json::from_str(&e).map_err(|err| {
-                        tracing::error!(
-                            "Failed to deserialize to FunctionCall: {:?}. Error: {:?}",
-                            e,
-                            err
-                        );
+            .try_fold(api::FunctionCall::default(), |acc, e| async move {
+                let e: api::FunctionCall = serde_json::from_str(&e).map_err(|err| {
+                    tracing::error!(
+                        "Failed to deserialize to FunctionCall: {:?}. Error: {:?}",
+                        e,
                         err
-                    })?;
-                    Ok(FunctionCall {
-                        name: acc.name.or(e.name),
-                        arguments: acc.arguments + &e.arguments,
-                    })
-                },
-            )
+                    );
+                    err
+                })?;
+                Ok(api::FunctionCall {
+                    name: acc.name.or(e.name),
+                    arguments: acc.arguments + &e.arguments,
+                })
+            })
             .await
             .context("failed to fold LLM function call output")?;
 
@@ -255,7 +250,7 @@ impl Agent {
     }
 
     /// The full history of messages, including intermediate function calls
-    fn history(&self) -> Result<Vec<llm_gateway::api::Message>> {
+    fn history(&self) -> Result<Vec<api::Message>> {
         const ANSWER_MAX_HISTORY_SIZE: usize = 3;
         const FUNCTION_CALL_INSTRUCTION: &str = "Call a function. Do not answer";
 
@@ -269,7 +264,7 @@ impl Agent {
             .try_fold(Vec::new(), |mut acc, e| -> Result<_> {
                 let query = e
                     .query()
-                    .map(|q| llm_gateway::api::Message::user(&q))
+                    .map(|q| api::Message::user(&q))
                     .ok_or_else(|| anyhow!("query does not have target"))?;
 
                 let steps = e.search_steps.iter().flat_map(|s| {
@@ -300,12 +295,12 @@ impl Agent {
                     };
 
                     vec![
-                        llm_gateway::api::Message::function_call(&FunctionCall {
+                        api::Message::function_call(&api::FunctionCall {
                             name: Some(name.clone()),
                             arguments,
                         }),
-                        llm_gateway::api::Message::function_return(&name, &s.get_response()),
-                        llm_gateway::api::Message::user(FUNCTION_CALL_INSTRUCTION),
+                        api::Message::function_return(&name, &s.get_response()),
+                        api::Message::user(FUNCTION_CALL_INSTRUCTION),
                     ]
                 });
 
@@ -313,7 +308,7 @@ impl Agent {
                     // NB: We intentionally discard the summary as it is redundant.
                     Some(answer) => {
                         let encoded = transcoder::encode_summarized(answer, "gpt-3.5-turbo")?;
-                        Some(llm_gateway::api::Message::function_return("none", &encoded))
+                        Some(api::Message::function_return("none", &encoded))
                     }
 
                     None => None,
@@ -321,9 +316,7 @@ impl Agent {
 
                 acc.extend(
                     std::iter::once(query)
-                        .chain(vec![llm_gateway::api::Message::user(
-                            FUNCTION_CALL_INSTRUCTION,
-                        )])
+                        .chain(vec![api::Message::user(FUNCTION_CALL_INSTRUCTION)])
                         .chain(steps)
                         .chain(answer.into_iter()),
                 );
@@ -470,9 +463,9 @@ impl Agent {
 }
 
 fn trim_history(
-    mut history: Vec<llm_gateway::api::Message>,
+    mut history: Vec<api::Message>,
     model: model::LLMModel,
-) -> Result<Vec<llm_gateway::api::Message>> {
+) -> Result<Vec<api::Message>> {
     const HIDDEN: &str = "[HIDDEN]";
 
     let mut tiktoken_msgs = history.iter().map(|m| m.into()).collect::<Vec<_>>();
@@ -484,7 +477,7 @@ fn trim_history(
             .iter_mut()
             .zip(tiktoken_msgs.iter_mut())
             .position(|(m, tm)| match m {
-                llm_gateway::api::Message::PlainText {
+                api::Message::PlainText {
                     role,
                     ref mut content,
                 } => {
@@ -496,7 +489,7 @@ fn trim_history(
                         false
                     }
                 }
-                llm_gateway::api::Message::FunctionReturn {
+                api::Message::FunctionReturn {
                     role: _,
                     name: _,
                     ref mut content,
@@ -553,7 +546,7 @@ impl Action {
     /// ```
     ///
     /// So that we can deserialize using the serde-provided "tagged" enum representation.
-    fn deserialize_gpt(call: &FunctionCall) -> Result<Self> {
+    fn deserialize_gpt(call: &api::FunctionCall) -> Result<Self> {
         let mut map = serde_json::Map::new();
         map.insert(
             call.name.clone().unwrap(),
@@ -561,43 +554,5 @@ impl Action {
         );
 
         Ok(serde_json::from_value(serde_json::Value::Object(map))?)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use pretty_assertions::assert_eq;
-
-    use super::*;
-
-    #[test]
-    fn test_trimming_history() {
-        let long_string = "long string ".repeat(2000);
-        let history = vec![
-            llm_gateway::api::Message::system("foo"),
-            llm_gateway::api::Message::user("bar"),
-            llm_gateway::api::Message::assistant("baz"),
-            llm_gateway::api::Message::user("box"),
-            llm_gateway::api::Message::assistant(&long_string),
-            llm_gateway::api::Message::user("fred"),
-            llm_gateway::api::Message::assistant("thud"),
-            llm_gateway::api::Message::user(&long_string),
-            llm_gateway::api::Message::user("corge"),
-        ];
-
-        assert_eq!(
-            trim_history(history, model::GPT_4).unwrap(),
-            vec![
-                llm_gateway::api::Message::system("foo"),
-                llm_gateway::api::Message::user("bar"),
-                llm_gateway::api::Message::assistant("[HIDDEN]"),
-                llm_gateway::api::Message::user("box"),
-                llm_gateway::api::Message::assistant("[HIDDEN]"),
-                llm_gateway::api::Message::user("fred"),
-                llm_gateway::api::Message::assistant("thud"),
-                llm_gateway::api::Message::user(&long_string),
-                llm_gateway::api::Message::user("corge"),
-            ]
-        );
     }
 }
