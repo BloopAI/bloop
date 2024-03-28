@@ -7,7 +7,6 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { DeviceContext } from '../../../context/deviceContext';
 import { ProjectContext } from '../../../context/projectContext';
 import {
   ChatMessage,
@@ -25,7 +24,7 @@ import { mapLoadingSteps, mapUserQuery } from '../../../mappers/conversation';
 import { focusInput } from '../../../utils/domUtils';
 import { ChatsContext } from '../../../context/chatsContext';
 import { TabsContext } from '../../../context/tabsContext';
-import { getConversation } from '../../../services/api';
+import { API_BASE_URL, getConversation } from '../../../services/api';
 import {
   concatenateParsedQuery,
   splitUserInputAfterAutocomplete,
@@ -54,7 +53,6 @@ const ChatPersistentState = ({
   conversationId: convId,
 }: Props) => {
   const { t } = useTranslation();
-  const { apiUrl } = useContext(DeviceContext);
   const { project, refreshCurrentProjectConversations } = useContext(
     ProjectContext.Current,
   );
@@ -226,7 +224,7 @@ const ChatPersistentState = ({
       setLoading(true);
       setQueryIdToEdit('');
       setHideMessagesFrom(null);
-      const url = `${apiUrl}/projects/${project?.id}/answer${
+      const url = `${API_BASE_URL}/projects/${project?.id}/answer${
         options ? `/explain` : ``
       }`;
       const queryParams: Record<string, string> = {

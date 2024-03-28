@@ -2,7 +2,6 @@ import {
   memo,
   PropsWithChildren,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useState,
@@ -26,14 +25,12 @@ import {
   getProjectRepos,
 } from '../../services/api';
 import { ProjectFullType, ProjectShortType } from '../../types/api';
-import { UIContext } from '../uiContext';
 import { filterOutDuplicates } from '../../utils/mappers';
 
 type Props = {};
 
 const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
   const { t } = useTranslation();
-  const { isGithubConnected } = useContext(UIContext.GitHubConnected);
   const [currentProjectId, setCurrentProjectId] = useState(
     getPlainFromStorage(PROJECT_KEY) || '',
   );
@@ -148,11 +145,11 @@ const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
   }, [currentProjectId]);
 
   useEffect(() => {
-    if (currentProjectId && isGithubConnected) {
+    if (currentProjectId) {
       savePlainToStorage(PROJECT_KEY, currentProjectId);
       refreshCurrentProject();
     }
-  }, [currentProjectId, refreshCurrentProject, isGithubConnected]);
+  }, [currentProjectId, refreshCurrentProject]);
 
   const refreshAllProjects = useCallback(() => {
     getAllProjects().then((p) => {
@@ -172,10 +169,8 @@ const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
   }, []);
 
   useEffect(() => {
-    if (isGithubConnected) {
-      refreshAllProjects();
-    }
-  }, [isGithubConnected]);
+    refreshAllProjects();
+  }, []);
 
   const currentValue = useMemo(
     () => ({

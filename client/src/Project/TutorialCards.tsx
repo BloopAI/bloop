@@ -16,8 +16,6 @@ import {
 import MultiKeyHint from '../components/KeyboardHint/MultiKey';
 import { explainFileShortcut, newChatTabShortcut } from '../consts/shortcuts';
 import Button from '../components/Button';
-import { EnvContext } from '../context/envContext';
-import { getConfig, putConfig } from '../services/api';
 import { TabsContext } from '../context/tabsContext';
 import { TabTypesEnum } from '../types/general';
 import { CommandBarContext } from '../context/commandBarContext';
@@ -76,29 +74,22 @@ const cards = [
 const TutorialCards = ({}: Props) => {
   useTranslation();
   const [step, setStep] = useState(0);
-  const { setEnvConfig, envConfig } = useContext(EnvContext);
   const { openNewTab } = useContext(TabsContext.Handlers);
   const { tabItems } = useContext(CommandBarContext.FocusedTab);
-  const { onBoardingState } = useContext(UIContext.Onboarding);
+  const { onBoardingState, setOnBoardingState } = useContext(
+    UIContext.Onboarding,
+  );
   const [isManualControl, setIsManualControl] = useState(false);
 
   const onSkip = useCallback(() => {
-    setEnvConfig((prevState) => ({
-      ...prevState,
-      bloop_user_profile: {
-        ...(prevState?.bloop_user_profile || {}),
-        is_tutorial_finished: true,
-      },
-    }));
-    putConfig({
-      bloop_user_profile: {
-        ...(envConfig?.bloop_user_profile || {}),
-        is_tutorial_finished: true,
-      },
-    }).then(() => {
-      getConfig().then(setEnvConfig);
+    setOnBoardingState({
+      isChatOpened: true,
+      isFileExplained: true,
+      isCodeExplained: true,
+      isCodeNavigated: true,
+      isCommandBarTutorialFinished: true,
     });
-  }, [envConfig]);
+  }, []);
 
   useEffect(() => {
     if (!isManualControl) {

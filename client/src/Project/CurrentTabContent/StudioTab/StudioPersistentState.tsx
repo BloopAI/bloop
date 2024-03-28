@@ -17,6 +17,7 @@ import {
 } from '../../../types/general';
 import { TabsContext } from '../../../context/tabsContext';
 import {
+  API_BASE_URL,
   confirmStudioDiff,
   generateStudioDiff,
   getCodeStudio,
@@ -24,13 +25,10 @@ import {
 } from '../../../services/api';
 import { StudiosContext } from '../../../context/studiosContext';
 import {
-  CodeStudioMessageType,
   CodeStudioTokenCountType,
   CodeStudioType,
   GeneratedCodeDiff,
 } from '../../../types/api';
-import { PersonalQuotaContext } from '../../../context/personalQuotaContext';
-import { UIContext } from '../../../context/uiContext';
 import { mapConversation } from '../../../utils/mappers';
 
 type Props = {
@@ -48,12 +46,6 @@ const throttledPatch = throttle(
 
 const StudioPersistentState = ({ tabKey, side }: Props) => {
   const { t } = useTranslation();
-  const { apiUrl } = useContext(DeviceContext);
-  const { refetchQuota } = useContext(PersonalQuotaContext.Handlers);
-  const { requestsLeft } = useContext(PersonalQuotaContext.Values);
-  const { setIsUpgradeRequiredPopupOpen } = useContext(
-    UIContext.UpgradeRequiredPopup,
-  );
   const { project, refreshCurrentProjectStudios } = useContext(
     ProjectContext.Current,
   );
@@ -271,7 +263,6 @@ const StudioPersistentState = ({ tabKey, side }: Props) => {
   const handleCancel = useCallback(() => {
     eventSource.current?.close();
     setIsLoading(false);
-    refetchQuota();
     if (
       conversation[conversation.length - 1]?.author ===
       StudioConversationMessageAuthor.USER
@@ -302,10 +293,6 @@ const StudioPersistentState = ({ tabKey, side }: Props) => {
       return;
     }
     await saveConversation(true);
-    if (!requestsLeft) {
-      setIsUpgradeRequiredPopupOpen(true);
-      return;
-    }
     setDiffApplied(false);
     setDiffApplyError(false);
     setDiff(null);
@@ -322,13 +309,10 @@ const StudioPersistentState = ({ tabKey, side }: Props) => {
 
     eventSource.current?.close();
     eventSource.current = new EventSource(
-      `${apiUrl.replace('https:', '')}/projects/${
-        project.id
-      }/studios/${tabKey}/generate`,
+      `${API_BASE_URL}/projects/${project.id}/studios/${tabKey}/generate`,
     );
     eventSource.current.onerror = (err) => {
       console.log('SSE error', err);
-      refetchQuota();
       setConversation((prev) => {
         const newConv = [
           ...prev,
@@ -378,9 +362,6 @@ const StudioPersistentState = ({ tabKey, side }: Props) => {
         const data = JSON.parse(ev.data);
         if (data.Ok) {
           const newMessage = data.Ok;
-          if (i === 0) {
-            refetchQuota();
-          }
           setConversation((prev) => {
             const newConv = [
               ...prev.slice(0, -1),
@@ -395,7 +376,6 @@ const StudioPersistentState = ({ tabKey, side }: Props) => {
           });
           i++;
         } else if (data.Err) {
-          refetchQuota();
           setConversation((prev) => {
             const newConv = [
               ...prev,
@@ -420,7 +400,6 @@ const StudioPersistentState = ({ tabKey, side }: Props) => {
     inputValue,
     inputAuthor,
     saveConversation,
-    requestsLeft,
     project?.id,
   ]);
   useEffect(() => {

@@ -22,9 +22,6 @@ export type DeviceContextType = {
   invokeTauriCommand: (c: string, payload?: any) => Promise<any>;
   relaunch: () => void;
   release: string;
-  apiUrl: string;
-  isRepoManagementAllowed: boolean;
-  forceAnalytics: boolean;
   isSelfServe: boolean;
   showNativeMessage: (m: string, options?: any) => Promise<void> | void;
 };
@@ -44,9 +41,6 @@ export const DeviceContext = createContext<DeviceContextType>({
   invokeTauriCommand: () => Promise.resolve(''),
   relaunch: () => {},
   release: '0.0.0',
-  apiUrl: '',
-  isRepoManagementAllowed: true,
-  forceAnalytics: false,
   isSelfServe: false,
   showNativeMessage: () => Promise.resolve(),
 });
