@@ -1005,7 +1005,7 @@ impl scraper::Document {
                             schema.doc_description => self.meta.description.as_deref().unwrap_or_default(),
                             schema.absolute_url => self.url.as_str(),
                             schema.relative_url => relative_url.as_str(),
-                            schema.raw_relative_url => relative_url.as_str().as_bytes(),
+                            schema.raw_relative_url => relative_url.as_bytes(),
                             schema.header => section.header.unwrap_or_default(),
                             schema.ancestry => section.ancestry_str().as_str(),
                             schema.text => section.data,

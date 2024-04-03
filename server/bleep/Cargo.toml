@@ -78,7 +78,6 @@ petgraph = { version = "0.6.4", default-features = false, features = ["serde-1"]
 # webserver
 serde_json = "1.0.107"
 axum = { version = "0.6.20", features = ["http2", "headers", "macros"] }
-axum-extra = { version = "0.8.0", features = ["cookie", "cookie-private"] }
 tower-http = { version = "0.4.4", features = ["auth", "cors", "catch-panic", "fs"] }
 
 # api integrations
@@ -113,9 +112,6 @@ comrak = { default-features = false, git = "https://github.com/bloopai/comrak" }
 lazy-regex = "3.0.2"
 quick-xml = { version = "0.29.0", features = ["serialize"] }
 
-# auth
-jsonwebtoken = { version = "8.3.0", features = ["use_pem"] }
-
 # doc scraper
 select = "0.6"
 tree-sitter-md = "0.1.5"
@@ -139,11 +135,9 @@ thread-priority = "0.13.1"
 diffy = "0.3.0"
 
 [dev-dependencies]
-criterion = { version = "0.5.1", features = ["async_tokio"] }
 pretty_assertions = "1.4.0"
 tempdir = "0.3.7"
 expect-test = "1.4.1"
-reqwest = { version = "0.11.20", default-features = false, features = ["blocking"] }
 
 [build-dependencies]
 phf_codegen = "0.11.2"

@@ -37,9 +37,6 @@ pub(crate) enum RemoteError {
     #[error("IO error: {0}")]
     IO(#[from] std::io::Error),
 
-    #[error("JWT error: {0}")]
-    Jwt(#[from] jsonwebtoken::errors::Error),
-
     #[error("github access error: {0}")]
     GitHub(#[from] octocrab::Error),
 

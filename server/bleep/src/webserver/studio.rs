@@ -1160,7 +1160,7 @@ async fn rectify_hunks(
             debug!("fixing up patch:\n\n{hunk:?}\n\n{diff}");
 
             singular_chunk.hunks[0].lines.retain(|line| match line {
-                diff::Line::AddLine(..) | diff::Line::DelLine(..) => true,
+                diff::Line::Add(..) | diff::Line::Del(..) => true,
                 diff::Line::Context(..) => false,
             });
             singular_chunk.fixup_hunks();
@@ -1168,7 +1168,7 @@ async fn rectify_hunks(
             let diff = if singular_chunk.hunks[0]
                 .lines
                 .iter()
-                .all(|l| matches!(l, diff::Line::AddLine(..)))
+                .all(|l| matches!(l, diff::Line::Add(..)))
             {
                 let system_prompt = prompts::studio_diff_regen_hunk_prompt(llm_context);
                 let messages = vec![
@@ -1232,11 +1232,11 @@ async fn validate_add_file(
         return Ok(false);
     };
 
-    if chunk.hunks.iter().any(|h| {
-        h.lines
-            .iter()
-            .any(|l| !matches!(l, diff::Line::AddLine(..)))
-    }) {
+    if chunk
+        .hunks
+        .iter()
+        .any(|h| h.lines.iter().any(|l| !matches!(l, diff::Line::Add(..))))
+    {
         error!("diff to create a new file had non-addition lines");
         Ok(false)
     } else {

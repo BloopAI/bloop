@@ -119,8 +119,8 @@ fn split_hunks(hunks: &str) -> impl Iterator<Item = DiffHunk> + '_ {
                 })
                 .map(|(type_, line)| match type_ {
                     " " => Line::Context(line.into()),
-                    "+" => Line::AddLine(line.into()),
-                    "-" => Line::DelLine(line.into()),
+                    "+" => Line::Add(line.into()),
+                    "-" => Line::Del(line.into()),
                     _ => unreachable!("unknown character slipped through regex"),
                 })
                 .collect()
@@ -145,8 +145,8 @@ impl DiffHunk {
             .iter()
             .filter_map(|line| match line {
                 Line::Context(l) => Some(format!("{l}\n")),
-                Line::AddLine(_) => None,
-                Line::DelLine(l) => Some(format!("{l}\n")),
+                Line::Add(_) => None,
+                Line::Del(l) => Some(format!("{l}\n")),
             })
             .collect::<String>();
 
@@ -155,8 +155,8 @@ impl DiffHunk {
             .iter()
             .filter_map(|line| match line {
                 Line::Context(l) => Some(format!("{l}\n")),
-                Line::AddLine(l) => Some(format!("{l}\n")),
-                Line::DelLine(_) => None,
+                Line::Add(l) => Some(format!("{l}\n")),
+                Line::Del(_) => None,
             })
             .collect::<String>();
 
@@ -182,8 +182,8 @@ impl DiffHunk {
             .lines
             .iter()
             .map(|l| match l {
-                Line::Context(_) | Line::DelLine(_) => 1,
-                Line::AddLine(_) => 0,
+                Line::Context(_) | Line::Del(_) => 1,
+                Line::Add(_) => 0,
             })
             .sum();
 
@@ -191,8 +191,8 @@ impl DiffHunk {
             .lines
             .iter()
             .map(|l| match l {
-                Line::Context(_) | Line::AddLine(_) => 1,
-                Line::DelLine(_) => 0,
+                Line::Context(_) | Line::Add(_) => 1,
+                Line::Del(_) => 0,
             })
             .sum();
 
@@ -219,16 +219,16 @@ impl fmt::Display for DiffHunk {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Line {
     Context(String),
-    AddLine(String),
-    DelLine(String),
+    Add(String),
+    Del(String),
 }
 
 impl fmt::Display for Line {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Line::Context(line) => writeln!(f, " {line}"),
-            Line::AddLine(line) => writeln!(f, "+{line}"),
-            Line::DelLine(line) => writeln!(f, "-{line}"),
+            Line::Add(line) => writeln!(f, "+{line}"),
+            Line::Del(line) => writeln!(f, "-{line}"),
         }
     }
 }
@@ -345,8 +345,8 @@ foo bar
                         "the line right below this one is intentionally empty".to_owned(),
                     ),
                     Line::Context("".to_owned()),
-                    Line::DelLine("foo".to_owned()),
-                    Line::AddLine("bar".to_owned()),
+                    Line::Del("foo".to_owned()),
+                    Line::Add("bar".to_owned()),
                 ],
             },
             DiffHunk {
@@ -355,9 +355,9 @@ foo bar
                 dst_line: 10,
                 dst_count: 2,
                 lines: vec![
-                    Line::DelLine("bar".to_owned()),
-                    Line::AddLine("quux".to_owned()),
-                    Line::AddLine("quux2".to_owned()),
+                    Line::Del("bar".to_owned()),
+                    Line::Add("quux".to_owned()),
+                    Line::Add("quux2".to_owned()),
                 ],
             },
         ];
@@ -401,8 +401,8 @@ foo bar
                             "the line right below this one is intentionally empty".to_owned(),
                         ),
                         Line::Context("".to_owned()),
-                        Line::DelLine("foo".to_owned()),
-                        Line::AddLine("bar".to_owned()),
+                        Line::Del("foo".to_owned()),
+                        Line::Add("bar".to_owned()),
                     ],
                 }],
             },
@@ -415,9 +415,9 @@ foo bar
                     dst_line: 10,
                     dst_count: 2,
                     lines: vec![
-                        Line::DelLine("bar".to_owned()),
-                        Line::AddLine("quux".to_owned()),
-                        Line::AddLine("quux2".to_owned()),
+                        Line::Del("bar".to_owned()),
+                        Line::Add("quux".to_owned()),
+                        Line::Add("quux2".to_owned()),
                     ],
                 }],
             },
@@ -493,21 +493,21 @@ foo bar
                         Line::Context("            }));".to_owned()),
                         Line::Context("        }".to_owned()),
                         Line::Context("    }".to_owned()),
-                        Line::AddLine("    ".to_owned()),
-                        Line::AddLine("    pub fn track_index_repo(&self, user: &crate::webserver::middleware::User, repo_ref: RepoRef) {".to_owned()),
-                        Line::AddLine(r#"        if let Some(options) = &self.options {"#.to_owned()),
-                        Line::AddLine(r#"            self.send(Message::Track(Track {"#.to_owned()),
-                        Line::AddLine(r#"                user_id: Some(self.tracking_id(user.username())),"#.to_owned()),
-                        Line::AddLine(r#"                event: "index repo".to_owned(),"#.to_owned()),
-                        Line::AddLine(r#"                properties: Some(json!({"#.to_owned()),
-                        Line::AddLine(r#"                    "device_id": self.device_id(),"#.to_owned()),
-                        Line::AddLine(r#"                    "repo_ref": repo_ref.to_string(),"#.to_owned()),
-                        Line::AddLine(r#"                    "package_metadata": options.package_metadata,"#.to_owned()),
-                        Line::AddLine(r#"                })),"#.to_owned()),
-                        Line::AddLine(r#"                ..Default::default()"#.to_owned()),
-                        Line::AddLine(r#"            }));"#.to_owned()),
-                        Line::AddLine(r#"        }"#.to_owned()),
-                        Line::AddLine(r#"    }"#.to_owned()),
+                        Line::Add("    ".to_owned()),
+                        Line::Add("    pub fn track_index_repo(&self, user: &crate::webserver::middleware::User, repo_ref: RepoRef) {".to_owned()),
+                        Line::Add(r#"        if let Some(options) = &self.options {"#.to_owned()),
+                        Line::Add(r#"            self.send(Message::Track(Track {"#.to_owned()),
+                        Line::Add(r#"                user_id: Some(self.tracking_id(user.username())),"#.to_owned()),
+                        Line::Add(r#"                event: "index repo".to_owned(),"#.to_owned()),
+                        Line::Add(r#"                properties: Some(json!({"#.to_owned()),
+                        Line::Add(r#"                    "device_id": self.device_id(),"#.to_owned()),
+                        Line::Add(r#"                    "repo_ref": repo_ref.to_string(),"#.to_owned()),
+                        Line::Add(r#"                    "package_metadata": options.package_metadata,"#.to_owned()),
+                        Line::Add(r#"                })),"#.to_owned()),
+                        Line::Add(r#"                ..Default::default()"#.to_owned()),
+                        Line::Add(r#"            }));"#.to_owned()),
+                        Line::Add(r#"        }"#.to_owned()),
+                        Line::Add(r#"    }"#.to_owned()),
                         Line::Context("}".to_owned()),
                         Line::Context("".to_owned()),
                         Line::Context("impl From<Option<String>> for DeviceId {".to_owned()),
@@ -529,8 +529,8 @@ foo bar
                             Line::Context(r#""#.to_owned()),
                             Line::Context(r#"    pub(crate) async fn index("#.to_owned()),
                             Line::Context(r#"        &self,"#.to_owned()),
-                            Line::AddLine(r#"        analytics: &RudderHub,  // Pass in the RudderHub instance"#.to_owned()),
-                            Line::AddLine(r#"        user: &crate::webserver::middleware::User,  // Pass in the current user"#.to_owned()),
+                            Line::Add(r#"        analytics: &RudderHub,  // Pass in the RudderHub instance"#.to_owned()),
+                            Line::Add(r#"        user: &crate::webserver::middleware::User,  // Pass in the current user"#.to_owned()),
                             Line::Context(r#"        sync_handle: &SyncHandle,"#.to_owned()),
                             Line::Context(r#"        repo: &Repository,"#.to_owned()),
                             Line::Context(r#"    ) -> Result<Arc<RepoMetadata>, RepoError> {"#.to_owned()),
@@ -545,9 +545,9 @@ foo bar
                             Line::Context(r#""#.to_owned()),
                             Line::Context(r#"        for h in &self.handles {"#.to_owned()),
                             Line::Context(r#"            h.index(sync_handle, repo, &metadata).await?;"#.to_owned()),
-                            Line::AddLine(r#"            "#.to_owned()),
-                            Line::AddLine(r#"            // Track the repo indexing event"#.to_owned()),
-                            Line::AddLine(r#"            analytics.track_index_repo(user, repo.repo_ref.clone());"#.to_owned()),
+                            Line::Add(r#"            "#.to_owned()),
+                            Line::Add(r#"            // Track the repo indexing event"#.to_owned()),
+                            Line::Add(r#"            analytics.track_index_repo(user, repo.repo_ref.clone());"#.to_owned()),
                             Line::Context(r#"        }"#.to_owned()),
                             Line::Context(r#""#.to_owned()),
                             Line::Context(r#"        Ok(metadata)"#.to_owned()),
@@ -573,11 +573,11 @@ foo bar
             dst_line: 10,
             dst_count: 5,
             lines: vec![
-                Line::DelLine("fn main() {".to_owned()),
-                Line::AddLine("fn main() {".to_owned()),
+                Line::Del("fn main() {".to_owned()),
+                Line::Add("fn main() {".to_owned()),
                 Line::Context("    let a = 123;".to_owned()),
-                Line::DelLine("    println!(\"the value of `a` is {a:?}\");".to_owned()),
-                Line::AddLine("    dbg!(&a);".to_owned()),
+                Line::Del("    println!(\"the value of `a` is {a:?}\");".to_owned()),
+                Line::Add("    dbg!(&a);".to_owned()),
                 Line::Context("    drop(a);".to_owned()),
                 Line::Context("}".to_owned()),
             ],
@@ -593,8 +593,8 @@ foo bar
             lines: vec![
                 Line::Context("fn main() {".to_owned()),
                 Line::Context("    let a = 123;".to_owned()),
-                Line::DelLine("    println!(\"the value of `a` is {a:?}\");".to_owned()),
-                Line::AddLine("    dbg!(&a);".to_owned()),
+                Line::Del("    println!(\"the value of `a` is {a:?}\");".to_owned()),
+                Line::Add("    dbg!(&a);".to_owned()),
                 Line::Context("    drop(a);".to_owned()),
                 Line::Context("}".to_owned()),
             ],
