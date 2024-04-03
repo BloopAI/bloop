@@ -1,7 +1,4 @@
-#[cfg(windows)]
-use std::os::windows::process::CommandExt;
 use std::{
-    borrow::Borrow,
     collections::HashMap,
     path::{Path, PathBuf},
     sync::Arc,
@@ -11,32 +8,16 @@ use anyhow::Context;
 use gix::{remote::fetch::Shallow, sec::identity::Account};
 use ignore::WalkBuilder;
 use serde::{Deserialize, Serialize};
-use tracing::{error, warn};
+use tracing::error;
 
 use crate::{
     background::{SyncHandle, SyncPipes},
-    remotes,
     repo::{Backend, RepoError, RepoRef, Repository, SyncStatus},
 };
 
 pub mod github;
 
 type GitCreds = Account;
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub(crate) struct CognitoGithubTokenBundle {
-    pub(crate) access_token: String,
-    pub(crate) refresh_token: String,
-    pub(crate) github_access_token: String,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(untagged)]
-pub(crate) enum AuthResponse {
-    Backoff { backoff_secs: u64 },
-    Success(CognitoGithubTokenBundle),
-    Error { error: String },
-}
 
 pub(crate) type Result<T> = std::result::Result<T, RemoteError>;
 #[derive(thiserror::Error, Debug)]
@@ -46,9 +27,6 @@ pub(crate) enum RemoteError {
 
     #[error("permission denied")]
     PermissionDenied,
-
-    #[error("failed to refresh JWT token: {0}")]
-    RefreshToken(reqwest::Error),
 
     #[error("operation not supported: {0}")]
     NotSupported(&'static str),
@@ -335,10 +313,6 @@ impl Backends {
                 existing.inner = BackendCredential::Github(gh.clone());
             })
             .or_insert_with(|| BackendCredential::Github(gh).into());
-    }
-
-    pub(crate) fn user(&self) -> Option<String> {
-        self.authenticated_user.read().unwrap().clone()
     }
 }
 

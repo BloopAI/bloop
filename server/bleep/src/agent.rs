@@ -547,6 +547,7 @@ impl Action {
     ///
     /// So that we can deserialize using the serde-provided "tagged" enum representation.
     fn deserialize_gpt(call: &api::FunctionCall) -> Result<Self> {
+        dbg!(&call);
         let mut map = serde_json::Map::new();
         map.insert(
             call.name.clone().unwrap(),

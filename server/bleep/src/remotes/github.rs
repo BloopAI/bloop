@@ -1,7 +1,7 @@
-use chrono::{DateTime, Utc};
 use octocrab::Octocrab;
 use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 use crate::repo::{GitRemote, RepoRemote, Repository};
 
@@ -20,6 +20,10 @@ impl State {
             auth,
             repositories: Arc::default(),
         }
+    }
+
+    pub(crate) async fn username(&self) -> Result<String> {
+        self.auth.username().await
     }
 
     pub fn client(&self) -> octocrab::Result<Octocrab> {
@@ -44,18 +48,9 @@ impl State {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub(crate) enum Auth {
-    OAuth(CognitoGithubTokenBundle),
-    /// Github App installation token.
-    App {
-        #[serde(serialize_with = "crate::config::serialize_secret_str")]
-        /// Technically, serializing this doesn't make any sense,
-        /// because it expires quickly, but the current code paths
-        /// make this the most straightforward way to implement it
-        token: SecretString,
-        expires_at: DateTime<Utc>,
-        org: String,
-    },
+pub(crate) struct Auth {
+    #[serde(serialize_with = "crate::config::serialize_secret_str")]
+    token: SecretString,
 }
 
 impl From<Auth> for State {
@@ -65,6 +60,10 @@ impl From<Auth> for State {
 }
 
 impl Auth {
+    pub(crate) fn new(token: SecretString) -> Self {
+        Self { token }
+    }
+
     /// Return credentials for private repositories, and no credentials for public ones.
     pub(crate) async fn creds(&self, repo: &Repository) -> Result<Option<GitCreds>> {
         let RepoRemote::Git(GitRemote { ref address, .. }) = repo.remote else {
@@ -100,68 +99,40 @@ impl Auth {
         })
     }
 
+    pub(crate) async fn username(&self) -> Result<String> {
+        let client = self.client()?;
+        let user = client.current().user().await?.login;
+        Ok(user)
+    }
+
     fn git_cred(&self) -> GitCreds {
-        use Auth::*;
-        match self {
-            OAuth(CognitoGithubTokenBundle {
-                github_access_token,
-                ..
-            }) => GitCreds {
-                username: "x-access-token".into(),
-                password: github_access_token.into(),
-            },
-            App { token, .. } => GitCreds {
-                username: "x-access-token".into(),
-                password: token.expose_secret().into(),
-            },
+        GitCreds {
+            username: "x-access-token".into(),
+            password: self.token.expose_secret().into(),
         }
     }
 
     fn client(&self) -> octocrab::Result<Octocrab> {
-        use Auth::*;
-        match self.clone() {
-            OAuth(CognitoGithubTokenBundle {
-                github_access_token,
-                ..
-            }) => {
-                let token = octocrab::auth::OAuth {
-                    access_token: github_access_token.into(),
-                    token_type: "Bearer".into(),
-                    scope: vec![],
-                };
+        let token = octocrab::auth::OAuth {
+            access_token: self.token.clone(),
+            token_type: "Bearer".into(),
+            scope: vec![],
+        };
 
-                Octocrab::builder().oauth(token).build()
-            }
-            App { token, .. } => Octocrab::builder()
-                .personal_token(token.expose_secret().to_string())
-                .build(),
-        }
+        Octocrab::builder().oauth(token).build()
     }
 
     async fn list_repos(&self) -> Result<Vec<octocrab::models::Repository>> {
         let gh_client = self.client().expect("failed to build github client");
         let mut results = vec![];
         for page in 1.. {
-            let mut resp = match self {
-                remotes::github::Auth::OAuth { .. } => {
-                    gh_client
-                        .current()
-                        .list_repos_for_authenticated_user()
-                        .per_page(100)
-                        .page(page)
-                        .send()
-                        .await
-                }
-                remotes::github::Auth::App { ref org, .. } => {
-                    gh_client
-                        .orgs(org)
-                        .list_repos()
-                        .per_page(100)
-                        .page(page)
-                        .send()
-                        .await
-                }
-            }?;
+            let mut resp = gh_client
+                .current()
+                .list_repos_for_authenticated_user()
+                .per_page(100)
+                .page(page)
+                .send()
+                .await?;
 
             if resp.items.is_empty() {
                 break;

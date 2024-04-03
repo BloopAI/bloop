@@ -48,13 +48,6 @@ pub struct FunctionCallDelta {
     arguments: String,
 }
 
-impl FunctionCallDelta {
-    fn merge(&mut self, rhs: &Self) {
-        self.name = rhs.name.clone().or(self.name.take());
-        self.arguments += &rhs.arguments;
-    }
-}
-
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 struct ChatMessage {
     content: Option<String>,
@@ -200,23 +193,9 @@ pub async fn llm_call(
             .map(|r| r.map_err(|_| api::Error::TokenDelayTooLarge).and_then(|r2| r2));
 
         pin_mut!(message_stream);
-        let mut output = None;
 
         for await result in message_stream {
             let delta: Delta = result?;
-
-            match (&mut output, &delta) {
-                (None, initial) => output = Some(initial.clone()),
-                (Some(Delta::Content(ref mut out)), Delta::Content(Some(fragment))) => {
-                    *out.get_or_insert_with(String::new) += fragment;
-                }
-                (Some(Delta::FunctionCall(out)), Delta::FunctionCall(fragment)) => out.merge(fragment),
-                (out, fragment) => {
-                    error!("got mismatched delta! tried adding {fragment:?} to {out:?}");
-                    Err(api::Error::BadOpenAiRequest)?
-                }
-            }
-
             yield delta;
         }
     };

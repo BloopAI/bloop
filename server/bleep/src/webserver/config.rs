@@ -1,7 +1,7 @@
 use axum::{extract::State, Json};
 
 use super::{middleware::User, prelude::*};
-use crate::{remotes, user::UserProfile, Application};
+use crate::{user::UserProfile, Application};
 
 #[derive(Serialize, Debug)]
 pub(super) struct ConfigResponse {
@@ -28,11 +28,6 @@ pub(super) async fn get(
 
     let user_login = user.username().map(str::to_owned);
 
-    let org_name = app.credentials.github().and_then(|cred| match cred.auth {
-        remotes::github::Auth::App { org, .. } => Some(org),
-        _ => None,
-    });
-
     let github_user = 'user: {
         let (Some(login), Some(crab)) = (&user_login, user.github_client()) else {
             break 'user None;
@@ -49,7 +44,7 @@ pub(super) async fn get(
         credentials_upgrade: app.config.source.exists("credentials.json"),
         user_login,
         github_user,
-        org_name,
+        org_name: None,
     })
 }
 

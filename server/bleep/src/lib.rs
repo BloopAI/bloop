@@ -27,16 +27,17 @@ use git_version as _;
 #[cfg(all(feature = "debug", not(tokio_unstable)))]
 use console_subscriber as _;
 
+use remotes::github;
+use secrecy::ExposeSecret;
 use state::PersistedState;
 use std::fs::canonicalize;
 use user::UserProfile;
 
 use crate::{
-    background::SyncQueue, indexes::Indexes, remotes::CognitoGithubTokenBundle, semantic::Semantic,
-    state::RepositoryPool, webserver::middleware::User,
+    background::SyncQueue, indexes::Indexes, semantic::Semantic, state::RepositoryPool,
+    webserver::middleware::User,
 };
 use anyhow::{Context, Result};
-use axum::extract::FromRef;
 
 use once_cell::sync::OnceCell;
 
@@ -108,9 +109,6 @@ pub struct Application {
     /// Remote backend credentials
     credentials: PersistedState<remotes::Backends>,
 
-    /// Main cookie encryption keypair
-    cookie_key: axum_extra::extract::cookie::Key,
-
     /// Store for user profiles
     user_profiles: PersistedState<scc::HashMap<String, UserProfile>>,
 
@@ -120,6 +118,7 @@ pub struct Application {
 
 impl Application {
     pub async fn initialize(env: Environment, mut config: Configuration) -> Result<Application> {
+        debug!("This is where we are");
         config.max_threads = config.max_threads.max(minimum_parallelism());
         let threads = config.max_threads;
 
@@ -130,7 +129,7 @@ impl Application {
 
         // Finalize config
         let config = Arc::new(config);
-        debug!(?config, "effective configuration");
+        info!(?config, "effective configuration");
 
         // Load repositories
         let repo_pool = config.source.initialize_pool()?;
@@ -166,11 +165,10 @@ impl Application {
         let indexes = Indexes::new(&config, sql.clone(), was_index_reset)
             .await?
             .into();
-        debug!("indexes initialized");
+        info!("indexes initialized");
 
         Ok(Self {
             sync_queue: SyncQueue::start(config.clone()),
-            cookie_key: config.source.initialize_cookie_key()?,
             credentials: config
                 .source
                 .load_state_or("credentials", remotes::Backends::default())?,
@@ -204,6 +202,13 @@ impl Application {
 
     pub async fn run(self) -> Result<()> {
         Self::install_logging(&self.config);
+
+        self.credentials.set_github(github::Auth::new(
+            self.config.github_access_token.clone().unwrap(),
+        ));
+        if let Err(err) = self.credentials.store() {
+            error!(?err, "failed to save credentials to disk");
+        }
 
         let mut joins = tokio::task::JoinSet::new();
 
@@ -240,43 +245,29 @@ impl Application {
         false
     }
 
-    pub fn username(&self) -> Option<String> {
-        self.credentials.user().clone()
+    pub async fn username(&self) -> Option<String> {
+        self.credentials.github().unwrap().username().await.ok()
     }
 
     pub(crate) async fn user(&self) -> User {
-        self.credentials
-            .user()
+        self.username()
+            .await
             .zip(self.credentials.github())
             .and_then(|(user, gh)| {
-                use crate::remotes::github::{Auth, State};
-                match gh {
-                    State {
-                        auth:
-                            Auth::OAuth(CognitoGithubTokenBundle {
-                                access_token: ref token,
-                                ..
-                            }),
-                        ..
-                    } => Some(User::Desktop {
-                        access_token: token.clone(),
+                self.config
+                    .github_access_token
+                    .as_ref()
+                    .map(|token| User::Desktop {
+                        access_token: token.expose_secret().clone(),
                         login: user,
                         crab: Arc::new(move || Ok(gh.client()?)),
-                    }),
-                    _ => None,
-                }
+                    })
             })
             .unwrap_or_else(|| User::Unknown)
     }
 
     fn write_index(&self) -> background::BoundSyncQueue {
         background::BoundSyncQueue(self.clone())
-    }
-}
-
-impl FromRef<Application> for axum_extra::extract::cookie::Key {
-    fn from_ref(input: &Application) -> Self {
-        input.cookie_key.clone()
     }
 }
 
