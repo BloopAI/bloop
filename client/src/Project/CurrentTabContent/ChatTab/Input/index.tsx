@@ -9,7 +9,6 @@ import {
   useState,
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { EnvContext } from '../../../../context/envContext';
 import {
   ChatMessage,
   ChatMessageServer,
@@ -29,6 +28,7 @@ import { splitPath, splitUserInputAfterAutocomplete } from '../../../../utils';
 import { openTabsCache } from '../../../../services/cache';
 import { CommandBarContext } from '../../../../context/commandBarContext';
 import { UIContext } from '../../../../context/uiContext';
+import { PersonIcon } from '../../../../icons';
 import InputCore from './ProseMirror';
 import { mapEditorContentToInputValue } from './ProseMirror/utils';
 import ReactMentionsInput from './ReactMentions';
@@ -60,8 +60,6 @@ const ConversationInput = ({
   generationInProgress,
   isStoppable,
   onStop,
-  selectedLines,
-  setSelectedLines,
   queryIdToEdit,
   onMessageEditCancel,
   conversation,
@@ -73,7 +71,6 @@ const ConversationInput = ({
   projectId,
 }: Props) => {
   const { t } = useTranslation();
-  const { envConfig } = useContext(EnvContext);
   const { isVisible } = useContext(CommandBarContext.General);
   const { chatInputType } = useContext(UIContext.ChatInputType);
   const { setIsLeftSidebarFocused } = useContext(UIContext.Focus);
@@ -309,8 +306,8 @@ const ConversationInput = ({
       }`}
       ref={containerRef}
     >
-      <div className="w-7 h-7 rounded-full overflow-hidden select-none">
-        <img src={envConfig.github_user?.avatar_url} alt={t('avatar')} />
+      <div className="w-7 h-7 rounded-full overflow-hidden select-none bg-bg-shade flex items-center justify-center text-label-base">
+        <PersonIcon sizeClassName="w-6 h-6" />
       </div>
       <div className="flex flex-col gap-1 flex-1 items-start">
         <p className="body-base-b text-label-title select-none">

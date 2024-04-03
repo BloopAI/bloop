@@ -12,9 +12,6 @@ import { ProjectContext } from '../context/projectContext';
 import Button from '../components/Button';
 import { deleteProject, updateProject } from '../services/api';
 import { UIContext } from '../context/uiContext';
-import Dropdown from '../components/Dropdown';
-import { ChevronDownIcon, RunIcon, WalkIcon } from '../icons';
-import AnswerSpeedDropdown from '../Settings/General/AnswerSpeedDropdown';
 
 type Props = {};
 

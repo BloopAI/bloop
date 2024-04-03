@@ -264,31 +264,6 @@ export type ChatMessageServer = {
 
 export type ChatMessage = ChatMessageUser | ChatMessageServer;
 
-export type OpenChatHistoryItem = {
-  conversation: ChatMessage[];
-  threadId: string;
-};
-
-export type EnvConfig = {
-  analytics_data_plane?: string;
-  analytics_key_fe?: string;
-  sentry_dsn_fe?: string;
-  org_name?: string | null;
-  tracking_id?: string;
-  device_id?: string;
-  user_login?: string;
-  github_user?: {
-    login: string;
-    avatar_url: string;
-  };
-  bloop_user_profile?: {
-    prompt_guide?: string;
-    allow_session_recordings?: boolean;
-    is_tutorial_finished?: boolean;
-  };
-  credentials_upgrade?: boolean;
-};
-
 export type IpynbOutputType = {
   name?: string;
   stream?: string;
@@ -566,7 +541,6 @@ export enum CommandBarStepEnum {
 export enum SettingSections {
   GENERAL,
   PREFERENCES,
-  SUBSCRIPTION,
 }
 
 export enum ProjectSettingSections {

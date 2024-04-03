@@ -2,7 +2,6 @@ import React, {
   ChangeEvent,
   memo,
   useCallback,
-  useContext,
   useEffect,
   useImperativeHandle,
   useMemo,
@@ -12,9 +11,9 @@ import React, {
 import { Trans, useTranslation } from 'react-i18next';
 import { StudioConversationMessageAuthor } from '../../../../../types/general';
 import MarkdownWithCode from '../../../../../components/MarkdownWithCode';
-import { EnvContext } from '../../../../../context/envContext';
 import {
   PencilIcon,
+  PersonIcon,
   RefreshIcon,
   TemplatesIcon,
   TrashCanIcon,
@@ -62,7 +61,6 @@ const ConversationInput = ({
   isLoading,
 }: Props) => {
   const { t } = useTranslation();
-  const { envConfig } = useContext(EnvContext);
   const [isFocused, setFocused] = useState(i === undefined);
   const [value, setValue] = useState(message);
   const ref = useRef<HTMLTextAreaElement | null>(null);
@@ -130,8 +128,8 @@ const ConversationInput = ({
   return (
     <div className="flex items-start w-full p-4 gap-4 rounded-md hover:bg-bg-sub-hover relative group">
       {author === StudioConversationMessageAuthor.USER ? (
-        <div className="w-7 h-7 rounded-full overflow-hidden select-none flex-shrink-0">
-          <img src={envConfig.github_user?.avatar_url} alt={t('avatar')} />
+        <div className="w-7 h-7 rounded-full overflow-hidden select-none flex-shrink-0 flex items-center justify-center text-label-base">
+          <PersonIcon sizeClassName="w-6 h-6" />
         </div>
       ) : (
         <div className="flex w-7 h-7 items-center justify-center rounded-full bg-brand-studio-subtle flex-shrink-0">

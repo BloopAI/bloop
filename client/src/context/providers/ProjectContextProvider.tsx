@@ -2,7 +2,6 @@ import {
   memo,
   PropsWithChildren,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useState,
@@ -11,7 +10,6 @@ import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ProjectContext } from '../projectContext';
 import {
-  ANSWER_SPEED_KEY,
   getPlainFromStorage,
   PROJECT_KEY,
   savePlainToStorage,
@@ -26,14 +24,12 @@ import {
   getProjectRepos,
 } from '../../services/api';
 import { ProjectFullType, ProjectShortType } from '../../types/api';
-import { UIContext } from '../uiContext';
 import { filterOutDuplicates } from '../../utils/mappers';
 
 type Props = {};
 
 const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
   const { t } = useTranslation();
-  const { isGithubConnected } = useContext(UIContext.GitHubConnected);
   const [currentProjectId, setCurrentProjectId] = useState(
     getPlainFromStorage(PROJECT_KEY) || '',
   );
@@ -44,16 +40,9 @@ const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
   const [isStudiosLoaded, setIsStudiosLoaded] = useState(false);
   const [isDocsLoaded, setIsDocsLoaded] = useState(false);
   const [isRegexSearchEnabled, setIsRegexSearchEnabled] = useState(false);
-  const [preferredAnswerSpeed, setPreferredAnswerSpeed] = useState<
-    'normal' | 'fast'
-  >((getPlainFromStorage(ANSWER_SPEED_KEY) as 'normal') || 'normal');
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
-
-  useEffect(() => {
-    savePlainToStorage(ANSWER_SPEED_KEY, preferredAnswerSpeed);
-  }, [preferredAnswerSpeed]);
 
   const refreshCurrentProjectRepos = useCallback(async () => {
     getProjectRepos(currentProjectId).then((r) => {
@@ -148,11 +137,11 @@ const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
   }, [currentProjectId]);
 
   useEffect(() => {
-    if (currentProjectId && isGithubConnected) {
+    if (currentProjectId) {
       savePlainToStorage(PROJECT_KEY, currentProjectId);
       refreshCurrentProject();
     }
-  }, [currentProjectId, refreshCurrentProject, isGithubConnected]);
+  }, [currentProjectId, refreshCurrentProject]);
 
   const refreshAllProjects = useCallback(() => {
     getAllProjects().then((p) => {
@@ -172,10 +161,8 @@ const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
   }, []);
 
   useEffect(() => {
-    if (isGithubConnected) {
-      refreshAllProjects();
-    }
-  }, [isGithubConnected]);
+    refreshAllProjects();
+  }, []);
 
   const currentValue = useMemo(
     () => ({
@@ -223,21 +210,11 @@ const ProjectContextProvider = ({ children }: PropsWithChildren<Props>) => {
     [isRegexSearchEnabled],
   );
 
-  const answerSpeedValue = useMemo(
-    () => ({
-      preferredAnswerSpeed,
-      setPreferredAnswerSpeed,
-    }),
-    [preferredAnswerSpeed],
-  );
-
   return (
     <ProjectContext.Current.Provider value={currentValue}>
       <ProjectContext.All.Provider value={allValue}>
         <ProjectContext.RegexSearch.Provider value={regexValue}>
-          <ProjectContext.AnswerSpeed.Provider value={answerSpeedValue}>
-            {children}
-          </ProjectContext.AnswerSpeed.Provider>
+          {children}
         </ProjectContext.RegexSearch.Provider>
       </ProjectContext.All.Provider>
     </ProjectContext.Current.Provider>

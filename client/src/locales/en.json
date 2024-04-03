@@ -20,6 +20,7 @@
 	"<0>To begin, open a file from the sidebar on the left. Once you have a file open, you can ask bloop to quickly explain it by hitting <2></2> on your keyboard or by selecting \"Explain file\" from the <7></7> popup menu.</0>": "<0>To begin, open a file from the sidebar on the left. Once you have a file open, you can ask bloop to quickly explain it by hitting <2></2> on your keyboard or by selecting \"Explain file\" from the <7></7> popup menu.</0>",
 	"<0>Use your cursor to select any piece of code within a file and ask bloop to explain it by pressing \"Explain\" in the floating toolbar.</0>": "<0>Use your cursor to select any piece of code within a file and ask bloop to explain it by pressing \"Explain\" in the floating toolbar.</0>",
 	"<0>repoName</0> has finished indexing and was added to the context of the current project. You can also use it in your other projects now.": "<0>{{repoName}}</0> has finished indexing and was added to the context of the current project. You can also use it in your other projects now.",
+	"<0>repoName</0> has started indexing. You’ll receive a notification as soon as this process completes.": "<0>{{repoName}}</0> has started indexing. You’ll receive a notification as soon as this process completes.",
 	"Account settings": "Account settings",
 	"Actions": "Actions",
 	"Add a repository from your local machine": "Add a repository from your local machine",
