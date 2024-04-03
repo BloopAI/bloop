@@ -187,7 +187,9 @@ impl From<&api::Message> for tiktoken_rs::ChatCompletionRequestMessage {
 
 enum ChatError {
     BadRequest(String),
+    #[allow(dead_code)]
     TooManyRequests(String),
+    #[allow(dead_code)]
     InvalidToken,
     Other(anyhow::Error),
 }

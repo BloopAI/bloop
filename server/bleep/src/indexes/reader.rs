@@ -323,7 +323,7 @@ impl DocumentRead for OpenReader {
                 // by users of this reader.
                 Some(parser::Literal::Plain(s)) => {
                     Some(parser::Literal::Plain(match base_name(s) {
-                        s if s.is_empty() => return None,
+                        "" => return None,
                         s => s.into(),
                     }))
                 }
