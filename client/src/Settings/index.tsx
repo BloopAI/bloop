@@ -8,7 +8,6 @@ import SectionsNav from '../components/SectionsNav';
 import { CogIcon } from '../icons';
 import General from './General';
 import Preferences from './Preferences';
-import SubscriptionSettings from './Subscription';
 
 type Props = {};
 
@@ -46,11 +45,6 @@ const Settings = ({}: Props) => {
             label: t('Preferences'),
             onClick: setSettingsSection,
           },
-          {
-            type: SettingSections.SUBSCRIPTION,
-            label: t('Subscription'),
-            onClick: setSettingsSection,
-          },
         ],
       },
     ];
@@ -68,9 +62,7 @@ const Settings = ({}: Props) => {
           <General />
         ) : settingsSection === SettingSections.PREFERENCES ? (
           <Preferences />
-        ) : (
-          <SubscriptionSettings />
-        )}
+        ) : null}
         <div className="w-56 flex-1 hidden lg:block" />
       </div>
     </div>

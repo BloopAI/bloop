@@ -6,13 +6,13 @@ import {
   ChatMessageAuthor,
   ParsedQueryType,
 } from '../../../../types/general';
-import { EnvContext } from '../../../../context/envContext';
 import MarkdownWithCode from '../../../../components/MarkdownWithCode';
 import Button from '../../../../components/Button';
 import {
   CheckListIcon,
   LikeIcon,
   PencilIcon,
+  PersonIcon,
   UnlikeIcon,
   WarningSignIcon,
 } from '../../../../icons';
@@ -65,7 +65,6 @@ const ConversationMessage = ({
   projectId,
 }: Props) => {
   const { t } = useTranslation();
-  const { envConfig } = useContext(EnvContext);
   const { locale } = useContext(LocaleContext);
   const [isUpvote, setIsUpvote] = useState(false);
   const [isDownvote, setIsDownvote] = useState(false);
@@ -94,7 +93,7 @@ const ConversationMessage = ({
     setIsUpvote(true);
     setIsDownvote(false);
     return upvoteAnswer(projectId, threadId, queryId, { type: 'positive' });
-  }, [showInlineFeedback, envConfig.tracking_id, threadId, queryId, projectId]);
+  }, [showInlineFeedback, threadId, queryId, projectId]);
 
   const handleDownvote = useCallback(() => {
     setIsUpvote(false);
@@ -103,7 +102,7 @@ const ConversationMessage = ({
       type: 'negative',
       feedback: '',
     });
-  }, [showInlineFeedback, envConfig.tracking_id, threadId, queryId, projectId]);
+  }, [showInlineFeedback, threadId, queryId, projectId]);
 
   return (
     <div
@@ -121,12 +120,9 @@ const ConversationMessage = ({
       ) : (
         <>
           <div className="relative">
-            <div className="flex w-7 h-7 items-center justify-center rounded-full flex-shrink-0 bg-brand-default-subtitle overflow-hidden">
+            <div className="flex w-7 h-7 items-center justify-center rounded-full flex-shrink-0 bg-brand-default-subtitle overflow-hidden text-label-base">
               {author === ChatMessageAuthor.User ? (
-                <img
-                  src={envConfig.github_user?.avatar_url}
-                  alt={t('avatar')}
-                />
+                <PersonIcon sizeClassName="w-6 h-6" />
               ) : isLoading ? (
                 <SpinLoaderContainer
                   sizeClassName="w-4.5 h-4.5"

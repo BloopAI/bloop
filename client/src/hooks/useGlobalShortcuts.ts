@@ -10,7 +10,6 @@ import { DeviceContext } from '../context/deviceContext';
 import { ProjectContext } from '../context/projectContext';
 import { newProjectShortcut, regexToggleShortcut } from '../consts/shortcuts';
 import { TabsContext } from '../context/tabsContext';
-import { useSignOut } from './useSignOut';
 
 export const useGlobalShortcuts = () => {
   const { setChosenStep, setIsVisible } = useContext(
@@ -32,7 +31,6 @@ export const useGlobalShortcuts = () => {
     setActiveLeftTab,
     setFocusedPanel,
   } = useContext(TabsContext.Handlers);
-  const handleSignOut = useSignOut();
 
   const toggleTheme = useMemo(() => {
     return {
@@ -136,17 +134,6 @@ export const useGlobalShortcuts = () => {
     };
   }, []);
 
-  const openSubscriptionSettings = useMemo(() => {
-    return {
-      shortcut: ['option', 'S'],
-      action: () => {
-        setSettingsSection(SettingSections.SUBSCRIPTION);
-        setSettingsOpen(true);
-        setIsVisible(false);
-      },
-    };
-  }, []);
-
   const openAppDocs = useMemo(() => {
     return {
       shortcut: ['option', 'D'],
@@ -161,16 +148,6 @@ export const useGlobalShortcuts = () => {
       shortcut: ['option', 'B'],
       action: () => {
         setBugReportModalOpen(true);
-        setIsVisible(false);
-      },
-    };
-  }, []);
-
-  const signOut = useMemo(() => {
-    return {
-      shortcut: ['option', 'shift', 'Q'],
-      action: () => {
-        handleSignOut();
         setIsVisible(false);
       },
     };
@@ -210,10 +187,8 @@ export const useGlobalShortcuts = () => {
     createNewProject,
     openProjectSettings,
     openSettings,
-    openSubscriptionSettings,
     openAppDocs,
     reportABug,
-    signOut,
     toggleRegex,
     openSearchFiles,
     closeAllTabs,

@@ -43,8 +43,4 @@ export const ProjectContext = {
     isRegexSearchEnabled: false,
     setIsRegexSearchEnabled: () => {},
   }),
-  AnswerSpeed: createContext({
-    preferredAnswerSpeed: 'normal' as 'normal' | 'fast',
-    setPreferredAnswerSpeed: (s: 'normal' | 'fast') => {},
-  }),
 };

@@ -5,7 +5,6 @@ import { CommandBarStepEnum } from '../types/general';
 import { CommandBarContext } from '../context/commandBarContext';
 import { useGlobalShortcuts } from '../hooks/useGlobalShortcuts';
 import { checkEventKeys } from '../utils/keyboardUtils';
-import { EnvContext } from '../context/envContext';
 import { UIContext } from '../context/uiContext';
 import Initial from './steps/Initial';
 import PrivateRepos from './steps/PrivateRepos';
@@ -28,7 +27,6 @@ const CommandBar = ({}: Props) => {
   const { setChosenStep, setIsVisible } = useContext(
     CommandBarContext.Handlers,
   );
-  const { envConfig } = useContext(EnvContext);
   const { onBoardingState } = useContext(UIContext.Onboarding);
   const globalShortcuts = useGlobalShortcuts();
 
@@ -40,11 +38,8 @@ const CommandBar = ({}: Props) => {
   }, []);
 
   const shouldShowTutorial = useMemo(() => {
-    return (
-      !envConfig?.bloop_user_profile?.is_tutorial_finished &&
-      !onBoardingState.isCommandBarTutorialFinished
-    );
-  }, [envConfig?.bloop_user_profile, onBoardingState]);
+    return !onBoardingState.isCommandBarTutorialFinished;
+  }, [onBoardingState]);
 
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {

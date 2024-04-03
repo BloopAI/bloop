@@ -2,7 +2,6 @@ import React, {
   ChangeEvent,
   memo,
   useCallback,
-  useContext,
   useMemo,
   useState,
 } from 'react';
@@ -14,11 +13,6 @@ import {
   USER_DATA_FORM,
 } from '../../services/storage';
 import { EMAIL_REGEX } from '../../consts/validations';
-import Dropdown from '../../components/Dropdown';
-import Button from '../../components/Button';
-import { ChevronDownIcon, RunIcon, WalkIcon } from '../../icons';
-import { ProjectContext } from '../../context/projectContext';
-import AnswerSpeedDropdown from './AnswerSpeedDropdown';
 
 type Props = {};
 
@@ -31,7 +25,6 @@ type Form = {
 
 const GeneralSettings = ({}: Props) => {
   const { t } = useTranslation();
-  const { preferredAnswerSpeed } = useContext(ProjectContext.AnswerSpeed);
   const savedForm: Form | null = useMemo(
     () => getJsonFromStorage(USER_DATA_FORM),
     [],
@@ -97,33 +90,6 @@ const GeneralSettings = ({}: Props) => {
           }}
           error={form.emailError}
         />
-      </div>
-      <hr className="border-bg-divider my-8" />
-      <div className="flex items-start gap-8 w-full justify-between">
-        <div className="flex flex-col gap-2">
-          <p className="body-base-b text-label-title">
-            <Trans>Answer speed</Trans>
-          </p>
-          <p className="body-s-b text-label-muted">
-            <Trans>How fast or precise bloop&apos;s answers will be.</Trans>
-          </p>
-        </div>
-        <Dropdown
-          DropdownComponent={AnswerSpeedDropdown}
-          dropdownPlacement="bottom-end"
-          size="auto"
-        >
-          <Button variant="secondary">
-            {preferredAnswerSpeed === 'fast' ? (
-              <RunIcon raw sizeClassName="w-4.5 h-4.5" />
-            ) : (
-              <WalkIcon raw sizeClassName="w-4.5 h-4.5" />
-            )}
-            {preferredAnswerSpeed.charAt(0).toUpperCase() +
-              preferredAnswerSpeed.slice(1)}
-            <ChevronDownIcon sizeClassName="w-4 h-4" />
-          </Button>
-        </Dropdown>
       </div>
     </div>
   );
