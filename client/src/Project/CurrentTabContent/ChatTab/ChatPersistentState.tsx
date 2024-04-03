@@ -56,7 +56,6 @@ const ChatPersistentState = ({
   const { project, refreshCurrentProjectConversations } = useContext(
     ProjectContext.Current,
   );
-  const { preferredAnswerSpeed } = useContext(ProjectContext.AnswerSpeed);
   const { setChats } = useContext(ChatsContext);
   const { openNewTab, updateTabProperty } = useContext(TabsContext.Handlers);
 
@@ -228,10 +227,7 @@ const ChatPersistentState = ({
         options ? `/explain` : ``
       }`;
       const queryParams: Record<string, string> = {
-        answer_model:
-          preferredAnswerSpeed === 'normal'
-            ? 'gpt-4-turbo-24k'
-            : 'gpt-3.5-turbo-finetuned',
+        answer_model: 'gpt-4-turbo-24k',
       };
       if (conversationId) {
         queryParams.conversation_id = conversationId;
@@ -457,7 +453,7 @@ const ChatPersistentState = ({
         }
       };
     },
-    [conversationId, t, queryIdToEdit, preferredAnswerSpeed, openNewTab, side],
+    [conversationId, t, queryIdToEdit, openNewTab, side],
   );
 
   useEffect(() => {
