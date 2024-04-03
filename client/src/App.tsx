@@ -2,7 +2,6 @@ import React, { memo } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { Toaster } from 'sonner';
-import ReportBugModal from './components/ReportBugModal';
 import Project from './Project';
 import CommandBar from './CommandBar';
 import ProjectContextProvider from './context/providers/ProjectContextProvider';
@@ -37,7 +36,6 @@ const App = () => {
         <ProjectContextProvider>
           <Toaster closeButton toastOptions={toastOptions} />
           <RepositoriesContextProvider>
-            <ReportBugModal />
             <CommandBarContextProvider>
               <Settings />
               <ProjectSettings />

@@ -10,25 +10,18 @@ import SectionItem from '../Dropdown/Section/SectionItem';
 import { CogIcon, DocumentsIcon } from '../../icons';
 import { UIContext } from '../../context/uiContext';
 import { DeviceContext } from '../../context/deviceContext';
-import { getDiscordLink } from '../../services/api';
 import { SettingSections } from '../../types/general';
 
 type Props = {};
+const discordLink = 'https://discord.com/invite/kZEgj5pyjm';
 
 const UserDropdown = ({}: Props) => {
   const { t } = useTranslation();
-  const [discordLink, setDiscordLink] = useState(
-    'https://discord.com/invite/kZEgj5pyjm',
-  );
   const { openLink } = useContext(DeviceContext);
   const { setSettingsOpen, setSettingsSection } = useContext(
     UIContext.Settings,
   );
   const { setProjectSettingsOpen } = useContext(UIContext.ProjectSettings);
-
-  useEffect(() => {
-    getDiscordLink().then(setDiscordLink);
-  }, []);
 
   const openGeneralSettings = useCallback(() => {
     setSettingsSection(SettingSections.GENERAL);

@@ -22,7 +22,6 @@ import {
 } from '../types/api';
 import { RepoType } from '../types/general';
 
-const DB_API = 'https://api.bloop.ai';
 export const API_BASE_URL = 'http://localhost:7878/api';
 const http: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
@@ -197,23 +196,6 @@ export const cancelSync = (repoRef: string) =>
 
 export const syncRepo = (repoRef: string) =>
   http.get(`/repos/sync`, { params: { repo: repoRef } }).then((r) => r.data);
-
-export const saveUpvote = (upvote: {
-  unique_id: string;
-  snippet_id: string;
-  query: string;
-  text: string;
-  is_upvote: boolean;
-}) => axios.post(`${DB_API}/upvotes`, upvote).then((r) => r.data);
-
-export const getUpvote = (params: {
-  unique_id: string;
-  snippet_id: string;
-  query: string;
-}) => axios.get(`${DB_API}/upvote`, { params }).then((r) => r.data);
-
-export const getDiscordLink = () =>
-  axios.get(`${DB_API}/discord-url`).then((r) => r.data);
 
 export const getProjectConversations = (
   projectId: string,
