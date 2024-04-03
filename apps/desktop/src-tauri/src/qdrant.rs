@@ -84,7 +84,7 @@ where
                     // don't fire again
                     _ = self.child.take();
                 }
-                Ok(Some(status)) => {
+                Ok(Some(_)) => {
                     // don't fire again
                     _ = self.child.take();
                 }

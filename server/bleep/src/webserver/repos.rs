@@ -197,8 +197,6 @@ pub(crate) enum ReposResponse {
     Item(Repo),
     SyncQueue(Vec<QueuedRepoStatus>),
     SyncQueued,
-    #[cfg(feature = "ee-pro")]
-    Unchanged,
     Deleted,
 }
 
@@ -209,11 +207,6 @@ pub(super) fn router() -> Router {
     use axum::routing::*;
 
     let mut indexed = get(indexed).put(set_indexed).delete(delete_by_id);
-
-    #[cfg(feature = "ee-pro")]
-    {
-        indexed = indexed.patch(crate::ee::webserver::patch_repository);
-    }
 
     Router::new()
         .route("/", get(available))

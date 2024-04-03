@@ -240,18 +240,6 @@ impl Semantic {
             );
         }
 
-        #[cfg(feature = "ee-cloud")]
-        let embedder: Arc<dyn Embedder> = if let Some(ref url) = config.embedding_server_url {
-            let embedder = Arc::new(embedder::RemoteEmbedder::new(url.clone(), model_dir)?);
-            debug!("using remote embedder");
-            embedder
-        } else {
-            let embedder = Arc::new(LocalEmbedder::new(model_dir)?);
-            debug!("using local embedder");
-            embedder
-        };
-
-        #[cfg(not(feature = "ee-cloud"))]
         let embedder: Arc<dyn Embedder> = Arc::new(LocalEmbedder::new(model_dir)?);
         debug!("using local embedder");
 
