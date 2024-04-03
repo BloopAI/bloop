@@ -24,18 +24,6 @@ llm = { git = "https://github.com/bloopai/llm", branch = "batch-metal-kernels", 
 name = "bleep"
 required-features = ["color-eyre"]
 
-[[bench]]
-name = "snippets"
-harness = false
-
-[[bench]]
-name = "indexes"
-harness = false
-
-[[bench]]
-name = "queries"
-harness = false
-
 [dependencies]
 
 # core
