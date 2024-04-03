@@ -36,11 +36,6 @@ pub struct StateSource {
     #[serde(default)]
     version_file: Option<PathBuf>,
 
-    /// Cookie private key file
-    #[clap(long)]
-    #[serde(default)]
-    cookie_key: Option<PathBuf>,
-
     /// The root directory that contains all other paths in this structure
     /// (unless otherwise configured)
     #[serde(skip)]
@@ -106,9 +101,6 @@ impl StateSource {
 
         self.version_file
             .get_or_insert_with(|| dir.join("version.json"));
-
-        self.cookie_key
-            .get_or_insert_with(|| dir.join("cookie_key.bin"));
 
         self.directory.get_or_insert_with(|| {
             let target = dir.join("local_cache");
@@ -239,19 +231,6 @@ impl StateSource {
     pub fn save_index_version(&self) -> Result<(), RepoError> {
         pretty_write_file(self.version_file.as_ref().unwrap(), SCHEMA_VERSION)
     }
-
-    pub fn initialize_cookie_key(&self) -> Result<axum_extra::extract::cookie::Key> {
-        let path = self.cookie_key.as_ref().unwrap();
-
-        if path.exists() {
-            let master_key = std::fs::read(path)?;
-            Ok(axum_extra::extract::cookie::Key::from(&master_key))
-        } else {
-            let master_key = axum_extra::extract::cookie::Key::generate();
-            std::fs::write(path, master_key.master())?;
-            Ok(master_key)
-        }
-    }
 }
 
 pub fn pretty_write_file<T: Serialize + ?Sized>(
@@ -354,7 +333,6 @@ mod test {
             directory: Some(path.to_path_buf()),
             state_file: Some(path.join("state.json")),
             version_file: None,
-            cookie_key: None,
             root_dir: Default::default(),
         }
         .initialize_pool()

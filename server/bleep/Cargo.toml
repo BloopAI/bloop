@@ -46,7 +46,7 @@ tokio-stream = { version = "0.1.14", features = ["sync"]}
 async-trait = "0.1.73"
 async-stream = "0.3.5"
 flume = "0.10.14"
-futures = "0.3.28"
+futures = "0.3.30"
 futures-util = "0.3.30"
 rayon = "1.8.0"
 clap = { version = "4.4.4", features = ["derive"] }
@@ -129,7 +129,6 @@ quick-xml = { version = "0.29.0", features = ["serialize"] }
 
 # auth
 jsonwebtoken = { version = "8.3.0", features = ["use_pem"] }
-base64 = "0.21.4"
 
 # doc scraper
 select = "0.6"

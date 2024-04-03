@@ -333,7 +333,7 @@ impl Client {
         messages: &[api::Message],
         functions: Option<&[api::Function]>,
     ) -> Result<impl Stream<Item = anyhow::Result<String>>, ChatError> {
-        let mut event_source = Box::pin(
+        let mut stream = Box::pin(
             llm_call(api::LLMRequest {
                 openai_key: self
                     .app
@@ -359,23 +359,27 @@ impl Client {
             .await?,
         );
 
-        match event_source.next().await {
+        let first_item = stream.next().await;
+        match first_item {
             Some(Ok(_)) => {}
             Some(Err(api::Error::BadOpenAiRequest)) => {
                 warn!("bad request to LLM");
                 return Err(ChatError::BadRequest("Bad request to LLM".into()));
             }
             Some(Err(e)) => {
+                warn!(?e, "LLM request failed");
                 return Err(ChatError::Other(anyhow!(
                     "failed to make event source request to answer API: {e}",
                 )));
             }
             _ => {
+                warn!("Failed to open Event Source");
                 return Err(ChatError::Other(anyhow!("event source failed to open")));
             }
         }
 
-        Ok(event_source
+        Ok(futures::stream::once(async { first_item.unwrap() })
+            .chain(stream)
             .filter_map(|result| async move {
                 match result {
                     Ok(d) => Some(Ok(d)),
