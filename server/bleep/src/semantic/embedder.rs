@@ -12,9 +12,6 @@ use tokenizers::Tokenizer;
 
 use super::Embedding;
 
-#[cfg(feature = "ee-cloud")]
-pub use crate::ee::embedder::*;
-
 #[derive(Default)]
 pub struct EmbedQueue {
     log: scc::Queue<Mutex<Option<EmbedChunk>>>,

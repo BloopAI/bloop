@@ -6,12 +6,10 @@ default-run = "bleep"
 build = "build.rs"
 
 [features]
-default = ["ee-pro"]
+default = ["color-eyre"]
 debug = ["console-subscriber", "histogram"]
 onnx = []
 metal = []
-ee-pro = []
-ee-cloud = ["ee-pro", "color-eyre"]
 
 [target.'cfg(not(all(target_os = "macos", target_arch = "aarch64")))'.dependencies]
 ndarray = { version = "0.15" }

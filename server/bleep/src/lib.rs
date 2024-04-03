@@ -64,8 +64,6 @@ mod repo;
 mod scraper;
 mod webserver;
 
-mod ee;
-
 pub mod indexes;
 pub mod intelligence;
 pub mod periodic;

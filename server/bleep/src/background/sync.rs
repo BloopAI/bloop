@@ -115,11 +115,6 @@ impl SyncConfig {
         }
     }
 
-    pub fn filter_updates(mut self, update: Option<FilterUpdate>) -> Self {
-        self.filter_updates = update;
-        self
-    }
-
     pub fn shallow(mut self, shallow: bool) -> Self {
         self.shallow = shallow;
         self
