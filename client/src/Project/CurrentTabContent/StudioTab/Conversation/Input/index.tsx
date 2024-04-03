@@ -128,7 +128,7 @@ const ConversationInput = ({
   return (
     <div className="flex items-start w-full p-4 gap-4 rounded-md hover:bg-bg-sub-hover relative group">
       {author === StudioConversationMessageAuthor.USER ? (
-        <div className="w-7 h-7 rounded-full overflow-hidden select-none flex-shrink-0">
+        <div className="w-7 h-7 rounded-full overflow-hidden select-none flex-shrink-0 flex items-center justify-center text-label-base">
           <PersonIcon sizeClassName="w-6 h-6" />
         </div>
       ) : (

@@ -120,7 +120,7 @@ const ConversationMessage = ({
       ) : (
         <>
           <div className="relative">
-            <div className="flex w-7 h-7 items-center justify-center rounded-full flex-shrink-0 bg-brand-default-subtitle overflow-hidden">
+            <div className="flex w-7 h-7 items-center justify-center rounded-full flex-shrink-0 bg-brand-default-subtitle overflow-hidden text-label-base">
               {author === ChatMessageAuthor.User ? (
                 <PersonIcon sizeClassName="w-6 h-6" />
               ) : isLoading ? (

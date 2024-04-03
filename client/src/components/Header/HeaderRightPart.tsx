@@ -27,7 +27,7 @@ const HeaderRightPart = ({}: Props) => {
         <span className="text-label-faint">{shortcut?.join(' ')}</span>
       </Button>
       <Dropdown DropdownComponent={UserDropdown} dropdownPlacement="bottom-end">
-        <PersonIcon sizeClassName="w-3.5 h-3.5" />
+        <PersonIcon sizeClassName="w-3.5 h-3.5" className="text-label-base" />
       </Dropdown>
     </div>
   );
