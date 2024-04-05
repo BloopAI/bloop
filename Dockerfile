@@ -1,8 +1,5 @@
 FROM node AS frontend
 
-ARG SENTRY_AUTH_TOKEN
-ARG SENTRY_RELEASE_VERSION
-
 WORKDIR /build
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -40,4 +37,8 @@ COPY model /model
 COPY --from=builder /bleep /
 COPY --from=builder /dylib /dylib
 COPY --from=frontend /build/client/dist /frontend
-ENTRYPOINT ["/bleep", "--host=0.0.0.0", "--source-dir=/repos", "--index-dir=/data", "--model-dir=/model", "--dylib-dir=/dylib", "--disable-log-write"]
+
+ARG OPENAI_API_KEY
+ARG GITHUB_ACCESS_TOKEN
+
+ENTRYPOINT ["/bleep", "--host=0.0.0.0", "--source-dir=/repos", "--index-dir=/data", "--model-dir=/model", "--dylib-dir=/dylib", "--disable-log-write", "--frontend-dist=/frontend", "--openai-api-key=$OPENAI_API_KEY", "--github-access-token=$GITHUB_ACCESS_TOKEN"]

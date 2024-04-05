@@ -8,6 +8,8 @@ use axum::{
     Extension, Json,
 };
 use std::{borrow::Cow, fmt, net::SocketAddr};
+use tower::Service;
+use tower_http::services::{ServeDir, ServeFile};
 use tower_http::{catch_panic::CatchPanicLayer, cors::CorsLayer};
 use tracing::info;
 
@@ -180,7 +182,23 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         .layer(CorsLayer::permissive())
         .layer(CatchPanicLayer::new());
 
-    let router = Router::new().nest("/api", api);
+    let mut router = Router::new().nest("/api", api);
+
+    if let Some(frontend_dist) = app.config.frontend_dist.clone() {
+        router = router.nest_service(
+            "/",
+            tower::service_fn(move |req| {
+                let frontend_dist = frontend_dist.clone();
+                async move {
+                    Ok(ServeDir::new(&frontend_dist)
+                        .fallback(ServeFile::new(frontend_dist.join("index.html")))
+                        .call(req)
+                        .await
+                        .unwrap())
+                }
+            }),
+        );
+    }
 
     info!(%bind, "starting webserver");
     axum::Server::bind(&bind)
