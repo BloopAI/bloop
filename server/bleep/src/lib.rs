@@ -17,9 +17,6 @@ compile_error!("cannot enable `onnx` and `metal` at the same time");
 #[cfg(feature = "color-eyre")]
 use color_eyre as _;
 
-#[cfg(any(bench, test))]
-use criterion as _;
-
 use db::SqlDb;
 #[cfg(any(bench, test))]
 use git_version as _;

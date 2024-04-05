@@ -17,10 +17,10 @@ https://github.com/BloopAI/bloop/assets/7957964/01db3ccb-4af0-49a0-92d6-5a9c4235
 
 ## Features
 
-- GPT-4 based conversational search
+- AI-based conversational search
 - Code Studio, an LLM playground that uses your code as context
 - Blazing fast regex search
-- Sync your local and GitHub repositories (support for more code hosts coming soon!)
+- Sync your local and GitHub repositories
 - Sophisticated query filters so you can narrow down your results
 - Find functions, variables or traits with symbol search
 - Precise code navigation (go-to-reference and go-to-definition) for 10+ of the most popular languages built with [Tree-sitter](https://tree-sitter.github.io/tree-sitter/)
@@ -39,9 +39,20 @@ For instructions on how to build from source or run bloop from the command line,
 - [Build bloop app from source](./apps/desktop/README.md)
 - [Run bloop from the command line](./server/README.md)
 
-Note that it is currently _not_ possible to use conversational GPT-4 search where bloop has been built from source (we're working on this). You can run regex searches and use code-navigation.
-
 If you encounter any index issues you can wipe the bloop cache and reindex. Instructions on how to do this on different platforms [are here](./apps/desktop/README.md).
+
+## Building From Source
+
+You can build bloop from source and run it with your own OpenAI API key. Clone the repo, make sure the `oss` branch is checked out, and create a file called `local_config.json` at the top-level of the repo. `local_config.json` should contain the following fields:
+
+```json
+{
+    "github_access_token": "<YOUR_GITHUB_ACCESS_TOKEN>",
+    "openai_api_key": "<YOUR_OPENAI_API_KEY>"
+}
+```
+
+Then follow [these installation instructions](./apps/desktop/README.md). If built from source, bloop will not collect any telemetry. 
 
 ## Contributing
 

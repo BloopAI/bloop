@@ -72,7 +72,7 @@ tree-sitter-cpp = { git = "https://github.com/tree-sitter/tree-sitter-cpp", rev 
 tree-sitter-ruby = "0.20.0"
 tree-sitter-r = "0.19.5"
 tree-sitter-php = { git = "https://github.com/tree-sitter/tree-sitter-php" }
-tree-sitter-COBOL = { git = "https://github.com/nerdypepper/tree-sitter-cobol" }
+tree-sitter-COBOL = { git = "https://github.com/BloopAI/tree-sitter-cobol" }
 petgraph = { version = "0.6.4", default-features = false, features = ["serde-1"] }
 
 # webserver
@@ -108,7 +108,7 @@ itertools = "0.10.0"
 # latest crates.io version at the time of writing does not include necessary patches.
 #
 # 25.09.23: we now maintain a fork for stability
-comrak = { default-features = false, git = "https://github.com/rsdy/comrak" }
+comrak = { default-features = false, git = "https://github.com/BloopAI/comrak" }
 lazy-regex = "3.0.2"
 quick-xml = { version = "0.29.0", features = ["serialize"] }
 

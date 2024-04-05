@@ -872,7 +872,7 @@ dependencies = [
 [[package]]
 name = "comrak"
 version = "0.18.0"
-source = "git+https://github.com/rsdy/comrak#65eda8e5aa4044bad4fe63c93d8f985b2c7db25d"
+source = "git+https://github.com/BloopAI/comrak#c805863a0cdc1cde1ae7ebd06cb871ca5712e285"
 dependencies = [
  "derive_builder",
  "entities",
@@ -7556,7 +7556,7 @@ dependencies = [
 [[package]]
 name = "tree-sitter-COBOL"
 version = "0.0.1"
-source = "git+https://github.com/nerdypepper/tree-sitter-cobol#8ba6692cc3c2bded0693d198936c6e26e6501230"
+source = "git+https://github.com/BloopAI/tree-sitter-cobol#8ba6692cc3c2bded0693d198936c6e26e6501230"
 dependencies = [
  "cc",
  "tree-sitter",
