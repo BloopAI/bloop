@@ -120,6 +120,10 @@ pub struct Configuration {
     #[serde(default = "interactive_batch_size")]
     /// Batch size for batched embeddings
     pub embedding_batch_size: NonZeroUsize,
+
+    /// Path to built front-end folder
+    #[clap(long)]
+    pub frontend_dist: Option<PathBuf>,
 }
 
 macro_rules! right_if_default {
@@ -220,6 +224,8 @@ impl Configuration {
                 a.embedding_batch_size,
                 interactive_batch_size()
             ),
+
+            frontend_dist: b.frontend_dist.or(a.frontend_dist),
 
             qdrant_url: right_if_default!(b.qdrant_url, a.qdrant_url, String::new()),
 

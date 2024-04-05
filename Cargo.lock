@@ -473,6 +473,7 @@ dependencies = [
  "tokenizers 0.14.1",
  "tokio",
  "tokio-stream",
+ "tower",
  "tower-http",
  "tracing",
  "tracing-appender",
