@@ -89,9 +89,5 @@ We store as little data as possible. We use telemetry to helps us identify bugs 
 
 ## License
 
-Portions of this software are licensed as follows:
-
-* All content that resides under the `server/bleep/src/ee/` directory of this repository, if that directory exists, is licensed under the license defined in [server/bleep/src/ee/LICENSE](./server/bleep/src/ee/LICENSE).
-* All third party components incorporated into the bloop Software are licensed under the original license provided by the owner of the applicable component.
-* Content outside of the above mentioned directories or restrictions above is available under the `Apache 2.0` license as defined in [LICENSE](./LICENSE).
+bloop is licensed under the `Apache 2.0` license as defined in [LICENSE](./LICENSE).
 
