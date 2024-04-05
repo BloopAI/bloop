@@ -1,6 +1,6 @@
 # Server
 
-A cargo workspace which contains `bleep`, the Rust package which powers bloop's search and code navigation. Note that it is currently _not_ possible to run conversational GPT-4 search from the command line (we're working on this). Calls to the `/api/answer` endpoint will return an error.
+A cargo workspace which contains `bleep`, the Rust package which powers bloop's search and code navigation.
 
 ## Setup
 
