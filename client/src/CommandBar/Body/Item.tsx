@@ -76,23 +76,26 @@ const CommandBarItem = ({
     [index, setFocusedIndex],
   );
 
-  const handleClick = useCallback(() => {
-    if (onClick) {
-      onClick();
-      if (closeOnClick) {
-        setIsVisible(false);
-        setChosenStep({ id: CommandBarStepEnum.INITIAL });
+  const handleClick = useCallback(
+    (e: React.MouseEvent | KeyboardEvent) => {
+      if (onClick) {
+        onClick(e);
+        if (closeOnClick) {
+          setIsVisible(false);
+          setChosenStep({ id: CommandBarStepEnum.INITIAL });
+        }
+      } else {
+        setChosenStep({
+          id: id as Exclude<
+            CommandBarStepEnum,
+            CommandBarStepEnum.ADD_TO_STUDIO | CommandBarStepEnum.SEARCH_DOCS
+          >,
+        });
       }
-    } else {
-      setChosenStep({
-        id: id as Exclude<
-          CommandBarStepEnum,
-          CommandBarStepEnum.ADD_TO_STUDIO | CommandBarStepEnum.SEARCH_DOCS
-        >,
-      });
-    }
-    updateArrayInStorage(RECENT_COMMANDS_KEY, itemKey);
-  }, [id, onClick, closeOnClick, itemKey]);
+      updateArrayInStorage(RECENT_COMMANDS_KEY, itemKey);
+    },
+    [id, onClick, closeOnClick, itemKey],
+  );
 
   const handleKeyEvent = useCallback(
     (e: KeyboardEvent) => {
@@ -103,7 +106,7 @@ const CommandBarItem = ({
       ) {
         e.preventDefault();
         e.stopPropagation();
-        handleClick();
+        handleClick(e);
         return;
       }
       if (focusedIndex === index && shortAction?.action) {

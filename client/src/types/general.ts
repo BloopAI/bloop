@@ -475,7 +475,7 @@ export type CommandBarItemGeneralType = {
     action?: () => void | Promise<void>;
   }[];
   iconContainerClassName?: string;
-  onClick?: () => void;
+  onClick?: (e: React.MouseEvent | KeyboardEvent) => void | Promise<void>;
 };
 
 export type CommandBarItemInvisibleType = {

@@ -1,4 +1,4 @@
-import {
+import React, {
   ChangeEvent,
   memo,
   useCallback,
@@ -12,7 +12,11 @@ import { Trans, useTranslation } from 'react-i18next';
 import Header from '../Header';
 import { CommandBarStepEnum, TabTypesEnum } from '../../types/general';
 import { CommandBarContext } from '../../context/commandBarContext';
-import { getAutocomplete } from '../../services/api';
+import {
+  getAutocomplete,
+  getCodeStudio,
+  patchCodeStudio,
+} from '../../services/api';
 import { FileResItem } from '../../types/api';
 import Body from '../Body';
 import FileIcon from '../../components/FileIcon';
@@ -34,7 +38,9 @@ const SearchFiles = ({ studioId }: Props) => {
   const { setChosenStep, setIsVisible } = useContext(
     CommandBarContext.Handlers,
   );
-  const { project } = useContext(ProjectContext.Current);
+  const { project, refreshCurrentProjectRepos } = useContext(
+    ProjectContext.Current,
+  );
   const { openNewTab } = useContext(TabsContext.Handlers);
   const { setIsLeftSidebarFocused } = useContext(UIContext.Focus);
   const [files, setFiles] = useState<
@@ -65,7 +71,7 @@ const SearchFiles = ({ studioId }: Props) => {
     if (project?.id) {
       getAutocomplete(
         project.id,
-        `path:${searchValue}&content=false&page_size=20`,
+        `path:${searchValue}&content=false&file=true&page_size=20`,
       ).then((respPath) => {
         const fileResults = respPath.data
           .filter(
@@ -96,41 +102,89 @@ const SearchFiles = ({ studioId }: Props) => {
         items: filterOutDuplicates(
           files.map((f) => ({ ...f, key: `${f.path}-${f.repo}-${f.branch}` })),
           'key',
-        ).map(({ path, repo, branch, key }) => ({
-          key,
-          id: key,
-          onClick: () => {
-            openNewTab({
-              type: TabTypesEnum.FILE,
-              path,
-              repoRef: repo,
-              branch,
-              studioId,
-            });
-            setIsLeftSidebarFocused(false);
-            setIsVisible(false);
-            setChosenStep({ id: CommandBarStepEnum.INITIAL });
-          },
-          label: path,
-          footerHint: `${splitPath(repo)
-            .slice(repo.startsWith('local//') ? -1 : -2)
-            .join('/')} ${
-            branch ? `/ ${splitPath(branch).pop()} ` : ''
-          }/ ${path}`,
-          footerBtns: [
-            {
-              label: studioId ? t('Add file') : t('Open'),
-              shortcut: ['entr'],
+        ).map(({ path, repo, branch, key }) => {
+          const addMultipleFilesToStudio = async () => {
+            if (project?.id && studioId) {
+              const studio = await getCodeStudio(project.id, studioId);
+              const patchedFile = studio?.context.find(
+                (f) =>
+                  f.path === path && f.repo === repo && f.branch === branch,
+              );
+              if (!patchedFile) {
+                await patchCodeStudio(project.id, studioId, {
+                  context: [
+                    ...(studio?.context || []),
+                    {
+                      path,
+                      branch: branch,
+                      repo,
+                      hidden: false,
+                      ranges: [],
+                    },
+                  ],
+                });
+                refreshCurrentProjectRepos();
+                openNewTab({
+                  type: TabTypesEnum.FILE,
+                  path,
+                  repoRef: repo,
+                  branch,
+                  studioId,
+                  isFileInContext: true,
+                  initialRanges: [],
+                });
+              }
+            }
+          };
+          return {
+            key,
+            id: key,
+            onClick: async (e: React.MouseEvent | KeyboardEvent) => {
+              if (studioId && e.shiftKey && project?.id) {
+                await addMultipleFilesToStudio();
+              } else {
+                openNewTab({
+                  type: TabTypesEnum.FILE,
+                  path,
+                  repoRef: repo,
+                  branch,
+                  studioId,
+                });
+                setIsLeftSidebarFocused(false);
+                setIsVisible(false);
+                setChosenStep({ id: CommandBarStepEnum.INITIAL });
+              }
             },
-          ],
-          Icon: (props: { sizeClassName?: string }) => (
-            <FileIcon filename={path} noMargin />
-          ),
-        })),
+            label: path,
+            footerHint: `${splitPath(repo)
+              .slice(repo.startsWith('local//') ? -1 : -2)
+              .join('/')} ${
+              branch ? `/ ${splitPath(branch).pop()} ` : ''
+            }/ ${path}`,
+            footerBtns: [
+              ...(studioId
+                ? [
+                    {
+                      label: t('Add multiple files'),
+                      shortcut: ['shift', 'entr'],
+                      action: addMultipleFilesToStudio,
+                    },
+                  ]
+                : []),
+              {
+                label: studioId ? t('Add file') : t('Open'),
+                shortcut: ['entr'],
+              },
+            ],
+            Icon: (props: { sizeClassName?: string }) => (
+              <FileIcon filename={path} noMargin />
+            ),
+          };
+        }),
         itemsOffset: 0,
       },
     ];
-  }, [files, studioId]);
+  }, [files, studioId, project?.id]);
 
   return (
     <div className="flex flex-col h-[28.875rem] w-[40rem] overflow-auto">
