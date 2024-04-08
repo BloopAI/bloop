@@ -21,6 +21,8 @@ import Tooltip from '../../../../components/Tooltip';
 import Badge from '../../../../components/Badge';
 import { IndexingStatusType } from '../../../../types/general';
 import { useArrowNavigationItemProps } from '../../../../hooks/useArrowNavigationItemProps';
+import PlusSign from '../../../../icons/PlusSign';
+import Button from '../../../../components/Button';
 import StudioSubItem from './StudioSubItem';
 import AddContextFile from './AddContextFile';
 import StudioFile from './StudioFile';
@@ -121,8 +123,12 @@ const StudioEntry = ({
           <div className="body-tiny text-label-base pl-10.5 pr-4 h-7 flex items-center">
             <Trans>Context files</Trans>
           </div>
-          {!context.length && !previewingSnapshot && (
-            <AddContextFile studioId={id} index={`${index}-add-file`} />
+          {!previewingSnapshot && (
+            <AddContextFile
+              studioId={id}
+              index={`${index}-add-file`}
+              isFull={!context.length}
+            />
           )}
           {(previewingSnapshot?.context || context).map((f, i) => (
             <StudioFile

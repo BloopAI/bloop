@@ -535,5 +535,6 @@
 	"Fallback: Use if experiencing problems with the default one": "Fallback: use si experimenta problemas con el predeterminado",
 	"Select the input type to use in conversations": "Seleccione el tipo de entrada a usar en conversaciones",
 	"Default": "Por defecto",
-	"Recommended: The classic input": "Recomendado: la entrada clásica"
+	"Recommended: The classic input": "Recomendado: la entrada clásica",
+	"Add multiple files": "Agregar varios archivos"
 }
