@@ -1,6 +1,6 @@
 [package]
 name = "bleep"
-version = "0.6.3"
+version = "0.6.4"
 edition = "2021"
 default-run = "bleep"
 build = "build.rs"
