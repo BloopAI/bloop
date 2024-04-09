@@ -32,7 +32,7 @@ https://github.com/BloopAI/bloop/assets/7957964/93715188-d8d5-477b-8cd1-95d9cbd3
 
 ## Get Started
 
-The simplest way to get started with bloop is to [download the app](https://github.com/BloopAI/bloop/releases) and follow the onboarding steps. Checkout our [getting started guide](https://bloop.ai/docs/getting-started) and our references for [conversational](https://bloop.ai/docs/natural-language-queries) and [regex](https://bloop.ai/docs/regex-queries) search and [Code Studio](https://bloop.ai/docs/code-studio).
+The simplest way to get started with bloop is to [download the app](https://github.com/BloopAI/bloop/releases) and follow the onboarding steps. Checkout our [getting started guide](https://bloop.ai/understand/docs/getting-started) and our references for [conversational](https://bloop.ai/understand/docs/natural-language-queries) and [regex](https://bloop.ai/understand/docs/regex-queries) search and [Code Studio](https://bloop.ai/understand/docs/code-studio).
 
 For instructions on how to build from source or run bloop from the command line, check out these pages:
 
