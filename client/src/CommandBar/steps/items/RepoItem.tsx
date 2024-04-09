@@ -66,7 +66,7 @@ const RepoItem = ({
   const { openFolderInExplorer, os, openLink } = useContext(DeviceContext);
 
   const onRepoSync = useCallback(
-    async (e?: MouseEvent | KeyboardEvent) => {
+    async (e?: MouseEvent | KeyboardEvent | React.MouseEvent) => {
       e?.preventDefault();
       e?.stopPropagation();
       await syncRepo(repo.ref);

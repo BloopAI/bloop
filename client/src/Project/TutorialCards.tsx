@@ -1,4 +1,4 @@
-import {
+import React, {
   memo,
   useCallback,
   useContext,
@@ -131,15 +131,18 @@ const TutorialCards = ({}: Props) => {
     return tabItems.find((i) => i.key === 'explain_file')?.onClick;
   }, [tabItems]);
 
-  const onBtnClick = useCallback(() => {
-    if (btnTitle === 'New conversation') {
-      openNewTab({ type: TabTypesEnum.CHAT });
-      handleNext();
-    } else if (btnTitle === 'Explain current file' && explainCurrentFile) {
-      explainCurrentFile();
-      handleNext();
-    }
-  }, [btnTitle, handleNext, explainCurrentFile]);
+  const onBtnClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (btnTitle === 'New conversation') {
+        openNewTab({ type: TabTypesEnum.CHAT });
+        handleNext();
+      } else if (btnTitle === 'Explain current file' && explainCurrentFile) {
+        explainCurrentFile(e);
+        handleNext();
+      }
+    },
+    [btnTitle, handleNext, explainCurrentFile],
+  );
 
   return (
     <div className="absolute right-0 bottom-0 px-8 py-8 w-full max-w-[26rem] select-none">
