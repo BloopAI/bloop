@@ -8,10 +8,15 @@ use axum::{
     Extension, Json,
 };
 use std::{borrow::Cow, fmt, net::SocketAddr};
+
 use tower::Service;
 use tower_http::services::{ServeDir, ServeFile};
 use tower_http::{catch_panic::CatchPanicLayer, cors::CorsLayer};
+use tower_http::cors::{AllowMethods, Any};
+use tower_http::cors::AllowOrigin;
+
 use tracing::info;
+use http::{header, HeaderValue, Method};
 
 pub mod aaa;
 pub mod answer;
@@ -46,6 +51,9 @@ pub(crate) mod prelude {
 }
 
 pub async fn start(app: Application) -> anyhow::Result<()> {
+
+    println!("websocket server started");
+
     let bind = SocketAddr::new(app.config.host.parse()?, app.config.port);
 
     let mut api = Router::new()
@@ -178,11 +186,13 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
         api = api.route("/repos/scan", get(repos::scan_local));
     }
 
-    if app.env.allow(Feature::DesktopUserAuth) {
+    //if app.env.allow(Feature::DesktopUserAuth) {
         api = api
             .route("/auth/login", get(github::login))
             .route("/auth/logout", get(github::logout));
-    }
+    //}
+
+    api = api.route("/auth/callback", get(github::callback));
 
     api = api.route("/panic", get(|| async { panic!("dead") }));
 
@@ -196,12 +206,36 @@ pub async fn start(app: Application) -> anyhow::Result<()> {
 
     api = api.route("/health", get(health));
 
+    // let origins = [
+    //     "http://localhost:5173".parse::<HeaderValue>().unwrap(),
+    // ];
+    //
+    // let methods = vec![
+    //     Method::GET,
+    //     Method::POST,
+    //     Method::DELETE,
+    // ].into_iter().collect();
+    //
+    // let cors_layer = CorsLayer::new()
+    //     .allow_methods(AllowMethods::exact(methods))
+    //     .allow_origin(Any::exact(origins))
+    //     .allow_credentials(true);
+
+    // let cors_layer = CorsLayer::new()
+    //     .allow_origin("http://localhost:5173".parse::<HeaderValue>().unwrap()) // 允许来自 http://localhost:8000 的跨域请求
+    //     .allow_methods(vec![Method::GET, Method::POST, Method::DELETE]) // 允许的 HTTP 方法
+    //     .allow_headers(vec![header::AUTHORIZATION, header::ACCEPT, header::CONTENT_TYPE]);
+    //
+    //
+    // println!("cors layer: {:?}", cors_layer);
+
     let api = api
         .layer(Extension(app.indexes.clone()))
         .layer(Extension(app.semantic.clone()))
         .layer(Extension(app.clone()))
         .with_state(app.clone())
         .layer(CorsLayer::permissive())
+        //.layer(cors_layer)
         .layer(CatchPanicLayer::new());
 
     let mut router = Router::new().nest("/api", api);
@@ -248,6 +282,13 @@ pub struct Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.body.message)
+    }
+}
+
+impl From<reqwest::Error> for Error {
+    fn from(err: reqwest::Error) -> Error {
+        // 这里你可以根据需要自定义错误的转换逻辑
+        Error::new(ErrorKind::Internal, err.to_string())
     }
 }
 

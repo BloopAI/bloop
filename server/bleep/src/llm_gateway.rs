@@ -5,10 +5,11 @@ use std::time::Duration;
 use anyhow::{anyhow, bail};
 use axum::http::StatusCode;
 use futures::{Stream, StreamExt};
+use regex_syntax::ast::print;
 use reqwest_eventsource::EventSource;
 use tracing::{debug, error, warn};
 
-use crate::{periodic::sync_github_status_once, Application};
+use crate::{llm_gateway::api::Requestv2, periodic::sync_github_status_once, Application};
 
 use self::api::FunctionCall;
 
@@ -91,6 +92,20 @@ pub mod api {
         pub extra_stop_sequences: Vec<String>,
         pub session_reference_id: Option<String>,
         pub quota_gated: bool,
+    }
+
+    #[derive(Debug, serde::Serialize, serde::Deserialize)]
+    pub struct Messagev2 {
+        pub role: String,
+        pub content: String,
+    }
+    
+    #[derive(Debug, serde::Serialize, serde::Deserialize)]
+    pub struct Requestv2 {
+        pub model: String,
+        pub messages: Vec<Message>,
+        pub max_tokens: Option<u32>,
+        pub stream: bool,
     }
 
     #[derive(Debug, Copy, Clone, serde::Serialize, serde::Deserialize)]
@@ -245,13 +260,13 @@ impl Client {
 
             max_retries: 5,
 
-            bearer_token: None,
+            bearer_token: Some("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".to_owned()),
             provider: api::Provider::OpenAi,
             temperature: None,
             max_tokens: None,
             presence_penalty: None,
             frequency_penalty: None,
-            model: None,
+            model: Some("gpt-3.5-turbo".to_owned()),
             session_reference_id: None,
             quota_gated: false,
         }
@@ -355,6 +370,8 @@ impl Client {
         messages: &[api::Message],
         functions: Option<&[api::Function]>,
     ) -> anyhow::Result<impl Stream<Item = anyhow::Result<String>>> {
+        println!("chat_stream");
+        println!("messages: {:?}", messages);
         const INITIAL_DELAY: Duration = Duration::from_millis(100);
         const SCALE_FACTOR: f32 = 1.5;
 
@@ -397,17 +414,37 @@ impl Client {
         messages: &[api::Message],
         functions: Option<&[api::Function]>,
     ) -> Result<impl Stream<Item = anyhow::Result<String>>, ChatError> {
+        println!("chat_stream_oneshot");
+        println!("messages: {:?}", messages);
+
+        println!("functions: {:?}", functions);
+        println!("max_tokens: {:?}", self.max_tokens);
+        println!("temperature: {:?}", self.temperature);
+        println!("presence_penalty: {:?}", self.presence_penalty);
+        println!("frequency_penalty: {:?}", self.frequency_penalty);
+        println!("provider: {:?}", self.provider);
+        println!("self.app.config.answer_api_url) {:?}", self.app.config.answer_api_url);
+        println!("self.bearer_token: {:?}", self.bearer_token);
+        println!("self.model: {:?}", self.model);
+        println!("self.session_reference_id: {:?}", self.session_reference_id);
+        println!("self.quota_gated: {:?}", self.quota_gated);
+        let url = "https://api.openai.com/v1/chat/completions";
+        
+        println!("url: {:?}", url);
+
         let mut event_source = Box::pin(
             EventSource::new({
+
                 let mut builder = self
                     .http
-                    .post(format!("{}/v2/q", self.app.config.answer_api_url));
+                    .post(url);
 
                 if let Some(bearer) = &self.bearer_token {
-                    builder = builder.bearer_auth(bearer);
+                    println!("set request bearer: {:?}", bearer);
+                    builder = builder.bearer_auth(bearer.to_owned());
                 }
 
-                builder.json(&api::Request {
+                let request = api::Request {
                     messages: api::Messages {
                         messages: messages.to_owned(),
                     },
@@ -423,20 +460,55 @@ impl Client {
                     extra_stop_sequences: vec![],
                     session_reference_id: self.session_reference_id.clone(),
                     quota_gated: self.quota_gated,
-                })
+                };
+
+                let requestv2: Requestv2 = Requestv2 {
+                    model: "gpt-3.5-turbo".to_string(),
+                    messages: messages.to_owned(),
+                    stream: true,
+                    max_tokens: Some(1024),
+                };
+                
+                let request_json = serde_json::to_string_pretty(&requestv2).unwrap();
+                println!("\n\n\n\n\n Request JSON: {} \n\n\n\n\n", request_json);
+                
+                builder.json(&requestv2)
+
+
+                // builder.json(&api::Request {
+                //     messages: api::Messages {
+                //         messages: messages.to_owned(),
+                //     },
+                //     functions: functions.map(|funcs| api::Functions {
+                //         functions: funcs.to_owned(),
+                //     }),
+                //     max_tokens: self.max_tokens,
+                //     temperature: self.temperature,
+                //     presence_penalty: self.presence_penalty,
+                //     frequency_penalty: self.frequency_penalty,
+                //     provider: self.provider,
+                //     model: self.model.clone(),
+                //     extra_stop_sequences: vec![],
+                //     session_reference_id: self.session_reference_id.clone(),
+                //     quota_gated: self.quota_gated,
+                // })
             })
             // We don't have a `Stream` body so this can't fail.
             .expect("couldn't clone requestbuilder")
             // `reqwest_eventsource` returns an error to signify a stream end, instead of simply ending
             // the stream. So we catch the error here and close the stream.
             .take_while(|result| {
+                //debug!(?result, "take_while::event source result");
                 let is_end = matches!(result, Err(reqwest_eventsource::Error::StreamEnded));
                 async move { !is_end }
             }),
         );
 
         match event_source.next().await {
-            Some(Ok(reqwest_eventsource::Event::Open)) => {}
+            Some(Ok(reqwest_eventsource::Event::Open)) => {
+                debug!("event source opened");
+
+            }
             Some(Err(reqwest_eventsource::Error::InvalidStatusCode(status, response)))
                 if status == StatusCode::BAD_REQUEST =>
             {
@@ -463,27 +535,56 @@ impl Client {
                 return Err(ChatError::TooManyRequests(body));
             }
             Some(Err(e)) => {
+                error!(?e, "event source error");
                 return Err(ChatError::Other(anyhow!(
                     "failed to make event source request to answer API: {e}",
                 )));
             }
             _ => {
+                error!("event source failed to open");
                 return Err(ChatError::Other(anyhow!("event source failed to open")));
             }
         }
 
+        //debug!(?event_source, "event source opened");
+
+        // Ok(event_source
+        //     .filter_map(|result| async move {
+        //         match result {
+        //             Ok(reqwest_eventsource::Event::Message(msg)) => Some(Ok(msg.data)),
+        //             Ok(reqwest_eventsource::Event::Open) => None,
+        //             Err(reqwest_eventsource::Error::StreamEnded) => None,
+        //             Err(e) => Some(Err(e)),
+        //         }
+        //     })
+        //     .map(|result| match result {
+        //         Ok(s) => Ok(serde_json::from_str::<api::Result>(&s)??),
+        //         Err(e) => bail!("event source error {e:?}"),
+        //     }))
         Ok(event_source
             .filter_map(|result| async move {
                 match result {
-                    Ok(reqwest_eventsource::Event::Message(msg)) => Some(Ok(msg.data)),
-                    Ok(reqwest_eventsource::Event::Open) => None,
+                    Ok(reqwest_eventsource::Event::Message(msg)) => {
+                        println!("\n\n\nfilter_map : Received message: {}\n\n\n", msg.data);  // 打印消息
+                        Some(Ok(msg.data))
+                    },
+                    Ok(reqwest_eventsource::Event::Open) => {
+                        debug!("filter_map : event source opened");
+                        None
+                    },
                     Err(reqwest_eventsource::Error::StreamEnded) => None,
                     Err(e) => Some(Err(e)),
                 }
             })
             .map(|result| match result {
-                Ok(s) => Ok(serde_json::from_str::<api::Result>(&s)??),
-                Err(e) => bail!("event source error {e:?}"),
+                Ok(s) =>  {
+                    println!("\n\n\nmap: Received message: {}\n\n\n", s);  // 打印消息
+                    Ok(serde_json::from_str::<api::Result>(&s)??)
+                },
+                Err(e) => {
+                    println!("event source error: {:?}", e);
+                    bail!("event source error {e:?}")
+                },
             }))
     }
 }

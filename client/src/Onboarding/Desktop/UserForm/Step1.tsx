@@ -31,31 +31,38 @@ const UserFormStep1 = ({ form, setForm, onContinue }: Props) => {
   const { openLink } = useContext(DeviceContext);
   const [showErrors, setShowErrors] = useState(false);
 
+  // const handleSubmit = useCallback(
+  //   (e: React.MouseEvent) => {
+  //     e.preventDefault();
+  //     e.stopPropagation();
+  //     if (
+  //       !form.firstName ||
+  //       !form.lastName ||
+  //       !form.email ||
+  //       !!form.emailError ||
+  //       !EMAIL_REGEX.test(form.email)
+  //     ) {
+  //       if (!EMAIL_REGEX.test(form.email)) {
+  //         setForm((prev) => ({
+  //           ...prev,
+  //           emailError: t('Email is not valid'),
+  //         }));
+  //       }
+  //       setShowErrors(true);
+  //       return;
+  //     }
+  //     onContinue();
+  //   },
+  //   [form, onContinue],
+  // );
   const handleSubmit = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      if (
-        !form.firstName ||
-        !form.lastName ||
-        !form.email ||
-        !!form.emailError ||
-        !EMAIL_REGEX.test(form.email)
-      ) {
-        if (!EMAIL_REGEX.test(form.email)) {
-          setForm((prev) => ({
-            ...prev,
-            emailError: t('Email is not valid'),
-          }));
-        }
-        setShowErrors(true);
-        return;
-      }
       onContinue();
     },
-    [form, onContinue],
+    [onContinue],
   );
-
   return (
     <form
       className="flex flex-col gap-4 w-full"

@@ -203,8 +203,14 @@ impl Semantic {
         qdrant_url: &str,
         config: Arc<Configuration>,
     ) -> Result<Self, SemanticError> {
-        let qdrant = QdrantClient::new(Some(QdrantClientConfig::from_url(qdrant_url))).unwrap();
-        debug!("initialized client");
+
+        let mut config_qdrant = QdrantClientConfig::from_url(qdrant_url);
+        config_qdrant.set_api_key("jQonERs59hDJ2wG2rWDmeNWtEtrg5C9O4yFx7VHEXpHO9dT0Srdz2w");
+        let qdrant = QdrantClient::new(Some(config_qdrant)).unwrap();
+        println!("initialized client with api_key: jQonERs59hDJ2wG2rWDmeNWtEtrg5C9O4yFx7VHEXpHO9dT0Srdz2w");
+        println!("Initializing with model_dir: {:?}, qdrant_url: {}", model_dir, qdrant_url);
+        println!("api_key: {:?}, collection_name: {:?}", config.qdrant_api_key, config.collection_name);
+        //println!("config {:?}", config);
 
         match qdrant.has_collection(&config.collection_name).await {
             Ok(false) => {
@@ -220,11 +226,11 @@ impl Semantic {
                         .await
                         .unwrap();
 
-                debug!("lexical index created");
-                debug!("{:?}", result);
+                println!("lexical index created");
+                println!("{:?}", result);
             }
             Ok(true) => {
-                debug!("collection already exists");
+                println!("collection already exists");
             }
             Err(_) => return Err(SemanticError::QdrantInitializationError),
         }
@@ -232,6 +238,7 @@ impl Semantic {
         create_indexes(&config.collection_name, &qdrant).await?;
         debug!("indexes created");
 
+        println!("indexes created");
         if let Some(dylib_dir) = config.dylib_dir.as_ref() {
             init_ort_dylib(dylib_dir);
             debug!(
@@ -244,16 +251,19 @@ impl Semantic {
         let embedder: Arc<dyn Embedder> = if let Some(ref url) = config.embedding_server_url {
             let embedder = Arc::new(embedder::RemoteEmbedder::new(url.clone(), model_dir)?);
             debug!("using remote embedder");
+            println!("using remote embedder");
             embedder
         } else {
             let embedder = Arc::new(LocalEmbedder::new(model_dir)?);
             debug!("using local embedder");
+            println!("using local embedder");
             embedder
         };
 
         #[cfg(not(feature = "ee-cloud"))]
         let embedder: Arc<dyn Embedder> = Arc::new(LocalEmbedder::new(model_dir)?);
         debug!("using local embedder");
+        println!("using local embedder");
 
         Ok(Self {
             qdrant: qdrant.into(),
@@ -691,22 +701,22 @@ impl Semantic {
         repo_ref: &str,
         paths: impl Iterator<Item = String>,
     ) {
-        let repo_filter = make_kv_keyword_filter("repo_ref", repo_ref).into();
-        let file_filter = paths
-            .map(|p| make_kv_keyword_filter("content_hash", &p).into())
-            .collect::<Vec<_>>();
+        // let repo_filter = make_kv_keyword_filter("repo_ref", repo_ref).into();
+        // let file_filter = paths
+        //     .map(|p| make_kv_keyword_filter("content_hash", &p).into())
+        //     .collect::<Vec<_>>();
 
-        let selector = Filter {
-            must: vec![repo_filter],
-            should: file_filter,
-            ..Default::default()
-        }
-        .into();
+        // let selector = Filter {
+        //     must: vec![repo_filter],
+        //     should: file_filter,
+        //     ..Default::default()
+        // }
+        // .into();
 
-        let _ = self
-            .qdrant
-            .delete_points(&self.config.collection_name, &selector, None)
-            .await;
+        // let _ = self
+        //     .qdrant
+        //     .delete_points(&self.config.collection_name, &selector, None, Some(WriteOrdering::SomeVariant))
+        //     .await;
     }
 }
 
@@ -721,9 +731,11 @@ fn init_ort_dylib(dylib_dir: impl AsRef<Path>) {
     #[cfg(target_os = "macos")]
     let lib_name = "libonnxruntime.dylib";
     #[cfg(windows)]
-    let lib_name = "onnxruntime.dll";
+    let lib_name = ".dll";
 
     let ort_dylib_path = dylib_dir.as_ref().join(lib_name);
+
+    println!("setting ORT_DYLIB_PATH to {:?}", ort_dylib_path);
 
     if env::var("ORT_DYLIB_PATH").is_err() {
         env::set_var("ORT_DYLIB_PATH", ort_dylib_path);

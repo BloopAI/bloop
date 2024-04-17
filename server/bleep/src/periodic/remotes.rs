@@ -81,7 +81,9 @@ pub async fn sync_github_status_once(app: &Application) {
 }
 
 pub(crate) async fn update_repo_list(app: &Application) {
+    debug!("updating repo list");
     if let Some(gh) = app.credentials.github() {
+        debug!("updating github repo list {:?}", gh);
         let repos = match gh.current_repo_list().await {
             Ok(repos) => {
                 debug!("fetched new repo list");
@@ -94,6 +96,7 @@ pub(crate) async fn update_repo_list(app: &Application) {
         };
 
         let new = gh.update_repositories(repos);
+        debug!(?new, "updated repo list");
         app.credentials.set_github(new);
     }
 }
@@ -216,10 +219,14 @@ pub(crate) async fn update_credentials(app: &Application) {
 }
 
 pub(crate) async fn validate_github_credentials(app: &Application) {
+    debug!("validating github credentials");
     let github_expired = if let Some(github) = app.credentials.github() {
         let username = github.validate().await;
+        debug!("updated github");
+        println!("updated github");
         if let Ok(Some(ref user)) = username {
             debug!(?user, "updated user");
+            println!("updated user: {:?}", user);
             app.credentials.set_user(user.into()).await;
             if let Err(err) = app.credentials.store() {
                 error!(?err, "failed to save user credentials");

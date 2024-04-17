@@ -11,7 +11,7 @@ use anyhow::Context;
 use gix::{remote::fetch::Shallow, sec::identity::Account};
 use ignore::WalkBuilder;
 use serde::{Deserialize, Serialize};
-use tracing::{error, warn};
+use tracing::{debug, error, warn};
 
 use crate::{
     background::{SyncHandle, SyncPipes},
@@ -139,18 +139,26 @@ async fn git_clone(
     pipes: &SyncPipes,
     shallow: Shallow,
 ) -> Result<()> {
+
     let url = url.to_owned();
     let target = target.to_owned();
     let auth = auth.clone();
+    println!("git_clone url: {:?}", url);
+    println!("git_clone target: {:?}", target);
+    println!("git_clone auth: {:?}", auth);
 
     let git_status = pipes.git_sync_progress();
+    println!("git_clone git_status: {:?}", git_status);
     let interrupt = pipes.is_interrupted();
 
     tokio::task::spawn_blocking(move || {
         let mut clone = {
+            println!("git_clone prepare_clone_bare");
             let c = gix::prepare_clone_bare(url, target)?.with_shallow(shallow);
+
             match auth {
                 Some(auth) => c.configure_connection(move |con| {
+                    println!("git_clone configure_connection auth: {:?}", auth);
                     con.set_credentials(creds_callback!(auth));
                     Ok(())
                 }),
@@ -158,7 +166,9 @@ async fn git_clone(
             }
         };
 
+        println!("git_clone fetch_only");
         let (_repo, _outcome) = clone.fetch_only(git_status, &interrupt)?;
+
         Ok(())
     })
     .await?
@@ -170,20 +180,26 @@ async fn git_pull(
     pipes: &SyncPipes,
     shallow: Shallow,
 ) -> Result<()> {
+    println!("git_pull");
     use gix::remote::Direction;
 
     let auth = auth.clone();
+    println!("git_pull auth: {:?}", auth);
     let disk_path = repo.disk_path.to_owned();
+    println!("git_pull disk_path: {:?}", disk_path);
 
     let interrupt = pipes.is_interrupted();
 
     tokio::task::spawn_blocking(move || {
         let repo = gix::open(disk_path)?;
+        println!("git_pull spawn_blocking repo: {:?}", repo);
         let remote = repo
             .find_default_remote(Direction::Fetch)
             .context("no remote found")??;
+        println!("git_pull spawn_blocking remote: {:?}", remote);
 
         let connection = {
+            println!("git_pull spawn_blocking connection");
             let c = remote.connect(Direction::Fetch)?;
             match auth {
                 Some(auth) => c.with_credentials(creds_callback!(auth)),
@@ -191,6 +207,7 @@ async fn git_pull(
             }
         };
 
+        println!("git_pull spawn_blocking prepare_fetch");
         connection
             .prepare_fetch(gix::progress::Discard, Default::default())?
             .with_shallow(shallow)
@@ -326,14 +343,18 @@ impl Backends {
     }
 
     pub(crate) fn github(&self) -> Option<github::State> {
+        //debug!("remotes.github");
         self.backends.read(&Backend::Github, |_, v| {
             let BackendCredential::Github(ref github) = v.inner;
+            debug!("remotes.github: {:?}", github);
             github.clone()
         })
     }
 
     pub(crate) fn set_github(&self, gh: impl Into<github::State>) {
+        debug!("remotes.set_github");
         let gh = gh.into();
+        debug!("remotes.set_github: {:?}", gh);
         self.backends
             .entry(Backend::Github)
             .and_modify(|existing| {
@@ -347,6 +368,8 @@ impl Backends {
     }
 
     pub(crate) async fn set_user(&self, user: String) {
+        println!("set_user: {:?}", user);
+        debug!("set_user: {:?}", user);
         self.authenticated_user.write().unwrap().replace(user);
     }
 
@@ -367,10 +390,12 @@ impl BackendCredential {
         handle: &SyncHandle,
         repo: Repository,
     ) -> Result<SyncStatus> {
+        println!("clone_or_pull");
         use BackendCredential::*;
         let Github(gh) = self;
 
         let creds = gh.auth.creds(&repo).await?;
+        println!("clone_or_pull creds: {:?}", creds);
         let clone = || async {
             handle.set_status(|_| SyncStatus::Syncing);
             git_clone(
@@ -382,10 +407,13 @@ impl BackendCredential {
             )
             .await
         };
+        println!("clone_or_pull clone:");
         let pull = || async {
+            println!("clone_or_pull pull:");
             git_pull(&creds, &repo, &handle.pipes, handle.shallow_config.clone()).await
         };
 
+        println!("clone_or_pull before synced:");
         let synced = if repo.last_index_unix_secs == 0 && repo.disk_path.exists() {
             // it is possible syncing was killed, but the repo is
             // intact. pull if the dir exists, then quietly revert
@@ -396,8 +424,10 @@ impl BackendCredential {
                 Err(_) => clone().await,
             }
         } else if repo.last_index_unix_secs == 0 {
+            println!("repo.last_index_unix_secs == 0");
             clone().await
         } else {
+            println!("repo.last_index_unix_secs != 0");
             let pulled = pull().await;
             if pulled.is_err() && !handle.pipes.is_cancelled() {
                 clone().await

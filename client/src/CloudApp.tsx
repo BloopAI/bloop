@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import packageJson from '../package.json';
 import App from './App';
@@ -16,6 +16,7 @@ import { EnvContext } from './context/envContext';
 import { getConfig, initApi } from './services/api';
 import { useComponentWillMount } from './hooks/useComponentWillMount';
 
+
 const CloudApp = () => {
   useComponentWillMount(() => initApi(import.meta.env.API_URL || '/api', true));
   const [envConfig, setEnvConfig] = useState({});
@@ -28,11 +29,37 @@ const CloudApp = () => {
     setTimeout(() => getConfig().then(setEnvConfig), 1000);
   }, []);
 
+  const inputRef = useRef(null);
+  const handleChooseFolder = (options) => {
+    return new Promise((resolve, reject) => {
+      if (inputRef.current) {
+        const handleFolderChange = (event) => {
+          const file = event.target.files[0];
+          if (file) {
+            const folderPath = file.webkitRelativePath.split('/').slice(0, -1).join('/');
+            resolve(folderPath);
+          } else {
+            reject(new Error('No folder selected'));
+          }
+        };
+
+        inputRef.current.addEventListener('change', handleFolderChange, { once: true });
+        inputRef.current.click();
+      } else {
+        reject(new Error('Input element not found'));
+      }
+    });
+  };
+
+
+
   const deviceContextValue = useMemo(
     () => ({
       openFolderInExplorer: () => {},
       openLink: (p: string) => window.open(p),
-      chooseFolder: () => Promise.resolve(null),
+      //chooseFolder: () => Promise.resolve(null),
+      //chooseFolder: YourComponent.handleChooseFolder,
+      chooseFolder: handleChooseFolder,
       homeDir: '$HOME',
       listen: () => {},
       os: {
@@ -82,6 +109,12 @@ const CloudApp = () => {
         <LocaleContext.Provider value={localeContextValue}>
           <BrowserRouter>
             <App />
+            <input
+              type="file"
+              ref={inputRef}
+              webkitdirectory
+              style={{ display: 'none' }}
+            />
           </BrowserRouter>
         </LocaleContext.Provider>
       </EnvContext.Provider>
@@ -90,3 +123,5 @@ const CloudApp = () => {
 };
 
 export default CloudApp;
+
+

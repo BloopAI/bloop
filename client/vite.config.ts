@@ -14,7 +14,7 @@ export default defineConfig({
     EnvironmentPlugin(
       {
         ONBOARDING: '',
-        API_URL: '',
+        API_URL: 'http://localhost:7878/api',
       },
       {
         defineOn: 'import.meta.env',
@@ -36,5 +36,8 @@ export default defineConfig({
   ],
   define: {
     __APP_SESSION__: (Math.random() * 100000).toString(),
+  },
+  server: {
+    host: '0.0.0.0', // 设置服务器监听所有的IP地址
   },
 });

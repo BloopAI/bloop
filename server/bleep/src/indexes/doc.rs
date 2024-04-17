@@ -119,6 +119,7 @@ impl Doc {
         max_threads: usize,
     ) -> Result<Self, Error> {
         std::fs::create_dir_all(path)?;
+        println!("Creating index at {:?}", path);
 
         let section_schema = schema::Section::new();
         let mut section_index = tantivy::Index::open_or_create(
@@ -139,6 +140,8 @@ impl Doc {
         section_index
             .tokenizers()
             .register("trigram", NgramTokenizer::new(1, 3, false).unwrap());
+
+        println!("Index created at {:?}", path);
 
         Ok(Self {
             sql,

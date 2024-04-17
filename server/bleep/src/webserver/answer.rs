@@ -90,7 +90,12 @@ pub(super) async fn answer(
     info!(?params.q, "handling /answer query");
     let query_id = uuid::Uuid::new_v4();
 
+    debug!(?project_id, "project_id");
+    debug!(?params.conversation_id, "conversation_id");
+    debug!(?query_id, "query_id");
+
     let user_id = user.username().ok_or_else(super::no_user_id)?;
+    debug!(?user_id, "user_id");
 
     let mut conversation = match params.conversation_id {
         Some(conversation_id) => {
@@ -99,11 +104,13 @@ pub(super) async fn answer(
         None => Conversation::new(project_id),
     };
 
+
     let Answer {
         parent_exchange_id,
         q,
         ..
     } = &params;
+    debug!(?parent_exchange_id, "parent_exchange_id");
 
     if let Some(parent_exchange_id) = parent_exchange_id {
         let truncate_from_index = if parent_exchange_id.is_nil() {
@@ -121,6 +128,7 @@ pub(super) async fn answer(
     }
 
     let query = parser::parse_nl(q).context("parse error")?.into_owned();
+    debug!(?query, "parsed query");
     let query_target = query
         .target
         .as_ref()
@@ -133,7 +141,9 @@ pub(super) async fn answer(
     debug!(?query_target, "parsed query target");
 
     let action = Action::Query(query_target);
+    debug!(?action, "action");
     conversation.exchanges.push(Exchange::new(query_id, query));
+    //debug!(?conversation, "conversation");
 
     AgentExecutor {
         params: params.clone(),
@@ -178,7 +188,9 @@ type SseDynStream<T> = Sse<std::pin::Pin<Box<dyn tokio_stream::Stream<Item = T> 
 impl AgentExecutor {
     /// Like `try_execute`, but additionally logs errors in our analytics.
     async fn execute(&mut self) -> super::Result<SseDynStream<Result<sse::Event>>> {
+        debug!(?self.params, "AgentExecutor executing query");
         let response = self.try_execute().await;
+        debug!(?response, "AgentExecutor response");
 
         if let Err(err) = response.as_ref() {
             error!(?err, "failed to handle /answer query");
@@ -199,9 +211,14 @@ impl AgentExecutor {
     }
 
     async fn try_execute(&mut self) -> super::Result<SseDynStream<Result<sse::Event>>> {
+
+        println!("AgentExecutor try_execute");
+
         QueryLog::new(&self.app.sql).insert(&self.params.q).await?;
 
         let username = self.user.username().ok_or_else(super::no_user_id)?;
+
+        println!("AgentExecutor username: {}", username);
 
         let repo_refs = sqlx::query! {
             "SELECT repo_ref
@@ -220,6 +237,10 @@ impl AgentExecutor {
         .filter_map(|row| row.repo_ref.parse().ok())
         .collect();
 
+
+
+        println!("repo_refs: {:?}", repo_refs);
+
         let llm_gateway = self
             .user
             .llm_gateway(&self.app)
@@ -228,34 +249,40 @@ impl AgentExecutor {
             .session_reference_id(format!("{username}::{}", self.conversation.thread_id))
             .model(self.params.agent_model.model_name);
 
-        // confirm client compatibility with answer-api
-        match llm_gateway
-            .is_compatible(env!("CARGO_PKG_VERSION").parse().unwrap())
-            .await
-        {
-            Ok(res) if res.status() == StatusCode::OK => (),
-            Ok(res) if res.status() == StatusCode::NOT_ACCEPTABLE => {
-                let out_of_date = futures::stream::once(async {
-                    Ok(sse::Event::default()
-                        .json_data(serde_json::json!({"Err": "incompatible client"}))
-                        .unwrap())
-                });
-                return Ok(Sse::new(Box::pin(out_of_date)));
-            }
-            Ok(_) => unreachable!(),
-            Err(err) => {
-                warn!(
-                    ?err,
-                    "failed to check compatibility ... defaulting to `incompatible`"
-                );
-                let failed_to_check = futures::stream::once(async {
-                    Ok(sse::Event::default()
-                        .json_data(serde_json::json!({"Err": "failed to check compatibility"}))
-                        .unwrap())
-                });
-                return Ok(Sse::new(Box::pin(failed_to_check)));
-            }
-        };
+        println!("after llm_gateway init");
+        println!("llm_gateway model: {:?}", llm_gateway.model);
+        println!("llm_gateway session_reference_id: {:?}", llm_gateway.session_reference_id);
+        println!("llm_gateway temperature: {:?}", llm_gateway.temperature);
+        println!("llm_gateway bearer: {:?}", llm_gateway.bearer_token);
+
+        // // confirm client compatibility with answer-api
+        // match llm_gateway
+        //     .is_compatible(env!("CARGO_PKG_VERSION").parse().unwrap())
+        //     .await
+        // {
+        //     Ok(res) if res.status() == StatusCode::OK => (),
+        //     Ok(res) if res.status() == StatusCode::NOT_ACCEPTABLE => {
+        //         let out_of_date = futures::stream::once(async {
+        //             Ok(sse::Event::default()
+        //                 .json_data(serde_json::json!({"Err": "incompatible client"}))
+        //                 .unwrap())
+        //         });
+        //         return Ok(Sse::new(Box::pin(out_of_date)));
+        //     }
+        //     Ok(_) => unreachable!(),
+        //     Err(err) => {
+        //         warn!(
+        //             ?err,
+        //             "failed to check compatibility ... defaulting to `incompatible`"
+        //         );
+        //         let failed_to_check = futures::stream::once(async {
+        //             Ok(sse::Event::default()
+        //                 .json_data(serde_json::json!({"Err": "failed to check compatibility"}))
+        //                 .unwrap())
+        //         });
+        //         return Ok(Sse::new(Box::pin(failed_to_check)));
+        //     }
+        // };
 
         // let project: Project = serde_json::from_str(&self.params.project).unwrap();
         let Answer {
@@ -263,6 +290,8 @@ impl AgentExecutor {
             answer_model,
             ..
         } = self.params.clone();
+        debug!(?agent_model, "agent model");
+        debug!(?answer_model, "answer model");
 
         let (exchange_tx, exchange_rx) = tokio::sync::mpsc::channel(10);
 
@@ -280,8 +309,11 @@ impl AgentExecutor {
             agent_model,
         };
 
+        //debug!(?agent, "agent");
+
         let stream = async_stream::try_stream! {
             let mut exchange_rx = tokio_stream::wrappers::ReceiverStream::new(exchange_rx);
+            debug!("stream start");
 
             let result = 'outer: loop {
                 // The main loop. Here, we create two streams that operate simultaneously; the update
@@ -292,10 +324,12 @@ impl AgentExecutor {
                 use futures::future::FutureExt;
 
                 let left_stream = (&mut exchange_rx).map(Either::Left);
+                debug!("left_stream");
                 let right_stream = agent
                     .step(action)
                     .into_stream()
                     .map(Either::Right);
+                debug!("right_stream");
 
                 let timeout = Duration::from_secs(TIMEOUT_SECS);
 
@@ -329,7 +363,9 @@ impl AgentExecutor {
                 }
             };
 
+            //debug!(?result, "stream end");
             agent.complete(result.is_ok());
+            debug!("stream end");
 
             match result {
                 Ok(_) => {
@@ -338,12 +374,14 @@ impl AgentExecutor {
                         agent.user.username().context("agent failed to get user ID")?,
                     )
                     .await?;
+                    debug!(?conversation_id, "conversation stored");
 
                     let final_message = StreamEnd {
                         thread_id: agent.conversation.thread_id.to_string(),
                         query_id: agent.query_id,
                         conversation_id,
                     };
+                    //debug!(?final_message, "stream end");
 
                     yield AnswerEvent::StreamEnd(final_message);
                 }
@@ -356,6 +394,7 @@ impl AgentExecutor {
                     Err(anyhow!("reached timeout of {duration:?}"))?;
                 }
                 Err(agent::Error::Processing(e)) => {
+                    error!(?e, "failed to process action");
                     agent.track_query(
                         EventData::output_stage("error")
                             .with_payload("message", e.to_string()),

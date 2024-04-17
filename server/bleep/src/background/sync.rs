@@ -388,6 +388,7 @@ impl SyncHandle {
     }
 
     async fn git_sync(&self) -> Result<SyncStatus> {
+        println!("git_sync");
         let repo = self.reporef.clone();
         let backend = repo.backend();
         let creds = match self.app.credentials.for_repo(&repo) {
@@ -405,8 +406,10 @@ impl SyncHandle {
                 return Ok(SyncStatus::Queued);
             }
         };
+        println!("creds: {:?}", creds);
 
         let repo = self.sync_lock().await?;
+        println!("repo: {:?}", repo);
 
         // This reads really badly, but essentially we need a way to
         // retry after cleaning things up, and duplicating _too much_

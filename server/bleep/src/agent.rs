@@ -197,14 +197,16 @@ impl Agent {
     }
 
     pub async fn step(&mut self, action: Action) -> Result<Option<Action>> {
-        info!(?action, %self.conversation.thread_id, "executing next action");
+        info!(?action, %self.conversation.thread_id, "agent.step:: executing next action");
 
         match &action {
             Action::Query(s) => {
+                debug!(%s, %self.conversation.thread_id, "received query");
                 self.track_query(EventData::input_stage("query").with_payload("q", s));
 
                 // Always make a code search for the user query on the first exchange
                 if self.conversation.exchanges.len() == 1 {
+                    debug!(%s, %self.conversation.thread_id, "first exchange, performing code search");
                     let keywords = {
                         let keys = remove_stopwords(s);
                         if keys.is_empty() {
@@ -213,12 +215,14 @@ impl Agent {
                             keys
                         }
                     };
+                    debug!(%keywords, %self.conversation.thread_id, "searching for code");
                     self.code_search(&keywords).await?;
                 }
                 s.clone()
             }
 
             Action::Answer { paths } => {
+                debug!(?paths, %self.conversation.thread_id, "received answer");
                 self.answer(paths).await.context("answer action failed")?;
                 return Ok(None);
             }
@@ -229,6 +233,7 @@ impl Agent {
         };
 
         if self.last_exchange().search_steps.len() >= MAX_STEPS {
+            debug!(%self.conversation.thread_id, "reached max steps, forcing answer");
             return Ok(Some(Action::Answer {
                 paths: self.paths().enumerate().map(|(i, _)| i).collect(),
             }));
@@ -238,13 +243,17 @@ impl Agent {
             prompts::functions(self.paths().next().is_some()), // Only add proc if there are paths in context
         )
         .unwrap();
+        debug!(?functions, %self.conversation.thread_id, "functions");
+
 
         let mut history = vec![llm_gateway::api::Message::system(&prompts::system(
             self.paths(),
         ))];
         history.extend(self.history()?);
+        debug!(?history, %self.conversation.thread_id, "history");
 
         let trimmed_history = trim_history(history.clone(), self.agent_model)?;
+        debug!(?trimmed_history, %self.conversation.thread_id, "trimmed history");
 
         let raw_response = self
             .llm_gateway
@@ -269,6 +278,7 @@ impl Agent {
             )
             .await
             .context("failed to fold LLM function call output")?;
+        debug!(?raw_response, %self.conversation.thread_id, "raw response");
 
         self.track_query(
             EventData::output_stage("llm_reply")

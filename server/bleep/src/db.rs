@@ -15,18 +15,23 @@ pub type SqlDb = Arc<SqlitePool>;
 #[tracing::instrument(skip_all)]
 pub async fn initialize(config: &Configuration) -> Result<SqlitePool> {
     let data_dir = config.index_dir.to_string_lossy();
+    println!("{:?}", data_dir);
     let url = format!("sqlite://{data_dir}/bleep.db?mode=rwc");
+    println!("{:?}", url);
 
     match connect(&url).await {
         Ok(pool) => {
             debug!("connected");
+            println!("{:?} connected", pool);
             Ok(pool)
         }
         Err(e) => {
             error!(?e, "error while migrating, recreating database...");
+            println!("{:?}", e);
 
             reset(&data_dir)?;
             debug!("reset complete");
+            println!("{:?} reset complete", data_dir);
 
             Ok(connect(&data_dir)
                 .await

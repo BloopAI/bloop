@@ -124,7 +124,7 @@ impl SyncPipes {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct GitSync {
     /// Record creation time so we can delay sending events
     created: Instant,

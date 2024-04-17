@@ -2,6 +2,7 @@ use pest::{iterators::Pair, Parser};
 use regex::Regex;
 use smallvec::{smallvec, SmallVec};
 use std::{borrow::Cow, mem, ops::Deref};
+use tracing::log::debug;
 
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
 pub struct Query<'a> {
@@ -599,9 +600,12 @@ pub fn parse(query: &str) -> Result<Vec<Query<'_>>, ParseError> {
 
 pub fn parse_nl(query: &str) -> Result<SemanticQuery<'_>, ParseError> {
     let raw_query = query.to_string();
+    debug!("parsing query {:?}", raw_query);
     let mut target = "".to_string();
 
+
     let pairs = PestParser::parse(Rule::nl_query, query).map_err(Box::new)?;
+    //debug!(pairs = ?pairs.clone().collect::<Vec<_>>(), "parsed query");
 
     let mut repos = Vec::new();
     let mut paths = Vec::new();
@@ -619,30 +623,38 @@ pub fn parse_nl(query: &str) -> Result<SemanticQuery<'_>, ParseError> {
         match pair.as_rule() {
             Rule::repo => {
                 let item = Literal::from(pair.into_inner().next().unwrap());
+
+                debug!("parsed repo {:?}", item);
                 repos.push(item);
             }
             Rule::path => {
                 let item = Literal::from(pair.into_inner().next().unwrap());
+                debug!("parsed path {:?}", item);
                 extend_query(&item);
                 paths.push(item);
             }
             Rule::branch => {
                 let item = Literal::from(pair.into_inner().next().unwrap());
+                debug!("parsed branch {:?}", item);
                 branch.push(item);
             }
             Rule::lang => {
                 let inner = pair.into_inner().next().unwrap();
+                debug!("parsed lang inner {:?}", inner);
                 let item = Literal::Plain(LiteralInner {
                     content: super::languages::parse_alias(inner.as_str()),
                     start: inner.as_span().start(),
                     end: inner.as_span().end(),
                 });
+                debug!("parsed lang {:?}", item);
 
                 extend_query(&item);
                 langs.push(item);
+                debug!("parsed lang {:?}", langs);
             }
             Rule::raw_text => {
                 let rhs = Literal::from(pair);
+                debug!("parsed raw_text {:?}", rhs);
                 extend_query(&rhs);
             }
             _ => {}

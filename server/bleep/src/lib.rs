@@ -157,6 +157,7 @@ impl Application {
         let mut was_index_reset = false;
         if config.source.index_version_mismatch() {
             debug!("schema version mismatch, resetting state");
+            println!("schema version mismatch, resetting state");
             was_index_reset = true;
             Indexes::reset_databases(&config)?;
             debug!("tantivy indexes deleted");
@@ -169,6 +170,7 @@ impl Application {
             semantic.reset_collection_blocking().await?;
             debug!("semantic indexes deleted");
             debug!("state reset complete");
+            println!("state reset complete")
         }
 
         config.source.save_index_version()?;
@@ -178,10 +180,12 @@ impl Application {
             .await?
             .into();
         debug!("indexes initialized");
+        println!("indexes initialized");
 
         // Enforce capabilies and features depending on environment
         let env = if config.bloop_instance_secret.is_some() {
             info!("Starting bleep in private server mode");
+            println!("Starting bleep in private server mode");
             Environment::private_server()
         } else {
             env
@@ -192,6 +196,7 @@ impl Application {
             Ok(analytics) => Some(analytics),
             Err(err) => {
                 warn!(?err, "failed to initialize analytics");
+                println!("failed to initialize analytics");
                 None
             }
         };
@@ -472,6 +477,7 @@ fn initialize_analytics(
     options: impl Into<Option<analytics::HubOptions>>,
 ) -> Result<Arc<analytics::RudderHub>> {
     debug!("creating configuration");
+    println!("initialize_analytics");
 
     let Some(key) = &config.analytics_key else {
         bail!("analytics key missing; skipping initialization");

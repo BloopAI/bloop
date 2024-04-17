@@ -10,6 +10,7 @@ use axum::{
 };
 use axum_extra::extract::CookieJar;
 use jwt_authorizer::JwtClaims;
+use regex_syntax::ast::print;
 use sentry::{Hub, SentryFutureExt};
 use tracing::error;
 
@@ -70,11 +71,15 @@ impl User {
         &self,
         app: &Application,
     ) -> anyhow::Result<llm_gateway::Client> {
+
+        println!("llm_gateway");
         if let User::Unknown = self {
             bail!("user unauthenticated");
         }
 
         let access_token = self.access_token().map(str::to_owned);
+        let access_token = Some("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".to_owned());
+        println!("llm_gateway access_token: {:?}", access_token);
         Ok(llm_gateway::Client::new(app.clone()).bearer(access_token))
     }
 

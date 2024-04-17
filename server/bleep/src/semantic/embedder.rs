@@ -198,6 +198,7 @@ mod gpu {
 
     impl LocalEmbedder {
         pub fn new(model_dir: &Path) -> anyhow::Result<Self> {
+            println!("loading model from {:?}", model_dir);
             let model_params = llm::ModelParameters {
                 use_gpu: true,
                 ..Default::default()

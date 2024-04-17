@@ -14,6 +14,7 @@ use crate::{
 
 impl Agent {
     pub async fn code_search(&mut self, query: &str) -> Result<String> {
+        debug!(?query, "searching for code");
         const CODE_SEARCH_LIMIT: u64 = 10;
         const MINIMUM_RESULTS: usize = CODE_SEARCH_LIMIT as usize / 2;
 

@@ -55,12 +55,22 @@ const LocalRepos = ({}: Props) => {
     }
   }, [chooseFolder, homeDir]);
 
+  // const enterAddMode = useCallback(async () => {
+  //   setFocusedItem({
+  //     footerHint: t('Select a folder containing a git repository'),
+  //     footerBtns: [{ label: t('Start indexing'), shortcut: ['entr'] }],
+  //   });
+  //   await handleChooseFolder();
+  // }, []);
   const enterAddMode = useCallback(async () => {
+    console.log('enterAddMode is being called');
     setFocusedItem({
       footerHint: t('Select a folder containing a git repository'),
       footerBtns: [{ label: t('Start indexing'), shortcut: ['entr'] }],
     });
+    console.log('handleChooseFolder is about to be called');
     await handleChooseFolder();
+    console.log('handleChooseFolder has been called');
   }, []);
 
   useEffect(() => {
@@ -81,7 +91,7 @@ const LocalRepos = ({}: Props) => {
       key: 'add',
       items: [
         {
-          label: t('Add local repository'),
+          label: t('Add local repository v2'),
           Icon: PlusSignIcon,
           footerHint: t('Add a repository from your local machine'),
           footerBtns: [
@@ -92,7 +102,10 @@ const LocalRepos = ({}: Props) => {
           ],
           key: 'add',
           id: 'Add',
-          onClick: enterAddMode,
+          onClick: () => {
+            console.log('Add local repository option is clicked');
+            enterAddMode();
+          },
         },
       ],
     };

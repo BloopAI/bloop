@@ -40,21 +40,31 @@ const UserFormStep2 = ({ onContinue }: Props) => {
   }, []);
 
   const onClick = useCallback(() => {
+    console.log('onClick isGithubConnected:', isGithubConnected);
     if (isGithubConnected) {
       handleLogout();
       setBtnClicked(false);
+
     } else {
       if (isTimedOut) {
         setIsTimedOut(false);
         githubLogin().then((data) => {
-          setLoginUrl(data.authentication_needed.url);
-          openLink(data.authentication_needed.url);
+          console.log('githubLogin ret data:');
+          console.log('data:', data);
+          //console.log(data.authentication_needed.url);
+          //setLoginUrl(data.authentication_needed.url);
+          //openLink(data.authentication_needed.url);
         });
       } else {
-        openLink(loginUrl);
+        //openLink(loginUrl);
+        console.log('openLink loginUrl:', loginUrl);
       }
       setBtnClicked(true);
     }
+    //console.log('show_main_window')
+    //invokeTauriCommand('show_main_window');
+    onContinue();
+
   }, [isGithubConnected, loginUrl, openLink, isTimedOut]);
 
   const handleCopy = useCallback(() => {
@@ -65,11 +75,14 @@ const UserFormStep2 = ({ onContinue }: Props) => {
 
   useEffect(() => {
     githubLogin().then((data) => {
-      setLoginUrl(data.authentication_needed.url);
+      console.log('githubLogin ret data:');
+      console.log('data:', data);
+      //setLoginUrl(data.authentication_needed.url);
     });
   }, []);
 
   const checkGHAuth = useCallback(async () => {
+    console.log('checkGHAuth')
     const d = await getConfig();
     setGithubConnected(!!d.user_login);
     setEnvConfig((prev) =>
@@ -78,36 +91,68 @@ const UserFormStep2 = ({ onContinue }: Props) => {
     return d;
   }, []);
 
-  useEffect(() => {
-    let intervalId: number;
-    let timerId: number;
-    if (loginUrl && !isGithubConnected) {
-      checkGHAuth();
-      intervalId = polling(
-        () =>
-          checkGHAuth().then((d) => {
-            if (!!d.user_login) {
-              invokeTauriCommand('show_main_window');
-              onContinue();
-            }
-          }),
-        500,
-      );
-      timerId = window.setTimeout(
-        () => {
-          clearInterval(intervalId);
-          setBtnClicked(false);
-          setIsTimedOut(true);
-        },
-        10 * 60 * 1000,
-      );
-    }
+  // useEffect(() => {
+  //   let intervalId: number;
+  //   let timerId: number;
+  //   if (loginUrl && !isGithubConnected) {
+  //     checkGHAuth();
+  //     intervalId = polling(
+  //       () =>
+  //         checkGHAuth().then((d) => {
+  //           if (!!d.user_login) {
+  //             invokeTauriCommand('show_main_window');
+  //             onContinue();
+  //           }
+  //         }),
+  //       500,
+  //     );
+  //     timerId = window.setTimeout(
+  //       () => {
+  //         clearInterval(intervalId);
+  //         setBtnClicked(false);
+  //         setIsTimedOut(true);
+  //       },
+  //       10 * 60 * 1000,
+  //     );
+  //   }
+  //
+  //   return () => {
+  //     clearInterval(intervalId);
+  //     clearTimeout(timerId);
+  //   };
+  // }, [loginUrl, isGithubConnected, checkGHAuth, onContinue]);
 
-    return () => {
-      clearInterval(intervalId);
-      clearTimeout(timerId);
-    };
-  }, [loginUrl, isGithubConnected, checkGHAuth, onContinue]);
+  // useEffect(() => {
+  //   let intervalId: number;
+  //   let timerId: number;
+  //
+  //   checkGHAuth();
+  //   intervalId = polling(
+  //     () =>
+  //       checkGHAuth().then((d) => {
+  //         if (!!d.user_login) {
+  //           console.log('show_main_window')
+  //           invokeTauriCommand('show_main_window');
+  //           onContinue();
+  //         }
+  //       }),
+  //     500,
+  //   );
+  //   timerId = window.setTimeout(
+  //     () => {
+  //       clearInterval(intervalId);
+  //       setBtnClicked(false);
+  //       setIsTimedOut(true);
+  //     },
+  //     10 * 60 * 1000,
+  //   );
+  //
+  //
+  //   return () => {
+  //     clearInterval(intervalId);
+  //     clearTimeout(timerId);
+  //   };
+  // }, [loginUrl, checkGHAuth, onContinue]);
 
   useEffect(() => {
     if (loginUrl) {

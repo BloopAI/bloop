@@ -27,6 +27,7 @@ const DB_API = 'https://api.bloop.ai';
 let http: AxiosInstance;
 
 export const initApi = (serverUrl = '', isSelfServe?: boolean) => {
+  console.log('initApi, serverUrl:', serverUrl, 'isSelfServe:', isSelfServe);
   if (!http) {
     http = axios.create({
       baseURL: serverUrl,

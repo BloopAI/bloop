@@ -117,6 +117,14 @@ pub struct Configuration {
     /// URL for the qdrant server
     pub qdrant_url: String,
 
+    // qdrant api_key
+    #[clap(long, default_value = "")]
+    #[serde(default = "default_qdrant_api_key")]
+    /// API key for the qdrant server
+    pub qdrant_api_key: String,
+
+
+
     #[clap(long, default_value_os_t = default_model_dir())]
     #[serde(default = "default_model_dir")]
     /// Path to the embedding model directory
@@ -189,6 +197,9 @@ pub struct Configuration {
 
     #[clap(long)]
     /// Address for the embedding server
+    /// set default embedding server url
+    // #[clap(long, default_value_t = default_embedding_server_url())]
+    // #[serde(default = "default_embedding_server_url")]
     pub embedding_server_url: Option<reqwest::Url>,
 }
 
@@ -317,6 +328,8 @@ impl Configuration {
 
             qdrant_url: right_if_default!(b.qdrant_url, a.qdrant_url, String::new()),
 
+            qdrant_api_key: right_if_default!(b.qdrant_api_key, a.qdrant_api_key, String::new()),
+
             answer_api_url: right_if_default!(
                 b.answer_api_url,
                 a.answer_api_url,
@@ -398,6 +411,11 @@ fn default_collection_name() -> String {
     "documents".into()
 }
 
+fn default_embedding_server_url() -> reqwest::Url {
+    reqwest::Url::parse("http:// }").unwrap()
+}
+
+
 pub fn default_parallelism() -> usize {
     std::thread::available_parallelism().unwrap().get()
 }
@@ -423,7 +441,11 @@ fn default_host() -> String {
 }
 
 fn default_qdrant_url() -> String {
-    String::from("http://127.0.0.1:6334")
+    String::from("https://56ec3b75-151c-4ae8-bd1b-1b1223419db8.us-east4-0.gcp.cloud.qdrant.io:6334")
+}
+
+fn default_qdrant_api_key() -> String {
+    String::from("jQonERs59hDJ2wG2rWDmeNWtEtrg5C9O4yFx7VHEXpHO9dT0Srdz2w")
 }
 
 fn default_answer_api_url() -> String {

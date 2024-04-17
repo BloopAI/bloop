@@ -32,23 +32,79 @@ const AddNewRepo = ({ shouldShowTutorial }: Props) => {
     setChosenStep({ id: CommandBarStepEnum.MANAGE_REPOS });
   }, []);
 
+  // const handleChooseFolder = useCallback(async () => {
+  //   let folder: string | string[] | null;
+  //   if (chooseFolder) {
+  //     try {
+  //       folder = await chooseFolder({
+  //         directory: true,
+  //         defaultPath: homeDir,
+  //       });
+  //     } catch (err) {
+  //       console.log(err);
+  //     }
+  //   }
+  //   // @ts-ignore
+  //   if (typeof folder === 'string') {
+  //     scanLocalRepos(folder).then((data) => {
+  //       if (data.list.length === 1) {
+  //         syncRepo(data.list[0].ref);
+  //         toast(t('Indexing repository'), {
+  //           description: (
+  //             <Trans values={{ repoName: data.list[0].name }}>
+  //               <span className="text-label-base body-s-b">repoName</span> has
+  //               started indexing. You’ll receive a notification as soon as this
+  //               process completes.
+  //             </Trans>
+  //           ),
+  //           icon: <SpinLoaderContainer sizeClassName="w-4 h-4" />,
+  //           unstyled: true,
+  //         });
+  //         handleBack();
+  //         return;
+  //       } else if (!data.list.length) {
+  //         toast.error(t('Not a git repository'), {
+  //           description: t('The folder you selected is not a git repository.'),
+  //           icon: <HardDriveIcon sizeClassName="w-4 h-4" />,
+  //           unstyled: true,
+  //         });
+  //       } else if (data.list.length > 1) {
+  //         toast.error(t('Folder too large'), {
+  //           description: t(
+  //             'The folder you selected has multiple git repositories nested inside.',
+  //           ),
+  //           icon: <HardDriveIcon sizeClassName="w-4 h-4" />,
+  //           unstyled: true,
+  //         });
+  //       }
+  //     });
+  //   }
+  // }, [chooseFolder, homeDir, handleBack]);
+
   const handleChooseFolder = useCallback(async () => {
+    console.log('handleChooseFolder is being called');
     let folder: string | string[] | null;
     if (chooseFolder) {
       try {
+        console.log('chooseFolder is being called');
         folder = await chooseFolder({
           directory: true,
           defaultPath: homeDir,
         });
+        console.log('chooseFolder has been called, folder:', folder);
       } catch (err) {
-        console.log(err);
+        console.log('Error in chooseFolder:', err);
       }
     }
     // @ts-ignore
     if (typeof folder === 'string') {
+      console.log('folder is a string, calling scanLocalRepos');
       scanLocalRepos(folder).then((data) => {
+        console.log('scanLocalRepos has been called, data:', data);
         if (data.list.length === 1) {
+          console.log('One repository found, calling syncRepo');
           syncRepo(data.list[0].ref);
+          console.log('syncRepo has been called');
           toast(t('Indexing repository'), {
             description: (
               <Trans values={{ repoName: data.list[0].name }}>
@@ -60,15 +116,18 @@ const AddNewRepo = ({ shouldShowTutorial }: Props) => {
             icon: <SpinLoaderContainer sizeClassName="w-4 h-4" />,
             unstyled: true,
           });
+          console.log('handleBack is being called');
           handleBack();
           return;
         } else if (!data.list.length) {
+          console.log('No repositories found');
           toast.error(t('Not a git repository'), {
             description: t('The folder you selected is not a git repository.'),
             icon: <HardDriveIcon sizeClassName="w-4 h-4" />,
             unstyled: true,
           });
         } else if (data.list.length > 1) {
+          console.log('Multiple repositories found');
           toast.error(t('Folder too large'), {
             description: t(
               'The folder you selected has multiple git repositories nested inside.',

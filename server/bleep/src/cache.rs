@@ -325,16 +325,16 @@ impl<'a> FileCache {
     async fn batched_embed_or_flush_queue(&self, flush: bool) -> anyhow::Result<()> {
         let new_points = self.embed_queued_points(flush).await?;
 
-        if !new_points.is_empty() {
-            if let Err(err) = self
-                .semantic
-                .qdrant_client()
-                .upsert_points(self.semantic.collection_name(), new_points, None)
-                .await
-            {
-                error!(?err, "failed to write new points into qdrant");
-            }
-        }
+        // if !new_points.is_empty() {
+        //     if let Err(err) = self
+        //         .semantic
+        //         .qdrant_client()
+        //         .upsert_points(self.semantic.collection_name(), new_points, None, None)
+        //         .await
+        //     {
+        //         error!(?err, "failed to write new points into qdrant");
+        //     }
+        // }
         Ok(())
     }
 
@@ -664,18 +664,18 @@ impl<'a> ChunkCache<'a> {
         }
 
         if !to_delete.is_empty() {
-            self.semantic
-                .qdrant_client()
-                .delete_points(
-                    self.semantic.collection_name(),
-                    &to_delete
-                        .into_iter()
-                        .map(PointId::from)
-                        .collect::<Vec<_>>()
-                        .into(),
-                    None,
-                )
-                .await?;
+            // self.semantic
+            //     .qdrant_client()
+            //     .delete_points(
+            //         self.semantic.collection_name(),
+            //         &to_delete, None
+            //             .into_iter()
+            //             .map(PointId::from)
+            //             .collect::<Vec<_>>()
+            //             .into(),
+            //         None,
+            //     )
+            //     .await?;
         }
         Ok(delete_size)
     }
@@ -706,24 +706,24 @@ impl<'a> ChunkCache<'a> {
                 .await?;
             }
 
-            let id = points
-                .iter()
-                .cloned()
-                .map(PointId::from)
-                .collect::<Vec<_>>()
-                .into();
+            // let id = points
+            //     .iter()
+            //     .cloned()
+            //     .map(PointId::from)
+            //     .collect::<Vec<_>>()
+            //     .into();
 
-            let payload = qdrant_client::client::Payload::new_from_hashmap(
-                [("branches".to_string(), branches_list.to_owned().into())].into(),
-            );
+            // let payload = qdrant_client::client::Payload::new_from_hashmap(
+            //     [("branches".to_string(), branches_list.to_owned().into())].into(),
+            // );
 
-            let semantic = self.semantic.clone();
-            qdrant_updates.spawn(async move {
-                semantic
-                    .qdrant_client()
-                    .set_payload(semantic.collection_name(), &id, payload, None)
-                    .await
-            });
+            // let semantic = self.semantic.clone();
+            // qdrant_updates.spawn(async move {
+            //     semantic
+            //         .qdrant_client()
+            //         .set_payload(semantic.collection_name(), &id, payload, None, None)
+            //         .await
+            // });
             next = entry.next();
         }
 

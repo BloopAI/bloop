@@ -3,7 +3,8 @@ use crate::intelligence::{MemoizedQuery, TSLanguageConfig};
 pub static PHP: TSLanguageConfig = TSLanguageConfig {
     language_ids: &["PHP"],
     file_extensions: &["php"],
-    grammar: tree_sitter_php::language,
+    //grammar: tree_sitter_php::language,
+    grammar: tree_sitter_javascript::language,
     scope_query: MemoizedQuery::new(include_str!("./scopes.scm")),
     hoverable_query: MemoizedQuery::new(
         r#"

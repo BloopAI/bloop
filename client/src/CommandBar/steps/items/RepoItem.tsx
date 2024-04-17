@@ -256,15 +256,37 @@ const RepoItem = ({
           : 'bg-bg-border'
       }
       isWithCheckmark={!!isInProject}
-      onClick={
-        status === SyncStatus.Done
-          ? isInProject
-            ? handleRemoveFromProject
-            : handleAddToProject
-          : isIndexing
-          ? handleCancelSync
-          : onRepoSync
-      }
+      onClick={() => {
+        console.log('onClick triggered');
+        console.log('status:', status);
+        console.log('isInProject:', isInProject);
+        console.log('isIndexing:', isIndexing);
+
+        if (status === SyncStatus.Done) {
+          if (isInProject) {
+            console.log('handleRemoveFromProject is being called');
+            handleRemoveFromProject();
+          } else {
+            console.log('handleAddToProject is being called');
+            handleAddToProject();
+          }
+        } else if (isIndexing) {
+          console.log('handleCancelSync is being called');
+          handleCancelSync();
+        } else {
+          console.log('onRepoSync is being called');
+          onRepoSync();
+        }
+      }}
+      // onClick={
+      //   status === SyncStatus.Done
+      //     ? isInProject
+      //       ? handleRemoveFromProject
+      //       : handleAddToProject
+      //     : isIndexing
+      //     ? handleCancelSync
+      //     : onRepoSync
+      // }
       footerBtns={
         status === SyncStatus.Done || status === SyncStatus.Cancelled
           ? [

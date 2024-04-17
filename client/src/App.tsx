@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { useState, memo, useEffect } from 'react';
 import { DndProvider } from 'react-dnd';
 import * as Sentry from '@sentry/react';
 import { HTML5Backend } from 'react-dnd-html5-backend';
@@ -7,6 +7,7 @@ import { AnalyticsContextProvider } from './context/providers/AnalyticsContextPr
 import { PersonalQuotaContextProvider } from './context/providers/PersonalQuotaContextProvider';
 import ReportBugModal from './components/ReportBugModal';
 import Onboarding from './Onboarding';
+import GithubLogin from './GithubLogin';
 import Project from './Project';
 import CommandBar from './CommandBar';
 import ProjectContextProvider from './context/providers/ProjectContextProvider';
@@ -19,6 +20,8 @@ import { FileHighlightsContextProvider } from './context/providers/FileHighlight
 import RepositoriesContextProvider from './context/providers/RepositoriesContextProvider';
 import UpgradeRequiredPopup from './components/UpgradeRequiredPopup';
 import ErrorFallback from './components/ErrorFallback';
+import useStateRef from './hooks/useStateRef';
+import LoginStore from './GithubLogin/loginStore';
 
 const toastOptions = {
   unStyled: true,
@@ -37,6 +40,16 @@ const toastOptions = {
 };
 
 const App = () => {
+
+  const [isLoggedIn, setIsLoggedIn] = useStateRef(false); // 新增的状态
+
+  useEffect(() => {
+    // window.addEventListener('login', (data) => {
+    //   console.log('login', data)
+    // }, false)
+  console.log('登录状态更新了',LoginStore.getLoginStatus())
+    setIsLoggedIn(LoginStore.getLoginStatus())
+  },[LoginStore.isLogin])
   return (
     <DndProvider backend={HTML5Backend}>
       <AnalyticsContextProvider>
@@ -46,15 +59,15 @@ const App = () => {
               <Toaster closeButton toastOptions={toastOptions} />
               <RepositoriesContextProvider>
                 <ReportBugModal />
-                <Onboarding />
+                {!isLoggedIn && <GithubLogin />}
                 <UpgradeRequiredPopup />
                 <CommandBarContextProvider>
                   <Settings />
                   <ProjectSettings />
                   <FileHighlightsContextProvider>
                     <TabsContextProvider>
-                      <CommandBar />
-                      <Project />
+                      {isLoggedIn &&<CommandBar />}
+                      {isLoggedIn &&<Project />}
                     </TabsContextProvider>
                   </FileHighlightsContextProvider>
                 </CommandBarContextProvider>

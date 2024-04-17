@@ -3,6 +3,7 @@ use octocrab::Octocrab;
 use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use tracing::debug;
 
 use crate::repo::{GitRemote, RepoRemote, Repository};
 
@@ -43,7 +44,7 @@ impl State {
                 None
             }
         };
-
+        debug!("validate username: {:?}", username);
         Ok(username)
     }
 
@@ -58,6 +59,7 @@ impl State {
 
     /// Get a representative list of repositories currently accessible
     pub async fn current_repo_list(&self) -> Result<Vec<octocrab::models::Repository>> {
+        debug!("current_repo_list: {:?}", self.repositories);
         self.auth.list_repos().await
     }
 
@@ -97,15 +99,25 @@ impl From<Auth> for State {
 impl Auth {
     /// Return credentials for private repositories, and no credentials for public ones.
     pub(crate) async fn creds(&self, repo: &Repository) -> Result<Option<GitCreds>> {
+        println!("auth creds: {:?}", self);
+        println!("repo: {:?}", repo);
+        //println!("repo.remote: {:?}", repo.remote);
         let RepoRemote::Git(GitRemote { ref address, .. }) = repo.remote else {
             return Err(RemoteError::NotSupported("github without git backend"));
         };
+
+        println!("address: {:?}", address);
 
         let (org, reponame) = address
             .split_once('/')
             .ok_or(RemoteError::NotSupported("invalid repo address"))?;
 
+        println!("org: {:?}, reponame: {:?}", org, reponame);
+
         let response = self.client()?.repos(org, reponame).get().await;
+
+        println!("response: {:?}", response);
+
         let repo = match response {
             Err(octocrab::Error::GitHub { ref source, .. })
                 if "Not Found" == source.message.as_str() =>
@@ -120,6 +132,8 @@ impl Auth {
             Err(err) => return Err(err)?,
             Ok(details) => details,
         };
+
+        println!("repo: {:?}", repo);
 
         Ok(match repo.private {
             // No credentials for public repos
@@ -160,6 +174,8 @@ impl Auth {
                     scope: vec![],
                 };
 
+
+                //println!("octocrab client token: {:?}", token);
                 Octocrab::builder().oauth(token).build()
             }
             App { token, .. } => Octocrab::builder()
@@ -169,11 +185,14 @@ impl Auth {
     }
 
     async fn list_repos(&self) -> Result<Vec<octocrab::models::Repository>> {
+        debug!("list_repos: {:?}", self);
         let gh_client = self.client().expect("failed to build github client");
+        debug!("gh_client: {:?}", gh_client);
         let mut results = vec![];
         for page in 1.. {
             let mut resp = match self {
                 remotes::github::Auth::OAuth { .. } => {
+                    debug!("list_repos_for_authenticated_user");
                     gh_client
                         .current()
                         .list_repos_for_authenticated_user()
@@ -194,12 +213,13 @@ impl Auth {
             }?;
 
             if resp.items.is_empty() {
+                debug!("no more items");
                 break;
             }
 
             results.extend(resp.take_items())
         }
-
+        debug!("list_repos: {:?}", results);
         Ok(results)
     }
 }

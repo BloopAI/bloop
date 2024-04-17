@@ -11,6 +11,8 @@ const SelfServe = () => {
   const location = useLocation();
 
   useEffect(() => {
+    console.log('SelfServe useEffect, githubLogin')
+    console.log(location)
     githubLogin(
       encodeURIComponent(
         encodeURIComponent(
@@ -18,6 +20,9 @@ const SelfServe = () => {
         ),
       ),
     ).then((resp) => {
+      console.log('githubLogin ret data:');
+      console.log(resp);
+      console.log(resp.authentication_needed.url);
       setLoginUrl(resp.authentication_needed.url);
     });
   }, []);

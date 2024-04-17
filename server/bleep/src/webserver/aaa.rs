@@ -18,6 +18,8 @@ use super::prelude::*;
 
 pub(super) const COOKIE_NAME: &str = "X-Bleep-Cognito";
 
+
+
 #[derive(Serialize)]
 #[serde(rename_all = "snake_case")]
 pub(super) enum CredentialStatus {
@@ -31,6 +33,8 @@ pub(super) enum AuthResponse {
     AuthenticationNeeded { url: String },
     Status(CredentialStatus),
 }
+
+
 
 impl super::ApiResponse for AuthResponse {}
 
