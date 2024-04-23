@@ -249,6 +249,7 @@ const ChatPersistentState = ({
         }
         queryParams.line_start = options.lines[0].toString();
         queryParams.line_end = options.lines[1].toString();
+        queryParams.q = query;
       } else {
         queryParams.q = query;
       }
@@ -480,7 +481,7 @@ const ChatPersistentState = ({
       const [lineStart, lineEnd] = ending.split('-');
       const filePath = prefix.slice(9);
       userQuery = t(
-        `Explain the purpose of the file {{filePath}}, from lines {{lineStart}} - {{lineEnd}}`,
+        `Explain lines {{lineStart}} - {{lineEnd}} in {{filePath}}`,
         {
           lineStart: Number(lineStart) + 1,
           lineEnd: Number(lineEnd) + 1,

@@ -523,5 +523,7 @@
 	"Default": "デフォルト",
 	"Recommended: The classic input": "推奨：クラシック入力",
 	"Conversation input": "会話の入力",
-	"Add multiple files": "複数のファイルを追加します"
+	"Add multiple files": "複数のファイルを追加します",
+	"Explain lines {{lineStart}} - {{lineEnd}} in {{filePath}}": "{{filePath}} の行 {{lineStart}} - {{lineEnd}} について説明します",
+	"Add to studio": "スタジオに追加します"
 }
