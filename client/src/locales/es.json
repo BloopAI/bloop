@@ -536,5 +536,7 @@
 	"Select the input type to use in conversations": "Seleccione el tipo de entrada a usar en conversaciones",
 	"Default": "Por defecto",
 	"Recommended: The classic input": "Recomendado: la entrada clásica",
-	"Add multiple files": "Agregar varios archivos"
+	"Add multiple files": "Agregar varios archivos",
+	"Simplified": "Simplificada",
+	"Explain lines {{lineStart}} - {{lineEnd}} in {{filePath}}": "Explique las líneas {{lineStart}} - {{lineEnd}} en {{filePath}}"
 }

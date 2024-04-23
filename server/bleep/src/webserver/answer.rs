@@ -387,6 +387,7 @@ pub struct Explain {
     pub branch: Option<String>,
     pub repo_ref: RepoRef,
     pub conversation_id: Option<i64>,
+    pub q: String,
 }
 
 pub async fn explain(
@@ -403,12 +404,7 @@ pub async fn explain(
 
     // We synthesize a virtual `/answer` request.
     let virtual_req = Answer {
-        q: format!(
-            "Explain lines {} - {} in {}",
-            params.line_start + 1,
-            params.line_end + 1,
-            params.relative_path
-        ),
+        q: params.q,
         conversation_id: params.conversation_id,
         parent_exchange_id: None,
         answer_model: agent::model::GPT_4_TURBO_24K,
