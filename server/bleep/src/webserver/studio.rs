@@ -31,7 +31,7 @@ use crate::{
 
 mod diff;
 
-const LLM_GATEWAY_MODEL: &str = "gpt-4-1106-preview";
+const LLM_GATEWAY_MODEL: &str = "gpt-4-turbo";
 
 fn studio_not_found() -> Error {
     Error::not_found("unknown code studio ID")
@@ -491,7 +491,7 @@ async fn token_counts(
         })
         .collect::<Vec<_>>();
 
-    let core_bpe = tiktoken_rs::get_bpe_from_model("gpt-4-1106-preview").unwrap();
+    let core_bpe = tiktoken_rs::get_bpe_from_model("gpt-4-turbo").unwrap();
     let per_doc_file = stream::iter(doc_context)
         .map(|file| async {
             if file.hidden {
@@ -652,14 +652,14 @@ pub async fn get_doc_file_token_count(
         .map(|sr| sr.text)
         .collect::<String>();
 
-    let core_bpe = tiktoken_rs::get_bpe_from_model("gpt-4-1106-preview").unwrap();
+    let core_bpe = tiktoken_rs::get_bpe_from_model("gpt-4-turbo").unwrap();
     let token_count = core_bpe.encode_ordinary(&content).len();
 
     Ok(Json(token_count))
 }
 
 fn count_tokens_for_file(path: &str, body: &str, ranges: &[Range<usize>]) -> usize {
-    let core_bpe = tiktoken_rs::get_bpe_from_model("gpt-4-1106-preview").unwrap();
+    let core_bpe = tiktoken_rs::get_bpe_from_model("gpt-4-turbo").unwrap();
 
     let mut chunks = Vec::new();
 

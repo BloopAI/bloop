@@ -82,7 +82,7 @@ pub async fn llm_call(
 ) -> anyhow::Result<impl Stream<Item = Result<Delta, api::Error>>> {
     let model = match req.model.as_deref() {
         Some(model) => model.to_owned(),
-        None => "gpt-4-turbo-preview".into(),
+        None => "gpt-4-turbo".into(),
     };
 
     let builder = {

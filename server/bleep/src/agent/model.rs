@@ -41,7 +41,7 @@ const HEADROOM_CORRECTION: usize = GPT_4_TURBO_MAX_TOKENS - ACTUAL_MAX_TOKENS;
 // PS: when we want to fully utilize the model max context window, the correction is 0
 pub const GPT_4_TURBO_24K: LLMModel = LLMModel {
     tokenizer: "gpt-4-1106-preview",
-    model_name: "gpt-4-1106-preview",
+    model_name: "gpt-4-turbo",
     answer_headroom: 1024 + HEADROOM_CORRECTION,
     prompt_headroom: 2500 + HEADROOM_CORRECTION,
     history_headroom: 2048 + HEADROOM_CORRECTION,
