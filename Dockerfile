@@ -12,7 +12,7 @@ FROM rust:1.73-slim-bookworm as builder
 WORKDIR /build
 RUN apt-get update && \
     apt-get -y install make clang libc-dev curl cmake python3 protobuf-compiler pkg-config libssl3 libssl-dev git && \
-    apt-get -y clean && \
+    rm -rf /var/lib/apt/lists/* && \
     curl -sLo sccache.tar.gz https://github.com/mozilla/sccache/releases/download/v0.3.3/sccache-v0.3.3-x86_64-unknown-linux-musl.tar.gz && \
     tar xzf sccache.tar.gz && \
     mv sccache-*/sccache /usr/bin/sccache
@@ -32,7 +32,7 @@ RUN --mount=target=/root/.cache/sccache,type=cache --mount=target=/build/target,
 
 FROM debian:bookworm-slim
 VOLUME ["/repos", "/data"]
-RUN apt-get update && apt-get -y install openssl ca-certificates libprotobuf-lite32 && apt-get clean
+RUN apt-get update && apt-get -y install openssl ca-certificates libprotobuf-lite32 && rm -rf /var/lib/apt/lists/*
 COPY model /model
 COPY --from=builder /bleep /
 COPY --from=builder /dylib /dylib
