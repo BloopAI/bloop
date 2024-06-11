@@ -69,7 +69,7 @@ pub struct File {
 
 impl File {
     pub fn new() -> Self {
-        let mut builder = tantivy::schema::SchemaBuilder::new();
+        let mut builder = SchemaBuilder::new();
         let trigram = TextOptions::default().set_stored().set_indexing_options(
             TextFieldIndexing::default()
                 .set_tokenizer("default")

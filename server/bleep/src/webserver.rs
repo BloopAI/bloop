@@ -254,7 +254,7 @@ impl Error {
         self
     }
 
-    fn internal<S: std::fmt::Display>(message: S) -> Self {
+    fn internal<S: fmt::Display>(message: S) -> Self {
         Error {
             status: StatusCode::INTERNAL_SERVER_ERROR,
             body: EndpointError {
@@ -264,7 +264,7 @@ impl Error {
         }
     }
 
-    fn user<S: std::fmt::Display>(message: S) -> Self {
+    fn user<S: fmt::Display>(message: S) -> Self {
         Error {
             status: StatusCode::BAD_REQUEST,
             body: EndpointError {
@@ -274,7 +274,7 @@ impl Error {
         }
     }
 
-    fn not_found<S: std::fmt::Display>(message: S) -> Self {
+    fn not_found<S: fmt::Display>(message: S) -> Self {
         Error {
             status: StatusCode::NOT_FOUND,
             body: EndpointError {
@@ -359,8 +359,4 @@ async fn health(State(app): State<Application>) {
     // panic is fine here, we don't need exact reporting of
     // subsystem checks at this stage
     app.semantic.health_check().await.unwrap()
-}
-
-fn no_user_id() -> Error {
-    Error::user("didn't have user ID")
 }

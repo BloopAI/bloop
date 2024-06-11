@@ -89,7 +89,7 @@ impl BackgroundExecutor {
                 let tokio_ref = tokio_ref.clone();
                 let thread_priority = thread_priority::ThreadPriority::Max;
 
-                std::thread::Builder::new()
+                thread::Builder::new()
                     .name("index-worker".to_owned())
                     .spawn_with_priority(thread_priority, move |_| {
                         let _tokio = tokio_ref.enter();

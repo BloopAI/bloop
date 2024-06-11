@@ -22,10 +22,7 @@ pub async fn list(
     user: Extension<User>,
     Path(project_id): Path<i64>,
 ) -> webserver::Result<Json<Vec<Doc>>> {
-    let user_id = user
-        .username()
-        .ok_or_else(webserver::no_user_id)?
-        .to_string();
+    let user_id = "1".to_string();
 
     let docs = sqlx::query_as! {
         Doc,
@@ -57,10 +54,7 @@ pub async fn add(
     Path(project_id): Path<i64>,
     Json(params): Json<Add>,
 ) -> webserver::Result<()> {
-    let user_id = user
-        .username()
-        .ok_or_else(webserver::no_user_id)?
-        .to_string();
+    let user_id = "1".to_string();
 
     sqlx::query! {
         "SELECT id FROM projects WHERE id = ? AND user_id = ?",
@@ -87,10 +81,7 @@ pub async fn delete(
     user: Extension<User>,
     Path((project_id, doc_id)): Path<(i64, i64)>,
 ) -> webserver::Result<()> {
-    let user_id = user
-        .username()
-        .ok_or_else(webserver::no_user_id)?
-        .to_string();
+    let user_id = "1".to_string();
 
     sqlx::query! {
         "DELETE FROM project_docs
