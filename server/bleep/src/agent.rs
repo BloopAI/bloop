@@ -405,7 +405,7 @@ impl Agent {
         query: &str,
     ) -> impl Iterator<Item = FileDocument> + 'a {
         let langs = self.last_exchange().query.langs.iter().map(Deref::deref);
-        let user_id = self.user.username().expect("didn't have user ID");
+        let user_id = "1";
 
         let (repos, branches): (Vec<_>, Vec<_>) = sqlx::query! {
             "SELECT pr.repo_ref, pr.branch
@@ -441,23 +441,12 @@ impl Agent {
     fn store(&mut self) -> impl Future<Output = ()> {
         let sql = Arc::clone(&self.app.sql);
 
-        let user_id = self
-            .user
-            .username()
-            .context("didn't have user ID")
-            .map(str::to_owned);
+        let user_id = "1".to_string();
 
         let conversation = self.conversation.clone();
 
         async move {
-            let result = match user_id {
-                Ok(user_id) => conversation.store(&sql, &user_id).await,
-                Err(e) => Err(e),
-            };
-
-            if let Err(e) = result {
-                error!("failed to store conversation: {e}");
-            }
+            conversation.store(&sql, &user_id).await.expect("failed to store conversation");
         }
     }
 }

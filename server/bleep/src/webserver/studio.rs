@@ -167,7 +167,7 @@ pub async fn get(
     Path((project_id, studio_id)): Path<(i64, i64)>,
     Query(params): Query<Get>,
 ) -> webserver::Result<Json<Studio>> {
-    let user_id = user.username().ok_or_else(super::no_user_id)?.to_string();
+    let user_id = "1".to_string();
 
     let snapshot_id = match params.snapshot_id {
         Some(id) => id,
@@ -220,7 +220,7 @@ pub async fn patch(
     Path((project_id, studio_id)): Path<(i64, i64)>,
     Json(patch): Json<Patch>,
 ) -> webserver::Result<Json<TokenCounts>> {
-    let user_id = user.username().ok_or_else(super::no_user_id)?.to_string();
+    let user_id = "1".to_string();
 
     let mut transaction = app.sql.begin().await?;
 
@@ -330,7 +330,7 @@ pub async fn delete(
     user: Extension<User>,
     Path((project_id, studio_id)): Path<(i64, i64)>,
 ) -> webserver::Result<()> {
-    let user_id = user.username().ok_or_else(super::no_user_id)?.to_string();
+    let user_id = "1".to_string();
 
     sqlx::query!(
         "DELETE FROM studios
@@ -365,7 +365,7 @@ pub async fn list(
     user: Extension<User>,
     Path(project_id): Path<i64>,
 ) -> webserver::Result<Json<Vec<ListItem>>> {
-    let user_id = user.username().ok_or_else(super::no_user_id)?.to_string();
+    let user_id = "1".to_string();
 
     let studios = sqlx::query!(
         "SELECT
@@ -707,7 +707,7 @@ pub async fn generate(
     user: Extension<User>,
     Path((_project_id, studio_id)): Path<(i64, i64)>,
 ) -> webserver::Result<Sse<Pin<Box<dyn tokio_stream::Stream<Item = Result<sse::Event>> + Send>>>> {
-    let user_id = user.username().ok_or_else(super::no_user_id)?.to_string();
+    let user_id = "1".to_string();
 
     let snapshot_id = latest_snapshot_id(studio_id, &*app.sql, &user_id).await?;
 
@@ -935,7 +935,7 @@ pub async fn diff(
     user: Extension<User>,
     Path((_project_id, studio_id)): Path<(i64, i64)>,
 ) -> webserver::Result<Json<structured_diff::Diff>> {
-    let user_id = user.username().ok_or_else(super::no_user_id)?.to_string();
+    let user_id = "1".to_string();
 
     let snapshot_id = latest_snapshot_id(studio_id, &*app.sql, &user_id).await?;
 
@@ -991,7 +991,7 @@ pub async fn diff(
     let response = llm_gateway.chat(&messages, None).await?;
     let diff_chunks = diff::extract(&response)?.collect::<Vec<_>>();
 
-    let valid_chunks = futures::stream::iter(diff_chunks)
+    let valid_chunks = stream::iter(diff_chunks)
         .map(|mut chunk| {
             let app = (*app).clone();
             let llm_context = llm_context.clone();
@@ -1250,7 +1250,7 @@ pub async fn diff_apply(
     Path((_project_id, studio_id)): Path<(i64, i64)>,
     diff: String,
 ) -> webserver::Result<()> {
-    let user_id = user.username().ok_or_else(super::no_user_id)?.to_string();
+    let user_id = "1".to_string();
 
     let snapshot_id = latest_snapshot_id(studio_id, &*app.sql, &user_id).await?;
 
@@ -1331,7 +1331,7 @@ pub async fn diff_apply(
 
     // Force a re-sync.
     for repo in dirty_repos {
-        let _ = crate::webserver::repos::sync(
+        let _ = webserver::repos::sync(
             Query(webserver::repos::RepoParams {
                 repo,
                 shallow: false,
@@ -1352,7 +1352,7 @@ async fn populate_studio_name(
     user: Extension<User>,
     studio_id: i64,
 ) -> webserver::Result<()> {
-    let user_id = user.username().ok_or_else(super::no_user_id)?.to_string();
+    let user_id = "1".to_string();
 
     let snapshot_id = latest_snapshot_id(studio_id, &*app.sql, &user_id).await?;
     let needs_name = sqlx::query! {
@@ -1421,7 +1421,7 @@ pub async fn import(
 ) -> webserver::Result<String> {
     let mut transaction = app.sql.begin().await?;
 
-    let user_id = user.username().ok_or_else(super::no_user_id)?.to_string();
+    let user_id = "1".to_string();
 
     let thread_id = params.thread_id.to_string();
 
@@ -1641,7 +1641,7 @@ pub async fn list_snapshots(
     user: Extension<User>,
     Path((project_id, studio_id)): Path<(i64, i64)>,
 ) -> webserver::Result<Json<Vec<Snapshot>>> {
-    let user_id = user.username().ok_or_else(super::no_user_id)?.to_string();
+    let user_id = "1".to_string();
 
     sqlx::query! {
         "SELECT ss.id as 'id!', ss.modified_at, ss.context, ss.doc_context, ss.messages
@@ -1688,7 +1688,7 @@ pub async fn delete_snapshot(
     user: Extension<User>,
     Path((project_id, studio_id, snapshot_id)): Path<(i64, i64, i64)>,
 ) -> webserver::Result<()> {
-    let user_id = user.username().ok_or_else(super::no_user_id)?.to_string();
+    let user_id = "1".to_string();
 
     sqlx::query! {
         "DELETE FROM studio_snapshots
