@@ -991,7 +991,7 @@ pub async fn diff(
     let response = llm_gateway.chat(&messages, None).await?;
     let diff_chunks = diff::extract(&response)?.collect::<Vec<_>>();
 
-    let valid_chunks = futures::stream::iter(diff_chunks)
+    let valid_chunks = stream::iter(diff_chunks)
         .map(|mut chunk| {
             let app = (*app).clone();
             let llm_context = llm_context.clone();
@@ -1331,7 +1331,7 @@ pub async fn diff_apply(
 
     // Force a re-sync.
     for repo in dirty_repos {
-        let _ = crate::webserver::repos::sync(
+        let _ = webserver::repos::sync(
             Query(webserver::repos::RepoParams {
                 repo,
                 shallow: false,

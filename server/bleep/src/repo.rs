@@ -153,7 +153,7 @@ impl FromStr for RepoRef {
 }
 
 impl Display for RepoRef {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.backend() {
             Backend::Github => write!(f, "github.com/{}", self.name()),
             Backend::Local => write!(f, "local/{}", self.name()),

@@ -16,5 +16,5 @@ pub(super) async fn handle(
         .query(&app)
         .await
         .map(json)
-        .map_err(super::Error::from)
+        .map_err(Error::from)
 }
