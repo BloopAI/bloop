@@ -548,7 +548,7 @@ impl<'a> ChunkCache<'a> {
         let branches_hash = blake3::hash(payload.branches.join("\n").as_ref()).to_string();
 
         match self.cache.entry(id) {
-            Entry::Occupied(mut existing) => {
+            scc::hash_map::Entry::Occupied(mut existing) => {
                 let key = existing.key();
                 trace!(?key, "found; not upserting new");
                 if existing.get().value != branches_hash {
@@ -560,7 +560,7 @@ impl<'a> ChunkCache<'a> {
                 }
                 *existing.get_mut() = branches_hash.into();
             }
-            Entry::Vacant(vacant) => {
+            scc::hash_map::Entry::Vacant(vacant) => {
                 let key = vacant.key();
                 trace!(?key, "inserting new");
                 self.new_sql

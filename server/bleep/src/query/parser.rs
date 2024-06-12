@@ -356,7 +356,7 @@ impl<'a> Literal<'a> {
 
     /// Force this literal into the `Regex` variant.
     fn make_regex(&mut self) {
-        *self = match mem::take(self) {
+        *self = match std::mem::take(self) {
             Self::Plain(s) | Self::Regex(s) => Self::Regex(s),
         }
     }
