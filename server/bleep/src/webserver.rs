@@ -254,7 +254,7 @@ impl Error {
         self
     }
 
-    fn internal<S: std::fmt::Display>(message: S) -> Self {
+    fn internal<S: fmt::Display>(message: S) -> Self {
         Error {
             status: StatusCode::INTERNAL_SERVER_ERROR,
             body: EndpointError {
@@ -264,7 +264,7 @@ impl Error {
         }
     }
 
-    fn user<S: std::fmt::Display>(message: S) -> Self {
+    fn user<S: fmt::Display>(message: S) -> Self {
         Error {
             status: StatusCode::BAD_REQUEST,
             body: EndpointError {
@@ -274,7 +274,7 @@ impl Error {
         }
     }
 
-    fn not_found<S: std::fmt::Display>(message: S) -> Self {
+    fn not_found<S: fmt::Display>(message: S) -> Self {
         Error {
             status: StatusCode::NOT_FOUND,
             body: EndpointError {

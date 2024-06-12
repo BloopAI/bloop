@@ -168,7 +168,7 @@ impl Repo {
             last_update: origin.pushed_at.unwrap(),
             last_index: None,
             most_common_lang: None,
-            branch_filter: crate::repo::BranchFilterConfig::Select(vec![]),
+            branch_filter: BranchFilterConfig::Select(vec![]),
             file_filter: Default::default(),
             branches: vec![],
         }

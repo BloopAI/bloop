@@ -18,7 +18,7 @@ pub async fn create(
 ) -> webserver::Result<String> {
     let user_id = user
         .username()
-        .ok_or_else(|| super::Error::user("didn't have user ID"))?
+        .ok_or_else(|| Error::user("didn't have user ID"))?
         .to_string();
 
     let id = sqlx::query!(
@@ -49,7 +49,7 @@ pub async fn list(
 ) -> webserver::Result<Json<Vec<Template>>> {
     let user_id = user
         .username()
-        .ok_or_else(|| super::Error::user("didn't have user ID"))?
+        .ok_or_else(|| Error::user("didn't have user ID"))?
         .to_string();
 
     let templates = sqlx::query_as!(
@@ -72,7 +72,7 @@ pub async fn get(
 ) -> webserver::Result<Json<Template>> {
     let user_id = user
         .username()
-        .ok_or_else(|| super::Error::user("didn't have user ID"))?
+        .ok_or_else(|| Error::user("didn't have user ID"))?
         .to_string();
 
     let template = sqlx::query_as!(
@@ -104,7 +104,7 @@ pub async fn patch(
 ) -> webserver::Result<String> {
     let user_id = user
         .username()
-        .ok_or_else(|| super::Error::user("didn't have user ID"))?
+        .ok_or_else(|| Error::user("didn't have user ID"))?
         .to_string();
 
     let mut transaction = app.sql.begin().await?;
@@ -167,7 +167,7 @@ pub async fn delete(
 ) -> webserver::Result<()> {
     let user_id = user
         .username()
-        .ok_or_else(|| super::Error::user("didn't have user ID"))?
+        .ok_or_else(|| Error::user("didn't have user ID"))?
         .to_string();
 
     sqlx::query!(
