@@ -437,7 +437,7 @@ Assistant: initialisation"#,
 
 pub async fn generate_tutorial_questions(
     db: crate::db::SqlDb,
-    llm_gateway: Result<llm::client::Client>,
+    llm_gateway: Result<crate::llm::client::Client>,
     repo_pool: RepositoryPool,
     reporef: RepoRef,
 ) -> Result<()> {

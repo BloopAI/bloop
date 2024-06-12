@@ -20,7 +20,7 @@ pub(super) async fn semantic_code(
         Ok(q) => semantic::execute::execute(semantic, q, args)
             .await
             .map(json)
-            .map_err(Error::from),
+            .map_err(super::Error::from),
         Err(err) => {
             error!(?err, "Couldn't parse query");
             Err(Error::new(ErrorKind::UpstreamService, "error"))

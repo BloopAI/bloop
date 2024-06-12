@@ -25,7 +25,7 @@ pub async fn list(
     app: Extension<Application>,
     user: Extension<User>,
 ) -> webserver::Result<Json<Vec<ListItem>>> {
-    let user_id = "1".to_string();
+    let user_id = user.username().ok_or_else(super::no_user_id)?.to_string();
 
     let projects = sqlx::query! {
         "SELECT p.id, p.name, (
@@ -91,7 +91,7 @@ pub async fn create(
     user: Extension<User>,
     Json(params): Json<Create>,
 ) -> webserver::Result<String> {
-    let user_id = "1".to_string();
+    let user_id = user.username().ok_or_else(super::no_user_id)?.to_string();
 
     let project_id = sqlx::query! {
         "INSERT INTO projects (user_id, name) VALUES (?, ?) RETURNING id",
@@ -118,7 +118,7 @@ pub async fn get(
     user: Extension<User>,
     Path(id): Path<i64>,
 ) -> webserver::Result<Json<Get>> {
-    let user_id = "1".to_string();
+    let user_id = user.username().ok_or_else(super::no_user_id)?.to_string();
 
     let row = sqlx::query! {
         "SELECT name, (
@@ -172,7 +172,7 @@ pub async fn update(
     Path(id): Path<i64>,
     Json(update): Json<Update>,
 ) -> webserver::Result<()> {
-    let user_id = "1".to_string();
+    let user_id = user.username().ok_or_else(super::no_user_id)?.to_string();
 
     sqlx::query! {
         "UPDATE projects SET name = ? WHERE id = ? AND user_id = ? RETURNING id",
@@ -191,7 +191,7 @@ pub async fn delete(
     user: Extension<User>,
     Path(id): Path<i64>,
 ) -> webserver::Result<()> {
-    let user_id = "1".to_string();
+    let user_id = user.username().ok_or_else(super::no_user_id)?;
 
     sqlx::query! {
         "DELETE FROM projects WHERE id = ? AND user_id = ? RETURNING id",

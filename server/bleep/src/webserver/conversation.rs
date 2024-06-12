@@ -206,7 +206,7 @@ pub(in crate::webserver) async fn get(
     Path((project_id, conversation_id)): Path<(i64, i64)>,
     State(app): State<Application>,
 ) -> webserver::Result<Json<Conversation>> {
-    let user_id = "1";
+    let user_id = user.username().ok_or_else(super::no_user_id)?;
 
     let mut conversation =
         Conversation::load(&app.sql, user_id, project_id, conversation_id).await?;

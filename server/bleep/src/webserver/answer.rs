@@ -73,7 +73,7 @@ pub(super) async fn answer(
     info!(?params.q, "handling /answer query");
     let query_id = uuid::Uuid::new_v4();
 
-    let user_id = "1";
+    let user_id = user.username().ok_or_else(super::no_user_id)?;
 
     let mut conversation = match params.conversation_id {
         Some(conversation_id) => {
@@ -173,7 +173,7 @@ impl AgentExecutor {
     async fn try_execute(&mut self) -> super::Result<SseDynStream<Result<sse::Event>>> {
         QueryLog::new(&self.app.sql).insert(&self.params.q).await?;
 
-        let username = "1";
+        let username = self.user.username().ok_or_else(super::no_user_id)?;
 
         let repo_refs = sqlx::query! {
             "SELECT repo_ref
