@@ -6,6 +6,7 @@ import ja from './locales/ja.json';
 import zhCN from './locales/zh-CN.json';
 import es from './locales/es.json';
 import it from './locales/it.json';
+import zhTW from './locales/zh-TW.json';
 import { getPlainFromStorage, LANGUAGE_KEY } from './services/storage';
 
 // the translations
@@ -26,6 +27,9 @@ const resources = {
   },
   it: {
     translation: it,
+  },
+  zhTW: {
+    translation: zhTW,
   },
 };
 

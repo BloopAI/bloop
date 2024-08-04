@@ -13,6 +13,7 @@ export const localesMap: Record<LocaleType, { name: string; icon: string }> = {
   zhCN: { name: '简体中文', icon: '🇨🇳' },
   es: { name: 'Español', icon: '🇪🇸' },
   it: { name: 'Italiano', icon: '🇮🇹' },
+  zhTW: { name: '繁體中文', icon: '🇹🇼' },
 };
 
 export const repoStatusMap = {
